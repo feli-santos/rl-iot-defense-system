@@ -13,7 +13,7 @@ This project implements a custom Gymnasium environment that simulates an IoT net
 
 ## Requirements
 
-- Python 3.13
+- Python 3.12
 - [Stable Baselines3](https://stable-baselines3.readthedocs.io/)
 
 ## Installation
@@ -26,13 +26,13 @@ This project implements a custom Gymnasium environment that simulates an IoT net
 
 2. **Create and Activate a Virtual Environment:**
    ```bash
-   python3 -m venv .venv
+   python3.12 -m venv .venv
    source .venv/bin/activate
    ```
 
 3. **Install Dependencies:**
    ```bash
-   pip install stable-baselines3
+   pip install 'stable-baselines3[extra]'
    ```
 
 ## License
