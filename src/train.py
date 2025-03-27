@@ -1,12 +1,12 @@
 import os
 import numpy as np
 import torch
-import gym
+import gymnasium as gym
 from stable_baselines3 import DQN
 from stable_baselines3.common.callbacks import EvalCallback, StopTrainingOnNoModelImprovement
 from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.vec_env import DummyVecEnv
-from environment.iot_env import IoTEnv
+from environment import IoTEnv
 from config import config
 from policy import LSTMAttackPredictor
 

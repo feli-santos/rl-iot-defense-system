@@ -1,9 +1,10 @@
-import gym
-from gym import spaces
+import gymnasium as gym
+from gymnasium import spaces
 import numpy as np
 from typing import Tuple, Dict, Any, List
 from collections import deque
 from attack import generate_attack_graph, get_critical_paths
+import random
 
 class IoTEnv(gym.Env):
     """Custom IoT environment for trigger-action attack simulation"""
