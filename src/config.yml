@@ -1,0 +1,46 @@
+# Configuration File
+
+# Environment parameters
+environment:
+  num_devices: 12
+  num_actions: 4
+  num_states: 12
+
+# DQN hyperparameters
+dqn:
+  total_episodes: 250
+  epochs_per_episode: 100
+  learning_rate: 0.0001
+  gamma: 0.95
+  batch_size: 16
+  buffer_size: 50000
+  tau: 0.005 # for target network update
+  target_update_freq: 20 # episodes
+
+# Exploration parameters
+exploration:
+  eps_start: 1.0
+  eps_end: 0.1
+  eps_decay: 0.99999
+
+# Reward function parameters
+reward:
+  injection_threshold: 0.25 # k value
+  goal_reward: -100 # Gr value
+
+# Neural network architecture
+network:
+  hidden_layers: [64, 32]
+
+# LSTM model parameters
+lstm:
+  embedding_size: 128
+  hidden_units: [64, 32]
+  output_classes: 23
+
+# Training configuration
+training:
+  device: "auto" # "cpu", "cuda", or "auto"
+  verbose: 1
+  seed: 42
+  log_dir: "./logs/"
