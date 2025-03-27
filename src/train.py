@@ -43,14 +43,13 @@ def train_dqn_policy(lstm_model):
     env = DummyVecEnv([lambda: env])  # Vectorized environment
     
     # Define callbacks
-    stop_callback = StopTrainingOnNoModelImprovement(max_no_improvement_evals=10, min_evals=10)
     eval_callback = EvalCallback(
         env,
-        callback_after_eval=stop_callback,
         eval_freq=1000,
         best_model_save_path=os.path.join(config.TRAINING_LOG_DIR, "best_model"),
         deterministic=True,
-        render=False
+        render=False,
+        verbose=1
     )
     
     # Define DQN model with paper's hyperparameters
