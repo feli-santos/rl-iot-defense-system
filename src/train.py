@@ -3,9 +3,9 @@ import numpy as np
 import torch
 import gymnasium as gym
 from stable_baselines3 import DQN
-from stable_baselines3.common.callbacks import EvalCallback, StopTrainingOnNoModelImprovement
+from stable_baselines3.common.callbacks import EvalCallback, CheckpointCallback, ProgressBarCallback
 from stable_baselines3.common.monitor import Monitor
-from stable_baselines3.common.vec_env import DummyVecEnv
+from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
 from environment import IoTEnv
 from config import config
 from policy import LSTMAttackPredictor
@@ -41,12 +41,15 @@ def train_dqn_policy(lstm_model):
     env = IoTEnv(config)
     env = Monitor(env)  # Wrap for logging
     env = DummyVecEnv([lambda: env])  # Vectorized environment
+
+    # Add normalization
+    env = VecNormalize(env, norm_obs=True, norm_reward=True)
     
     # Define callbacks
     eval_callback = EvalCallback(
         env,
         eval_freq=1000,
-        best_model_save_path=os.path.join(config.TRAINING_LOG_DIR, "best_model"),
+        best_model_save_path=os.path.join(config.TRAINING_MODEL_DIR, "best_model"),
         deterministic=True,
         render=False,
         verbose=1
@@ -74,24 +77,33 @@ def train_dqn_policy(lstm_model):
         },
         verbose=config.TRAINING_VERBOSE,
         seed=config.TRAINING_SEED,
-        device=config.TRAINING_DEVICE
+        device=config.TRAINING_DEVICE,
+        tensorboard_log=config.TRAINING_LOG_DIR
+    )
+
+    # Checkpoint callback
+    checkpoint_callback = CheckpointCallback(
+        save_freq=1000,
+        save_path=config.TRAINING_MODEL_DIR,
+        name_prefix="dqn_model"
     )
     
     # Train the model
     model.learn(
         total_timesteps=config.DQN_TOTAL_EPISODES * config.DQN_EPOCHS_PER_EPISODE,
-        callback=eval_callback,
+        callback=[eval_callback, checkpoint_callback, ProgressBarCallback()],
         log_interval=10
     )
     
     # Save the trained model
-    model.save(os.path.join(config.TRAINING_LOG_DIR, "dqn_iot_warden"))
+    model.save(os.path.join(config.TRAINING_MODEL_DIR, "dqn_iot_warden"))
+    env.save(os.path.join(config.TRAINING_MODEL_DIR, "dqn_iot_warden_env"))
     
-    return model
+    return model, env
 
 def main():
     # Create directories
-    os.makedirs(config.TRAINING_LOG_DIR, exist_ok=True)
+    os.makedirs(config.TRAINING_MODEL_DIR, exist_ok=True)
     
     # Step 1: Train LSTM attack predictor
     lstm_model = train_lstm_attack_predictor()
