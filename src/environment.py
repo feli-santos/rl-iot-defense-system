@@ -1,7 +1,7 @@
 import gymnasium as gym
 from gymnasium import spaces
 import numpy as np
-from typing import Tuple, Dict, Any, List
+from typing import Tuple, Dict, Any, List, Optional
 from collections import deque
 from attack import generate_attack_graph, get_critical_paths
 import random
@@ -47,25 +47,51 @@ class IoTEnv(gym.Env):
         """Select an attack path from critical paths"""
         return random.choice(self.critical_paths)
     
-    def reset(self) -> np.ndarray:
-        """Reset the environment to initial state"""
+    def reset(self, *, seed: Optional[int] = None, options: Optional[Dict] = None) -> Tuple[np.ndarray, Dict]:
+        """Reset the environment to initial state
+        
+        Args:
+            seed: Optional seed for random number generator
+            options: Optional dictionary of additional options
+            
+        Returns:
+            observation: The initial observation
+            info: Additional information
+        """
+        # Handle seed if provided
+        if seed is not None:
+            random.seed(seed)
+            np.random.seed(seed)
+        
+        # Reset environment state
         self.current_state = np.zeros(self.config.ENVIRONMENT_NUM_STATES, dtype=np.float32)
         self.attack_proximity = 0.0
         self.attack_step = 0
         self.current_attack_path = self._select_attack_path()
         self.action_counts = {i: 0 for i in range(self.config.ENVIRONMENT_NUM_ACTIONS)}
         self.episode_history = []
-        return self.current_state
+        
+        # Return observation and empty info dict
+        return self.current_state, {}
     
-    def step(self, action: int) -> Tuple[np.ndarray, float, bool, Dict[str, Any]]:
-        """Execute one time step within the environment"""
+    def step(self, action: int) -> Tuple[np.ndarray, float, bool, bool, Dict[str, Any]]:
+        """Execute one time step within the environment
+        
+        Returns:
+            observation: The new observation
+            reward: The reward for this step
+            terminated: Whether the episode has ended (goal achieved/failed)
+            truncated: Whether the episode was truncated (max steps reached)
+            info: Additional information
+        """
         self.action_counts[action] += 1
         self.episode_history.append(action)
         
         # Update state based on action
         new_state = self._update_state(action)
         reward = self._calculate_reward(action)
-        done = self._check_termination()
+        terminated = self._check_termination()
+        truncated = len(self.episode_history) >= self.config.DQN_EPOCHS_PER_EPISODE
         
         info = {
             'action_counts': self.action_counts,
@@ -75,7 +101,7 @@ class IoTEnv(gym.Env):
         }
         
         self.current_state = new_state
-        return new_state, reward, done, info
+        return new_state, reward, terminated, truncated, info
     
     def _update_state(self, action: int) -> np.ndarray:
         """Update the environment state based on the action taken"""
@@ -115,39 +141,39 @@ class IoTEnv(gym.Env):
             self.action_counts[2], self.action_counts[3]
         )
         
-        # Immediate rewards for each action (paper doesn't specify, so we define reasonable values)
+        # Immediate rewards for each action
         r_a1, r_a2, r_a3, r_a4 = -1, 0.1, 0.5, 1.0
         p = self.attack_proximity
         k = self.config.REWARD_INJECTION_THRESHOLD
         G_r = self.config.REWARD_GOAL_REWARD
         
         # Check if goal node is compromised
-        goal_compromised = self.current_state[self.goal_node] == 1.0
-        
-        if goal_compromised:
+        if self.current_state[self.goal_node] == 1.0:
             return G_r  # Large penalty if goal is compromised
         
+        # Handle division by zero cases
+        denominator = (n_a1 + n_a2)
+        if denominator == 0:
+            # If no actions have been taken yet, return neutral reward
+            return 0.0
+        
         # Calculate reward based on paper's equation (1)
-        if (n_a1 * p) / (n_a1 + n_a2) < k:
-            reward = n_a3 * r_a3 - (p * n_a1 * r_a1) / (n_a1 + n_a2) - G_r
+        if (n_a1 * p) / denominator < k:
+            reward = n_a3 * r_a3 - (p * n_a1 * r_a1) / denominator - G_r
         else:
-            term1 = (n_a4 * r_a4) * (n_a3 * r_a3) / (n_a4 + n_a3)
-            term2 = max(n_a2 * r_a2, (p * n_a1 * r_a1) / (n_a1 + n_a2) + G_r)
+            denominator2 = (n_a4 + n_a3)
+            term1 = (n_a4 * r_a4) * (n_a3 * r_a3) / denominator2 if denominator2 != 0 else 0
+            term2 = max(n_a2 * r_a2, (p * n_a1 * r_a1) / denominator + G_r)
             reward = term1 - term2
-            
-        return float(reward)
+        
+        # Add scaling factor to reward
+        scaled_reward = reward / 100
+        return float(np.clip(scaled_reward, -10, 10))  # Prevent extreme values
     
     def _check_termination(self) -> bool:
-        """Check if episode should terminate"""
+        """Check if episode should terminate due to environment conditions"""
         # Episode ends if goal node is compromised
-        if self.current_state[self.goal_node] == 1.0:
-            return True
-        
-        # Or if we've reached max steps
-        if len(self.episode_history) >= self.config.DQN_EPOCHS_PER_EPISODE:
-            return True
-        
-        return False
+        return self.current_state[self.goal_node] == 1.0
     
     def render(self, mode='human'):
         """Render the current state of the environment"""
