@@ -131,3 +131,6 @@ cython_debug/
 
 # TensorBoard files
 tensorboard/
+
+# Models
+models/

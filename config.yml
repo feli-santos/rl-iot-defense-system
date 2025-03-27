@@ -43,4 +43,4 @@ training:
   device: "auto" # "cpu", "cuda", or "auto"
   verbose: 1
   seed: 42
-  log_dir: "./logs/"
+  log_dir: "./models/"
