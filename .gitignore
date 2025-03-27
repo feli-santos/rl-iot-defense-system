@@ -129,8 +129,8 @@ cython_debug/
 # Visual Studio Code
 .vscode/
 
-# TensorBoard files
-tensorboard/
+# TensorBoard Logs
+logs/
 
 # Models
 models/
