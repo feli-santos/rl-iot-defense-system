@@ -136,13 +136,16 @@ class IoTEnv(gym.Env):
     
     def _calculate_reward(self, action: int) -> float:
         """Calculate reward based on the paper's equation (1)"""
+        
         n_a1, n_a2, n_a3, n_a4 = (
-            self.action_counts[0], self.action_counts[1],
-            self.action_counts[2], self.action_counts[3]
+            max(1, self.action_counts[0]),  # Avoid division by zero
+            max(1, self.action_counts[1]),
+            max(1, self.action_counts[2]),
+            max(1, self.action_counts[3])
         )
         
         # Immediate rewards for each action
-        r_a1, r_a2, r_a3, r_a4 = -1, 0.1, 0.5, 1.0
+        r_a1, r_a2, r_a3, r_a4 = -0.1, 0.01, 0.05, 0.1
         p = self.attack_proximity
         k = self.config.REWARD_INJECTION_THRESHOLD
         G_r = self.config.REWARD_GOAL_REWARD
@@ -165,10 +168,8 @@ class IoTEnv(gym.Env):
             term1 = (n_a4 * r_a4) * (n_a3 * r_a3) / denominator2 if denominator2 != 0 else 0
             term2 = max(n_a2 * r_a2, (p * n_a1 * r_a1) / denominator + G_r)
             reward = term1 - term2
-        
-        # Add scaling factor to reward
-        scaled_reward = reward / 100
-        return float(np.clip(scaled_reward, -10, 10))  # Prevent extreme values
+
+        return float(np.clip(reward / 50, -1, 1))  # Scale down but preserve ratios
     
     def _check_termination(self) -> bool:
         """Check if episode should terminate due to environment conditions"""
