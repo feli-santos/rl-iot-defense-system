@@ -41,7 +41,10 @@ class LSTMAttackPredictor(nn.Module):
         
         # Loss and optimizer
         self.criterion = nn.CrossEntropyLoss()
-        self.optimizer = optim.Adam(self.parameters(), lr=1e-3)
+        self.optimizer = optim.Adam(self.parameters(), lr=1e-4)
+
+        # Add dropout layers
+        self.dropout = nn.Dropout(0.2)  # Add dropout for regularization
         
     def forward(self, x):
         x = self.embedding(x)
@@ -51,8 +54,8 @@ class LSTMAttackPredictor(nn.Module):
         return x
     
     def train_model(self, train_data: np.ndarray, train_labels: np.ndarray,
-                   val_data: np.ndarray, val_labels: np.ndarray,
-                   epochs: int = 100, batch_size: int = 32) -> Tuple[list, list]:
+               val_data: np.ndarray, val_labels: np.ndarray,
+               epochs: int = 100, batch_size: int = 32) -> Tuple[list, list]:
         """Train the LSTM model"""
         # Convert data to PyTorch tensors
         train_dataset = TensorDataset(
@@ -69,6 +72,11 @@ class LSTMAttackPredictor(nn.Module):
         
         train_losses, val_losses = [], []
         train_accs, val_accs = [], []
+
+        # Initialize best_val_loss after first validation
+        best_val_loss = float('inf')
+        patience = 5
+        trigger_times = 0
         
         for epoch in range(epochs):
             # Training phase
@@ -82,6 +90,7 @@ class LSTMAttackPredictor(nn.Module):
                 outputs = self(inputs)
                 loss = self.criterion(outputs, labels)
                 loss.backward()
+                torch.nn.utils.clip_grad_norm_(self.parameters(), max_norm=1.0)  # Clip gradient
                 self.optimizer.step()
                 
                 running_loss += loss.item()
@@ -95,23 +104,7 @@ class LSTMAttackPredictor(nn.Module):
             train_accs.append(train_acc)
             
             # Validation phase
-            self.eval()
-            val_loss = 0.0
-            correct = 0
-            total = 0
-            
-            with torch.no_grad():
-                for inputs, labels in val_loader:
-                    outputs = self(inputs)
-                    loss = self.criterion(outputs, labels)
-                    val_loss += loss.item()
-                    
-                    _, predicted = torch.max(outputs.data, 1)
-                    total += labels.size(0)
-                    correct += (predicted == labels).sum().item()
-            
-            val_loss = val_loss / len(val_loader)
-            val_acc = correct / total
+            val_loss, val_acc = self._validate(val_loader)
             val_losses.append(val_loss)
             val_accs.append(val_acc)
             
@@ -120,8 +113,38 @@ class LSTMAttackPredictor(nn.Module):
                 print(f"Train Loss: {train_loss:.4f}, Acc: {train_acc:.4f}")
                 print(f"Val Loss: {val_loss:.4f}, Acc: {val_acc:.4f}")
                 print("------------------------")
-        
+
+            # Early stopping check - only start after first epoch
+            if epoch > 0:
+                if val_loss < best_val_loss:
+                    best_val_loss = val_loss
+                    trigger_times = 0
+                else:
+                    trigger_times += 1
+                    if trigger_times >= patience:
+                        print(f"Early stopping at epoch {epoch+1}!")
+                        break
+            
         return (train_losses, train_accs), (val_losses, val_accs)
+
+    def _validate(self, val_loader):
+        """Helper method for validation"""
+        self.eval()
+        val_loss = 0.0
+        correct = 0
+        total = 0
+        
+        with torch.no_grad():
+            for inputs, labels in val_loader:
+                outputs = self(inputs)
+                loss = self.criterion(outputs, labels)
+                val_loss += loss.item()
+                
+                _, predicted = torch.max(outputs.data, 1)
+                total += labels.size(0)
+                correct += (predicted == labels).sum().item()
+        
+        return val_loss / len(val_loader), correct / total
     
     def predict_attack_sequence(self, initial_event: int, max_length: int = 10) -> list:
         """Predict an attack sequence starting from an initial event"""
