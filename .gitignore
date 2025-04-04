@@ -131,6 +131,7 @@ cython_debug/
 
 # TensorBoard Logs
 logs/
+tensorboard/
 
 # Models
 models/
