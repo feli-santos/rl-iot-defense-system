@@ -3,6 +3,77 @@ from typing import Dict, List, Tuple
 import networkx as nx
 import random
 
+class AttackPattern:
+    """Base class for different attack patterns"""
+    def __init__(self, num_nodes: int, target_node: int):
+        self.num_nodes = num_nodes
+        self.target_node = target_node
+        
+    def get_next_action(self, current_state: np.ndarray, defense_action: int) -> int:
+        """Return the next attack action based on current state and defense action"""
+        raise NotImplementedError
+
+class AdaptiveAttacker(AttackPattern):
+    """Attacker that adapts strategy based on defensive actions"""
+    def __init__(self, num_nodes: int, target_node: int, adaptation_rate: float = 0.2):
+        super().__init__(num_nodes, target_node)
+        self.adaptation_rate = adaptation_rate
+        self.attack_history = []
+        self.defense_history = []
+        self.path_preference = np.ones(num_nodes) / num_nodes
+        
+    def get_next_action(self, current_state: np.ndarray, defense_action: int) -> int:
+        """
+        Generate next attack action considering defensive measures
+        Returns node to attack next
+        """
+        self.defense_history.append(defense_action)
+        
+        # Update path preferences based on defense action
+        if defense_action == 3:  # Blocking action
+            # Reduce preference for recently attacked nodes
+            if len(self.attack_history) > 0:
+                recent_node = self.attack_history[-1]
+                self.path_preference[recent_node] *= (1 - self.adaptation_rate)
+                # Normalize preferences
+                self.path_preference = self.path_preference / np.sum(self.path_preference)
+        
+        # Find available next nodes (not yet compromised)
+        available_nodes = [i for i in range(self.num_nodes) if current_state[i] == 0]
+        
+        if not available_nodes:
+            return -1  # No available nodes to attack
+        
+        # If target node is available, increase its probability
+        if self.target_node in available_nodes:
+            target_prob = 0.3
+            other_prob = (1 - target_prob) / (len(available_nodes) - 1) if len(available_nodes) > 1 else 0
+            probs = [target_prob if node == self.target_node else other_prob for node in available_nodes]
+        else:
+            # Weight by path preference
+            raw_probs = [self.path_preference[node] for node in available_nodes]
+            probs = raw_probs / np.sum(raw_probs)
+        
+        # Fix the probability distribution
+        if len(available_nodes) > 0:
+            # Ensure probabilities sum to 1.0
+            probs = np.array(probs)
+            if probs.sum() == 0:
+                # If all probabilities are zero, use uniform distribution
+                probs = np.ones(len(available_nodes)) / len(available_nodes)
+            else:
+                # Normalize to ensure sum is 1.0
+                probs = probs / probs.sum()
+                
+            next_node = np.random.choice(available_nodes, p=probs)
+        else:
+            # Default action if no nodes are available
+            next_node = np.random.randint(0, self.num_nodes)
+        
+        self.attack_history.append(next_node)
+        
+        return next_node
+
 def generate_attack_graph(num_devices: int) -> nx.DiGraph:
     """
     Generate a directed acyclic attack dependency graph as described in the paper.
