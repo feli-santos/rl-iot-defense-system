@@ -5,6 +5,7 @@ environment:
   num_devices: 12
   num_actions: 4
   num_states: 12
+  history_length: 5
 
 # DQN hyperparameters
 dqn:
@@ -37,6 +38,12 @@ lstm:
   embedding_size: 128
   hidden_units: [64, 32]
   output_classes: 23
+  gradient_clip_norm: 1.0
+
+# Attack model parameters
+attack:
+  adaptation_rate: 0.2
+  target_probability: 0.3
 
 # Training configuration
 training:
@@ -44,4 +51,5 @@ training:
   verbose: 1
   seed: 42
   model_dir: "./models/"
-  log_dir: "./logs/"
+  tensorboard_dir: "./tensorboard/"
+  logs_dir: "./logs/"
