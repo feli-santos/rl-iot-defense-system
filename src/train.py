@@ -9,22 +9,40 @@ from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
 from environment import IoTEnv
 from config import config
 from policy import LSTMAttackPredictor
+from data_generator import RealisticAttackDataGenerator
 
 def train_lstm_attack_predictor():
     """Train the LSTM model to predict attack sequences"""
     print("Training LSTM attack predictor...")
     
-    # Simulate loading PEEVES dataset (in practice, you would load real data)
-    num_samples = 1000
+    # Instead of random data, use your realistic data generator
+    data_gen = RealisticAttackDataGenerator(config.ENVIRONMENT_NUM_STATES)
+    
+    # Generate more data samples
+    num_samples = 5000  
     seq_length = 10
-    num_events = 227  # From paper
     
-    # Generate synthetic training data (replace with real data)
-    train_data = np.random.randint(0, num_events, size=(int(num_samples*0.8), seq_length))
-    train_labels = np.random.randint(0, config.LSTM_OUTPUT_CLASSES, size=int(num_samples*0.8))
+    # Create training data
+    X_batch, y_batch = data_gen.generate_batch(num_samples, seq_length)
     
-    val_data = np.random.randint(0, num_events, size=(int(num_samples*0.2), seq_length))
-    val_labels = np.random.randint(0, config.LSTM_OUTPUT_CLASSES, size=int(num_samples*0.2))
+    # Split into train/val
+    split = int(0.8 * num_samples)
+    X_train = X_batch[:split]
+    y_train = y_batch[:split]  # Don't select only the last timestep yet
+    X_val = X_batch[split:]
+    y_val = y_batch[split:]
+    
+    # Convert 3D tensors to 2D for the LSTM input
+    train_data = np.reshape(X_train, (X_train.shape[0], seq_length * X_train.shape[2]))
+    val_data = np.reshape(X_val, (X_val.shape[0], seq_length * X_val.shape[2]))
+    
+    # Use the last timestep for prediction targets
+    train_labels = np.argmax(y_train[:, -1], axis=1)  # Get final timestep labels
+    val_labels = np.argmax(y_val[:, -1], axis=1)
+    
+    # Print shapes to validate
+    print(f"Train data shape: {train_data.shape}, Train labels shape: {train_labels.shape}")
+    print(f"Val data shape: {val_data.shape}, Val labels shape: {val_labels.shape}")
     
     # Initialize and train LSTM model
     lstm_model = LSTMAttackPredictor(config)
@@ -39,10 +57,14 @@ def train_dqn_policy(lstm_model):
     
     # Create environment
     env = IoTEnv(config)
-    env = Monitor(env)  # Wrap for logging
-    env = DummyVecEnv([lambda: env])  # Vectorized environment
 
-    # Add normalization
+    # Create log directory for monitor files
+    monitor_dir = os.path.join(config.TRAINING_LOGS_DIR, "monitor")
+    os.makedirs(monitor_dir, exist_ok=True)
+
+    # Wrap environment for monitoring and vecNormalize
+    env = Monitor(env, monitor_dir)
+    env = DummyVecEnv([lambda: env])  # Vectorized environment
     env = VecNormalize(env, norm_obs=True, norm_reward=True)
     
     # Define callbacks
@@ -57,7 +79,7 @@ def train_dqn_policy(lstm_model):
     
     # Define DQN model with paper's hyperparameters
     model = DQN(
-        "MlpPolicy",
+        "MultiInputPolicy",
         env,
         learning_rate=config.DQN_LEARNING_RATE,
         buffer_size=config.DQN_BUFFER_SIZE,
@@ -78,26 +100,19 @@ def train_dqn_policy(lstm_model):
         verbose=config.TRAINING_VERBOSE,
         seed=config.TRAINING_SEED,
         device=config.TRAINING_DEVICE,
-        tensorboard_log=config.TRAINING_LOG_DIR
+        tensorboard_log=config.TRAINING_TENSORBOARD_DIR
     )
 
-    # Checkpoint callback
-    checkpoint_callback = CheckpointCallback(
-        save_freq=1000,
-        save_path=config.TRAINING_MODEL_DIR,
-        name_prefix="dqn_model"
-    )
-    
     # Train the model
     model.learn(
         total_timesteps=config.DQN_TOTAL_EPISODES * config.DQN_EPOCHS_PER_EPISODE,
-        callback=[eval_callback, checkpoint_callback, ProgressBarCallback()],
+        callback=[eval_callback, ProgressBarCallback()],
         log_interval=10
     )
     
     # Save the trained model
-    model.save(os.path.join(config.TRAINING_MODEL_DIR, "dqn_iot_warden"))
-    env.save(os.path.join(config.TRAINING_MODEL_DIR, "dqn_iot_warden_env"))
+    model.save(os.path.join(config.TRAINING_MODEL_DIR, "final_model"))
+    env.save(os.path.join(config.TRAINING_MODEL_DIR, "environment"))
     
     return model, env
 
@@ -109,7 +124,7 @@ def main():
     lstm_model = train_lstm_attack_predictor()
     
     # Step 2: Train DQN defense policy
-    dqn_model = train_dqn_policy(lstm_model)
+    #dqn_model = train_dqn_policy(lstm_model)
     
     print("Training completed successfully!")
 
