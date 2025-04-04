@@ -3,11 +3,11 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader, TensorDataset
 import numpy as np
-from typing import Tuple
+from typing import Tuple, List, Optional, Union, Dict
 import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from utils.training_data_generator import RealisticAttackDataGenerator  # Updated path
+from utils.data_generator import RealisticAttackDataGenerator
 
 class LSTMAttackPredictor(nn.Module):
     """LSTM-based model to predict optimal attack sequences with gradient clipping"""
@@ -58,17 +58,35 @@ class LSTMAttackPredictor(nn.Module):
         # Data generator for realistic training data
         self.data_generator = RealisticAttackDataGenerator(config.ENVIRONMENT_NUM_STATES)
         
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         x = self.embedding(x)
         x, _ = self.lstm1(x)
         x, _ = self.lstm2(x)
         x = self.fc(x[:, -1, :])  # Take the last timestep's output
         return x
     
-    def train_model(self, train_data: np.ndarray = None, train_labels: np.ndarray = None,
-               val_data: np.ndarray = None, val_labels: np.ndarray = None,
-               epochs: int = 100, batch_size: int = 32) -> Tuple[list, list]:
-        """Train the LSTM model"""
+    def train_model(self, 
+                   train_data: Optional[np.ndarray] = None, 
+                   train_labels: Optional[np.ndarray] = None,
+                   val_data: Optional[np.ndarray] = None, 
+                   val_labels: Optional[np.ndarray] = None,
+                   epochs: int = 100, 
+                   batch_size: int = 32) -> Tuple[Tuple[List[float], List[float]], Tuple[List[float], List[float]]]:
+        """Train the LSTM model
+        
+        Args:
+            train_data: Training input data
+            train_labels: Training target labels
+            val_data: Validation input data
+            val_labels: Validation target labels
+            epochs: Number of training epochs
+            batch_size: Batch size for training
+            
+        Returns:
+            Tuple containing:
+                Tuple of (training losses, training accuracies)
+                Tuple of (validation losses, validation accuracies)
+        """
         # If no data provided, generate realistic training data
         if train_data is None or train_labels is None:
             print("Generating realistic attack training data...")
@@ -100,8 +118,10 @@ class LSTMAttackPredictor(nn.Module):
         train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
         val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
         
-        train_losses, val_losses = [], []
-        train_accs, val_accs = [], []
+        train_losses: List[float] = []
+        val_losses: List[float] = []
+        train_accs: List[float] = []
+        val_accs: List[float] = []
         
         for epoch in range(epochs):
             # Training phase
@@ -144,8 +164,15 @@ class LSTMAttackPredictor(nn.Module):
             
         return (train_losses, train_accs), (val_losses, val_accs)
 
-    def _validate(self, val_loader):
-        """Helper method for validation"""
+    def _validate(self, val_loader: DataLoader) -> Tuple[float, float]:
+        """Helper method for validation
+        
+        Args:
+            val_loader: DataLoader for validation data
+            
+        Returns:
+            Tuple of (validation loss, validation accuracy)
+        """
         self.eval()
         val_loss = 0.0
         correct = 0
@@ -163,17 +190,35 @@ class LSTMAttackPredictor(nn.Module):
         
         return val_loss / len(val_loader), correct / total
     
-    def predict_attack_sequence(self, initial_event: int, max_length: int = 10) -> list:
-        """Predict an attack sequence starting from an initial event"""
+    def predict_attack_sequence(self, initial_event: int, max_length: int = 10) -> List[int]:
+        """Predict an attack sequence starting from an initial event
+        
+        Args:
+            initial_event: Initial event ID to start prediction from
+            max_length: Maximum length of predicted sequence
+            
+        Returns:
+            List of predicted event IDs in sequence
+        """
         self.eval()
         current_event = initial_event
-        sequence = [current_event]
+        sequence: List[int] = [current_event]
         
         with torch.no_grad():
             for _ in range(max_length - 1):
-                input_tensor = torch.LongTensor([sequence]).to(next(self.parameters()).device)
+                # Pad sequence if needed to match the model's expected input
+                padded_sequence = sequence.copy()
+                while len(padded_sequence) < self.seq_length:
+                    padded_sequence = [0] + padded_sequence  # Pad with zeros
+                
+                # Take only the last seq_length elements if sequence is too long
+                if len(padded_sequence) > self.seq_length:
+                    padded_sequence = padded_sequence[-self.seq_length:]
+                
+                input_tensor = torch.LongTensor([padded_sequence]).to(next(self.parameters()).device)
                 output = self(input_tensor)
-                next_event = torch.argmax(output, dim=1).item()
+                # Explicitly convert to int to satisfy type checker
+                next_event: int = int(torch.argmax(output, dim=1).item())
                 
                 if next_event == current_event:  # Stop if we're predicting the same event
                     break

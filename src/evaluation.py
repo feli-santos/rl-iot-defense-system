@@ -5,7 +5,7 @@ from stable_baselines3.common.monitor import load_results
 from stable_baselines3.common.vec_env import DummyVecEnv
 from stable_baselines3.common.evaluation import evaluate_policy
 from environment import IoTEnv
-from config_loader import config  # Changed from config
+from config_loader import config
 import os
 
 def plot_training_results(log_dir):
@@ -50,7 +50,7 @@ def evaluate_model(model_path, log_dir, num_episodes=10):
         
         while not done[0]:
             # VecEnv returns actions as array of shape (n_envs, action)
-            action, _ = model.predict(obs, deterministic=True)
+            action, _ = model.predict(obs, deterministic=True) # type: ignore
             obs, reward, done, infos = env.step(action)
             
             # For single environment VecEnv, we take first element
@@ -105,6 +105,36 @@ def evaluate_model(model_path, log_dir, num_episodes=10):
         'std_reward': std_reward
     }
 
+# Modifying evaluation.py to work with MLflow
+def evaluate_model_with_mlflow(model_path, log_dir, num_episodes=10, experiment_name="model_evaluation"):
+    """Evaluate the trained DQN model with VecEnv and log to MLflow"""
+    import mlflow
+    
+    # Set up MLflow
+    mlflow.set_experiment(experiment_name)
+    with mlflow.start_run(run_name=f"evaluation_{os.path.basename(model_path)}"):
+        # Log the model being evaluated
+        mlflow.log_param("model_path", model_path)
+        mlflow.log_param("num_episodes", num_episodes)
+        
+        # Run the standard evaluation
+        results = evaluate_model(model_path, log_dir, num_episodes)
+        
+        # Log metrics to MLflow
+        mlflow.log_metric("avg_reward", float(results['avg_reward']))
+        mlflow.log_metric("avg_attack_proximity", float(results['avg_attack_proximity']))
+        mlflow.log_metric("mean_reward", float(results['mean_reward']))
+        mlflow.log_metric("std_reward", float(results['std_reward']))
+        
+        # Log action distribution as a parameter (or as separate metrics)
+        for i, count in enumerate(results['action_distribution']):
+            mlflow.log_metric(f"action_{i+1}_frequency", float(count))
+        
+        # Log generated plots as artifacts
+        mlflow.log_artifact(os.path.join(log_dir, 'evaluation_metrics.png'))
+        
+        return results
+
 def main():
     log_dir = os.path.join(config.TRAINING_LOGS_DIR, "monitor")
     model_path = os.path.join(config.TRAINING_MODEL_DIR, "final_model.zip")
@@ -112,8 +142,12 @@ def main():
     # Plot training results
     plot_training_results(log_dir)
     
-    # Evaluate the trained model
-    results = evaluate_model(model_path, log_dir)
+    # Evaluate the trained model with MLflow integration
+    results = evaluate_model_with_mlflow(
+        model_path=model_path, 
+        log_dir=log_dir,
+        experiment_name="iot_defense_evaluation"
+    )
     
     print("\nEvaluation Results:")
     print(f"Average Reward: {results['avg_reward']:.2f}")
