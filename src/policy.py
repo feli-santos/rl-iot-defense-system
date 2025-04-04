@@ -43,10 +43,14 @@ class LSTMAttackPredictor(nn.Module):
         
         # Loss and optimizer
         self.criterion = nn.CrossEntropyLoss()
-        self.optimizer = optim.Adam(self.parameters(), lr=1e-4)
+        self.optimizer = optim.Adam(
+            self.parameters(), 
+            lr=1e-4, 
+            weight_decay=1e-4  # Add L2 regularization
+        )
 
         # Add dropout layers for regularization
-        self.dropout = nn.Dropout(0.2)
+        self.dropout = nn.Dropout(0.5)  # Change from 0.2 to 0.5
         
         # Data generator for realistic training data
         self.data_generator = RealisticAttackDataGenerator(config.ENVIRONMENT_NUM_STATES)
@@ -95,11 +99,6 @@ class LSTMAttackPredictor(nn.Module):
         
         train_losses, val_losses = [], []
         train_accs, val_accs = [], []
-
-        # Initialize best_val_loss for early stopping
-        best_val_loss = float('inf')
-        patience = 5
-        trigger_times = 0
         
         for epoch in range(epochs):
             # Training phase
@@ -139,16 +138,6 @@ class LSTMAttackPredictor(nn.Module):
                 print(f"Train Loss: {train_loss:.4f}, Acc: {train_acc:.4f}")
                 print(f"Val Loss: {val_loss:.4f}, Acc: {val_acc:.4f}")
                 print("------------------------")
-
-            # Implement early stopping
-            if val_loss < best_val_loss:
-                best_val_loss = val_loss
-                trigger_times = 0
-            else:
-                trigger_times += 1
-                if trigger_times >= patience:
-                    print(f"Early stopping at epoch {epoch+1}!")
-                    break
             
         return (train_losses, train_accs), (val_losses, val_accs)
 
