@@ -4,13 +4,15 @@ import torch.optim as optim
 from torch.utils.data import DataLoader, TensorDataset
 import numpy as np
 from typing import Tuple
+from data_generator import RealisticAttackDataGenerator
 
 class LSTMAttackPredictor(nn.Module):
-    """LSTM-based model to predict optimal attack sequences"""
+    """LSTM-based model to predict optimal attack sequences with gradient clipping"""
     
-    def __init__(self, config):
+    def __init__(self, config, seq_length: int = 10):
         super(LSTMAttackPredictor, self).__init__()
         self.config = config
+        self.seq_length = seq_length
         
         # Embedding layer
         self.embedding = nn.Embedding(
@@ -18,7 +20,7 @@ class LSTMAttackPredictor(nn.Module):
             embedding_dim=config.LSTM_EMBEDDING_SIZE
         )
         
-        # Bidirectional LSTM layers
+        # Bidirectional LSTM layers with constraints for gradient stability
         self.lstm1 = nn.LSTM(
             input_size=config.LSTM_EMBEDDING_SIZE,
             hidden_size=config.LSTM_HIDDEN_UNITS[0],
@@ -43,8 +45,11 @@ class LSTMAttackPredictor(nn.Module):
         self.criterion = nn.CrossEntropyLoss()
         self.optimizer = optim.Adam(self.parameters(), lr=1e-4)
 
-        # Add dropout layers
-        self.dropout = nn.Dropout(0.2)  # Add dropout for regularization
+        # Add dropout layers for regularization
+        self.dropout = nn.Dropout(0.2)
+        
+        # Data generator for realistic training data
+        self.data_generator = RealisticAttackDataGenerator(config.ENVIRONMENT_NUM_STATES)
         
     def forward(self, x):
         x = self.embedding(x)
@@ -53,10 +58,28 @@ class LSTMAttackPredictor(nn.Module):
         x = self.fc(x[:, -1, :])  # Take the last timestep's output
         return x
     
-    def train_model(self, train_data: np.ndarray, train_labels: np.ndarray,
-               val_data: np.ndarray, val_labels: np.ndarray,
+    def train_model(self, train_data: np.ndarray = None, train_labels: np.ndarray = None,
+               val_data: np.ndarray = None, val_labels: np.ndarray = None,
                epochs: int = 100, batch_size: int = 32) -> Tuple[list, list]:
         """Train the LSTM model"""
+        # If no data provided, generate realistic training data
+        if train_data is None or train_labels is None:
+            print("Generating realistic attack training data...")
+            X_train, y_train = self.data_generator.generate_batch(
+                batch_size=int(batch_size*0.8*epochs), 
+                seq_length=self.seq_length
+            )
+            X_val, y_val = self.data_generator.generate_batch(
+                batch_size=int(batch_size*0.2*epochs), 
+                seq_length=self.seq_length
+            )
+            
+            # Reshape data to match expected format
+            train_data = X_train.reshape(-1, self.seq_length)
+            train_labels = np.argmax(y_train[:, -1], axis=1)  # Get class labels for final timestep
+            val_data = X_val.reshape(-1, self.seq_length)
+            val_labels = np.argmax(y_val[:, -1], axis=1)
+        
         # Convert data to PyTorch tensors
         train_dataset = TensorDataset(
             torch.LongTensor(train_data),
@@ -73,7 +96,7 @@ class LSTMAttackPredictor(nn.Module):
         train_losses, val_losses = [], []
         train_accs, val_accs = [], []
 
-        # Initialize best_val_loss after first validation
+        # Initialize best_val_loss for early stopping
         best_val_loss = float('inf')
         patience = 5
         trigger_times = 0
@@ -90,7 +113,10 @@ class LSTMAttackPredictor(nn.Module):
                 outputs = self(inputs)
                 loss = self.criterion(outputs, labels)
                 loss.backward()
-                torch.nn.utils.clip_grad_norm_(self.parameters(), max_norm=1.0)  # Clip gradient
+                
+                # Apply gradient clipping to prevent exploding gradients
+                torch.nn.utils.clip_grad_norm_(self.parameters(), max_norm=1.0)
+                
                 self.optimizer.step()
                 
                 running_loss += loss.item()
@@ -114,16 +140,15 @@ class LSTMAttackPredictor(nn.Module):
                 print(f"Val Loss: {val_loss:.4f}, Acc: {val_acc:.4f}")
                 print("------------------------")
 
-            # Early stopping check - only start after first epoch
-            if epoch > 0:
-                if val_loss < best_val_loss:
-                    best_val_loss = val_loss
-                    trigger_times = 0
-                else:
-                    trigger_times += 1
-                    if trigger_times >= patience:
-                        print(f"Early stopping at epoch {epoch+1}!")
-                        break
+            # Implement early stopping
+            if val_loss < best_val_loss:
+                best_val_loss = val_loss
+                trigger_times = 0
+            else:
+                trigger_times += 1
+                if trigger_times >= patience:
+                    print(f"Early stopping at epoch {epoch+1}!")
+                    break
             
         return (train_losses, train_accs), (val_losses, val_accs)
 
