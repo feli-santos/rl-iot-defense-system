@@ -7,9 +7,9 @@ from stable_baselines3.common.callbacks import EvalCallback, CheckpointCallback,
 from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
 from environment import IoTEnv
-from config import config
-from policy import LSTMAttackPredictor
-from data_generator import RealisticAttackDataGenerator
+from config_loader import config  # Changed from config
+from models.attack_predictor import LSTMAttackPredictor  # Changed from policy
+from utils.training_data_generator import RealisticAttackDataGenerator  # Changed from data_generator
 
 def train_lstm_attack_predictor():
     """Train the LSTM model to predict attack sequences"""

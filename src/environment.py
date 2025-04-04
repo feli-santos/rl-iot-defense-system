@@ -3,7 +3,7 @@ from gymnasium import spaces
 import numpy as np
 from typing import Tuple, Dict, Any, List, Optional
 from collections import deque
-from attack import generate_attack_graph, get_critical_paths, AdaptiveAttacker
+from attack_simulation import generate_attack_graph, get_critical_paths, AdaptiveAttacker
 import random
 
 class IoTEnv(gym.Env):

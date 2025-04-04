@@ -4,7 +4,10 @@ import torch.optim as optim
 from torch.utils.data import DataLoader, TensorDataset
 import numpy as np
 from typing import Tuple
-from data_generator import RealisticAttackDataGenerator
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from utils.training_data_generator import RealisticAttackDataGenerator  # Updated path
 
 class LSTMAttackPredictor(nn.Module):
     """LSTM-based model to predict optimal attack sequences with gradient clipping"""

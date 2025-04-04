@@ -5,7 +5,7 @@ from stable_baselines3.common.monitor import load_results
 from stable_baselines3.common.vec_env import DummyVecEnv
 from stable_baselines3.common.evaluation import evaluate_policy
 from environment import IoTEnv
-from config import config
+from config_loader import config  # Changed from config
 import os
 
 def plot_training_results(log_dir):
