@@ -133,5 +133,5 @@ cython_debug/
 logs/
 tensorboard/
 
-# Models
-models/
+# Artifact's Models
+artifacts/
