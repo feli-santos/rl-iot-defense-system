@@ -144,7 +144,7 @@ $$p(P) = \frac{\exp(-\beta \cdot c(P))}{\sum_{P' \in \mathcal{P}} \exp(-\beta \c
 Where:
 - $c(P)$ is the cost of path $P$, calculated as $c(P) = \sum_{i=1}^{k-1} c(v_i, v_{i+1})$
 - $c(v_i, v_{i+1})$ is the cost of moving from node $v_i$ to $v_{i+1}$
-- $\beta$ is a parameter controlling the rationality of the attacker
+- $\beta" is a parameter controlling the rationality of the attacker
 - $\mathcal{P}$ is the set of all possible paths
 
 ### Adaptive Attacker Learning
@@ -176,21 +176,32 @@ Where:
 
 ### Defense Success Reward
 
-$$R_{\text{defense}}(s, a, s') = \mathbb{I}[\text{attack_prevented}(s, a, s')] \cdot \text{value}(target)$$
+$$R_{\text{defense}}(s, a) = \alpha \cdot \mathbb{I}[\text{attack\_prevented}](s, a) \cdot \text{value}(\text{target})$$
 
 Where:
-- $\mathbb{I}[\text{attack_prevented}(s, a, s')]$ is 1 if the action prevented an attack
-- $\text{value}(target)$ is the value of the targeted node
+- $\mathbb{I}[\text{attack\_prevented}](s, a)$ is 1 if the action prevented an attack
+- $\text{value}(\text{target})$ is the value of the targeted node
 
-### Compromise Penalty
+## Network Health Penalty
 
-$$R_{\text{compromise}}(s') = -\sum_{v \in V} v_{\text{compromised}} \cdot (1 + v_{\text{critical}} \cdot c_{\text{critical}})$$
+$$R_{\text{health}}(s) = -\beta \cdot \sum_{i=1}^{N} \mathbb{I}[\text{node\_compromised}](i) \cdot \text{criticality}(i)$$
 
-Where $c_{\text{critical}}$ is a scaling factor for critical nodes.
+Where:
+- $N$ is the total number of nodes
+- $\mathbb{I}[\text{node\_compromised}](i)$ is 1 if node $i$ is compromised
+- $\text{criticality}(i)$ represents the importance of node $i$
 
-### Network Health Reward
+## Action Cost
 
-$$R_{\text{health}}(s') = \frac{|V| - \sum_{v \in V} v_{\text{compromised}}}{|V|}$$
+$$R_{\text{cost}}(a) = -\gamma \cdot \text{cost}(a)$$
+
+Where:
+- $\text{cost}(a)$ is the computational/resource cost of action $a$
+- $\gamma$ weights the importance of efficiency
+
+## Total Reward Function
+
+$$R(s, a, s') = R_{\text{defense}}(s, a) + R_{\text{health}}(s') + R_{\text{cost}}(a)$$
 
 ## State Representation
 
