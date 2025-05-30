@@ -92,30 +92,44 @@ class TrainingManager:
         with open(metrics_file, "a") as f:
             f.write(json.dumps(entry) + "\n")
     
-    def log_model(self, model: torch.nn.Module, name: str, input_example=None):
-        """Save PyTorch model with proper versioning and signature"""
+    def log_model(self, model: torch.nn.Module, name: str):
+        """Save PyTorch model with proper versioning"""
         # Save model architecture and weights
         model_path = self.models_path / f"{name}.pt"
         torch.save(model.state_dict(), model_path)
         
-        # Create a simple input example if none provided
-        if input_example is None and hasattr(model, 'seq_length'):
-            # Create a dummy input for LSTM model
-            input_example = torch.zeros((1, model.seq_length), dtype=torch.long)
-        
-        # Log to MLflow with signature if possible
-        if input_example is not None:
-            from mlflow.models.signature import infer_signature
-            # Get model output for this input
-            model.eval()
-            with torch.no_grad():
-                output = model(input_example)
-            # Create signature
-            signature = infer_signature(input_example.numpy(), output.numpy())
-            mlflow.pytorch.log_model(model, f"{name}", signature=signature, input_example=input_example)
-        else:
+        try:
+            # Create a simple dummy input for the model
+            if hasattr(model, 'seq_length'):
+                # For LSTM models
+                dummy_input = torch.zeros((1, model.seq_length), dtype=torch.long)
+                
+                # Get model prediction
+                model.eval()
+                with torch.no_grad():
+                    output = model(dummy_input)
+                
+                # Convert tensors to numpy arrays for MLflow
+                input_example = dummy_input.numpy()
+                
+                # Log the model with the converted input example
+                from mlflow.models.signature import infer_signature
+                signature = infer_signature(input_example, output.numpy())
+                
+                mlflow.pytorch.log_model(
+                    model, 
+                    f"{name}", 
+                    signature=signature,
+                    input_example=input_example
+                )
+            else:
+                # For other model types, just log without input example
+                mlflow.pytorch.log_model(model, f"{name}")
+        except Exception as e:
+            print(f"Warning: Could not create input example for model logging: {e}")
+            # Fall back to simple logging without input example
             mlflow.pytorch.log_model(model, f"{name}")
-        
+    
         return str(model_path)
     
     def log_figure(self, figure: plt.Figure, name: str):

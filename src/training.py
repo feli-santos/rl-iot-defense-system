@@ -14,6 +14,15 @@ from utils.training_manager import TrainingManager
 import mlflow
 import matplotlib.pyplot as plt
 from typing import Dict, Any, List, Optional
+import warnings
+import logging
+from tqdm import tqdm
+
+# Suppress MLflow warnings
+warnings.filterwarnings("ignore", message=".*Model logged without a signature and input example.*")
+warnings.filterwarnings("ignore", message=".*Encountered an unexpected error while inferring pip requirements.*")
+logging.getLogger("mlflow.utils.environment").setLevel(logging.ERROR)
+logging.getLogger("mlflow.models.model").setLevel(logging.ERROR)
 
 class MLflowCallback(BaseCallback):
     """Custom callback for logging to MLflow during RL training"""
@@ -114,7 +123,8 @@ def train_lstm_attack_predictor(training_manager: TrainingManager):
         best_val_loss = float('inf')
         best_val_acc = 0.0
         
-        for epoch in range(epochs):
+        # Add progress bar to your training loops
+        for epoch in tqdm(range(epochs), desc="Training"):
             # Training phase
             lstm_model.train()
             running_loss = 0.0
