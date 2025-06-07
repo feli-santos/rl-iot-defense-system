@@ -8,6 +8,7 @@ import torch.nn as nn
 from typing import Dict, Any, Optional
 from tqdm import tqdm
 import numpy as np
+import gymnasium as gym
 from gymnasium import spaces
 
 from algorithms.base_algorithm import BaseAlgorithm
@@ -64,7 +65,7 @@ class DQNAlgorithm(BaseAlgorithm):
                 elif isinstance(space, spaces.Discrete):
                     total_dim += 1
             return total_dim
-        elif isinstance(space, spaces.Discrete):
+        elif isinstance(observation_space, spaces.Discrete):
             return observation_space.n
         else:
             # Fallback
@@ -165,7 +166,13 @@ class DQNAlgorithm(BaseAlgorithm):
         print(f"Training DQN for {episodes} episodes...")
         
         for episode in tqdm(range(episodes), desc="Training DQN"):
-            obs = train_env.reset()
+            # Handle new Gymnasium reset format
+            reset_result = train_env.reset()
+            if isinstance(reset_result, tuple):
+                obs, info = reset_result
+            else:
+                obs = reset_result  # Fallback for old format
+                
             state = self._flatten_observation(obs)
             episode_reward = 0
             done = False
@@ -181,7 +188,18 @@ class DQNAlgorithm(BaseAlgorithm):
                         q_values = q_network(state_tensor)
                         action = q_values.argmax().item()
                 
-                next_obs, reward, done, info = train_env.step(action)
+                # Handle new Gymnasium step format
+                step_result = train_env.step(action)
+                if len(step_result) == 5:
+                    # New Gymnasium format: (obs, reward, terminated, truncated, info)
+                    next_obs, reward, terminated, truncated, info = step_result
+                    done = terminated or truncated
+                elif len(step_result) == 4:
+                    # Old gym format: (obs, reward, done, info)
+                    next_obs, reward, done, info = step_result
+                else:
+                    raise ValueError(f"Unexpected step result format: {len(step_result)} values")
+                
                 next_state = self._flatten_observation(next_obs)
                 episode_reward += reward
                 state = next_state
