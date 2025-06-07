@@ -22,8 +22,8 @@ import argparse
 def main():
     parser = argparse.ArgumentParser(description='Run RL Algorithm Benchmark')
     parser.add_argument('--algorithms', nargs='+', 
-                       choices=['DQN', 'PPO', 'SAC'], 
-                       default=['DQN', 'PPO', 'SAC'],
+                       choices=['DQN', 'PPO', 'A2C'],  # Changed SAC to A2C
+                       default=['DQN', 'PPO', 'A2C'],  # Changed SAC to A2C
                        help='Algorithms to benchmark')
     parser.add_argument('--runs', type=int, default=3,
                        help='Number of runs per algorithm')
