@@ -24,7 +24,7 @@ class PPOAlgorithm(BaseAlgorithm):
         
         # Create PPO model
         model = PPO(
-            "MlpPolicy",
+            "MultiInputPolicy",
             env,
             learning_rate=self.config.PPO_LEARNING_RATE,
             n_steps=self.config.PPO_N_STEPS,
@@ -37,7 +37,14 @@ class PPOAlgorithm(BaseAlgorithm):
             vf_coef=self.config.PPO_VF_COEF,
             max_grad_norm=self.config.PPO_MAX_GRAD_NORM,
             verbose=1,
-            tensorboard_log=str(training_manager.logs_path)
+            tensorboard_log=str(training_manager.logs_path),
+            # Add policy_kwargs to configure the network architecture for Dict observations
+            policy_kwargs={
+                "net_arch": dict(
+                    pi=self.config.NETWORK_HIDDEN_LAYERS,  # Policy network architecture
+                    vf=self.config.NETWORK_HIDDEN_LAYERS   # Value function network architecture
+                )
+            }
         )
         
         return model
@@ -87,7 +94,9 @@ class PPOAlgorithm(BaseAlgorithm):
             'ent_coef': self.config.PPO_ENT_COEF,
             'vf_coef': self.config.PPO_VF_COEF,
             'max_grad_norm': self.config.PPO_MAX_GRAD_NORM,
-            'total_timesteps': self.config.PPO_TOTAL_TIMESTEPS
+            'total_timesteps': self.config.PPO_TOTAL_TIMESTEPS,
+            'policy': 'MultiInputPolicy',
+            'net_arch': self.config.NETWORK_HIDDEN_LAYERS
         }
         
     def save_model(self, model, path: str):

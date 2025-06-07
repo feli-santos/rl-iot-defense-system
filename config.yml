@@ -9,19 +9,19 @@ environment:
 
 # Algorithm selection
 algorithm:
-  type: "DQN" # Options: "DQN", "PPO", "SAC", "ALL"
+  type: "PPO" # Options: "DQN", "PPO", "SAC", "ALL"
   algorithms_to_compare: ["DQN", "PPO", "SAC"] # For benchmarking
 
 # DQN hyperparameters
 dqn:
-  total_episodes: 250
+  total_episodes: 1000
   epochs_per_episode: 100
-  learning_rate: 0.0001
-  gamma: 0.95
-  batch_size: 16
-  buffer_size: 50000
+  learning_rate: 0.001
+  gamma: 0.99
+  batch_size: 64
+  buffer_size: 10000
   tau: 0.005 # for target network update
-  target_update_freq: 20 # episodes
+  target_update_freq: 10 # episodes
 
 # PPO hyperparameters
 ppo:
@@ -55,8 +55,8 @@ sac:
 # Exploration parameters
 exploration:
   eps_start: 1.0
-  eps_end: 0.1
-  eps_decay: 0.99999
+  eps_end: 0.01
+  eps_decay: 0.995
 
 # Reward function parameters
 reward:
@@ -65,13 +65,13 @@ reward:
 
 # Neural network architecture
 network:
-  hidden_layers: [64, 32]
+  hidden_layers: [128, 64]
 
 # LSTM model parameters
 lstm:
   embedding_size: 128
   hidden_units: [64, 32]
-  output_classes: 23
+  output_classes: 12
   gradient_clip_norm: 1.0
 
 # Attack model parameters
