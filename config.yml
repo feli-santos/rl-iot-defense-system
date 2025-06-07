@@ -7,6 +7,11 @@ environment:
   num_states: 12
   history_length: 5
 
+# Algorithm selection
+algorithm:
+  type: "DQN" # Options: "DQN", "PPO", "SAC", "ALL"
+  algorithms_to_compare: ["DQN", "PPO", "SAC"] # For benchmarking
+
 # DQN hyperparameters
 dqn:
   total_episodes: 250
@@ -17,6 +22,35 @@ dqn:
   buffer_size: 50000
   tau: 0.005 # for target network update
   target_update_freq: 20 # episodes
+
+# PPO hyperparameters
+ppo:
+  total_timesteps: 25000
+  learning_rate: 0.0003
+  n_steps: 2048
+  batch_size: 64
+  n_epochs: 10
+  gamma: 0.99
+  gae_lambda: 0.95
+  clip_range: 0.2
+  ent_coef: 0.0
+  vf_coef: 0.5
+  max_grad_norm: 0.5
+
+# SAC hyperparameters
+sac:
+  total_timesteps: 25000
+  learning_rate: 0.0003
+  buffer_size: 100000
+  learning_starts: 1000
+  batch_size: 256
+  tau: 0.005
+  gamma: 0.99
+  train_freq: 1
+  gradient_steps: 1
+  ent_coef: "auto"
+  target_update_interval: 1
+  target_entropy: "auto"
 
 # Exploration parameters
 exploration:
@@ -53,3 +87,12 @@ training:
   model_dir: "./models/"
   tensorboard_dir: "./tensorboard/"
   logs_dir: "./logs/"
+
+# Benchmarking configuration
+benchmarking:
+  num_runs: 3 # Number of independent runs per algorithm
+  evaluation_episodes: 50
+  metrics_to_track:
+    ["avg_reward", "episode_length", "success_rate", "convergence_time"]
+  save_plots: true
+  comparison_plots: true

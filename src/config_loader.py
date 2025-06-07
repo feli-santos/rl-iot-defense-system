@@ -1,10 +1,10 @@
 import yaml
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 import os
 from pathlib import Path
 
 class Config:
-    def __init__(self, config_path: str = None):
+    def __init__(self, config_path: Optional[str] = None):
         # Get the directory where this config.py file is located
         current_dir = Path(__file__).parent
         

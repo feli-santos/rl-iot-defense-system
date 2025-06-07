@@ -2,7 +2,7 @@ import os
 import numpy as np
 import torch
 import gymnasium as gym
-from stable_baselines3 import DQN
+from stable_baselines3 import DQN, PPO, SAC
 from stable_baselines3.common.callbacks import BaseCallback
 from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
@@ -11,6 +11,8 @@ from config_loader import config
 from models.attack_predictor import LSTMAttackPredictor
 from utils.data_generator import RealisticAttackDataGenerator
 from utils.training_manager import TrainingManager
+from algorithms.algorithm_factory import AlgorithmFactory
+from benchmarking.benchmark_runner import BenchmarkRunner
 import mlflow
 import matplotlib.pyplot as plt
 from typing import Dict, Any, List, Optional
@@ -27,201 +29,97 @@ logging.getLogger("mlflow.models.model").setLevel(logging.ERROR)
 class MLflowCallback(BaseCallback):
     """Custom callback for logging to MLflow during RL training"""
     
-    def __init__(self, training_manager: TrainingManager, verbose: int = 0):
+    def __init__(self, training_manager: TrainingManager, verbose=0):
         super(MLflowCallback, self).__init__(verbose)
         self.training_manager = training_manager
-        self.step_count = 0
         
     def _on_step(self) -> bool:
-        # Log every 10 steps
-        if self.step_count % 10 == 0:
-            # Log episode reward and length
+        # Log metrics every 100 steps
+        if self.n_calls % 100 == 0:
+            # Get info from the logger if available
             if len(self.model.ep_info_buffer) > 0:
-                ep_infos = self.model.ep_info_buffer[-1]
-                metrics = {
-                    "episode_reward": ep_infos.get('r', 0),
-                    "episode_length": ep_infos.get('l', 0)
-                }
-                self.training_manager.log_metrics(metrics, self.step_count)
-            
-        self.step_count += 1
+                ep_info = self.model.ep_info_buffer[-1]
+                self.training_manager.log_metrics({
+                    "episode_reward": ep_info.get("r", 0),
+                    "episode_length": ep_info.get("l", 0),
+                    "step": self.n_calls
+                }, step=self.n_calls)
         return True
-    
-    def _on_training_end(self) -> None:
-        # Save the final model
-        model_path = os.path.join(self.training_manager.models_path, "final_model.zip")
-        self.model.save(model_path)
-        mlflow.log_artifact(model_path, "models")
+
 
 def train_lstm_attack_predictor(training_manager: TrainingManager):
     """Train the LSTM model to predict attack sequences with better tracking"""
     print("Training LSTM attack predictor...")
     
-    with training_manager.start_run(run_name="lstm_training"):
-        # Generate data
-        data_gen = RealisticAttackDataGenerator(config.ENVIRONMENT_NUM_STATES)
-        num_samples = 5000
-        seq_length = 10
-        
-        # Log data generation parameters
-        training_manager.log_metrics({
-            "num_samples": num_samples,
-            "seq_length": seq_length
-        })
-        
-        # Create training data
-        X_batch, y_batch = data_gen.generate_batch(num_samples, seq_length)
-        
-        # Split into train/val
-        split = int(0.8 * num_samples)
-        X_train = X_batch[:split]
-        y_train = y_batch[:split]
-        X_val = X_batch[split:]
-        y_val = y_batch[split:]
-        
-        # Convert 3D tensors to 2D for the LSTM input
-        train_data = np.reshape(X_train, (X_train.shape[0], seq_length * X_train.shape[2]))
-        val_data = np.reshape(X_val, (X_val.shape[0], seq_length * X_val.shape[2]))
-        
-        # Use the last timestep for prediction targets
-        train_labels = np.argmax(y_train[:, -1], axis=1)
-        val_labels = np.argmax(y_val[:, -1], axis=1)
-        
-        # Print shapes to validate
-        print(f"Train data shape: {train_data.shape}, Train labels shape: {train_labels.shape}")
-        print(f"Val data shape: {val_data.shape}, Val labels shape: {val_labels.shape}")
-        
-        # Initialize and train LSTM model
+    with training_manager.start_run(run_name="lstm_training", nested=True):
+        # Create and train LSTM model
         lstm_model = LSTMAttackPredictor(config)
         
-        # For tracking metrics during training
-        train_losses, train_accs = [], []
-        val_losses, val_accs = [], []
+        # Train with progress tracking
+        print("Training LSTM model...")
+        train_metrics, val_metrics = lstm_model.train_model(epochs=100, batch_size=32)
         
-        # Train for specified epochs
-        epochs = 100
-        batch_size = 32
+        # Log training metrics
+        for epoch, (train_loss, train_acc, val_loss, val_acc) in enumerate(zip(
+            train_metrics[0], train_metrics[1], val_metrics[0], val_metrics[1]
+        )):
+            training_manager.log_metrics({
+                "lstm_train_loss": train_loss,
+                "lstm_train_acc": train_acc,
+                "lstm_val_loss": val_loss,
+                "lstm_val_acc": val_acc
+            }, step=epoch)
+            
+        # Save model with proper tracking
+        model_path = training_manager.log_model(lstm_model, "lstm_attack_predictor")
         
-        train_loader = torch.utils.data.DataLoader(
-            torch.utils.data.TensorDataset(
-                torch.LongTensor(train_data),
-                torch.LongTensor(train_labels)
-            ),
-            batch_size=batch_size, 
-            shuffle=True
+        # Create and log training curves
+        fig = training_manager.plot_training_curves(
+            train_metrics={"loss": train_metrics[0], "accuracy": train_metrics[1]},
+            val_metrics={"loss": val_metrics[0], "accuracy": val_metrics[1]},
+            title="LSTM Training Curves"
         )
         
-        val_loader = torch.utils.data.DataLoader(
-            torch.utils.data.TensorDataset(
-                torch.LongTensor(val_data),
-                torch.LongTensor(val_labels)
-            ),
-            batch_size=batch_size, 
-            shuffle=False
+        # Track best models
+        best_val_loss_idx = np.argmin(val_metrics[0])
+        best_val_acc_idx = np.argmax(val_metrics[1])
+        
+        training_manager.save_best_model(
+            lstm_model, 
+            val_metrics[0][best_val_loss_idx], 
+            "val_loss", 
+            mode="min"
         )
         
-        best_val_loss = float('inf')
-        best_val_acc = 0.0
-        
-        # Add progress bar to your training loops
-        for epoch in tqdm(range(epochs), desc="Training"):
-            # Training phase
-            lstm_model.train()
-            running_loss = 0.0
-            correct = 0
-            total = 0
-            
-            for inputs, labels in train_loader:
-                lstm_model.optimizer.zero_grad()
-                outputs = lstm_model(inputs)
-                loss = lstm_model.criterion(outputs, labels)
-                loss.backward()
-                
-                # Apply gradient clipping
-                torch.nn.utils.clip_grad_norm_(lstm_model.parameters(), config.LSTM_GRADIENT_CLIP_NORM)
-                
-                lstm_model.optimizer.step()
-                
-                running_loss += loss.item()
-                _, predicted = torch.max(outputs.data, 1)
-                total += labels.size(0)
-                correct += (predicted == labels).sum().item()
-            
-            train_loss = running_loss / len(train_loader)
-            train_acc = correct / total
-            train_losses.append(train_loss)
-            train_accs.append(train_acc)
-            
-            # Validation phase
-            lstm_model.eval()
-            val_loss = 0.0
-            correct = 0
-            total = 0
-            
-            with torch.no_grad():
-                for inputs, labels in val_loader:
-                    outputs = lstm_model(inputs)
-                    loss = lstm_model.criterion(outputs, labels)
-                    val_loss += loss.item()
-                    
-                    _, predicted = torch.max(outputs.data, 1)
-                    total += labels.size(0)
-                    correct += (predicted == labels).sum().item()
-            
-            val_loss_avg = val_loss / len(val_loader)
-            val_acc = correct / total
-            val_losses.append(val_loss_avg)
-            val_accs.append(val_acc)
-            
-            # Log metrics
-            metrics = {
-                "train_loss": train_loss,
-                "train_acc": train_acc,
-                "val_loss": val_loss_avg,
-                "val_acc": val_acc,
-                "epoch": epoch + 1
-            }
-            training_manager.log_metrics(metrics, epoch + 1)
-            
-            # Check for best model
-            is_best_loss = training_manager.save_best_model(lstm_model, val_loss_avg, "val_loss", "min")
-            is_best_acc = training_manager.save_best_model(lstm_model, val_acc, "val_acc", "max")
-            
-            # Output progress
-            if (epoch + 1) % 10 == 0:
-                print(f"Epoch {epoch+1}/{epochs}")
-                print(f"Train Loss: {train_loss:.4f}, Acc: {train_acc:.4f}")
-                print(f"Val Loss: {val_loss_avg:.4f}, Acc: {val_acc:.4f}")
-                print(f"Best Val Loss: {min(val_losses):.4f}, Best Val Acc: {max(val_accs):.4f}")
-                print("------------------------")
-        
-        # Plot training curves
-        training_manager.plot_training_curves(
-            {"loss": train_losses, "accuracy": train_accs},
-            {"loss": val_losses, "accuracy": val_accs},
-            "LSTM Training Metrics"
+        training_manager.save_best_model(
+            lstm_model, 
+            val_metrics[1][best_val_acc_idx], 
+            "val_acc", 
+            mode="max"
         )
         
-        # Save final model
-        final_model_path = training_manager.log_model(lstm_model, "lstm_final")
-        print(f"Final model saved to: {final_model_path}")
+        print(f"LSTM training completed. Model saved to: {model_path}")
+        print(f"Best validation loss: {min(val_metrics[0]):.4f}")
+        print(f"Best validation accuracy: {max(val_metrics[1]):.4f}")
         
         return lstm_model
 
-def train_dqn_policy(lstm_model, training_manager: TrainingManager):
-    """Train the DQN defense policy with enhanced monitoring"""
-    print("Training DQN defense policy...")
+
+def train_single_algorithm(algorithm_name: str, lstm_model: LSTMAttackPredictor, 
+                         training_manager: TrainingManager):
+    """Train a single RL algorithm"""
+    print(f"Training {algorithm_name} defense policy...")
     
-    with training_manager.start_run(run_name="dqn_training", nested=True):
-        # Create log directory for monitor files
-        monitor_dir = os.path.join(training_manager.logs_path, "monitor")
-        os.makedirs(monitor_dir, exist_ok=True)
+    with training_manager.start_run(run_name=f"{algorithm_name.lower()}_training", nested=True):
+        # Create algorithm instance
+        algorithm = AlgorithmFactory.create_algorithm(algorithm_name, config)
+        
+        # Log algorithm hyperparameters
+        hyperparams = algorithm.get_hyperparameters()
+        training_manager.log_metrics(hyperparams)
         
         # Create environment
-        env = IoTEnv(config)
-        env = Monitor(env, monitor_dir)
-        env = DummyVecEnv([lambda: env])
-        env = VecNormalize(env, norm_obs=True, norm_reward=True)
+        env = create_training_environment(training_manager)
         
         # Log environment parameters
         training_manager.log_metrics({
@@ -230,45 +128,15 @@ def train_dqn_policy(lstm_model, training_manager: TrainingManager):
             "num_states": config.ENVIRONMENT_NUM_STATES
         })
         
-        # Custom callback for MLflow logging
-        mlflow_callback = MLflowCallback(training_manager)
-        
-        # Define DQN model
-        model = DQN(
-            "MultiInputPolicy",
-            env,
-            learning_rate=config.DQN_LEARNING_RATE,
-            buffer_size=config.DQN_BUFFER_SIZE,
-            learning_starts=1000,
-            batch_size=config.DQN_BATCH_SIZE,
-            tau=config.DQN_TAU,
-            gamma=config.DQN_GAMMA,
-            train_freq=4,
-            gradient_steps=1,
-            target_update_interval=config.DQN_TARGET_UPDATE_FREQ,
-            exploration_fraction=0.1,
-            exploration_initial_eps=config.EXPLORATION_EPS_START,
-            exploration_final_eps=config.EXPLORATION_EPS_END,
-            policy_kwargs={
-                "net_arch": config.NETWORK_HIDDEN_LAYERS,
-                "activation_fn": torch.nn.ReLU
-            },
-            verbose=config.TRAINING_VERBOSE,
-            seed=config.TRAINING_SEED,
-            device=config.TRAINING_DEVICE,
-            tensorboard_log=training_manager.logs_path
-        )
-        
-        # Train the model
-        model.learn(
-            total_timesteps=config.DQN_TOTAL_EPISODES * config.DQN_EPOCHS_PER_EPISODE,
-            callback=mlflow_callback,
-            log_interval=10
-        )
+        # Create and train model
+        model = algorithm.create_model(env, training_manager)
+        trained_model = algorithm.train(model, training_manager)
         
         # Save the trained model
-        model_path = os.path.join(training_manager.models_path, "dqn_final.zip")
-        model.save(model_path)
+        model_path = os.path.join(training_manager.models_path, f"{algorithm_name.lower()}_final.zip")
+        algorithm.save_model(trained_model, model_path)
+        
+        # Save environment
         env_path = os.path.join(training_manager.models_path, "environment.pkl")
         env.save(env_path)
         
@@ -276,9 +144,60 @@ def train_dqn_policy(lstm_model, training_manager: TrainingManager):
         mlflow.log_artifact(model_path, "models")
         mlflow.log_artifact(env_path, "models")
         
-        return model, env
+        print(f"{algorithm_name} training completed!")
+        return trained_model, env
+
+
+def create_training_environment(training_manager: TrainingManager):
+    """Create and configure the training environment"""
+    # Create log directory for monitor files
+    monitor_dir = os.path.join(training_manager.logs_path, "monitor")
+    os.makedirs(monitor_dir, exist_ok=True)
+    
+    # Create environment
+    env = IoTEnv(config)
+    env = Monitor(env, monitor_dir)
+    env = DummyVecEnv([lambda: env])
+    env = VecNormalize(env, norm_obs=True, norm_reward=True)
+    
+    return env
+
+
+def run_benchmark_comparison(lstm_model: LSTMAttackPredictor):
+    """Run comprehensive benchmark comparison"""
+    print("\n" + "="*60)
+    print("STARTING ALGORITHM BENCHMARK COMPARISON")
+    print("="*60)
+    
+    # Create benchmark runner
+    benchmark_runner = BenchmarkRunner(config, lstm_model)
+    
+    # Run benchmark
+    algorithms_to_compare = config.ALGORITHM_ALGORITHMS_TO_COMPARE
+    num_runs = config.BENCHMARKING_NUM_RUNS
+    
+    metrics_collector = benchmark_runner.run_benchmark(
+        algorithms=algorithms_to_compare,
+        num_runs=num_runs
+    )
+    
+    # Print summary
+    print("\n" + "="*60)
+    print("BENCHMARK RESULTS SUMMARY")
+    print("="*60)
+    
+    comparison_data = metrics_collector.get_comparison_data()
+    for algorithm_name, summary in comparison_data.items():
+        print(f"\n{algorithm_name}:")
+        print(f"  Average Reward: {summary.get('avg_reward_mean', 0):.3f} ± {summary.get('avg_reward_std', 0):.3f}")
+        print(f"  Training Time: {summary.get('training_time_mean', 0):.2f}s ± {summary.get('training_time_std', 0):.2f}s")
+        print(f"  Number of Runs: {summary.get('num_runs', 0)}")
+    
+    return metrics_collector
+
 
 def main():
+    """Main training function with algorithm selection"""
     # Create the training manager
     training_manager = TrainingManager(
         experiment_name="iot_defense_system",
@@ -286,26 +205,45 @@ def main():
         config=config
     )
     
-    # Step 1: Train LSTM attack predictor with enhanced monitoring
-    lstm_model = train_lstm_attack_predictor(training_manager)
-    
-    # Step 2: Train DQN defense policy with enhanced monitoring
-    dqn_model, env = train_dqn_policy(lstm_model, training_manager)
-    
-    # Close the training manager
-    training_manager.end_run()
+    try:
+        # Step 1: Train LSTM attack predictor (always needed)
+        lstm_model = train_lstm_attack_predictor(training_manager)
+        
+        # Step 2: Train RL algorithm(s) based on configuration
+        algorithm_type = config.ALGORITHM_TYPE.upper()
+        
+        if algorithm_type == "ALL":
+            # Run benchmark comparison
+            metrics_collector = run_benchmark_comparison(lstm_model)
+            
+        elif algorithm_type in AlgorithmFactory.get_available_algorithms():
+            # Train single algorithm
+            trained_model, env = train_single_algorithm(algorithm_type, lstm_model, training_manager)
+            print(f"Single algorithm training completed: {algorithm_type}")
+            
+        else:
+            available_algorithms = AlgorithmFactory.get_available_algorithms()
+            raise ValueError(f"Invalid algorithm type: {algorithm_type}. Available: {available_algorithms + ['ALL']}")
+            
+    finally:
+        # Close the training manager
+        training_manager.end_run()
     
     print("Training completed successfully!")
     print(f"All artifacts saved to: {training_manager.run_artifact_path}")
 
+
 if __name__ == "__main__":
-    # Install MLflow if not already installed
+    # Install required packages if not already installed
     try:
         import mlflow
-    except ImportError:
-        print("Installing MLflow...")
+        from stable_baselines3 import PPO, SAC
+    except ImportError as e:
+        print(f"Missing required package: {e}")
+        print("Installing required packages...")
         import subprocess
-        subprocess.check_call(["pip", "install", "mlflow"])
+        subprocess.check_call(["pip", "install", "mlflow", "stable-baselines3[extra]"])
         import mlflow
+        from stable_baselines3 import PPO, SAC
     
     main()
