@@ -25,6 +25,21 @@ class BenchmarkAnalyzer:
         """Generate comprehensive comparison report"""
         print("Generating benchmark comparison report...")
         
+        # Check if we have any data first
+        if not self.metrics_collector.metrics:
+            print("Warning: No benchmark data available. Cannot generate comparison report.")
+            return
+        
+        # Check if any algorithms have valid data
+        valid_algorithms = {
+            name: runs for name, runs in self.metrics_collector.metrics.items() 
+            if runs  # At least some runs exist
+        }
+        
+        if not valid_algorithms:
+            print("Warning: No valid algorithm data found. Cannot generate comparison report.")
+            return
+        
         # Create comparison plots
         self._plot_performance_comparison()
         self._plot_training_time_comparison()
@@ -103,11 +118,18 @@ class BenchmarkAnalyzer:
         
     def _plot_convergence_analysis(self) -> None:
         """Plot convergence analysis if convergence data is available"""
+        # Check if we have any data
+        if not self.metrics_collector.metrics:
+            print("Warning: No metrics data available for convergence analysis")
+            return
+            
         fig, ax = plt.subplots(1, 1, figsize=(12, 8))
         
+        has_data = False
         for algorithm_name, runs in self.metrics_collector.metrics.items():
             for i, run in enumerate(runs):
                 if run.episode_rewards:
+                    has_data = True
                     # Calculate moving average for smoother curves
                     window_size = min(50, len(run.episode_rewards) // 10)
                     if window_size > 1:
@@ -116,14 +138,20 @@ class BenchmarkAnalyzer:
                         smoothed_rewards = run.episode_rewards
                         
                     alpha = 0.3 if i > 0 else 1.0  # Make first run more visible
-                    ax.plot(smoothed_rewards, label=f'{algorithm_name} Run {i+1}' if i == 0 else '', 
+                    label = f'{algorithm_name} Run {i+1}' if i == 0 else ''
+                    ax.plot(smoothed_rewards, label=label, 
                            alpha=alpha, linewidth=1.5 if i == 0 else 1.0)
         
-        ax.set_xlabel('Episode')
-        ax.set_ylabel('Reward (Moving Average)')
-        ax.set_title('Learning Curves Comparison')
-        ax.legend()
-        ax.grid(True, alpha=0.3)
+        if has_data:
+            ax.set_xlabel('Episode')
+            ax.set_ylabel('Reward (Moving Average)')
+            ax.set_title('Learning Curves Comparison')
+            ax.legend()
+            ax.grid(True, alpha=0.3)
+        else:
+            ax.text(0.5, 0.5, 'No convergence data available', 
+                   ha='center', va='center', transform=ax.transAxes)
+            ax.set_title('Learning Curves (No Data)')
         
         plt.tight_layout()
         plt.savefig(self.results_path / 'convergence_analysis.png', dpi=300, bbox_inches='tight')
@@ -131,16 +159,32 @@ class BenchmarkAnalyzer:
         
     def _plot_reward_distributions(self) -> None:
         """Plot reward distributions for each algorithm"""
-        fig, axes = plt.subplots(1, len(self.metrics_collector.metrics), 
-                                figsize=(5 * len(self.metrics_collector.metrics), 6))
+        # Check if we have any data
+        if not self.metrics_collector.metrics:
+            print("Warning: No metrics data available for reward distribution plots")
+            return
+            
+        # Filter out algorithms with no valid runs
+        valid_algorithms = {
+            name: runs for name, runs in self.metrics_collector.metrics.items() 
+            if runs and any(run.episode_rewards for run in runs)
+        }
         
-        if len(self.metrics_collector.metrics) == 1:
+        if not valid_algorithms:
+            print("Warning: No algorithms with episode reward data available")
+            return
+        
+        fig, axes = plt.subplots(1, len(valid_algorithms), 
+                                figsize=(5 * len(valid_algorithms), 6))
+        
+        if len(valid_algorithms) == 1:
             axes = [axes]
             
-        for ax, (algorithm_name, runs) in zip(axes, self.metrics_collector.metrics.items()):
+        for ax, (algorithm_name, runs) in zip(axes, valid_algorithms.items()):
             all_episode_rewards = []
             for run in runs:
-                all_episode_rewards.extend(run.episode_rewards)
+                if run.episode_rewards:  # Check if episode_rewards is not empty
+                    all_episode_rewards.extend(run.episode_rewards)
                 
             if all_episode_rewards:
                 ax.hist(all_episode_rewards, bins=30, alpha=0.7, density=True)
@@ -151,6 +195,10 @@ class BenchmarkAnalyzer:
                 ax.set_title(f'{algorithm_name} Reward Distribution')
                 ax.legend()
                 ax.grid(True, alpha=0.3)
+            else:
+                ax.text(0.5, 0.5, 'No reward data available', 
+                       ha='center', va='center', transform=ax.transAxes)
+                ax.set_title(f'{algorithm_name} Reward Distribution (No Data)')
         
         plt.tight_layout()
         plt.savefig(self.results_path / 'reward_distributions.png', dpi=300, bbox_inches='tight')

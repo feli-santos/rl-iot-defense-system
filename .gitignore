@@ -140,5 +140,5 @@ artifacts/
 mlruns/
 
 # Benchmarks
-benchmark_results/
+benchmarking_results/
 benchmark_analysis/

@@ -115,7 +115,11 @@ class BenchmarkRunner:
             )
             
             try:
-                run_training_manager.start_run(run_name=f"{algorithm_name.lower()}_run_{run_id}")
+                # Start nested run properly
+                run_training_manager.start_run(
+                    run_name=f"{algorithm_name.lower()}_run_{run_id}", 
+                    nested=True  # This is the key fix
+                )
                 
                 # Start metrics collection
                 self.metrics_collector.start_run(
@@ -160,6 +164,8 @@ class BenchmarkRunner:
                 
             except Exception as e:
                 print(f"Error in {algorithm_name} run {run_id}: {e}")
+                import traceback
+                traceback.print_exc()  # Add detailed error info
                 continue
             finally:
                 run_training_manager.end_run()
