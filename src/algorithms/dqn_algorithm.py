@@ -5,16 +5,17 @@ DQN Algorithm Implementation
 import os
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from typing import Dict, Any, Optional
 from tqdm import tqdm
 import numpy as np
 import gymnasium as gym
 from gymnasium import spaces
+import random
+from collections import deque
 
 from algorithms.base_algorithm import BaseAlgorithm
 from environment import IoTEnv
-from stable_baselines3.common.monitor import Monitor
-from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
 
 
 class DQNNetwork(nn.Module):
@@ -39,6 +40,24 @@ class DQNNetwork(nn.Module):
         
     def forward(self, x):
         return self.network(x)
+
+
+class ReplayBuffer:
+    """Simple replay buffer for DQN"""
+    
+    def __init__(self, capacity: int):
+        self.buffer = deque(maxlen=capacity)
+    
+    def push(self, state, action, reward, next_state, done):
+        self.buffer.append((state, action, reward, next_state, done))
+    
+    def sample(self, batch_size: int):
+        batch = random.sample(self.buffer, batch_size)
+        state, action, reward, next_state, done = map(np.stack, zip(*batch))
+        return state, action, reward, next_state, done
+    
+    def __len__(self):
+        return len(self.buffer)
 
 
 class DQNAlgorithm(BaseAlgorithm):
@@ -140,20 +159,24 @@ class DQNAlgorithm(BaseAlgorithm):
         # Copy weights
         target_network.load_state_dict(q_network.state_dict())
         
+        # Create replay buffer
+        replay_buffer = ReplayBuffer(self.config.DQN_BUFFER_SIZE)
+        
         return {
             'q_network': q_network,
             'target_network': target_network,
             'optimizer': torch.optim.Adam(q_network.parameters(), lr=self.config.DQN_LEARNING_RATE),
+            'replay_buffer': replay_buffer,
             'state_dim': state_dim,
             'action_dim': action_dim
         }
         
     def train(self, model, training_manager):
-        """Train DQN model"""
-        # Simple DQN training implementation
+        """Train DQN model with experience replay"""
         q_network = model['q_network']
         target_network = model['target_network']
         optimizer = model['optimizer']
+        replay_buffer = model['replay_buffer']
         
         # Create fresh environment for training (not wrapped)
         train_env = IoTEnv(self.config)
@@ -201,6 +224,14 @@ class DQNAlgorithm(BaseAlgorithm):
                     raise ValueError(f"Unexpected step result format: {len(step_result)} values")
                 
                 next_state = self._flatten_observation(next_obs)
+                
+                # Store transition in replay buffer
+                replay_buffer.push(state, action, reward, next_state, done)
+                
+                # Train the model if we have enough samples
+                if len(replay_buffer) > self.config.DQN_BATCH_SIZE:
+                    self._update_q_network(q_network, target_network, optimizer, replay_buffer)
+                
                 episode_reward += reward
                 state = next_state
                 step_count += 1
@@ -213,7 +244,8 @@ class DQNAlgorithm(BaseAlgorithm):
                 training_manager.log_metrics({
                     'dqn_episode_reward': episode_reward,
                     'dqn_epsilon': epsilon,
-                    'dqn_episode_length': step_count
+                    'dqn_episode_length': step_count,
+                    'replay_buffer_size': len(replay_buffer)
                 }, step=episode)
                 
             # Update target network
@@ -226,6 +258,34 @@ class DQNAlgorithm(BaseAlgorithm):
         
         print("DQN Training completed!")
         return model
+    
+    def _update_q_network(self, q_network, target_network, optimizer, replay_buffer):
+        """Update Q-network using experience replay"""
+        batch_size = self.config.DQN_BATCH_SIZE
+        states, actions, rewards, next_states, dones = replay_buffer.sample(batch_size)
+        
+        # Convert to tensors
+        states = torch.FloatTensor(states).to(self.device)
+        actions = torch.LongTensor(actions).to(self.device)
+        rewards = torch.FloatTensor(rewards).to(self.device)
+        next_states = torch.FloatTensor(next_states).to(self.device)
+        dones = torch.BoolTensor(dones).to(self.device)
+        
+        # Current Q values
+        current_q_values = q_network(states).gather(1, actions.unsqueeze(1))
+        
+        # Next Q values from target network
+        with torch.no_grad():
+            next_q_values = target_network(next_states).max(1)[0]
+            target_q_values = rewards + (self.config.DQN_GAMMA * next_q_values * ~dones)
+        
+        # Compute loss
+        loss = F.mse_loss(current_q_values.squeeze(), target_q_values)
+        
+        # Optimize
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
         
     def get_hyperparameters(self) -> Dict[str, Any]:
         """Get DQN hyperparameters"""
@@ -235,6 +295,7 @@ class DQNAlgorithm(BaseAlgorithm):
             'batch_size': self.config.DQN_BATCH_SIZE,
             'total_episodes': self.config.DQN_TOTAL_EPISODES,
             'target_update_freq': self.config.DQN_TARGET_UPDATE_FREQ,
+            'buffer_size': self.config.DQN_BUFFER_SIZE,
             'hidden_layers': self.config.NETWORK_HIDDEN_LAYERS,
             'eps_start': self.config.EXPLORATION_EPS_START,
             'eps_end': self.config.EXPLORATION_EPS_END,

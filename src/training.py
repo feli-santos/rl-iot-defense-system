@@ -150,13 +150,26 @@ def train_single_algorithm(algorithm_name: str, lstm_model: LSTMAttackPredictor,
         model_path = os.path.join(training_manager.models_path, f"{algorithm_name.lower()}_final.zip")
         algorithm.save_model(trained_model, model_path)
         
-        # Save environment
-        env_path = os.path.join(training_manager.models_path, "environment.pkl")
-        env.save(env_path)
+        # REMOVED: Save environment - VecEnv doesn't support save()
+        # Instead, save environment configuration
+        env_config_path = os.path.join(training_manager.models_path, "environment_config.json")
+        env_config = {
+            "environment_type": "IoTEnv",
+            "num_devices": config.ENVIRONMENT_NUM_DEVICES,
+            "num_actions": config.ENVIRONMENT_NUM_ACTIONS,
+            "num_states": config.ENVIRONMENT_NUM_STATES,
+            "history_length": config.ENVIRONMENT_HISTORY_LENGTH,
+            "observation_space_type": str(type(env.envs[0].env.observation_space)),
+            "action_space_type": str(type(env.envs[0].env.action_space))
+        }
+        
+        import json
+        with open(env_config_path, 'w') as f:
+            json.dump(env_config, f, indent=2)
         
         # Log artifacts
         mlflow.log_artifact(model_path, "models")
-        mlflow.log_artifact(env_path, "models")
+        mlflow.log_artifact(env_config_path, "models")
         
         print(f"{algorithm_name} training completed!")
         return trained_model, env
