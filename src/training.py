@@ -59,9 +59,10 @@ def train_lstm_attack_predictor(training_manager: TrainingManager):
         print("Training LSTM model...")
         train_metrics, val_metrics = lstm_model.train_model(epochs=100, batch_size=32)
         
-        # Log training metrics
+        # Log training metrics - FIX: Use string keys instead of integer indices
         for epoch, (train_loss, train_acc, val_loss, val_acc) in enumerate(zip(
-            train_metrics[0], train_metrics[1], val_metrics[0], val_metrics[1]
+            train_metrics['loss'], train_metrics['accuracy'], 
+            val_metrics['loss'], val_metrics['accuracy']
         )):
             training_manager.log_metrics({
                 "lstm_train_loss": train_loss,
@@ -73,34 +74,34 @@ def train_lstm_attack_predictor(training_manager: TrainingManager):
         # Save model with proper tracking
         model_path = training_manager.log_model(lstm_model, "lstm_attack_predictor")
         
-        # Create and log training curves
+        # Create and log training curves - FIX: Use string keys
         fig = training_manager.plot_training_curves(
-            train_metrics={"loss": train_metrics[0], "accuracy": train_metrics[1]},
-            val_metrics={"loss": val_metrics[0], "accuracy": val_metrics[1]},
+            train_metrics={"loss": train_metrics['loss'], "accuracy": train_metrics['accuracy']},
+            val_metrics={"loss": val_metrics['loss'], "accuracy": val_metrics['accuracy']},
             title="LSTM Training Curves"
         )
         
-        # Track best models
-        best_val_loss_idx = np.argmin(val_metrics[0])
-        best_val_acc_idx = np.argmax(val_metrics[1])
+        # Track best models - FIX: Use string keys
+        best_val_loss_idx = np.argmin(val_metrics['loss'])
+        best_val_acc_idx = np.argmax(val_metrics['accuracy'])
         
         training_manager.save_best_model(
             lstm_model, 
-            val_metrics[0][best_val_loss_idx], 
+            val_metrics['loss'][best_val_loss_idx], 
             "val_loss", 
             mode="min"
         )
         
         training_manager.save_best_model(
             lstm_model, 
-            val_metrics[1][best_val_acc_idx], 
+            val_metrics['accuracy'][best_val_acc_idx], 
             "val_acc", 
             mode="max"
         )
         
         print(f"LSTM training completed. Model saved to: {model_path}")
-        print(f"Best validation loss: {min(val_metrics[0]):.4f}")
-        print(f"Best validation accuracy: {max(val_metrics[1]):.4f}")
+        print(f"Best validation loss: {min(val_metrics['loss']):.4f}")
+        print(f"Best validation accuracy: {max(val_metrics['accuracy']):.4f}")
         
         return lstm_model
 

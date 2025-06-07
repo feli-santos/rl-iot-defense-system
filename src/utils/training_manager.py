@@ -144,9 +144,9 @@ class TrainingManager:
         return str(figure_path)
     
     def plot_training_curves(self, 
-                             train_metrics: Dict[str, list], 
-                             val_metrics: Dict[str, list], 
-                             title: str = "Training Curves") -> plt.Figure:
+                         train_metrics: Dict[str, list], 
+                         val_metrics: Dict[str, list], 
+                         title: str = "Training Curves") -> plt.Figure:
         """
         Plot training curves with metrics
         
