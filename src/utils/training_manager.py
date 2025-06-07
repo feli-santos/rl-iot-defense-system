@@ -78,19 +78,55 @@ class TrainingManager:
     
     def log_metrics(self, metrics: Dict[str, Union[float, int]], step: Optional[int] = None):
         """Log metrics to MLflow and save to disk"""
-        # Log to MLflow
-        mlflow.log_metrics(metrics, step=step)
+        # Filter and convert metrics for MLflow (only scalar values)
+        mlflow_metrics = {}
         
-        # Also save to disk
+        for key, value in metrics.items():
+            if isinstance(value, (int, float, np.integer, np.floating)):
+                mlflow_metrics[key] = float(value)
+            elif isinstance(value, bool):
+                mlflow_metrics[key] = float(value)
+            elif isinstance(value, str):
+                try:
+                    # Try to convert string to float
+                    mlflow_metrics[key] = float(value)
+                except (ValueError, TypeError):
+                    # Log as parameter instead if it's a string that can't be converted
+                    if step is None:  # Only log as param if no step (to avoid duplicates)
+                        mlflow.log_param(key, str(value))
+            elif isinstance(value, (list, tuple)):
+                # Convert lists/tuples to string representation for parameters
+                if step is None:  # Only log as param if no step
+                    mlflow.log_param(key, str(value))
+                # Also log length as a metric if it makes sense
+                if key.endswith('_layers') or key.endswith('_units'):
+                    mlflow_metrics[f"{key}_count"] = len(value)
+            elif isinstance(value, dict):
+                # For dictionaries, log as parameter
+                if step is None:
+                    mlflow.log_param(key, str(value))
+            else:
+                # For any other type, try to convert to string and log as parameter
+                if step is None:
+                    try:
+                        mlflow.log_param(key, str(value))
+                    except:
+                        print(f"Warning: Could not log parameter {key} with value {value}")
+        
+        # Log scalar metrics to MLflow
+        if mlflow_metrics:
+            mlflow.log_metrics(mlflow_metrics, step=step)
+        
+        # Save all metrics to disk (including non-scalar ones)
         metrics_file = self.logs_path / "metrics.jsonl"
         entry = {
             "timestamp": time.time(),
             "step": step,
-            **metrics
+            **metrics  # Save original metrics as-is to disk
         }
         
         with open(metrics_file, "a") as f:
-            f.write(json.dumps(entry) + "\n")
+            f.write(json.dumps(entry, default=str) + "\n")  # Use default=str to handle non-serializable objects
     
     def log_model(self, model: torch.nn.Module, name: str):
         """Save PyTorch model with proper versioning"""

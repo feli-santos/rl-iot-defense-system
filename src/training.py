@@ -115,19 +115,32 @@ def train_single_algorithm(algorithm_name: str, lstm_model: LSTMAttackPredictor,
         # Create algorithm instance
         algorithm = AlgorithmFactory.create_algorithm(algorithm_name, config)
         
-        # Log algorithm hyperparameters
+        # Log algorithm hyperparameters as parameters (not metrics)
         hyperparams = algorithm.get_hyperparameters()
-        training_manager.log_metrics(hyperparams)
+        
+        # Log hyperparameters properly
+        for key, value in hyperparams.items():
+            if isinstance(value, (list, tuple)):
+                # Log lists as parameters with string representation
+                mlflow.log_param(key, str(value))
+                # Also log useful derived metrics
+                if 'layers' in key.lower() or 'units' in key.lower():
+                    mlflow.log_param(f"{key}_count", len(value))
+            elif isinstance(value, (dict,)):
+                mlflow.log_param(key, str(value))
+            else:
+                mlflow.log_param(key, value)
         
         # Create environment
         env = create_training_environment(training_manager)
         
-        # Log environment parameters
-        training_manager.log_metrics({
+        # Log environment parameters as metrics (these are scalar)
+        env_metrics = {
             "num_devices": config.ENVIRONMENT_NUM_DEVICES,
             "num_actions": config.ENVIRONMENT_NUM_ACTIONS,
             "num_states": config.ENVIRONMENT_NUM_STATES
-        })
+        }
+        training_manager.log_metrics(env_metrics)
         
         # Create and train model
         model = algorithm.create_model(env, training_manager)
@@ -155,11 +168,22 @@ def create_training_environment(training_manager: TrainingManager):
     monitor_dir = os.path.join(training_manager.logs_path, "monitor")
     os.makedirs(monitor_dir, exist_ok=True)
     
-    # Create environment
-    env = IoTEnv(config)
-    env = Monitor(env, monitor_dir)
+    # Create base environment
+    base_env = IoTEnv(config)
+    
+    # Verify environment is created properly
+    print(f"Environment created: {type(base_env)}")
+    print(f"Observation space: {base_env.observation_space}")
+    print(f"Action space: {base_env.action_space}")
+    
+    # Wrap with Monitor for logging
+    env = Monitor(base_env, monitor_dir)
+    
+    # For Stable Baselines3 algorithms (PPO, SAC), wrap in VecEnv
     env = DummyVecEnv([lambda: env])
-    env = VecNormalize(env, norm_obs=True, norm_reward=True)
+    
+    # Optional: normalize observations and rewards
+    # env = VecNormalize(env, norm_obs=True, norm_reward=True)
     
     return env
 
