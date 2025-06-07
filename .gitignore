@@ -138,3 +138,7 @@ artifacts/
 
 # MLFlow
 mlruns/
+
+# Benchmarks
+benchmark_results/
+benchmark_analysis/

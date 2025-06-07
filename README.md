@@ -78,7 +78,7 @@ src/
 
 ### Quick Start
 
-Train a single algorithm (PPO):
+Train a single algorithm (e.g., PPO):
 ```bash
 cd src
 python training.py --algorithm PPO
@@ -86,30 +86,100 @@ python training.py --algorithm PPO
 
 ### Benchmarking Multiple Algorithms
 
-Compare all three algorithms with multiple runs:
+Compare all three algorithms (DQN, PPO, A2C) with multiple runs:
 ```bash
 cd src
 python training.py --algorithm ALL --runs 3
 ```
 
-Or specify specific algorithms:
+Or specify particular algorithms for benchmarking:
 ```bash
 cd src
-python training.py --algorithms DQN PPO A2C --runs 5
+python training.py --algorithms DQN PPO --runs 5
 ```
 
 ### Advanced Options
 
 ```bash
-# Skip LSTM retraining (use existing model)
-python training.py --algorithm ALL --skip-lstm
+# Skip LSTM retraining (use existing model if available)
+python training.py --algorithm ALL --skip-lstm --runs 3
 
 # Analyze existing benchmark results without retraining
 python training.py --analyze-only
 
-# Train with custom configuration
+# Train with custom configuration (overriding config.yml for specific runs)
 python training.py --algorithm PPO --runs 1
 ```
+
+### Detailed Training Modes & Command-Line Reference
+
+The `src/training.py` script offers several modes for training and testing:
+
+**1. Single Algorithm Training:**
+   Train one specific RL algorithm. MLflow will track this run.
+   ```bash
+   cd src
+   python training.py --algorithm DQN
+   python training.py --algorithm PPO
+   python training.py --algorithm A2C
+   ```
+
+**2. Benchmark Mode (Multiple Algorithms):**
+   Run multiple specified algorithms for a set number of trials each. This mode collects comprehensive metrics and generates comparison reports.
+   ```bash
+   # Uses algorithms from config.yml (ALGORITHM_ALGORITHMS_TO_COMPARE)
+   cd src
+   python training.py --algorithm ALL --runs 3
+
+   # Explicitly specify algorithms to benchmark
+   python training.py --algorithms DQN PPO A2C --runs 5
+   ```
+
+**3. Training Options:**
+   - **Skip LSTM Training**: If you have a pre-trained LSTM model or want to test RL agents without retraining the predictor.
+     ```bash
+     python training.py --algorithm PPO --skip-lstm
+     python training.py --algorithm ALL --skip-lstm --runs 2
+     ```
+
+**4. Analysis Only Mode:**
+   Load previously saved benchmark results (from `benchmarking_results/benchmark_results.json`) and regenerate analysis plots and reports without re-running any training.
+   ```bash
+   cd src
+   python training.py --analyze-only
+   ```
+
+**5. Configuration-Based Training (Default Behavior):**
+   If no specific algorithm or mode is provided via CLI, the script will use settings from `config.yml` (e.g., `config.ALGORITHM_TYPE`).
+   ```bash
+   cd src
+   python training.py
+   ```
+
+**Full Command-Line Arguments for `src/training.py`:**
+```
+usage: training.py [-h] [--algorithm {DQN,PPO,A2C,ALL}]
+                   [--algorithms {DQN,PPO,A2C} [{DQN,PPO,A2C} ...]]
+                   [--runs RUNS] [--skip-lstm] [--analyze-only]
+
+IoT Defense System Training
+
+options:
+  -h, --help            show this help message and exit
+  --algorithm {DQN,PPO,A2C,ALL}
+                        Algorithm to train (overrides config if specified)
+  --algorithms {DQN,PPO,A2C} [{DQN,PPO,A2C} ...]
+                        Algorithms for benchmark mode (if --algorithm ALL or if specified)
+  --runs RUNS           Number of runs per algorithm for benchmarking (overrides config)
+  --skip-lstm           Skip LSTM training (use existing model if available)
+  --analyze-only        Only analyze existing benchmark results
+```
+
+**Output Locations:**
+-   **Models, Logs & MLflow Artifacts**: Organized under `./artifacts/iot_defense_system_YYYYMMDD_HHMMSS_xxxxxx/` for each main run.
+-   **Benchmark Analysis Reports & Plots**: Generated in `./benchmark_analysis/`.
+-   **Raw Benchmark Metrics**: Saved to `benchmarking_results/benchmark_results.json` (if `MetricsCollector.save_results()` is called, typically done by the benchmark runner).
+-   **MLflow UI**: Launch with `mlflow ui` (from the root directory where `mlruns` is created) to view all experiments, parameters, metrics, and artifacts.
 
 ### Configuration
 
