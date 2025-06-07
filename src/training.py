@@ -2,7 +2,7 @@ import os
 import numpy as np
 import torch
 import gymnasium as gym
-from stable_baselines3 import DQN, PPO, SAC
+from stable_baselines3 import DQN, PPO, A2C
 from stable_baselines3.common.callbacks import BaseCallback
 from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
@@ -271,17 +271,5 @@ def main():
     print(f"All artifacts saved to: {training_manager.run_artifact_path}")
 
 
-if __name__ == "__main__":
-    # Install required packages if not already installed
-    try:
-        import mlflow
-        from stable_baselines3 import PPO, SAC
-    except ImportError as e:
-        print(f"Missing required package: {e}")
-        print("Installing required packages...")
-        import subprocess
-        subprocess.check_call(["pip", "install", "mlflow", "stable-baselines3[extra]"])
-        import mlflow
-        from stable_baselines3 import PPO, SAC
-    
+if __name__ == "__main__":    
     main()

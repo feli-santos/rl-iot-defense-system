@@ -9,8 +9,8 @@ environment:
 
 # Algorithm selection
 algorithm:
-  type: "PPO" # Options: "DQN", "PPO", "SAC", "ALL"
-  algorithms_to_compare: ["DQN", "PPO", "SAC"] # For benchmarking
+  type: "A2C"
+  algorithms_to_compare: ["DQN", "PPO", "A2C"] # Options
 
 # DQN hyperparameters
 dqn:
@@ -37,20 +37,16 @@ ppo:
   vf_coef: 0.5
   max_grad_norm: 0.5
 
-# SAC hyperparameters
-sac:
+# A2C hyperparameters
+a2c:
   total_timesteps: 25000
-  learning_rate: 0.0003
-  buffer_size: 100000
-  learning_starts: 1000
-  batch_size: 256
-  tau: 0.005
+  learning_rate: 0.0007
+  n_steps: 5
   gamma: 0.99
-  train_freq: 1
-  gradient_steps: 1
-  ent_coef: "auto"
-  target_update_interval: 1
-  target_entropy: "auto"
+  gae_lambda: 0.95
+  ent_coef: 0.01
+  vf_coef: 0.25
+  max_grad_norm: 0.5
 
 # Exploration parameters
 exploration:

@@ -11,12 +11,12 @@ from algorithms.algorithm_factory import AlgorithmFactory
 from algorithms.base_algorithm import BaseAlgorithm
 from algorithms.dqn_algorithm import DQNAlgorithm
 from algorithms.ppo_algorithm import PPOAlgorithm
-from algorithms.sac_algorithm import SACAlgorithm
+from algorithms.a2c_algorithm import A2CAlgorithm
 
 __all__ = [
     'AlgorithmFactory',
     'BaseAlgorithm', 
     'DQNAlgorithm',
     'PPOAlgorithm',
-    'SACAlgorithm'
+    'A2CAlgorithm',
 ]

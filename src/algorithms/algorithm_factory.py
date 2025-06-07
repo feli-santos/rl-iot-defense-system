@@ -6,7 +6,7 @@ Creates algorithm instances based on configuration.
 
 from algorithms.dqn_algorithm import DQNAlgorithm
 from algorithms.ppo_algorithm import PPOAlgorithm
-from algorithms.sac_algorithm import SACAlgorithm
+from algorithms.a2c_algorithm import A2CAlgorithm
 
 
 class AlgorithmFactory:
@@ -15,7 +15,7 @@ class AlgorithmFactory:
     _algorithms = {
         'DQN': DQNAlgorithm,
         'PPO': PPOAlgorithm,
-        'SAC': SACAlgorithm
+        'A2C': A2CAlgorithm,  
     }
     
     @classmethod
