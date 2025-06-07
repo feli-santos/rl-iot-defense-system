@@ -77,7 +77,7 @@ attack:
 
 # Training configuration
 training:
-  device: "auto" # "cpu", "cuda", or "auto"
+  device: "auto"
   verbose: 1
   seed: 42
   model_dir: "./models/"
@@ -87,7 +87,7 @@ training:
 # Benchmarking configuration
 benchmarking:
   num_runs: 3 # Number of independent runs per algorithm
-  evaluation_episodes: 50
+  evaluation_episodes: 1000
   metrics_to_track:
     ["avg_reward", "episode_length", "success_rate", "convergence_time"]
   save_plots: true

@@ -42,7 +42,6 @@ src/
 │   └── data_generator.py    # Realistic attack data generation
 ├── environment.py           # Custom IoT defense Gymnasium environment
 ├── training.py             # Main training script with CLI interface
-├── evaluation.py           # Model evaluation utilities
 └── config.yml             # Main configuration file
 ```
 
