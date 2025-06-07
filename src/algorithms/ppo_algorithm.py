@@ -1,29 +1,30 @@
 """
-PPO Algorithm Implementation
-
-Proximal Policy Optimization implementation using Stable Baselines3.
+PPO Algorithm Implementation using Stable Baselines3
 """
 
-import torch
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 from stable_baselines3 import PPO
-from stable_baselines3.common.vec_env import VecEnv
-from stable_baselines3.common.base_class import BaseAlgorithm as SB3BaseAlgorithm
+from stable_baselines3.common.monitor import Monitor
+from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
+from tqdm import tqdm
+import os
 
-from .base_algorithm import BaseAlgorithm
+from algorithms.base_algorithm import BaseAlgorithm
+from environment import IoTEnv
 
 
 class PPOAlgorithm(BaseAlgorithm):
-    """PPO algorithm implementation"""
+    """PPO Algorithm using Stable Baselines3"""
     
     def __init__(self, config: Any):
-        super().__init__(config, "PPO")
+        super().__init__(config)
         
-    def create_model(self, env: VecEnv, training_manager: Any) -> PPO:
-        """Create and configure the PPO model"""
+    def create_model(self, env, training_manager):
+        """Create PPO model"""
         
+        # Create PPO model
         model = PPO(
-            "MultiInputPolicy",
+            "MlpPolicy",
             env,
             learning_rate=self.config.PPO_LEARNING_RATE,
             n_steps=self.config.PPO_N_STEPS,
@@ -35,55 +36,64 @@ class PPOAlgorithm(BaseAlgorithm):
             ent_coef=self.config.PPO_ENT_COEF,
             vf_coef=self.config.PPO_VF_COEF,
             max_grad_norm=self.config.PPO_MAX_GRAD_NORM,
-            policy_kwargs={
-                "net_arch": self.config.NETWORK_HIDDEN_LAYERS,
-                "activation_fn": torch.nn.ReLU
-            },
-            verbose=self.config.TRAINING_VERBOSE,
-            seed=self.config.TRAINING_SEED,
-            device=self.config.TRAINING_DEVICE,
-            tensorboard_log=training_manager.logs_path
+            verbose=1,
+            tensorboard_log=str(training_manager.logs_path)
         )
         
-        self.model = model
         return model
         
-    def get_hyperparameters(self) -> Dict[str, Any]:
-        """Get PPO-specific hyperparameters"""
-        return {
-            "learning_rate": self.config.PPO_LEARNING_RATE,
-            "n_steps": self.config.PPO_N_STEPS,
-            "batch_size": self.config.PPO_BATCH_SIZE,
-            "n_epochs": self.config.PPO_N_EPOCHS,
-            "gamma": self.config.PPO_GAMMA,
-            "gae_lambda": self.config.PPO_GAE_LAMBDA,
-            "clip_range": self.config.PPO_CLIP_RANGE,
-            "ent_coef": self.config.PPO_ENT_COEF,
-            "vf_coef": self.config.PPO_VF_COEF,
-            "max_grad_norm": self.config.PPO_MAX_GRAD_NORM,
-            "network_arch": self.config.NETWORK_HIDDEN_LAYERS
-        }
+    def train(self, model, training_manager):
+        """Train PPO model"""
         
-    def train(self, model: PPO, training_manager: Any) -> PPO:
-        """Train the PPO model"""
-        total_timesteps = self.get_total_timesteps()
+        total_timesteps = self.config.PPO_TOTAL_TIMESTEPS
         
-        # Create custom callback for MLflow logging
-        from ..training import MLflowCallback
-        mlflow_callback = MLflowCallback(training_manager)
+        # Train the model with progress tracking
+        print(f"Training PPO for {total_timesteps} timesteps...")
+        
+        # Custom callback for logging
+        class ProgressCallback:
+            def __init__(self, training_manager):
+                self.training_manager = training_manager
+                self.last_log = 0
+                
+            def __call__(self, locals, globals):
+                # Log every 1000 timesteps
+                if locals['self'].num_timesteps - self.last_log >= 1000:
+                    self.training_manager.log_metrics({
+                        'timesteps': locals['self'].num_timesteps,
+                        'fps': locals.get('fps', 0),
+                    }, step=locals['self'].num_timesteps)
+                    self.last_log = locals['self'].num_timesteps
+                return True
         
         model.learn(
             total_timesteps=total_timesteps,
-            callback=mlflow_callback,
-            log_interval=10
+            progress_bar=True,
+            callback=ProgressCallback(training_manager)
         )
         
         return model
         
-    def get_total_timesteps(self) -> int:
-        """Get total training timesteps for PPO"""
-        return self.config.PPO_TOTAL_TIMESTEPS
+    def get_hyperparameters(self) -> Dict[str, Any]:
+        """Get PPO hyperparameters"""
+        return {
+            'learning_rate': self.config.PPO_LEARNING_RATE,
+            'n_steps': self.config.PPO_N_STEPS,
+            'batch_size': self.config.PPO_BATCH_SIZE,
+            'n_epochs': self.config.PPO_N_EPOCHS,
+            'gamma': self.config.PPO_GAMMA,
+            'gae_lambda': self.config.PPO_GAE_LAMBDA,
+            'clip_range': self.config.PPO_CLIP_RANGE,
+            'ent_coef': self.config.PPO_ENT_COEF,
+            'vf_coef': self.config.PPO_VF_COEF,
+            'max_grad_norm': self.config.PPO_MAX_GRAD_NORM,
+            'total_timesteps': self.config.PPO_TOTAL_TIMESTEPS
+        }
         
-    def load_model(self, path: str, env: VecEnv) -> PPO:
-        """Load a trained PPO model"""
-        return PPO.load(path, env=env)
+    def save_model(self, model, path: str):
+        """Save PPO model"""
+        model.save(path.replace('.zip', ''))  # SB3 adds .zip automatically
+        
+    def load_model(self, path: str):
+        """Load PPO model"""
+        return PPO.load(path.replace('.zip', ''))

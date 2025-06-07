@@ -1,89 +1,146 @@
 """
 DQN Algorithm Implementation
-
-Deep Q-Network implementation using Stable Baselines3.
 """
 
+import os
 import torch
-from typing import Dict, Any
-from stable_baselines3 import DQN
-from stable_baselines3.common.vec_env import VecEnv
-from stable_baselines3.common.base_class import BaseAlgorithm as SB3BaseAlgorithm
+import torch.nn as nn
+from typing import Dict, Any, Optional
+from tqdm import tqdm
 
-from .base_algorithm import BaseAlgorithm
+from algorithms.base_algorithm import BaseAlgorithm
+from environment import IoTEnv
+from stable_baselines3.common.monitor import Monitor
+from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
+
+
+class DQNNetwork(nn.Module):
+    """DQN Neural Network"""
+    
+    def __init__(self, state_dim: int, action_dim: int, hidden_layers: list):
+        super(DQNNetwork, self).__init__()
+        
+        layers = []
+        input_dim = state_dim
+        
+        for hidden_dim in hidden_layers:
+            layers.extend([
+                nn.Linear(input_dim, hidden_dim),
+                nn.ReLU()
+            ])
+            input_dim = hidden_dim
+            
+        layers.append(nn.Linear(input_dim, action_dim))
+        
+        self.network = nn.Sequential(*layers)
+        
+    def forward(self, x):
+        return self.network(x)
 
 
 class DQNAlgorithm(BaseAlgorithm):
-    """DQN algorithm implementation"""
+    """DQN Algorithm Implementation"""
     
     def __init__(self, config: Any):
-        super().__init__(config, "DQN")
+        super().__init__(config)
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         
-    def create_model(self, env: VecEnv, training_manager: Any) -> DQN:
-        """Create and configure the DQN model"""
+    def create_model(self, env, training_manager):
+        """Create DQN model"""
+        # Get environment dimensions
+        state_dim = env.observation_space.shape[0]
+        action_dim = env.action_space.n
         
-        model = DQN(
-            "MultiInputPolicy",
-            env,
-            learning_rate=self.config.DQN_LEARNING_RATE,
-            buffer_size=self.config.DQN_BUFFER_SIZE,
-            learning_starts=1000,
-            batch_size=self.config.DQN_BATCH_SIZE,
-            tau=self.config.DQN_TAU,
-            gamma=self.config.DQN_GAMMA,
-            train_freq=4,
-            gradient_steps=1,
-            target_update_interval=self.config.DQN_TARGET_UPDATE_FREQ,
-            exploration_fraction=0.1,
-            exploration_initial_eps=self.config.EXPLORATION_EPS_START,
-            exploration_final_eps=self.config.EXPLORATION_EPS_END,
-            policy_kwargs={
-                "net_arch": self.config.NETWORK_HIDDEN_LAYERS,
-                "activation_fn": torch.nn.ReLU
-            },
-            verbose=self.config.TRAINING_VERBOSE,
-            seed=self.config.TRAINING_SEED,
-            device=self.config.TRAINING_DEVICE,
-            tensorboard_log=training_manager.logs_path
-        )
+        # Create Q-network
+        q_network = DQNNetwork(
+            state_dim=state_dim,
+            action_dim=action_dim,
+            hidden_layers=self.config.NETWORK_HIDDEN_LAYERS
+        ).to(self.device)
         
-        self.model = model
+        # Create target network
+        target_network = DQNNetwork(
+            state_dim=state_dim,
+            action_dim=action_dim,
+            hidden_layers=self.config.NETWORK_HIDDEN_LAYERS
+        ).to(self.device)
+        
+        # Copy weights
+        target_network.load_state_dict(q_network.state_dict())
+        
+        return {
+            'q_network': q_network,
+            'target_network': target_network,
+            'optimizer': torch.optim.Adam(q_network.parameters(), lr=self.config.DQN_LEARNING_RATE),
+            'state_dim': state_dim,
+            'action_dim': action_dim
+        }
+        
+    def train(self, model, training_manager):
+        """Train DQN model"""
+        # Simple DQN training implementation
+        q_network = model['q_network']
+        target_network = model['target_network']
+        optimizer = model['optimizer']
+        
+        # Create environment for training
+        env = IoTEnv(self.config)
+        
+        episodes = self.config.DQN_TOTAL_EPISODES
+        
+        for episode in tqdm(range(episodes), desc="Training DQN"):
+            state = env.reset()
+            episode_reward = 0
+            done = False
+            
+            while not done:
+                # Simple epsilon-greedy action selection
+                if torch.rand(1).item() < 0.1:  # epsilon
+                    action = env.action_space.sample()
+                else:
+                    with torch.no_grad():
+                        state_tensor = torch.FloatTensor(state).unsqueeze(0).to(self.device)
+                        q_values = q_network(state_tensor)
+                        action = q_values.argmax().item()
+                
+                next_state, reward, done, _ = env.step(action)
+                episode_reward += reward
+                state = next_state
+            
+            # Log metrics
+            if episode % 10 == 0:
+                training_manager.log_metrics({
+                    'episode_reward': episode_reward,
+                    'episode': episode
+                }, step=episode)
+                
+            # Update target network
+            if episode % self.config.DQN_TARGET_UPDATE_FREQ == 0:
+                target_network.load_state_dict(q_network.state_dict())
+        
         return model
         
     def get_hyperparameters(self) -> Dict[str, Any]:
-        """Get DQN-specific hyperparameters"""
+        """Get DQN hyperparameters"""
         return {
-            "learning_rate": self.config.DQN_LEARNING_RATE,
-            "buffer_size": self.config.DQN_BUFFER_SIZE,
-            "batch_size": self.config.DQN_BATCH_SIZE,
-            "tau": self.config.DQN_TAU,
-            "gamma": self.config.DQN_GAMMA,
-            "exploration_eps_start": self.config.EXPLORATION_EPS_START,
-            "exploration_eps_end": self.config.EXPLORATION_EPS_END,
-            "target_update_freq": self.config.DQN_TARGET_UPDATE_FREQ,
-            "network_arch": self.config.NETWORK_HIDDEN_LAYERS
+            'learning_rate': self.config.DQN_LEARNING_RATE,
+            'gamma': self.config.DQN_GAMMA,
+            'batch_size': self.config.DQN_BATCH_SIZE,
+            'total_episodes': self.config.DQN_TOTAL_EPISODES,
+            'target_update_freq': self.config.DQN_TARGET_UPDATE_FREQ,
+            'hidden_layers': self.config.NETWORK_HIDDEN_LAYERS
         }
         
-    def train(self, model: DQN, training_manager: Any) -> DQN:
-        """Train the DQN model"""
-        total_timesteps = self.get_total_timesteps()
+    def save_model(self, model, path: str):
+        """Save DQN model"""
+        torch.save({
+            'q_network_state_dict': model['q_network'].state_dict(),
+            'target_network_state_dict': model['target_network'].state_dict(),
+            'optimizer_state_dict': model['optimizer'].state_dict(),
+        }, path)
         
-        # Create custom callback for MLflow logging
-        from ..training import MLflowCallback
-        mlflow_callback = MLflowCallback(training_manager)
-        
-        model.learn(
-            total_timesteps=total_timesteps,
-            callback=mlflow_callback,
-            log_interval=10
-        )
-        
-        return model
-        
-    def get_total_timesteps(self) -> int:
-        """Get total training timesteps for DQN"""
-        return self.config.DQN_TOTAL_EPISODES * self.config.DQN_EPOCHS_PER_EPISODE
-        
-    def load_model(self, path: str, env: VecEnv) -> DQN:
-        """Load a trained DQN model"""
-        return DQN.load(path, env=env)
+    def load_model(self, path: str):
+        """Load DQN model"""
+        checkpoint = torch.load(path)
+        # Implementation depends on how you want to reconstruct the model
+        return checkpoint

@@ -11,11 +11,12 @@ from pathlib import Path
 import numpy as np
 from tqdm import tqdm
 
-from ..algorithms.algorithm_factory import AlgorithmFactory
-from ..utils.training_manager import TrainingManager
-from ..environment import IoTEnv
-from ..models.attack_predictor import LSTMAttackPredictor
-from .metrics_collector import MetricsCollector
+# Use absolute imports
+from algorithms.algorithm_factory import AlgorithmFactory
+from utils.training_manager import TrainingManager
+from environment import IoTEnv
+from models.attack_predictor import LSTMAttackPredictor
+from benchmarking.metrics_collector import MetricsCollector
 from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
 from stable_baselines3.common.evaluation import evaluate_policy
@@ -55,39 +56,38 @@ class BenchmarkRunner:
         )
         
         try:
-            with base_training_manager.start_run(run_name="benchmark_comparison"):
+            base_training_manager.start_run(run_name="benchmark_comparison")
+            
+            # Log benchmark configuration  
+            base_training_manager.log_metrics({
+                "num_algorithms": len(algorithms),
+                "num_runs_per_algorithm": num_runs,
+            })
+            
+            # Run experiments for each algorithm
+            for algorithm_name in algorithms:
+                print(f"\n{'='*50}")
+                print(f"Benchmarking {algorithm_name}")
+                print(f"{'='*50}")
                 
-                # Log benchmark configuration
+                self._run_algorithm_benchmark(
+                    algorithm_name, 
+                    num_runs, 
+                    base_training_manager
+                )
+                
+            # Save final results
+            self.metrics_collector.save_results()
+            
+            # Log comparison summary
+            comparison_data = self.metrics_collector.get_comparison_data()
+            for alg_name, summary in comparison_data.items():
                 base_training_manager.log_metrics({
-                    "num_algorithms": len(algorithms),
-                    "num_runs_per_algorithm": num_runs,
-                    "algorithms": str(algorithms)
+                    f"{alg_name}_avg_reward_mean": summary.get('avg_reward_mean', 0),
+                    f"{alg_name}_avg_reward_std": summary.get('avg_reward_std', 0),
+                    f"{alg_name}_training_time_mean": summary.get('training_time_mean', 0)
                 })
                 
-                # Run experiments for each algorithm
-                for algorithm_name in algorithms:
-                    print(f"\n{'='*50}")
-                    print(f"Benchmarking {algorithm_name}")
-                    print(f"{'='*50}")
-                    
-                    self._run_algorithm_benchmark(
-                        algorithm_name, 
-                        num_runs, 
-                        base_training_manager
-                    )
-                    
-                # Save final results
-                self.metrics_collector.save_results()
-                
-                # Log comparison summary
-                comparison_data = self.metrics_collector.get_comparison_data()
-                for alg_name, summary in comparison_data.items():
-                    base_training_manager.log_metrics({
-                        f"{alg_name}_avg_reward_mean": summary.get('avg_reward_mean', 0),
-                        f"{alg_name}_avg_reward_std": summary.get('avg_reward_std', 0),
-                        f"{alg_name}_training_time_mean": summary.get('training_time_mean', 0)
-                    })
-                    
         finally:
             base_training_manager.end_run()
             
@@ -115,51 +115,49 @@ class BenchmarkRunner:
             )
             
             try:
-                with run_training_manager.start_run(
-                    run_name=f"{algorithm_name.lower()}_run_{run_id}",
-                    nested=True
-                ):
-                    # Start metrics collection
-                    self.metrics_collector.start_run(
-                        algorithm_name, 
-                        run_id, 
-                        algorithm.get_hyperparameters()
-                    )
-                    
-                    # Train the algorithm
-                    start_time = time.time()
-                    trained_model, env = self._train_algorithm(algorithm, run_training_manager)
-                    training_time = time.time() - start_time
-                    
-                    # Evaluate the algorithm
-                    evaluation_results = self._evaluate_algorithm(
-                        algorithm_name, 
-                        trained_model, 
-                        env, 
-                        run_training_manager
-                    )
-                    
-                    # Update metrics
-                    self.metrics_collector.update_training_metrics(
-                        algorithm_name, 
-                        run_id, 
-                        training_time
-                    )
-                    
-                    self.metrics_collector.update_evaluation_metrics(
-                        algorithm_name, 
-                        run_id, 
-                        evaluation_results
-                    )
-                    
-                    # Save model
-                    model_path = run_training_manager.models_path / f"{algorithm_name.lower()}_final.zip"
-                    algorithm.save_model(trained_model, str(model_path))
-                    
-                    print(f"Completed {algorithm_name} run {run_id + 1}")
-                    print(f"Training time: {training_time:.2f}s")
-                    print(f"Average reward: {evaluation_results.get('avg_reward', 0):.2f}")
-                    
+                run_training_manager.start_run(run_name=f"{algorithm_name.lower()}_run_{run_id}")
+                
+                # Start metrics collection
+                self.metrics_collector.start_run(
+                    algorithm_name, 
+                    run_id, 
+                    algorithm.get_hyperparameters()
+                )
+                
+                # Train the algorithm
+                start_time = time.time()
+                trained_model, env = self._train_algorithm(algorithm, run_training_manager)
+                training_time = time.time() - start_time
+                
+                # Evaluate the algorithm
+                evaluation_results = self._evaluate_algorithm(
+                    algorithm_name, 
+                    trained_model, 
+                    env, 
+                    run_training_manager
+                )
+                
+                # Update metrics
+                self.metrics_collector.update_training_metrics(
+                    algorithm_name, 
+                    run_id, 
+                    training_time
+                )
+                
+                self.metrics_collector.update_evaluation_metrics(
+                    algorithm_name, 
+                    run_id, 
+                    evaluation_results
+                )
+                
+                # Save model
+                model_path = run_training_manager.models_path / f"{algorithm_name.lower()}_final.zip"
+                algorithm.save_model(trained_model, str(model_path))
+                
+                print(f"Completed {algorithm_name} run {run_id + 1}")
+                print(f"Training time: {training_time:.2f}s")
+                print(f"Average reward: {evaluation_results.get('avg_reward', 0):.2f}")
+                
             except Exception as e:
                 print(f"Error in {algorithm_name} run {run_id}: {e}")
                 continue
