@@ -1,263 +1,89 @@
 # Mathematical Foundations
 
-This document provides a detailed examination of the mathematical concepts underpinning the RL-IoT Defense System.
+This document provides a detailed examination of the mathematical concepts underpinning the RL-IoT Defense System, focusing on the Reinforcement Learning framework and the specific algorithms used.
 
 ## Reinforcement Learning Framework
 
-### Markov Decision Process
-
-The system is modeled as a Markov Decision Process (MDP), formalized as a tuple $(S, A, P, R, \gamma)$ where:
-
-- $S$ is the state space representing all possible configurations of the IoT network
-- $A$ is the action space of all possible defensive countermeasures
-- $P: S \times A \times S \rightarrow [0, 1]$ is the state transition probability function
-- $R: S \times A \times S \rightarrow \mathbb{R}$ is the reward function
-- $\gamma \in [0, 1]$ is the discount factor balancing immediate vs. future rewards
+### Markov Decision Process (MDP)
+The system is modeled as an MDP, defined by $(S, A, P, R, \gamma)$:
+-   $S$: State space (observations from the IoT environment).
+-   $A$: Action space (discrete defensive actions).
+-   $P(s'|s,a)$: State transition probability $P(S_{t+1}=s' | S_t=s, A_t=a)$.
+-   $R(s,a,s')$: Reward function $R_t = R(S_t=s, A_t=a, S_{t+1}=s')$.
+-   $\gamma \in [0, 1]$: Discount factor.
 
 ### Value Functions
-
-The state-value function $V^\pi(s)$ represents the expected return starting from state $s$ and following policy $\pi$:
-
-$$V^\pi(s) = \mathbb{E}_\pi \left[ \sum_{t=0}^{\infty} \gamma^t R_{t+1} \Big| S_0 = s \right]$$
-
-The action-value function $Q^\pi(s, a)$ represents the expected return starting from state $s$, taking action $a$, and then following policy $\pi$:
-
-$$Q^\pi(s, a) = \mathbb{E}_\pi \left[ \sum_{t=0}^{\infty} \gamma^t R_{t+1} \Big| S_0 = s, A_0 = a \right]$$
+-   **State-Value Function $V^\pi(s)$**: Expected return from state $s$ following policy $\pi$.
+    $$V^\pi(s) = \mathbb{E}_\pi \left[ \sum_{k=0}^{\infty} \gamma^k R_{t+k+1} \Big| S_t = s \right]$$
+-   **Action-Value Function $Q^\pi(s,a)$**: Expected return from state $s$, taking action $a$, then following policy $\pi$.
+    $$Q^\pi(s,a) = \mathbb{E}_\pi \left[ \sum_{k=0}^{\infty} \gamma^k R_{t+k+1} \Big| S_t = s, A_t = a \right]$$
 
 ### Bellman Equations
+The Bellman optimality equation for $Q^*(s,a)$ (the optimal action-value function) is central:
+$$Q^*(s, a) = \mathbb{E}_{s' \sim P(\cdot|s,a)} \left[ R(s,a,s') + \gamma \max_{a' \in A} Q^*(s', a') \right]$$
 
-The Bellman expectation equation for $V^\pi$ is:
-
-$$V^\pi(s) = \sum_{a \in A} \pi(a|s) \sum_{s' \in S} P(s'|s,a) \left[ R(s,a,s') + \gamma V^\pi(s') \right]$$
-
-The Bellman expectation equation for $Q^\pi$ is:
-
-$$Q^\pi(s, a) = \sum_{s' \in S} P(s'|s,a) \left[ R(s,a,s') + \gamma \sum_{a' \in A} \pi(a'|s') Q^\pi(s', a') \right]$$
-
-The Bellman optimality equation for $Q^*$ is:
-
-$$Q^*(s, a) = \sum_{s' \in S} P(s'|s,a) \left[ R(s,a,s') + \gamma \max_{a' \in A} Q^*(s', a') \right]$$
-
-## Deep Q-Network (DQN)
+## 1. Deep Q-Network (DQN)
 
 ### Function Approximation
-
-DQN uses a neural network to approximate the Q-function:
-
-$$Q(s, a; \theta) \approx Q^*(s, a)$$
-
-Where $\theta$ represents the parameters of the neural network.
+DQN uses a neural network $Q(s, a; \theta)$ with parameters $\theta$ to approximate $Q^*(s, a)$.
 
 ### Loss Function
-
-The loss function used to train the DQN is the mean squared error between the predicted Q-values and the target Q-values:
-
-$$L(\theta) = \mathbb{E}_{(s,a,r,s') \sim D} \left[ \left( y - Q(s, a; \theta) \right)^2 \right]$$
-
-Where:
-- $D$ is the replay buffer containing transition tuples $(s, a, r, s')$
-- $y = r + \gamma \max_{a'} Q(s', a'; \theta^-)$ is the target Q-value
-- $\theta^-$ are the parameters of the target network
+The loss is typically the Mean Squared Bellman Error (MSBE):
+$$L(\theta) = \mathbb{E}_{(s,a,r,s') \sim D} \left[ \left( (r + \gamma \max_{a'} Q(s', a'; \theta^-)) - Q(s, a; \theta) \right)^2 \right]$$
+-   $D$: Replay buffer.
+-   $\theta^-$: Parameters of a separate, periodically updated target network, enhancing stability.
 
 ### Gradient Descent Update
-
-The parameters are updated using gradient descent:
-
-$$\theta \leftarrow \theta - \alpha \nabla_\theta L(\theta)$$
-
-Where $\alpha$ is the learning rate and:
-
-$$\nabla_\theta L(\theta) = \mathbb{E}_{(s,a,r,s') \sim D} \left[ \left( r + \gamma \max_{a'} Q(s', a'; \theta^-) - Q(s, a; \theta) \right) \nabla_\theta Q(s, a; \theta) \right]$$
-
-## LSTM Network
-
-### Sequence Modeling
-
-The LSTM models the attack sequence as a time series:
-
-$$X = (x_1, x_2, ..., x_T)$$
-
-Where each $x_t$ represents an attack event at time $t$.
-
-### LSTM Cell Equations
-
-The LSTM cell updates its internal state using the following equations:
-
-**Input Gate**:
-$$i_t = \sigma(W_{ii} x_t + b_{ii} + W_{hi} h_{t-1} + b_{hi})$$
-
-**Forget Gate**:
-$$f_t = \sigma(W_{if} x_t + b_{if} + W_{hf} h_{t-1} + b_{hf})$$
-
-**Cell State**:
-$$\tilde{c}_t = \tanh(W_{ic} x_t + b_{ic} + W_{hc} h_{t-1} + b_{hc})$$
-$$c_t = f_t \odot c_{t-1} + i_t \odot \tilde{c}_t$$
-
-**Output Gate**:
-$$o_t = \sigma(W_{io} x_t + b_{io} + W_{ho} h_{t-1} + b_{ho})$$
-$$h_t = o_t \odot \tanh(c_t)$$
-
-Where:
-- $\sigma$ is the sigmoid function
-- $\odot$ represents element-wise multiplication
-- $W$ and $b$ are weight matrices and bias vectors
-- $h_t$ is the hidden state at time $t$
-- $c_t$ is the cell state at time $t$
-
-### Bidirectional LSTM
-
-The bidirectional LSTM combines forward and backward passes:
-
-$$\overrightarrow{h}_t = \text{LSTM}_{\text{forward}}(x_t, \overrightarrow{h}_{t-1}, \overrightarrow{c}_{t-1})$$
-$$\overleftarrow{h}_t = \text{LSTM}_{\text{backward}}(x_t, \overleftarrow{h}_{t+1}, \overleftarrow{c}_{t+1})$$
-$$h_t = [\overrightarrow{h}_t, \overleftarrow{h}_t]$$
-
-### Softmax Output Layer
-
-The output probability distribution for next attack prediction:
-
-$$p(y_t = j | x_{1:t}) = \frac{\exp(W_j^T h_t + b_j)}{\sum_{k=1}^C \exp(W_k^T h_t + b_k)}$$
-
-Where:
-- $C$ is the number of possible attack classes
-- $W_j$ and $b_j$ are the weights and bias for class $j$
-
-## Graph-Based Attack Modeling
-
-### Attack Graph
-
-The attack graph is represented as a directed graph $G = (V, E)$ where:
-- $V$ is the set of nodes (devices)
-- $E$ is the set of edges (connections)
-
-Each node $v \in V$ has attributes:
-- $v_{\text{critical}} \in \{0, 1\}$ indicates if the node is critical
-- $v_{\text{compromised}} \in \{0, 1\}$ indicates if the node is compromised
-- $v_{\text{vulnerability}} \in [0, 1]$ represents the vulnerability level
-
-### Path Selection
-
-The probability of an attacker selecting a path $P = (v_1, v_2, ..., v_k)$ is:
-
-$$p(P) = \frac{\exp(-\beta \cdot c(P))}{\sum_{P' \in \mathcal{P}} \exp(-\beta \cdot c(P'))}$$
-
-Where:
-- $c(P)$ is the cost of path $P$, calculated as $c(P) = \sum_{i=1}^{k-1} c(v_i, v_{i+1})$
-- $c(v_i, v_{i+1})$ is the cost of moving from node $v_i$ to $v_{i+1}$
-- $\beta" is a parameter controlling the rationality of the attacker
-- $\mathcal{P}$ is the set of all possible paths
-
-### Adaptive Attacker Learning
-
-The adaptive attacker updates node values based on defense actions:
-
-$$v_{\text{value}}(t+1) = v_{\text{value}}(t) \cdot (1 - \alpha \cdot \mathbb{I}[v \in D_t])$$
-
-Where:
-- $v_{\text{value}}(t)$ is the value of node $v$ at time $t$
-- $\alpha$ is the learning rate
-- $\mathbb{I}[v \in D_t]$ is an indicator function equal to 1 if node $v$ was defended at time $t$
-- $D_t$ is the set of nodes defended at time $t$
-
-## Reward Function Engineering
-
-### Component-Based Reward
-
-The reward function is decomposed into:
-
-$$R(s, a, s') = w_1 R_{\text{defense}}(s, a, s') + w_2 R_{\text{compromise}}(s') + w_3 R_{\text{critical}}(s') + w_4 R_{\text{health}}(s')$$
-
-Where:
-- $R_{\text{defense}}(s, a, s')$ rewards successful defenses
-- $R_{\text{compromise}}(s')$ penalizes compromised nodes
-- $R_{\text{critical}}(s')$ heavily penalizes critical compromised nodes
-- $R_{\text{health}}(s')$ rewards overall network health
-- $w_i$ are weight parameters
-
-### Defense Success Reward
-
-$$R_{\text{defense}}(s, a) = \alpha \cdot \mathbb{I}[\text{attack\_prevented}](s, a) \cdot \text{value}(\text{target})$$
-
-Where:
-- $\mathbb{I}[\text{attack\_prevented}](s, a)$ is 1 if the action prevented an attack
-- $\text{value}(\text{target})$ is the value of the targeted node
-
-## Network Health Penalty
-
-$$R_{\text{health}}(s) = -\beta \cdot \sum_{i=1}^{N} \mathbb{I}[\text{node\_compromised}](i) \cdot \text{criticality}(i)$$
-
-Where:
-- $N$ is the total number of nodes
-- $\mathbb{I}[\text{node\_compromised}](i)$ is 1 if node $i$ is compromised
-- $\text{criticality}(i)$ represents the importance of node $i$
-
-## Action Cost
-
-$$R_{\text{cost}}(a) = -\gamma \cdot \text{cost}(a)$$
-
-Where:
-- $\text{cost}(a)$ is the computational/resource cost of action $a$
-- $\gamma$ weights the importance of efficiency
-
-## Total Reward Function
-
-$$R(s, a, s') = R_{\text{defense}}(s, a) + R_{\text{health}}(s') + R_{\text{cost}}(a)$$
-
-## State Representation
-
-### Feature Encoding
-
-The state $s_t$ at time $t$ is represented as a feature vector combining:
-
-$$s_t = [s_{\text{network}}, s_{\text{history}}, s_{\text{prediction}}]$$
-
-Where:
-- $s_{\text{network}}$ encodes the current network status
-- $s_{\text{history}}$ encodes recent attack history
-- $s_{\text{prediction}}$ encodes LSTM predictions
-
-### Network Status Encoding
-
-$$s_{\text{network}} = [v_1^{\text{status}}, v_2^{\text{status}}, ..., v_n^{\text{status}}]$$
-
-Where $v_i^{\text{status}}$ is a multi-dimensional encoding of node $i$'s status.
-
-### History Encoding
-
-$$s_{\text{history}} = [a_{t-H}, a_{t-H+1}, ..., a_{t-1}]$$
-
-Where $a_{t-i}$ is the attack at time $t-i$ and $H$ is the history length.
-
-### Prediction Encoding
-
-$$s_{\text{prediction}} = [p(a_{t+1}=1), p(a_{t+1}=2), ..., p(a_{t+1}=C)]$$
-
-Where $p(a_{t+1}=j)$ is the LSTM-predicted probability of attack $j$ at the next step.
-
-## Experience Replay
-
-### Transition Storage
-
-The replay buffer $D$ stores transitions $(s_t, a_t, r_t, s_{t+1})$.
-
-### Prioritized Sampling
-
-Transitions are sampled according to priority:
-
-$$P(i) = \frac{p_i^\alpha}{\sum_k p_k^\alpha}$$
-
-Where:
-- $p_i = |\delta_i| + \epsilon$ is the priority
-- $\delta_i = r_i + \gamma \max_a Q(s_{i+1}, a; \theta^-) - Q(s_i, a_i; \theta)$ is the TD error
-- $\alpha$ controls the sampling bias
-- $\epsilon$ is a small constant ensuring non-zero probability
-
-### Importance Sampling Correction
-
-To correct for sampling bias, updates are weighted:
-
-$$w_i = \left( \frac{1}{N} \cdot \frac{1}{P(i)} \right)^\beta$$
-
-Where $\beta$ is annealed from an initial value to 1 during training.
-
-These mathematical formulations provide the foundation for the learning and decision-making processes in the RL-IoT Defense System.
+Parameters $\theta$ are updated via gradient descent on $L(\theta)$.
+
+## 2. Proximal Policy Optimization (PPO)
+
+PPO is a policy gradient method that aims for stable and reliable policy updates. It's an actor-critic approach.
+
+### Surrogate Objective Function
+PPO optimizes a "surrogate" objective. The clipped version is commonly used:
+$$L^{CLIP}(\theta) = \hat{\mathbb{E}}_t \left[ \min \left( r_t(\theta)\hat{A}_t, \text{clip}(r_t(\theta), 1-\epsilon, 1+\epsilon)\hat{A}_t \right) \right]$$
+-   $\theta$: Policy parameters.
+-   $\hat{\mathbb{E}}_t$: Empirical average over a batch of timesteps.
+-   $r_t(\theta) = \frac{\pi_\theta(a_t|s_t)}{\pi_{\theta_{old}}(a_t|s_t)}$: Probability ratio of the current policy to the old policy (that collected the data).
+-   $\hat{A}_t$: An estimator of the advantage function at timestep $t$. $A(s,a) = Q(s,a) - V(s)$.
+-   $\epsilon$: A small hyperparameter (e.g., 0.2) that clips the probability ratio $r_t(\theta)$, constraining how much the new policy can diverge from the old one.
+
+### Full Objective Function
+The actual objective function in PPO often includes:
+1.  The clipped surrogate policy objective $L^{CLIP}$.
+2.  A value function error term $L^{VF}(\theta) = (V_\theta(s_t) - V_t^{target})^2$, where $V_\theta(s_t)$ is the output of the critic.
+3.  An entropy bonus $S[\pi_\theta](s_t)$ to encourage exploration.
+$$L(\theta) = \hat{\mathbb{E}}_t [L^{CLIP}(\theta) - c_1 L^{VF}(\theta) + c_2 S[\pi_\theta](s_t)]$$
+-   $c_1, c_2$: Coefficients.
+
+### Generalized Advantage Estimation (GAE)
+For $\hat{A}_t$, PPO often uses GAE:
+$$\hat{A}_t^{GAE(\gamma, \lambda)} = \sum_{l=0}^{\infty} (\gamma \lambda)^l \delta_{t+l}$$
+Where $\delta_t = r_t + \gamma V(s_{t+1}) - V(s_t)$ is the TD error. $\lambda \in [0,1]$ controls the bias-variance trade-off.
+
+## 3. Advantage Actor-Critic (A2C)
+
+A2C is a synchronous version of the Asynchronous Advantage Actor-Critic (A3C). It's an on-policy actor-critic algorithm.
+
+### Actor (Policy) Update
+The actor learns the policy $\pi(a|s; \theta_\pi)$. Its objective is to maximize expected rewards. The gradient is typically:
+$$\nabla_{\theta_\pi} J(\theta_\pi) = \hat{\mathbb{E}}_t [\nabla_{\theta_\pi} \log \pi(A_t|S_t; \theta_\pi) \hat{A}_t]$$
+-   $\hat{A}_t = R_t - V(S_t; \theta_v)$ is the advantage estimate, where $R_t$ is an estimate of the return (e.g., n-step return) and $V(S_t; \theta_v)$ is the value estimated by the critic.
+
+### Critic (Value Function) Update
+The critic learns the value function $V(s; \theta_v)$. It's updated by minimizing a loss function, often MSE, between $V(S_t; \theta_v)$ and the target returns (e.g., n-step returns):
+$$L(\theta_v) = \hat{\mathbb{E}}_t [(R_t - V(S_t; \theta_v))^2]$$
+
+### Combined Loss
+Similar to PPO, an entropy bonus for the policy is often added to encourage exploration. The overall update involves gradients from both policy loss and value loss.
+$$L(\theta_\pi, \theta_v) = \hat{\mathbb{E}}_t [-\log \pi(A_t|S_t; \theta_\pi) \hat{A}_t + c_1 (R_t - V(S_t; \theta_v))^2 - c_2 H(\pi(\cdot|S_t; \theta_\pi))]$$
+(Note: The sign for the policy term depends on whether maximizing reward or minimizing loss).
+
+## LSTM Network (for Attack Prediction)
+(The existing mathematical explanation for LSTM cells, Bidirectional LSTM, and Softmax Output Layer in the original document is generally sound and can be kept if the LSTM model is used as described.)
+
+## State Representation (for RL Agents)
+The state $s_t$ provided to the RL agent is a dictionary:
+$$s_t = \{ \text{'current_state'}, \text{'state_history'}, \text{'action_history'} \}$$
+Each part is a numerical vector/matrix. The `MultiInputPolicy` in Stable Baselines3 processes these inputs, typically with separate small networks for each key, concatenates their outputs, and then feeds them into further shared or policy/value-specific layers.

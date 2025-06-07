@@ -2,151 +2,88 @@
 
 ## Environment Design
 
-The IoT environment is modeled as a Markov Decision Process (MDP) with:
+The IoT environment is modeled as a Markov Decision Process (MDP) and implemented as a custom Gymnasium environment in `src/environment.py`. It simulates an IoT network where an RL agent learns to apply defensive actions against potential attacks.
 
-- **State space**: Current security status of all network devices
-- **Action space**: Available defensive measures
-- **Transition function**: How defensive actions and attacks change the network
-- **Reward function**: Feedback based on security outcomes
+-   **State Space ($S$)**: Represents the current security status of the network, historical states, and past actions.
+-   **Action Space ($A$)**: A discrete set of defensive measures the agent can take.
+-   **Transition Function ($P(s'|s,a)$)**: Defines how the state changes when the agent takes an action $a$ in state $s$, and how simulated attacks progress.
+-   **Reward Function ($R(s,a,s')$)**: Provides feedback to the agent based on the outcomes of its actions and the security status of the network.
 
-## Environment Implementation
-
-The environment is implemented as a custom Gymnasium environment in `environment.py` that simulates an IoT network with multiple connected devices.
+## Environment Implementation (`src/environment.py`)
 
 ### State Representation
-
-Each state $s_t$ represents the security status of the network at time $t$:
-
-$$s_t = \{d_1, d_2, ..., d_n, a_1, a_2, ..., a_m\}$$
-
-Where:
-- $d_i$ represents the status of device $i$ (compromised, secure, etc.)
-- $a_j$ represents the activity on connection $j$ (normal, suspicious, etc.)
+The observation space is a `gymnasium.spaces.Dict`:
+```python
+self.observation_space = spaces.Dict({
+    'current_state': spaces.Box(
+        low=0, high=1, 
+        shape=(config.ENVIRONMENT_NUM_STATES,), # Represents features of current device states
+        dtype=np.float32
+    ),
+    'state_history': spaces.Box(
+        low=0, high=1,
+        shape=(config.ENVIRONMENT_HISTORY_LENGTH, config.ENVIRONMENT_NUM_STATES),
+        dtype=np.float32
+    ),
+    'action_history': spaces.Box(
+        low=0, high=config.ENVIRONMENT_NUM_ACTIONS-1, # Actions are discrete, encoded as floats here
+        shape=(config.ENVIRONMENT_HISTORY_LENGTH,),
+        dtype=np.float32
+    )
+})
+```
+-   `current_state`: Features describing the current status of `config.ENVIRONMENT_NUM_DEVICES` (e.g., vulnerability levels, compromise status). `ENVIRONMENT_NUM_STATES` defines the total number of features.
+-   `state_history`: A rolling window of the past `config.ENVIRONMENT_HISTORY_LENGTH` states.
+-   `action_history`: A rolling window of the past `config.ENVIRONMENT_HISTORY_LENGTH` actions taken by the agent.
 
 ### Action Space
-
-The action space $A$ consists of defensive countermeasures:
-
-$$A = \{a_1, a_2, a_3, a_4\}$$
-
-Where:
-- $a_1$: Patch vulnerable device
-- $a_2$: Isolate compromised device
-- $a_3$: Reset device
-- $a_4$: Monitor device (no direct action)
-
-### Attack Graph Generation
-
-Attack paths are generated using a directed graph model. The function `generate_attack_graph()` creates a network topology where:
-
+A discrete action space with `config.ENVIRONMENT_NUM_ACTIONS` possible defensive actions. For example:
 ```python
-def generate_attack_graph(num_nodes, edge_probability, critical_node_ratio=0.2):
-    G = nx.erdos_renyi_graph(n=num_nodes, p=edge_probability, directed=True)
-    
-    # Designate critical nodes
-    critical_nodes = random.sample(list(G.nodes()), int(num_nodes * critical_node_ratio))
-    
-    # Assign node attributes
-    for node in G.nodes():
-        G.nodes[node]['critical'] = node in critical_nodes
-        G.nodes[node]['compromised'] = False
-        G.nodes[node]['vulnerability'] = random.uniform(0.1, 0.9)
-    
-    return G
+self.action_space = spaces.Discrete(config.ENVIRONMENT_NUM_ACTIONS)
+# Example: 0: Monitor, 1: Block, 2: Quarantine, 3: Allow/No Action
 ```
 
-Critical nodes are high-value targets that provide larger rewards to the attacker if compromised.
-
-### Critical Path Analysis
-
-The function `get_critical_paths()` identifies the most vulnerable paths through the network:
-
-```python
-def get_critical_paths(G, source, targets, k=3):
-    """Find k-shortest paths from source to critical targets"""
-    paths = []
-    
-    for target in targets:
-        try:
-            # Find k shortest paths for each target
-            shortest_paths = list(islice(nx.shortest_simple_paths(G, source, target), k))
-            paths.extend(shortest_paths)
-        except nx.NetworkXNoPath:
-            continue
-    
-    # Sort paths by length and vulnerability
-    return sorted(paths, key=lambda p: (len(p), sum(G.nodes[n]['vulnerability'] for n in p)))
-```
-
-### Adaptive Attacker
-
-The `AdaptiveAttacker` class simulates an intelligent adversary that:
-
-1. Identifies high-value targets
-2. Adapts strategy based on defense actions
-3. Follows vulnerability-weighted paths
-4. Maintains persistence on the network
-
-```python
-class AdaptiveAttacker:
-    def __init__(self, attack_graph, learning_rate=0.1):
-        self.graph = attack_graph
-        self.current_node = self._select_entry_point()
-        self.target_nodes = self._identify_targets()
-        self.attack_paths = get_critical_paths(self.graph, self.current_node, self.target_nodes)
-        self.learning_rate = learning_rate
-        self.node_values = {node: 1.0 for node in self.graph.nodes()}
-        
-    def select_next_target(self, defended_nodes):
-        # Update node values based on defense actions
-        for node in defended_nodes:
-            self.node_values[node] *= (1 - self.learning_rate)
-        
-        # Select next target considering updated values
-        # ...implementation details...
-```
+### Attack Simulation
+The environment simulates attacks, potentially based on predefined patterns, probabilities, or an adaptive attacker model if implemented within the `step` method. The original `docs/environment.md` mentioned an `AdaptiveAttacker` and graph-based attacks. If this is part of `IoTEnv.step()`, its logic determines how the environment evolves apart from the agent's actions.
 
 ### Reward Function
+The reward function is crucial for guiding the agent's learning. It's designed to:
+1.  Reward actions that successfully mitigate or prevent attacks.
+2.  Penalize states where devices are compromised.
+3.  Potentially penalize the cost of actions.
+4.  Encourage maintaining overall network security.
 
-The reward function $R(s, a, s')$ is designed to:
+The `config.yml` includes parameters like `reward: injection_threshold` and `goal_reward` which influence the reward calculation. The specific logic is within the `IoTEnv.step()` method.
 
-1. Reward successful defense actions
-2. Penalize compromised devices
-3. Provide larger penalties for critical node compromises
-4. Consider the long-term network health
+A conceptual reward function might be:
+$$R_t = (\text{reward for defense}) - (\text{penalty for compromises}) - (\text{cost of action})$$
 
-Mathematically:
-
-$$R(s, a, s') = w_1 \cdot \text{DefenseSuccess} - w_2 \cdot \text{CompromisedCount} - w_3 \cdot \text{CriticalCompromised} + w_4 \cdot \text{NetworkHealth}$$
-
-Where:
-- $w_i$ are weight parameters
-- $\text{DefenseSuccess}$ is 1 if the action prevented an attack, 0 otherwise
-- $\text{CompromisedCount}$ is the number of compromised devices
-- $\text{CriticalCompromised}$ is the number of critical compromised nodes
-- $\text{NetworkHealth}$ is a measure of overall network integrity
+### Episode Termination
+An episode can terminate under several conditions:
+1.  A critical security breach occurs (e.g., specific target compromised).
+2.  The network reaches a "lost" state.
+3.  A maximum number of steps per episode is reached.
 
 ## Environment-Agent Interaction
 
-Each step in the environment follows this sequence:
+The interaction loop is standard for RL:
+1.  Agent observes current state $s_t$ from the environment.
+2.  Agent selects an action $a_t$ based on its policy $\pi(a_t|s_t)$.
+3.  The environment executes $a_t$, simulates attacks, and transitions to a new state $s_{t+1}$.
+4.  The environment returns the reward $r_t$ and a `done` signal to the agent.
+5.  This process repeats until the episode terminates.
 
-1. Agent observes current state $s_t$
-2. Agent selects defense action $a_t$
-3. Action is applied to the environment
-4. Attacker selects and executes next attack
-5. New state $s_{t+1}$ and reward $r_t$ are calculated
-6. Episode terminates if critical nodes are compromised or maximum steps reached
+## Environment Configuration (`config.yml`)
+Key parameters influencing the environment are found in `config.yml`:
+```yaml
+environment:
+  num_devices: 12       # Number of simulated IoT devices
+  num_actions: 4        # Number of distinct defensive actions
+  num_states: 12        # Dimensionality of the 'current_state' vector
+  history_length: 5     # Length of state and action histories
 
-## Environment Configuration
-
-Key parameters in the environment configuration include:
-
-| Parameter | Description | Default Value |
-|-----------|-------------|---------------|
-| `ENVIRONMENT_NUM_DEVICES` | Number of IoT devices | 20 |
-| `ENVIRONMENT_NUM_STATES` | State space dimension | 23 |
-| `ENVIRONMENT_NUM_ACTIONS` | Action space dimension | 4 |
-| `ENVIRONMENT_HISTORY_LENGTH` | Number of previous states to track | 5 |
-| `ENVIRONMENT_REWARD_WEIGHTS` | Weights for reward components | [1.0, 0.5, 2.0, 0.3] |
-
-These parameters can be adjusted in the `config.py` file to simulate different network conditions and attack scenarios.
+reward:
+  injection_threshold: 0.25 # Example parameter for reward logic
+  goal_reward: -100         # Example parameter for reward logic
+```
+These parameters allow for simulating different network sizes, complexities, and defense capabilities. The `create_training_environment` function in `src/training.py` wraps this base environment with `Monitor` (for logging episode statistics) and `DummyVecEnv` (for compatibility with Stable Baselines3).
