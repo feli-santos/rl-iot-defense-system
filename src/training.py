@@ -19,6 +19,8 @@ from typing import Dict, Any, List, Optional
 import warnings
 import logging
 from tqdm import tqdm
+import argparse
+from typing import Optional, List
 
 # Suppress MLflow warnings
 warnings.filterwarnings("ignore", message=".*Model logged without a signature and input example.*")
@@ -235,8 +237,44 @@ def run_benchmark_comparison(lstm_model: LSTMAttackPredictor):
 
 
 def main():
-    """Main training function with algorithm selection"""
-    # Create the training manager
+    """Main training function with command-line interface"""
+    parser = argparse.ArgumentParser(description='IoT Defense System Training')
+    
+    # Algorithm selection
+    parser.add_argument('--algorithm', type=str, 
+                       choices=['DQN', 'PPO', 'A2C', 'ALL'],
+                       help='Algorithm to train (overrides config)')
+    
+    # Benchmark options
+    parser.add_argument('--algorithms', nargs='+',
+                       choices=['DQN', 'PPO', 'A2C'],
+                       help='Algorithms for benchmark mode')
+    parser.add_argument('--runs', type=int,
+                       help='Number of runs per algorithm (overrides config)')
+    
+    # Training options
+    parser.add_argument('--skip-lstm', action='store_true',
+                       help='Skip LSTM training (use existing model)')
+    parser.add_argument('--analyze-only', action='store_true',
+                       help='Only analyze existing benchmark results')
+    
+    # Parse arguments
+    args = parser.parse_args()
+    
+    # Handle analyze-only mode
+    if args.analyze_only:
+        from benchmarking.metrics_collector import MetricsCollector
+        from benchmarking.benchmark_analyzer import BenchmarkAnalyzer
+        
+        print("Analyzing existing benchmark results...")
+        metrics_collector = MetricsCollector()
+        metrics_collector.load_results()
+        
+        analyzer = BenchmarkAnalyzer(metrics_collector)
+        analyzer.generate_comparison_report()
+        return
+    
+    # Create training manager
     training_manager = TrainingManager(
         experiment_name="iot_defense_system",
         base_artifact_path="./artifacts",
@@ -244,15 +282,47 @@ def main():
     )
     
     try:
-        # Step 1: Train LSTM attack predictor (always needed)
-        lstm_model = train_lstm_attack_predictor(training_manager)
+        # Handle LSTM training
+        if not args.skip_lstm:
+            lstm_model = train_lstm_attack_predictor(training_manager)
+        else:
+            print("Skipping LSTM training - using existing model")
+            lstm_model = LSTMAttackPredictor(config)
+            # In practice, load pre-trained weights here
         
-        # Step 2: Train RL algorithm(s) based on configuration
-        algorithm_type = config.ALGORITHM_TYPE.upper()
+        # Determine algorithm mode
+        if args.algorithm:
+            algorithm_type = args.algorithm.upper()
+        else:
+            algorithm_type = config.ALGORITHM_TYPE.upper()
         
-        if algorithm_type == "ALL":
-            # Run benchmark comparison
-            metrics_collector = run_benchmark_comparison(lstm_model)
+        # Override config with command-line args
+        if args.algorithms:
+            algorithms_to_compare = args.algorithms
+        else:
+            algorithms_to_compare = config.ALGORITHM_ALGORITHMS_TO_COMPARE
+            
+        if args.runs:
+            num_runs = args.runs
+        else:
+            num_runs = config.BENCHMARKING_NUM_RUNS
+        
+        # Execute based on algorithm type
+        if algorithm_type == "ALL" or args.algorithms:
+            print(f"Running benchmark with algorithms: {algorithms_to_compare}")
+            print(f"Number of runs per algorithm: {num_runs}")
+            
+            # Run benchmark with overridden parameters
+            benchmark_runner = BenchmarkRunner(config, lstm_model)
+            metrics_collector = benchmark_runner.run_benchmark(
+                algorithms=algorithms_to_compare,
+                num_runs=num_runs
+            )
+            
+            # Analyze results
+            from benchmarking.benchmark_analyzer import BenchmarkAnalyzer
+            analyzer = BenchmarkAnalyzer(metrics_collector)
+            analyzer.generate_comparison_report()
             
         elif algorithm_type in AlgorithmFactory.get_available_algorithms():
             # Train single algorithm
@@ -264,7 +334,6 @@ def main():
             raise ValueError(f"Invalid algorithm type: {algorithm_type}. Available: {available_algorithms + ['ALL']}")
             
     finally:
-        # Close the training manager
         training_manager.end_run()
     
     print("Training completed successfully!")
