@@ -6,11 +6,11 @@ This document provides a detailed examination of the mathematical concepts under
 
 ### Markov Decision Process (MDP)
 The system is modeled as an MDP, defined by $(S, A, P, R, \gamma)$:
--   $S$: State space (observations from the IoT environment).
--   $A$: Action space (discrete defensive actions).
+-   $S$: State space (observations from the IoT environment, a `Dict` space).
+-   $A$: Action space (discrete defensive actions, `spaces.Discrete(4)`).
 -   $P(s'|s,a)$: State transition probability $P(S_{t+1}=s' | S_t=s, A_t=a)$.
 -   $R(s,a,s')$: Reward function $R_t = R(S_t=s, A_t=a, S_{t+1}=s')$.
--   $\gamma \in [0, 1]$: Discount factor.
+-   $\gamma \in [0, 1]$: Discount factor (e.g., `gamma` hyperparameter for RL algorithms).
 
 ### Value Functions
 -   **State-Value Function $V^\pi(s)$**: Expected return from state $s$ following policy $\pi$.
@@ -80,10 +80,21 @@ Similar to PPO, an entropy bonus for the policy is often added to encourage expl
 $$L(\theta_\pi, \theta_v) = \hat{\mathbb{E}}_t [-\log \pi(A_t|S_t; \theta_\pi) \hat{A}_t + c_1 (R_t - V(S_t; \theta_v))^2 - c_2 H(\pi(\cdot|S_t; \theta_\pi))]$$
 (Note: The sign for the policy term depends on whether maximizing reward or minimizing loss).
 
-## LSTM Network (for Attack Prediction)
-(The existing mathematical explanation for LSTM cells, Bidirectional LSTM, and Softmax Output Layer in the original document is generally sound and can be kept if the LSTM model is used as described.)
+## LSTM Network (for Attack Prediction - `RealDataLSTMPredictor`)
+The LSTM network (`src/models/lstm_attack_predictor.py`) processes sequences of network features from the CICIoT2023 dataset to predict attack probabilities.
+-   **Input**: Sequences of feature vectors $x_1, x_2, ..., x_T$, where each $x_t \in \mathbb{R}^{num\_features}$.
+-   **LSTM Cells**: Standard LSTM cells (as described in `docs/attack_prediction.md`) process the input sequence.
+-   **Output**: The final LSTM hidden state (or a combination of hidden states) is passed through dense layers.
+-   **Softmax Output Layer**: Produces a probability distribution $P(y=j|X)$ over $K$ attack classes (including benign), where $X = (x_1, ..., x_T)$.
+    $$P(y=j|X) = \frac{e^{z_j}}{\sum_{k=1}^{K} e^{z_k}}$$
+    The model is trained using Cross-Entropy Loss.
 
 ## State Representation (for RL Agents)
-The state $s_t$ provided to the RL agent is a dictionary:
-$$s_t = \{ \text{'current_state'}, \text{'state_history'}, \text{'action_history'} \}$$
-Each part is a numerical vector/matrix. The `MultiInputPolicy` in Stable Baselines3 processes these inputs, typically with separate small networks for each key, concatenates their outputs, and then feeds them into further shared or policy/value-specific layers.
+The state $s_t$ provided to the RL agent is a dictionary from `IoTEnv`:
+$$s_t = \{ \text{'current_state'}, \text{'state_history'}, \text{'action_history'}, \text{'attack_prediction'} \}$$
+-   `current_state`: $\mathbf{cs}_t \in \mathbb{R}^{N_{cs}}$ (e.g., $N_{cs}=22$ features)
+-   `state_history`: $\mathbf{SH}_t \in \mathbb{R}^{L_s \times N_{cs}}$ (history of $L_s$ past states)
+-   `action_history`: $\mathbf{AH}_t \in \mathbb{Z}^{L_a}$ (history of $L_a$ past discrete actions)
+-   `attack_prediction`: $\mathbf{ap}_t \in \mathbb{R}^{N_{ap}}$ (e.g., $N_{ap}=6$ features from LSTM predictor)
+
+The `MultiInputPolicy` in Stable Baselines3 processes these inputs, typically with separate small networks (feature extractors) for each key. The outputs of these extractors are then concatenated and fed into further shared or policy/value-specific layers, as defined by `net_arch` in the configuration.

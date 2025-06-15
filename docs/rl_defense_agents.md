@@ -5,9 +5,9 @@ The defense policy is implemented using various Reinforcement Learning (RL) algo
 ## Common Architecture
 
 All RL agents utilize the `MultiInputPolicy` from Stable Baselines3 due to the `Dict` observation space of the IoT environment. The general network architecture for the policy and/or value functions consists of:
-1.  **Feature Extraction**: Separate small MLPs for each component of the `Dict` observation space (`current_state`, `state_history`, `action_history`).
+1.  **Feature Extraction**: Separate small MLPs for each component of the `Dict` observation space (`current_state`, `state_history`, `action_history`, `attack_prediction`).
 2.  **Concatenation**: The extracted features are concatenated.
-3.  **Shared/Separate Layers**: The concatenated features are then passed through one or more hidden layers (defined by `config.NETWORK_HIDDEN_LAYERS`, e.g., `[128, 64]`) before producing the final output (Q-values for DQN, policy and value for PPO/A2C).
+3.  **Shared/Separate Layers**: The concatenated features are then passed through one or more hidden layers (defined in `config.yml` under `rl.algorithms.<algo_name>.policy_kwargs.net_arch`, e.g., `[128, 64]`) before producing the final output (Q-values for DQN, policy and value for PPO/A2C).
 
 ## 1. Deep Q-Network (DQN)
 
@@ -28,16 +28,20 @@ $$L(\theta) = \mathbb{E}_{(s,a,r,s') \sim D} \left[ \left( y - Q(s, a; \theta) \
 Where the target $y = r + \gamma \max_{a'} Q(s', a'; \theta^-)$, and $D$ is the replay buffer.
 
 ### Implementation Details
-Instantiated via `AlgorithmFactory` and configured in `config.yml` under the `dqn` section.
+Instantiated via `AlgorithmFactory` (`src/algorithms/algorithm_factory.py`) and configured in `config.yml` under the `rl.algorithms.dqn` section.
 ```python
-# Example from dqn_algorithm.py
+# Example from AlgorithmFactory
+# Hyperparameters are sourced from config['rl']['algorithms']['dqn']
 model = DQN(
-    "MultiInputPolicy",
-    env,
-    learning_rate=self.config.DQN_LEARNING_RATE,
-    buffer_size=self.config.DQN_BUFFER_SIZE,
-    # ... other DQN specific parameters ...
-    policy_kwargs={"net_arch": self.config.NETWORK_HIDDEN_LAYERS}
+    policy="MultiInputPolicy", # Specified for Dict observation spaces
+    env=env,
+    learning_rate=hyperparams['learning_rate'],
+    buffer_size=hyperparams['buffer_size'],
+    # ... other DQN specific parameters from config ...
+    policy_kwargs=hyperparams.get('policy_kwargs', {}) 
+    # policy_kwargs in config.yml for DQN might include:
+    # policy_kwargs:
+    #   net_arch: [128, 64] 
 )
 ```
 
@@ -61,18 +65,22 @@ Where:
 The full objective also includes terms for value function loss and an entropy bonus to encourage exploration.
 
 ### Implementation Details
-Instantiated via `AlgorithmFactory` and configured in `config.yml` under the `ppo` section.
+Instantiated via `AlgorithmFactory` and configured in `config.yml` under the `rl.algorithms.ppo` section.
 ```python
-# Example from ppo_algorithm.py
+# Example from AlgorithmFactory
+# Hyperparameters are sourced from config['rl']['algorithms']['ppo']
 model = PPO(
-    "MultiInputPolicy",
-    env,
-    learning_rate=self.config.PPO_LEARNING_RATE,
-    n_steps=self.config.PPO_N_STEPS,
-    # ... other PPO specific parameters ...
-    policy_kwargs={
-        "net_arch": dict(pi=self.config.NETWORK_HIDDEN_LAYERS, vf=self.config.NETWORK_HIDDEN_LAYERS)
-    }
+    policy="MultiInputPolicy",
+    env=env,
+    learning_rate=hyperparams['learning_rate'],
+    n_steps=hyperparams['n_steps'],
+    # ... other PPO specific parameters from config ...
+    policy_kwargs=hyperparams.get('policy_kwargs', {})
+    # policy_kwargs in config.yml for PPO typically includes:
+    # policy_kwargs:
+    #   net_arch: 
+    #     pi: [128, 64] # Policy network
+    #     vf: [128, 64] # Value network
 )
 ```
 
@@ -94,24 +102,28 @@ $$L(\theta) = L_{policy}(\theta) + c_1 L_{value}(\theta) - c_2 H(\pi_\theta(\cdo
 Where $H$ is the entropy of the policy.
 
 ### Implementation Details
-Instantiated via `AlgorithmFactory` and configured in `config.yml` under the `a2c` section.
+Instantiated via `AlgorithmFactory` and configured in `config.yml` under the `rl.algorithms.a2c` section.
 ```python
-# Example from a2c_algorithm.py
+# Example from AlgorithmFactory
+# Hyperparameters are sourced from config['rl']['algorithms']['a2c']
 model = A2C(
-    "MultiInputPolicy",
-    env,
-    learning_rate=self.config.A2C_LEARNING_RATE, # Assuming A2C_LEARNING_RATE exists
-    n_steps=self.config.A2C_N_STEPS, # Assuming A2C_N_STEPS exists
-    # ... other A2C specific parameters ...
-    policy_kwargs={
-        "net_arch": dict(pi=self.config.NETWORK_HIDDEN_LAYERS, vf=self.config.NETWORK_HIDDEN_LAYERS)
-    }
+    policy="MultiInputPolicy",
+    env=env,
+    learning_rate=hyperparams['learning_rate'],
+    n_steps=hyperparams['n_steps'],
+    # ... other A2C specific parameters from config ...
+    policy_kwargs=hyperparams.get('policy_kwargs', {})
+    # policy_kwargs in config.yml for A2C typically includes:
+    # policy_kwargs:
+    #   net_arch: 
+    #     pi: [128, 64] # Policy network
+    #     vf: [128, 64] # Value network
 )
 ```
 
 ## Hyperparameters and Training
 
-Key hyperparameters for each agent (e.g., learning rate, batch size, discount factor $\gamma$, network architecture) are defined in `config.yml`. The training process for each agent is managed by the `train_single_algorithm` function in `training.py`, which leverages the `learn()` method from Stable Baselines3. Progress is tracked using MLflow via the `TrainingManager` and custom callbacks.
+Key hyperparameters for each agent (e.g., learning rate, batch size, discount factor $\gamma$, network architecture) are defined in `config.yml`. The training process for each agent is managed by the `RLTrainer` (`src/training/rl_trainer.py`), which leverages the `learn()` method from Stable Baselines3. Progress is tracked using MLflow via the `TrainingManager` (`src/training/training_manager.py`) and custom callbacks.
 
 ## Inference Process
 
@@ -120,4 +132,4 @@ During evaluation or deployment, the trained models select actions deterministic
 # General inference example
 action, _ = model.predict(observation, deterministic=True)
 ```
-This is handled within the evaluation loops in the benchmarking framework or custom evaluation scripts.
+This is handled within the evaluation loops in the benchmarking framework or custom evaluation scripts managed by `TrainingManager`.

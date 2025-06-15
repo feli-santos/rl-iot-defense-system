@@ -1,6 +1,6 @@
 # Visual Architecture and Workflows
 
-This document provides a more detailed visual representation of the RL-IoT Defense System's architecture, data flow, and operational workflows.
+This document provides a more detailed visual representation of the RL-IoT Defense System's architecture, data flow, and operational workflows, reflecting the refactored project structure.
 
 ## 1. Overall System Architecture
 
@@ -10,101 +10,86 @@ This diagram illustrates the main components and their high-level interactions.
 +---------------------------------------------------------------------------------+
 | Experimentation & Management                                                    |
 | +---------------------------+   +-------------------------------------------+ |
-| | training.py (Main Script) |   | Benchmarking Framework                    | |
-| | (CLI Interface)           |   |  - BenchmarkRunner                        | |
-| +-----------+---------------+   |  - MetricsCollector                       | |
-|             | (Uses)            |  - BenchmarkAnalyzer                      | |
-|             v                   +-----------------------+-------------------+ |
-| +---------------------------+                           | (Results/Plots)     |
-| | config.yml (Configuration)|                           |                     |
-| +---------------------------+                           v                     |
-|             | (Used by)                       +---------------------+         |
-|             v                                 | TrainingManager     |         |
-| +------------------------------------------+  | (MLflow Integration)|         |
-| | Intelligence Core                        |<--+ (Logs Metrics,    |         |
-| |                                          |  |  Models, Params)    |         |
-| | +--------------------------------------+ |  +---------------------+         |
-| | | LSTM Attack Predictor (Optional)     | |                                  |
+| | main.py (Main Script)     |   | Benchmarking Framework (Optional)         | |
+| | (CLI Interface)           |   |  - src/benchmarking/*                     | |
+| +-----------+---------------+   +-----------------------+-------------------+ |
+|             | (Uses)            |  (Results/Plots)      |                     |
+|             v                   |                       v                     |
+| +---------------------------+   |             +---------------------+         |
+| | config.yml (Configuration)|   |             | TrainingManager     |         |
+| +---------------------------+   |             | (src/training/      |         |
+|             | (Used by)         |             |  training_manager.py)         |
+|             v                     +---------->| (MLflow Integration)|         |
+| +------------------------------------------+  | (Logs Metrics,      |         |
+| | Training Orchestration                   |<--+  Models, Params)    |         |
+| |                                          |  +---------------------+         |
+| | +--------------------------------------+ |                                  |
+| | | LSTMTrainer (src/training/           | |                                  |
+| | |             lstm_trainer.py)         | |                                  |
+| | |  - Uses RealDataLSTMPredictor &      | |                                  |
+| | |    RealDataTrainer (src/models/      | |                                  |
+| | |    lstm_attack_predictor.py)         | |                                  |
 | | +------------------+-------------------+ |                                  |
-| |                    | (Predictions)       |                                  |
+| |                    | (Trained LSTM Model Path)                               |
 | |                    v                     |                                  |
 | | +--------------------------------------+ |                                  |
-| | | RL Defense Agents (DQN, PPO, A2C)  | |                                  |
-| | | (via AlgorithmFactory)             | |                                  |
-| | | (Uses Stable Baselines3            | |                                  |
-| | |  MultiInputPolicy)                 | |                                  |
-| | +------------------+-------------------+ |                                  |
-| +--------------------|---------------------+                                  |
-|                      | (Action)                                               |
-|                      v (Observation, Reward)                                  |
-| +----------------------------------------------------------------------------+ |
-| | IoT Environment (Gymnasium)                                                | |
-| |  - IoT Devices & Network Simulation                                        | |
-| |  - Attack Simulation Logic                                                 | |
-| |  - State & Reward Calculation                                              | |
-| +----------------------------------------------------------------------------+ |
+| | | RLTrainer (src/training/rl_trainer.py)| |                                  |
+| | |  - Uses AlgorithmFactory (src/algos) | |                                  |
+| | |  - Uses IoTEnv (src/environment.py)  | |                                  |
+| | |    (IoTEnv uses EnhancedAttackPredictor| |                                  |
+| | |     from src/models/predictor_if.py) | |                                  |
+| | +--------------------------------------+ |                                  |
+| +------------------------------------------+                                  |
 +---------------------------------------------------------------------------------+
 ```
-*   **IoT Environment**: Simulates the network, attacks, and calculates state/rewards.
-*   **Intelligence Core**: Contains the LSTM for attack prediction and the RL agents for defense.
-*   **Experimentation & Management**: Handles configuration, training orchestration, benchmarking, and MLflow logging.
+*   **IoT Environment (`src/environment.py`)**: Simulates the network, attacks, and calculates state/rewards. Internally uses `EnhancedAttackPredictor`.
+*   **`EnhancedAttackPredictor` (`src/models/predictor_interface.py`)**: Loads and uses the trained `RealDataLSTMPredictor`.
+*   **`RealDataLSTMPredictor` & `RealDataTrainer` (`src/models/lstm_attack_predictor.py`)**: The LSTM model and its specific trainer.
+*   **RL Agents (DQN, PPO, A2C)**: Instantiated by `AlgorithmFactory` within `RLTrainer`.
+*   **Training Orchestration (`main.py`, `LSTMTrainer`, `RLTrainer`)**: Manages the overall training process.
+*   **`TrainingManager`**: Handles MLflow logging for RL training. LSTM training logs to MLflow via `RealDataTrainer`.
+*   **`config.yml`**: Central configuration.
 
-## 2. Detailed Data and Control Flow
-
-This diagram expands on the interactions, particularly during training and benchmarking.
+## 2. Detailed Data and Control Flow (Training Focus)
 
 ```
                                +---------------------+
                                |     config.yml      |
                                +----------+----------+
-                                          | (Loads)
+                                          | (Loads via ConfigLoader)
                                           v
 +---------------------------------------+------------------------------------------+
-| training.py (Main Script with CLI)                                               |
-|                                       +-----------------+                        |
-|                                       | TrainingManager |----(MLflow Logging)----> MLflow UI & Server
-|                                       +--------+--------+                        |
-|                                                ^                                 |
-|  (Manages Artifacts, Logs Metrics & Params)    |                                 |
-|                                                |                                 |
-|  +----------------------+   (Trains)   +---------------------+                  |
-|  | LSTM Attack          |<--------------| LSTM Training Logic |                  |
-|  | Predictor (models/)  |------------->| (attack_predictor.py)|                  |
-|  +----------------------+ (Predictions)|                     |                  |
-|          (Optional)                    +---------------------+                  |
-|             |                                  ^                                 |
-|             | (Input)                          |(Logs Metrics, Saves Model)      |
-|             v                                  |                                 |
-|  +----------------------+              +-------+---------+                       |
-|  | AlgorithmFactory     |--(Creates)-->| RL Agent (DQN,  |                       |
-|  | (algorithms/)        |              | PPO, or A2C)    |                       |
-|  +----------------------+              +-------+---------+                       |
-|                                                |         ^                       |
-|                               (Action)         v         |(Observation, Reward)  |
-|  +------------------------------------------------------+-----------+           |
-|  | IoT Environment (environment.py)                                 |           |
-|  | - Observation Space (Dict: current_state, state_history, etc.)   |           |
-|  | - Action Space (Discrete)                                        |           |
-|  | - Reward Logic                                                   |           |
-|  +------------------------------------------------------------------+           |
+| main.py (Main Script with CLI)                                                   |
 |                                                                                  |
-|  IF BENCHMARK MODE:                                                              |
-|  +--------------------------+  (Orchestrates) +--------------------------------+ |
-|  | BenchmarkRunner          |---------------->| Multiple RL Agent Training Runs| |
-|  | (benchmarking/)          |                 | (DQN, PPO, A2C x N times)      | |
-|  +----------+---------------+                 +-----------------+--------------+ |
-|             | (Collects Metrics)                                | (Metrics)      |
-|             v                                                   v                |
-|  +--------------------------+                      +--------------------------+ |
-|  | MetricsCollector         |                      | Individual Run Metrics   | |
-|  | (benchmarking/)          |                      +--------------------------+ |
-|  +----------+---------------+                                                   |
-|             | (Analyzes)                                                       |
-|             v                                                                  |
-|  +--------------------------+  (Generates)  +---------------------------------+ |
-|  | BenchmarkAnalyzer        |-------------->| Reports & Plots                 | |
-|  | (benchmarking/)          |               | (./benchmark_analysis/)         | |
-|  +--------------------------+               +---------------------------------+ |
+| IF mode == 'lstm' or 'both':                                                     |
+|  +--------------------------+ (Instantiates) +--------------------------------+ |
+|  | LSTMTrainer              |--------------->| RealDataTrainer (from            | |
+|  | (src/training/           |                |  src/models/lstm_attack_pred.py)| |
+|  |  lstm_trainer.py)        |                |  - Loads CICIoTDataLoader        | |
+|  +----------+---------------+                |  - Trains RealDataLSTMPredictor  | |
+|             |                                |  - Saves model (e.g., .pth)      | |
+|             | (Returns Model Path)           |  - Logs to MLflow directly       | |
+|             v                                +-----------------+--------------+ |
+|  (lstm_model_path)                                                               |
+|                                                                                  |
+| IF mode == 'rl' or 'both':                                                       |
+|  +--------------------------+ (Instantiates) +--------------------------------+ |
+|  | RLTrainer                |<--------------| TrainingManager                  | |
+|  | (src/training/           |                | (src/training/training_manager.py| |
+|  |  rl_trainer.py)          |                |  - Handles MLflow for RL         | |
+|  |  - Uses AlgorithmFactory |                +-----------------+--------------+ |
+|  |  - Creates IoTEnv        |                                  ^                |
+|  +----------+---------------+                                  | (Logs RL Metrics) |
+|             | (Trains)                                         |                |
+|             v                                +-----------------+--------------+ |
+|  +----------------------------------------+  | RL Agent (DQN, PPO, A2C)       | |
+|  | IoTEnv (src/environment.py)            |<--Policy Update & Action Selection| |
+|  |  - Uses EnhancedAttackPredictor        +--------------------------------+ |
+|  |    (which loads trained LSTM model                                        | |
+|  |     using lstm_model_path)                                               | |
+|  |  - Generates Observation (incl. preds)                                   | |
+|  |  - Calculates Reward                                                     | |
+|  +--------------------------------------------------------------------------+ |
 +----------------------------------------------------------------------------------+
 ```
 
@@ -115,11 +100,13 @@ This visualizes the core cycle for an RL agent.
 ```
 +---------------------------------+      +---------------------------------+
 |        RL Defense Agent         |      |        IoT Environment          |
-| (e.g., PPO with MultiInputPolicy)|      |        (Gymnasium)            |
+| (e.g., PPO with MultiInputPolicy)|      |        (src/environment.py)     |
+| (Manages by RLTrainer)          |      |  (Uses EnhancedAttackPredictor) |
 +---------------------------------+      +---------------------------------+
               |                                        ^
 (1. Observe)  | current_state, state_history,          | (4. Return)
-              | action_history, reward, done           | reward, next_state, done
+              | action_history, attack_prediction,     | reward, next_state, done
+              | reward, done                           |
               v                                        |
 +---------------------------------+      +---------------------------------+
 | Policy Network (π(a|s))         |----->| Action Selection (a_t)          |
@@ -128,82 +115,62 @@ This visualizes the core cycle for an RL agent.
               ^                                        |
               |                                        | (2. Execute Action a_t)
               | (3. Update Policy/Value based on experience) |
-              | (e.g., using collected trajectory/batch)     |
+              | (e.g., using collected trajectory/batch by SB3 algo) |
               +----------------------------------------------+
 ```
-1.  **Observe**: Agent receives the current state (a `Dict` observation) and reward from the environment.
-2.  **Act**: Agent selects an action based on its current policy.
-3.  **Update (Training)**: Agent's internal model (policy/value function) is updated based on the experience (state, action, reward, next state).
-4.  **Environment Step**: Environment processes the action, simulates attacks, transitions to a new state, and calculates the reward.
+1.  **Observe**: Agent receives the current state (`Dict` observation, including `attack_prediction`) and reward.
+2.  **Act**: Agent selects an action.
+3.  **Update (Training)**: Agent's internal model is updated by the SB3 algorithm.
+4.  **Environment Step**: Environment processes action, simulates network, gets new LSTM prediction, transitions state, calculates reward.
 
-## 4. Observation Space Structure (`Dict`)
-
-Visual breakdown of the `Dict` observation space fed to the `MultiInputPolicy`.
+## 4. Observation Space Structure (`Dict`) in `IoTEnv`
 
 ```
-Observation (Dict)
-├── 'current_state': Box(shape=(NUM_STATES,))
-│   └─ [feature_1, feature_2, ..., feature_NUM_STATES]  (e.g., device status, vulnerability levels)
+Observation (Dict from IoTEnv)
+├── 'current_state': Box(shape=(22,)) // Example shape
+│   └─ [network_feature_1, ..., network_feature_22]
 │
-├── 'state_history': Box(shape=(HISTORY_LENGTH, NUM_STATES))
-│   └─ [
-│        [hist_state_t-H_1, ..., hist_state_t-H_NUM_STATES],  // Oldest in history
-│        ...
-│        [hist_state_t-1_1, ..., hist_state_t-1_NUM_STATES]   // Most recent in history
-│      ]
+├── 'state_history': Box(shape=(STATE_HISTORY_LENGTH, 22)) // Example shape
+│   └─ Sequence of past 'current_state' vectors
 │
-└── 'action_history': Box(shape=(HISTORY_LENGTH,))
-    └─ [action_t-H, ..., action_t-1]  (Sequence of past discrete actions taken)
+├── 'action_history': Box(shape=(ACTION_HISTORY_LENGTH,))
+│   └─ [action_t-L_a, ..., action_t-1] (Sequence of past discrete actions)
+│
+└── 'attack_prediction': Box(shape=(6,)) // Example shape
+    └─ [risk_score, confidence, is_attack_bool, severity_encoded, category_encoded, max_prob]
 
 ---------------------------------------------------------------------> To MultiInputPolicy
                                                                          (Feature Extractors for each key, then Concatenation)
 ```
--   `NUM_STATES`: As defined in `config.yml` (e.g., 12).
--   `HISTORY_LENGTH`: As defined in `config.yml` (e.g., 5).
 
-## 5. Training & Benchmarking Workflow (`training.py`)
-
-A simplified flowchart of what happens when `training.py` is executed.
+## 5. `main.py` Workflow
 
 ```
-[ Start training.py ]
+[ Start main.py ]
         |
         v
-[ Parse CLI Args? ] --(No)--> [ Use config.yml Defaults ]
-        | (Yes)
-        v
-[ Use CLI Args ]
+[ Parse CLI Args (mode, config path, overrides) ]
         |
         v
-[ Setup TrainingManager (MLflow) ]
+[ Load config.yml via ConfigLoader ]
         |
         v
-[ Analyze Only Mode? ] --(Yes)--> [ Load Existing Benchmark Results ] --> [ Run BenchmarkAnalyzer ] --> [ End Script ]
-        | (No)
+[ IF mode == 'lstm' or 'both' ]
+        |
+        +--[ Instantiate LSTMTrainer ]
+        |         |
+        |         +--[ LSTMTrainer.train() ] --> (Trains RealDataLSTMPredictor, logs to MLflow, saves .pth)
+        |         |
+        |         +-- (lstm_model_path obtained)
         v
-[ Skip LSTM Training? ] --(Yes)--> [ Load/Assume Existing LSTM Model ]
-        | (No)                                      ^
-        v                                           |
-[ Train LSTM Attack Predictor ] --> [ Log LSTM Metrics/Model via TM ]
+[ IF mode == 'rl' or 'both' ]
         |
+        +-- (Ensure lstm_model_path is available, load from config if mode=='rl' only)
+        |
+        +--[ Instantiate RLTrainer (with lstm_model_path) ]
+        |         |
+        |         +--[ RLTrainer.train() ] --> (Creates Env & Algo, uses TrainingManager for MLflow, trains RL agent)
         v
-[ Algorithm Mode? (Single / ALL / List) ]
-        |
-        |--(Single Algorithm)--> [ Train Single RL Algorithm ] --> [ Log RL Metrics/Model via TM ] --> [ End Script ]
-        |
-        |--(ALL or List of Algorithms)--> [ Execute BenchmarkRunner ]
-                                                    |
-                                                    v
-                                     [ MetricsCollector Gathers Data ]
-                                                    |
-                                                    v
-                                     [ Run BenchmarkAnalyzer on Collected Data ]
-                                                    |
-                                                    v
-                                     [ Log Benchmark Summary/Plots via TM (Optional) ]
-                                                    |
-                                                    v
-                                            [ End Script ]
+[ End Script ]
 ```
-
-This document aims to provide clearer visual insights into your project's structure and operation. You can expand these diagrams or add more specific ones as needed.
+This provides a clearer view of the refactored system's operation.

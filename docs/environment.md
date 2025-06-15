@@ -2,12 +2,12 @@
 
 ## Environment Design
 
-The IoT environment is modeled as a Markov Decision Process (MDP) and implemented as a custom Gymnasium environment in `src/environment.py`. It simulates an IoT network where an RL agent learns to apply defensive actions against potential attacks.
+The IoT environment is modeled as a Markov Decision Process (MDP) and implemented as a custom Gymnasium environment in `src/environment.py` (class `IoTEnv`). It simulates an IoT network where an RL agent learns to apply defensive actions against potential attacks, with attack likelihood and characteristics informed by a real-data LSTM predictor.
 
--   **State Space ($S$)**: Represents the current security status of the network, historical states, and past actions.
+-   **State Space ($S$)**: Represents the current security status of the network, historical states, past actions, and real-time attack predictions.
 -   **Action Space ($A$)**: A discrete set of defensive measures the agent can take.
--   **Transition Function ($P(s'|s,a)$)**: Defines how the state changes when the agent takes an action $a$ in state $s$, and how simulated attacks progress.
--   **Reward Function ($R(s,a,s')$)**: Provides feedback to the agent based on the outcomes of its actions and the security status of the network.
+-   **Transition Function ($P(s'|s,a)$)**: Defines how the state changes when the agent takes an action $a$ in state $s$. Attack occurrences and their effects are simulated within this function.
+-   **Reward Function ($R(s,a,s')$)**: Provides feedback to the agent based on the outcomes of its actions, the accuracy of predictions versus actual occurrences, and the security status of the network.
 
 ## Environment Implementation (`src/environment.py`)
 
@@ -16,74 +16,84 @@ The observation space is a `gymnasium.spaces.Dict`:
 ```python
 self.observation_space = spaces.Dict({
     'current_state': spaces.Box(
-        low=0, high=1, 
-        shape=(config.ENVIRONMENT_NUM_STATES,), # Represents features of current device states
+        low=-np.inf, high=np.inf, 
+        shape=(22,), # Example: 22 features representing current network telemetry
         dtype=np.float32
     ),
     'state_history': spaces.Box(
-        low=0, high=1,
-        shape=(config.ENVIRONMENT_HISTORY_LENGTH, config.ENVIRONMENT_NUM_STATES),
+        low=-np.inf, high=np.inf, 
+        shape=(config.ENVIRONMENT_STATE_HISTORY_LENGTH, 22), # History of telemetry
         dtype=np.float32
     ),
     'action_history': spaces.Box(
-        low=0, high=config.ENVIRONMENT_NUM_ACTIONS-1, # Actions are discrete, encoded as floats here
-        shape=(config.ENVIRONMENT_HISTORY_LENGTH,),
+        low=0, high=3, # Max action index (0,1,2,3 for 4 actions)
+        shape=(config.ENVIRONMENT_ACTION_HISTORY_LENGTH,), 
+        dtype=np.int32
+    ),
+    'attack_prediction': spaces.Box(
+        low=0.0, high=1.0, 
+        shape=(6,), # Example: 6 features from LSTM predictor (risk, confidence, is_attack, severity, category, max_prob)
         dtype=np.float32
     )
 })
 ```
--   `current_state`: Features describing the current status of `config.ENVIRONMENT_NUM_DEVICES` (e.g., vulnerability levels, compromise status). `ENVIRONMENT_NUM_STATES` defines the total number of features.
--   `state_history`: A rolling window of the past `config.ENVIRONMENT_HISTORY_LENGTH` states.
--   `action_history`: A rolling window of the past `config.ENVIRONMENT_HISTORY_LENGTH` actions taken by the agent.
+-   `current_state`: Features describing the current network status (e.g., traffic statistics, protocol information). The number of features (e.g., 22) is based on the chosen representation for the RL agent.
+-   `state_history`: A rolling window of the past `config.ENVIRONMENT_STATE_HISTORY_LENGTH` states.
+-   `action_history`: A rolling window of the past `config.ENVIRONMENT_ACTION_HISTORY_LENGTH` actions taken by the agent.
+-   `attack_prediction`: A vector summarizing the output from the `EnhancedAttackPredictor`, providing insights about potential threats.
 
 ### Action Space
-A discrete action space with `config.ENVIRONMENT_NUM_ACTIONS` possible defensive actions. For example:
+A discrete action space with 4 possible defensive actions:
 ```python
-self.action_space = spaces.Discrete(config.ENVIRONMENT_NUM_ACTIONS)
-# Example: 0: Monitor, 1: Block, 2: Quarantine, 3: Allow/No Action
+self.action_space = spaces.Discrete(4)
+# Actions: 0: No action (monitor), 1: Rate limiting, 2: Block suspicious IPs, 3: Shutdown affected services
 ```
 
 ### Attack Simulation
-The environment simulates attacks, potentially based on predefined patterns, probabilities, or an adaptive attacker model if implemented within the `step` method. The original `docs/environment.md` mentioned an `AdaptiveAttacker` and graph-based attacks. If this is part of `IoTEnv.step()`, its logic determines how the environment evolves apart from the agent's actions.
+The environment simulates attacks based on `config.ENVIRONMENT_ATTACK_PROBABILITY`. When an attack occurs:
+-   `current_attack_active` is set to `True`.
+-   An `attack_type` (e.g., 'ddos', 'botnet') is chosen.
+-   The `current_network_state` is modified to reflect the attack's impact.
+-   `attack_severity` is set.
+
+The `EnhancedAttackPredictor` (`src/models/predictor_interface.py`) is used internally by the environment to get predictions based on the `state_history`. These predictions are then included in the observation provided to the RL agent.
 
 ### Reward Function
-The reward function is crucial for guiding the agent's learning. It's designed to:
-1.  Reward actions that successfully mitigate or prevent attacks.
-2.  Penalize states where devices are compromised.
-3.  Potentially penalize the cost of actions.
-4.  Encourage maintaining overall network security.
-
-The `config.yml` includes parameters like `reward: injection_threshold` and `goal_reward` which influence the reward calculation. The specific logic is within the `IoTEnv.step()` method.
-
-A conceptual reward function might be:
-$$R_t = (\text{reward for defense}) - (\text{penalty for compromises}) - (\text{cost of action})$$
+The reward function in `_calculate_reward` (or `_calculate_fallback_reward`) is crucial. It considers:
+1.  **Prediction Accuracy**:
+    -   Correct attack prediction (True Positive): Positive reward, scaled by risk score.
+    -   Correct benign prediction (True Negative): Positive reward.
+    -   Missed attack (False Negative): Negative reward, scaled by risk score.
+    -   False alarm (False Positive): Negative reward.
+2.  **Defense Action Effectiveness**:
+    -   If an attack occurred: Bonus for effective actions, penalty for ineffective ones.
+    -   If no attack occurred: Penalty for unnecessarily aggressive actions.
+The specific reward values and scaling factors are defined within the `IoTEnv` class, potentially influenced by `config.ENVIRONMENT_REWARD_SCALE`.
 
 ### Episode Termination
-An episode can terminate under several conditions:
-1.  A critical security breach occurs (e.g., specific target compromised).
-2.  The network reaches a "lost" state.
-3.  A maximum number of steps per episode is reached.
+An episode can terminate if:
+1.  `current_step` reaches `config.ENVIRONMENT_MAX_STEPS` (truncated).
+2.  A critical condition is met, e.g., a severe attack occurs and the agent takes no defensive action (terminated).
 
 ## Environment-Agent Interaction
 
 The interaction loop is standard for RL:
-1.  Agent observes current state $s_t$ from the environment.
+1.  Agent observes current state $s_t$ (a `Dict` including `attack_prediction`) from the environment.
 2.  Agent selects an action $a_t$ based on its policy $\pi(a_t|s_t)$.
-3.  The environment executes $a_t$, simulates attacks, and transitions to a new state $s_{t+1}$.
-4.  The environment returns the reward $r_t$ and a `done` signal to the agent.
-5.  This process repeats until the episode terminates.
+3.  The environment executes $a_t$, simulates network evolution and potential attacks (updating `current_network_state`), gets a new prediction via `EnhancedAttackPredictor`, and transitions to a new state $s_{t+1}$.
+4.  The environment returns the reward $r_t$ and `terminated`/`truncated` signals to the agent.
+5.  This process repeats.
 
 ## Environment Configuration (`config.yml`)
-Key parameters influencing the environment are found in `config.yml`:
+Key parameters influencing the environment are found in `config.yml` under the `environment` section:
 ```yaml
 environment:
-  num_devices: 12       # Number of simulated IoT devices
-  num_actions: 4        # Number of distinct defensive actions
-  num_states: 12        # Dimensionality of the 'current_state' vector
-  history_length: 5     # Length of state and action histories
-
-reward:
-  injection_threshold: 0.25 # Example parameter for reward logic
-  goal_reward: -100         # Example parameter for reward logic
+  max_steps: 1000
+  attack_probability: 0.3
+  state_history_length: 10   # Corresponds to ENVIRONMENT_STATE_HISTORY_LENGTH
+  action_history_length: 5  # Corresponds to ENVIRONMENT_ACTION_HISTORY_LENGTH
+  reward_scale: 1.0         # Corresponds to ENVIRONMENT_REWARD_SCALE
+  # The number of features for current_state (e.g., 22) and attack_prediction (e.g., 6)
+  # are implicitly defined by the IoTEnv implementation.
 ```
-These parameters allow for simulating different network sizes, complexities, and defense capabilities. The `create_training_environment` function in `src/training.py` wraps this base environment with `Monitor` (for logging episode statistics) and `DummyVecEnv` (for compatibility with Stable Baselines3).
+The `AlgorithmFactory` creates the `IoTEnv` instance using an `EnvironmentConfig` dataclass, which sources its values from the main `config.yml`.
