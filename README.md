@@ -117,66 +117,86 @@ rl-iot-defense-system/
 
 ## Usage
 
-### Quick Start
+### Command Reference Table
 
-The system provides a unified training pipeline through the main entry point:
+The following table shows all available commands and options for `main.py`:
+
+| Command | Description | Example |
+|---------|-------------|---------|
+| **Basic Modes** | | |
+| `--mode process-data` | Process raw CICIoT2023 dataset | `python main.py --mode process-data` |
+| `--mode lstm` | Train only LSTM attack predictor | `python main.py --mode lstm` |
+| `--mode rl` | Train only RL agents (requires existing LSTM) | `python main.py --mode rl` |
+| `--mode both` | Train both LSTM and RL agents | `python main.py --mode both` |
+| `--mode benchmark` | Run algorithm comparison benchmark | `python main.py --mode benchmark` |
+| **Configuration** | | |
+| `--config PATH` | Use custom configuration file | `python main.py --config custom_config.yml` |
+| `--data-path PATH` | Specify processed dataset path | `python main.py --data-path data/custom_path` |
+| `--log-level LEVEL` | Set logging level (DEBUG/INFO/WARNING/ERROR) | `python main.py --log-level DEBUG` |
+| **LSTM Options** | | |
+| `--lstm-epochs N` | Override LSTM training epochs | `python main.py --mode lstm --lstm-epochs 30` |
+| `--lstm-batch-size N` | Override LSTM batch size | `python main.py --mode lstm --lstm-batch-size 32` |
+| `--force-retrain-lstm` | Retrain LSTM even if model exists | `python main.py --mode both --force-retrain-lstm` |
+| **RL Options** | | |
+| `--rl-algorithm ALGO` | Choose RL algorithm (dqn/ppo/a2c) | `python main.py --mode rl --rl-algorithm ppo` |
+| `--rl-timesteps N` | Override RL training timesteps | `python main.py --mode rl --rl-timesteps 50000` |
+| **Benchmark Options** | | |
+| `--benchmark-algorithms ALGOS` | Specify algorithms to benchmark | `python main.py --mode benchmark --benchmark-algorithms dqn ppo` |
+| `--benchmark-runs N` | Number of runs per algorithm | `python main.py --mode benchmark --benchmark-runs 5` |
+
+### Quick Start Examples
 
 ```bash
-# Train both LSTM and RL agents (recommended for first run)
+# 1. Process raw dataset (first time setup)
+python main.py --mode process-data
+
+# 2. Complete training pipeline (recommended for first run)
 python main.py --mode both
 
-# Train only LSTM attack predictor
-python main.py --mode lstm
+# 3. Train specific RL algorithm with custom parameters
+python main.py --mode rl --rl-algorithm ppo --rl-timesteps 100000
 
-# Train only RL agents (requires existing LSTM model)
-python main.py --mode rl
+# 4. Force retrain LSTM with custom epochs
+python main.py --mode both --force-retrain-lstm --lstm-epochs 50
+
+# 5. Run comprehensive benchmark
+python main.py --mode benchmark --benchmark-runs 3
+
+# 6. Custom configuration with debug logging
+python main.py --config custom_config.yml --mode both --log-level DEBUG
 ```
 
-### Training Modes
+### Training Workflows
 
-#### 1. Complete Training Pipeline
-Train both LSTM attack predictor and RL defense agents:
+#### Complete First-Time Setup
 ```bash
+# Step 1: Process raw dataset
+python main.py --mode process-data
+
+# Step 2: Train complete system
 python main.py --mode both --lstm-epochs 50 --rl-timesteps 100000
 ```
 
-#### 2. LSTM Training Only
-Train attack predictor on CICIoT2023 dataset:
+#### Development Workflow
 ```bash
-python main.py --mode lstm --lstm-epochs 30 --lstm-batch-size 64
+# Quick LSTM experimentation
+python main.py --mode lstm --lstm-epochs 10 --lstm-batch-size 32
+
+# Quick RL testing
+python main.py --mode rl --rl-algorithm dqn --rl-timesteps 10000
+
+# Algorithm comparison
+python main.py --mode benchmark --benchmark-algorithms dqn ppo a2c
 ```
 
-#### 3. RL Training Only
-Train defense agents (requires existing LSTM model):
+#### Production Training
 ```bash
-python main.py --mode rl --rl-algorithm dqn --rl-timesteps 50000
-```
-
-### Advanced Usage
-
-#### Custom Configuration
-Use custom configuration file:
-```bash
-python main.py --config custom_config.yml --mode both
-```
-
-#### Force Retrain LSTM
-Retrain LSTM even if model exists:
-```bash
-python main.py --mode both --force-retrain-lstm
-```
-
-#### Algorithm-Specific Training
-Train with specific RL algorithm:
-```bash
-python main.py --mode rl --rl-algorithm ppo --rl-timesteps 100000
-python main.py --mode rl --rl-algorithm a2c --rl-timesteps 75000
-```
-
-#### Override Hyperparameters
-Override specific parameters:
-```bash
-python main.py --mode both --learning-rate 0.001 --lstm-batch-size 32
+# Full training with optimal parameters
+python main.py --mode both \
+  --lstm-epochs 100 \
+  --rl-algorithm ppo \
+  --rl-timesteps 200000 \
+  --log-level INFO
 ```
 
 ### Configuration
