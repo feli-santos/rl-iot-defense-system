@@ -1,7 +1,7 @@
 """
-Benchmark Runner
+Fixed Benchmark Runner with Proper Integration
 
-Runs benchmarking experiments across multiple RL algorithms.
+Addresses the import and integration issues in your current benchmark system.
 """
 
 import os
@@ -10,218 +10,176 @@ from typing import List, Dict, Any, Optional
 from pathlib import Path
 import numpy as np
 from tqdm import tqdm
+import logging
 
-# Use absolute imports
+# Fixed imports to match new structure
 from algorithms.algorithm_factory import AlgorithmFactory
-from utils.training_manager import TrainingManager
-from environment import IoTEnv
-from models.attack_predictor import LSTMAttackPredictor
+from training.training_manager import TrainingManager
+from environment import IoTEnv, EnvironmentConfig
+from predictors.lstm_predictor import LSTMAttackPredictor
 from benchmarking.metrics_collector import MetricsCollector
 from stable_baselines3.common.monitor import Monitor
-from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
+from stable_baselines3.common.vec_env import DummyVecEnv
 from stable_baselines3.common.evaluation import evaluate_policy
+
+logger = logging.getLogger(__name__)
 
 
 class BenchmarkRunner:
-    """Runs benchmarking experiments for multiple RL algorithms"""
+    """Fixed benchmark runner with proper integration."""
     
-    def __init__(self, config: Any, lstm_model: LSTMAttackPredictor):
+    def __init__(self, config: Dict[str, Any], 
+                 lstm_model_path: Optional[Path] = None):
+        """
+        Initialize benchmark runner.
+        
+        Args:
+            config: Configuration dictionary
+            lstm_model_path: Path to trained LSTM model
+        """
         self.config = config
-        self.lstm_model = lstm_model
+        self.lstm_model_path = lstm_model_path
         self.metrics_collector = MetricsCollector()
         
+        # Create results directory
+        self.results_path = Path("results/benchmarks")
+        self.results_path.mkdir(parents=True, exist_ok=True)
+        
+        logger.info("Benchmark runner initialized")
+    
     def run_benchmark(self, algorithms: Optional[List[str]] = None, 
                      num_runs: int = 3) -> MetricsCollector:
         """
-        Run benchmark comparison across multiple algorithms
+        Run benchmark comparison across multiple algorithms.
         
         Args:
-            algorithms: List of algorithm names to benchmark. If None, uses config.
+            algorithms: List of algorithm names to benchmark
             num_runs: Number of independent runs per algorithm
             
         Returns:
-            MetricsCollector: Collected metrics from all runs
+            MetricsCollector with results
         """
         if algorithms is None:
-            algorithms = self.config.ALGORITHM_ALGORITHMS_TO_COMPARE
-            
-        print(f"Starting benchmark with algorithms: {algorithms}")
-        print(f"Number of runs per algorithm: {num_runs}")
+            algorithms = ['dqn', 'ppo', 'a2c']  # Default algorithms
         
-        # Create base training manager for experiment tracking
-        base_training_manager = TrainingManager(
-            experiment_name="algorithm_benchmark",
-            base_artifact_path="./artifacts/benchmark",
-            config=self.config
-        )
+        print(f"🚀 Starting Benchmark with {len(algorithms)} algorithms")
+        print(f"📊 Algorithms: {algorithms}")
+        print(f"🔄 Runs per algorithm: {num_runs}")
+        print("=" * 60)
         
         try:
-            base_training_manager.start_run(run_name="benchmark_comparison")
-            
-            # Log benchmark configuration  
-            base_training_manager.log_metrics({
-                "num_algorithms": len(algorithms),
-                "num_runs_per_algorithm": num_runs,
-            })
-            
             # Run experiments for each algorithm
             for algorithm_name in algorithms:
                 print(f"\n{'='*50}")
-                print(f"Benchmarking {algorithm_name}")
+                print(f"🧪 Benchmarking {algorithm_name.upper()}")
                 print(f"{'='*50}")
                 
-                self._run_algorithm_benchmark(
-                    algorithm_name, 
-                    num_runs, 
-                    base_training_manager
-                )
-                
-            # Save final results
-            self.metrics_collector.save_results()
+                self._run_algorithm_benchmark(algorithm_name, num_runs)
             
-            # Log comparison summary
-            comparison_data = self.metrics_collector.get_comparison_data()
-            for alg_name, summary in comparison_data.items():
-                base_training_manager.log_metrics({
-                    f"{alg_name}_avg_reward_mean": summary.get('avg_reward_mean', 0),
-                    f"{alg_name}_avg_reward_std": summary.get('avg_reward_std', 0),
-                    f"{alg_name}_training_time_mean": summary.get('training_time_mean', 0)
-                })
-                
-        finally:
-            base_training_manager.end_run()
-            
-        return self.metrics_collector
-        
-    def _run_algorithm_benchmark(self, algorithm_name: str, num_runs: int, 
-                               parent_training_manager: TrainingManager) -> None:
-        """Run benchmark for a specific algorithm"""
-        
-        for run_id in range(num_runs):
-            print(f"\nRun {run_id + 1}/{num_runs} for {algorithm_name}")
-            
-            # Create algorithm instance
-            try:
-                algorithm = AlgorithmFactory.create_algorithm(algorithm_name, self.config)
-            except ValueError as e:
-                print(f"Error creating algorithm {algorithm_name}: {e}")
-                continue
-                
-            # Create training manager for this specific run
-            run_training_manager = TrainingManager(
-                experiment_name=f"benchmark_{algorithm_name.lower()}",
-                base_artifact_path=f"./artifacts/benchmark/{algorithm_name.lower()}",
-                config=self.config
+            # Save results
+            self.metrics_collector.save_results(
+                str(self.results_path / "benchmark_results.json")
             )
             
+            print(f"\n🎉 Benchmark completed successfully!")
+            print(f"📁 Results saved to: {self.results_path}")
+            
+        except Exception as e:
+            logger.error(f"Benchmark failed: {e}")
+            raise
+        
+        return self.metrics_collector
+    
+    def _run_algorithm_benchmark(self, algorithm_name: str, num_runs: int) -> None:
+        """Run benchmark for specific algorithm."""
+        
+        for run_id in range(num_runs):
+            print(f"\n🏃 Run {run_id + 1}/{num_runs} for {algorithm_name}")
+            
             try:
-                # Start nested run properly
-                run_training_manager.start_run(
-                    run_name=f"{algorithm_name.lower()}_run_{run_id}", 
-                    nested=True  # This is the key fix
+                # Create environment configuration  
+                env_config = EnvironmentConfig(
+                    max_steps=self.config.get('max_steps', 1000),
+                    attack_probability=self.config.get('attack_probability', 0.3),
+                    model_path=str(self.lstm_model_path) if self.lstm_model_path else None,
+                    data_path=self.config.get('data_path', 'data/processed/ciciot2023')
+                )
+                
+                # Get algorithm hyperparameters from config
+                algo_config = self.config.get('rl', {}).get('algorithms', {}).get(algorithm_name, {})
+                
+                # Create algorithm and environment
+                algorithm, env = AlgorithmFactory.create_algorithm_with_env(
+                    algorithm_name=algorithm_name,
+                    env_config=env_config,
+                    hyperparams=algo_config,
+                    verbose=0  # Reduce verbosity for benchmarking
                 )
                 
                 # Start metrics collection
                 self.metrics_collector.start_run(
-                    algorithm_name, 
-                    run_id, 
-                    algorithm.get_hyperparameters()
+                    algorithm_name=algorithm_name,
+                    run_id=run_id,
+                    hyperparameters=algo_config
                 )
                 
-                # Train the algorithm
+                # Train algorithm
                 start_time = time.time()
-                trained_model, env = self._train_algorithm(algorithm, run_training_manager)
+                training_timesteps = self.config.get('rl', {}).get('training', {}).get('total_timesteps', 50000)
+                
+                print(f"  🏋️ Training for {training_timesteps:,} timesteps...")
+                algorithm.learn(total_timesteps=training_timesteps)
+                
                 training_time = time.time() - start_time
                 
-                # Evaluate the algorithm
-                evaluation_results = self._evaluate_algorithm(
-                    algorithm_name, 
-                    trained_model, 
-                    env, 
-                    run_training_manager
-                )
+                # Evaluate algorithm
+                print(f"  📊 Evaluating...")
+                evaluation_results = self._evaluate_algorithm(algorithm, env)
                 
                 # Update metrics
                 self.metrics_collector.update_training_metrics(
-                    algorithm_name, 
-                    run_id, 
-                    training_time
+                    algorithm_name=algorithm_name,
+                    run_id=run_id,
+                    training_time=training_time
                 )
                 
                 self.metrics_collector.update_evaluation_metrics(
-                    algorithm_name, 
-                    run_id, 
-                    evaluation_results
+                    algorithm_name=algorithm_name,
+                    run_id=run_id,
+                    evaluation_results=evaluation_results
                 )
                 
                 # Save model
-                model_path = run_training_manager.models_path / f"{algorithm_name.lower()}_final.zip"
-                algorithm.save_model(trained_model, str(model_path))
+                model_path = self.results_path / f"{algorithm_name}_run_{run_id}.zip"
+                algorithm.save(str(model_path))
                 
-                print(f"Completed {algorithm_name} run {run_id + 1}")
-                print(f"Training time: {training_time:.2f}s")
-                print(f"Average reward: {evaluation_results.get('avg_reward', 0):.2f}")
+                print(f"  ✅ Completed: Reward={evaluation_results['avg_reward']:.2f}, Time={training_time:.1f}s")
+                
+                # Clean up
+                env.close()
                 
             except Exception as e:
-                print(f"Error in {algorithm_name} run {run_id}: {e}")
-                import traceback
-                traceback.print_exc()  # Add detailed error info
+                logger.error(f"Error in {algorithm_name} run {run_id}: {e}")
+                print(f"  ❌ Run failed: {e}")
                 continue
-            finally:
-                run_training_manager.end_run()
-                
-    def _train_algorithm(self, algorithm, training_manager: TrainingManager):
-        """Train a specific algorithm"""
-        print(f"Training {algorithm.algorithm_name}...")
-        
-        # Create environment
-        env = self._create_environment(training_manager)
-        
-        # Create and train model
-        model = algorithm.create_model(env, training_manager)
-        trained_model = algorithm.train(model, training_manager)
-        
-        return trained_model, env
-        
-    def _create_environment(self, training_manager: TrainingManager):
-        """Create and configure the training environment"""
-        # Create log directory for monitor files
-        monitor_dir = os.path.join(training_manager.logs_path, "monitor")
-        os.makedirs(monitor_dir, exist_ok=True)
-        
-        # Create environment
-        env = IoTEnv(self.config)
-        env = Monitor(env, monitor_dir)
-        env = DummyVecEnv([lambda: env])
-        env = VecNormalize(env, norm_obs=True, norm_reward=True)
-        
-        return env
-        
-    def _evaluate_algorithm(self, algorithm_name: str, model, env, 
-                          training_manager: TrainingManager) -> Dict[str, Any]:
-        """Evaluate a trained algorithm"""
-        print(f"Evaluating {algorithm_name}...")
-        
-        num_episodes = self.config.BENCHMARKING_EVALUATION_EPISODES
+    
+    def _evaluate_algorithm(self, algorithm, env) -> Dict[str, Any]:
+        """Evaluate trained algorithm."""
+        num_episodes = self.config.get('evaluation_episodes', 20)
         
         try:
-            # Use stable-baselines3 evaluate_policy for consistent evaluation
             episode_rewards, episode_lengths = evaluate_policy(
-                model, 
+                algorithm, 
                 env, 
                 n_eval_episodes=num_episodes,
-                return_episode_rewards=True
+                return_episode_rewards=True,
+                deterministic=True
             )
             
-            # Calculate metrics
-            avg_reward = np.mean(episode_rewards)
-            std_reward = np.std(episode_rewards)
-            final_reward = episode_rewards[-1] if episode_rewards else 0.0
-            
-            results = {
-                'avg_reward': float(avg_reward),
-                'std_reward': float(std_reward),
-                'final_reward': float(final_reward),
+            return {
+                'avg_reward': float(np.mean(episode_rewards)),
+                'std_reward': float(np.std(episode_rewards)),
+                'final_reward': float(episode_rewards[-1]) if episode_rewards else 0.0,
                 'episode_rewards': [float(r) for r in episode_rewards],
                 'episode_lengths': [int(l) for l in episode_lengths],
                 'evaluation_metrics': {
@@ -230,18 +188,8 @@ class BenchmarkRunner:
                 }
             }
             
-            # Log to MLflow
-            training_manager.log_metrics({
-                'eval_avg_reward': avg_reward,
-                'eval_std_reward': std_reward,
-                'eval_success_rate': results['evaluation_metrics']['success_rate'],
-                'eval_avg_episode_length': results['evaluation_metrics']['avg_episode_length']
-            })
-            
-            return results
-            
         except Exception as e:
-            print(f"Error during evaluation: {e}")
+            logger.error(f"Evaluation failed: {e}")
             return {
                 'avg_reward': 0.0,
                 'std_reward': 0.0,
