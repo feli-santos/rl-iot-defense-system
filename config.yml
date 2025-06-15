@@ -1,94 +1,119 @@
-# Configuration File
+# IoT Defense System Configuration
+# Main configuration for LSTM attack prediction and RL defense training
 
-# Environment parameters
-environment:
-  num_devices: 12
-  num_actions: 4
-  num_states: 12
-  history_length: 5
+# Dataset Configuration
+dataset:
+  name: "CICIoT2023"
+  raw_path: "data/raw/CICIoT2023"
+  processed_path: "data/processed/ciciot2023"
+  sample_size: 2000000
+  sequence_length: 10
+  train_split: 0.7
+  val_split: 0.1
+  test_split: 0.2
 
-# Algorithm selection
-algorithm:
-  type: "DQN"
-  algorithms_to_compare: ["DQN", "PPO", "A2C"] # Options
-
-# DQN hyperparameters
-dqn:
-  total_episodes: 1000
-  epochs_per_episode: 25 # Reduced to match total timesteps with PPO/A2C
-  learning_rate: 0.001
-  gamma: 0.99
-  batch_size: 64
-  buffer_size: 10000
-  tau: 0.005 # for target network update
-  target_update_freq: 10 # episodes
-
-# PPO hyperparameters
-ppo:
-  total_timesteps: 25000
-  learning_rate: 0.0003
-  n_steps: 2048
-  batch_size: 64
-  n_epochs: 10
-  gamma: 0.99
-  gae_lambda: 0.95
-  clip_range: 0.2
-  ent_coef: 0.0
-  vf_coef: 0.5
-  max_grad_norm: 0.5
-
-# A2C hyperparameters
-a2c:
-  total_timesteps: 25000
-  learning_rate: 0.0007
-  n_steps: 5
-  gamma: 0.99
-  gae_lambda: 0.95
-  ent_coef: 0.01
-  vf_coef: 0.25
-  max_grad_norm: 0.5
-
-# Exploration parameters
-exploration:
-  eps_start: 1.0
-  eps_end: 0.01
-  eps_decay: 0.995
-
-# Reward function parameters
-reward:
-  injection_threshold: 0.25 # k value
-  goal_reward: -100 # Gr value
-
-# Neural network architecture
-network:
-  hidden_layers: [128, 64]
-
-# LSTM model parameters
+# LSTM Attack Predictor Configuration
 lstm:
-  embedding_size: 128
-  hidden_units: [64, 32]
-  output_classes: 12
-  gradient_clip_norm: 1.0
+  model:
+    input_size: 46 # CICIoT2023 features
+    hidden_size: 128
+    num_layers: 2
+    dropout: 0.2
 
-# Attack model parameters
-attack:
-  adaptation_rate: 0.2
-  target_probability: 0.3
+  training:
+    epochs: 50
+    batch_size: 64
+    learning_rate: 0.001
+    weight_decay: 1e-5
+    early_stopping_patience: 10
 
-# Training configuration
-training:
-  device: "auto"
-  verbose: 1
-  seed: 42
-  model_dir: "./models/"
-  tensorboard_dir: "./tensorboard/"
-  logs_dir: "./logs/"
+  data:
+    sequence_length: 10
+    num_workers: 4
+    pin_memory: true
 
-# Benchmarking configuration
-benchmarking:
-  num_runs: 3 # Number of independent runs per algorithm
-  evaluation_episodes: 1000
-  metrics_to_track:
-    ["avg_reward", "episode_length", "success_rate", "convergence_time"]
-  save_plots: true
-  comparison_plots: true
+# RL Environment Configuration
+environment:
+  max_steps: 1000
+  attack_probability: 0.3
+  state_history_length: 10
+  action_history_length: 5
+  reward_scale: 1.0
+
+# RL Training Configuration
+rl:
+  algorithm: "dqn" # Options: dqn, ppo, a2c
+
+  training:
+    total_timesteps: 100000
+    eval_freq: 10000
+    n_eval_episodes: 10
+    save_freq: 25000
+
+  # Algorithm-specific hyperparameters
+  algorithms:
+    dqn:
+      learning_rate: 1e-4
+      buffer_size: 100000
+      learning_starts: 1000
+      batch_size: 32
+      tau: 1.0
+      gamma: 0.99
+      train_freq: 4
+      gradient_steps: 1
+      target_update_interval: 1000
+      exploration_fraction: 0.1
+      exploration_initial_eps: 1.0
+      exploration_final_eps: 0.05
+      max_grad_norm: 10
+
+    ppo:
+      learning_rate: 3e-4
+      n_steps: 2048
+      batch_size: 64
+      n_epochs: 10
+      gamma: 0.99
+      gae_lambda: 0.95
+      clip_range: 0.2
+      clip_range_vf: null
+      normalize_advantage: true
+      ent_coef: 0.0
+      vf_coef: 0.5
+      max_grad_norm: 0.5
+
+    a2c:
+      learning_rate: 7e-4
+      n_steps: 5
+      gamma: 0.99
+      gae_lambda: 1.0
+      ent_coef: 0.0
+      vf_coef: 0.5
+      max_grad_norm: 0.5
+      rms_prop_eps: 1e-5
+      use_rms_prop: true
+      use_sde: false
+
+# Model Paths
+models:
+  lstm:
+    save_path: "models/lstm/ciciot2023_attack_predictor.pth"
+    checkpoint_dir: "models/lstm/checkpoints"
+
+  rl:
+    save_dir: "models/rl"
+    checkpoint_dir: "models/rl/checkpoints"
+
+# Experiment Tracking
+mlflow:
+  tracking_uri: "mlruns"
+  experiment_name: "iot_defense_system"
+
+# Logging Configuration
+logging:
+  level: "INFO"
+  log_dir: "results/logs"
+
+# Results Configuration
+results:
+  plots_dir: "results/plots"
+  reports_dir: "results/reports"
