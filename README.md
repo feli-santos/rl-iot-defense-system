@@ -2,57 +2,93 @@
 
 ## Overview
 
-This project implements a comprehensive IoT defense system that uses **Reinforcement Learning** to defend against trigger-action attacks in smart IoT environments. The system combines LSTM-based attack prediction with RL-based defense policy learning, providing an adaptive defense mechanism that learns optimal strategies through experience.
+This project implements a comprehensive IoT defense system that uses **Reinforcement Learning** to defend against cyberattacks in smart IoT environments. The system combines LSTM-based attack prediction trained on real **CICIoT2023** dataset with RL-based defense policy learning, providing an adaptive defense mechanism that learns optimal strategies through experience.
 
 ## Architecture
 
 The system consists of two main components:
 
-1. **LSTM Attack Predictor**: Predicts potential attack sequences based on historical data
-2. **RL Defense Agent**: Learns optimal defense policies using state-of-the-art RL algorithms
+1. **LSTM Attack Predictor**: Trained on real CICIoT2023 IoT attack data to predict attack types and risk levels
+2. **RL Defense Agent**: Learns optimal defense policies using state-of-the-art RL algorithms (DQN, PPO, A2C)
 
 ### Key Features
 
-- **Custom Gymnasium Environment**: Simulates IoT network defense with Dict observation spaces including current state, state history, and action history
+- **Real IoT Attack Data**: Uses CICIoT2023 dataset with 33 attack types for realistic training
+- **Custom Gymnasium Environment**: Simulates IoT network defense with Dict observation spaces
 - **Multiple RL Algorithms**: Supports DQN, PPO, and A2C with consistent Stable Baselines3 implementations
-- **LSTM Attack Prediction**: Preprocesses attack patterns to guide defense decisions
+- **LSTM Attack Prediction**: 98%+ accuracy on real IoT attack classification
 - **Comprehensive Benchmarking**: Built-in comparison framework for algorithm performance analysis
 - **MLflow Integration**: Complete experiment tracking with artifacts, metrics, and model versioning
-- **Discrete Action Space**: Four defense actions (monitoring, blocking, quarantine, allow)
+- **Unified Training Pipeline**: Single entry point for both LSTM and RL training
 
 ## Project Structure
 
 ```
-src/
-├── algorithms/              # RL algorithm implementations
-│   ├── algorithm_factory.py # Factory pattern for algorithm creation
-│   ├── base_algorithm.py    # Common interface for all algorithms
-│   ├── dqn_algorithm.py     # Deep Q-Network implementation
-│   ├── ppo_algorithm.py     # Proximal Policy Optimization
-│   └── a2c_algorithm.py     # Advantage Actor-Critic
-├── benchmarking/            # Algorithm comparison framework
-│   ├── benchmark_runner.py  # Orchestrates multi-algorithm training
-│   ├── metrics_collector.py # Collects and manages performance metrics
-│   └── benchmark_analyzer.py # Generates comparison reports and plots
-├── models/                  # Neural network models
-│   └── attack_predictor.py  # LSTM-based attack prediction model
-├── utils/                   # Utilities and helpers
-│   ├── training_manager.py  # MLflow integration and artifact management
-│   ├── config_loader.py     # Configuration management
-│   └── data_generator.py    # Realistic attack data generation
-├── environment.py           # Custom IoT defense Gymnasium environment
-├── training.py             # Main training script with CLI interface
-└── config.yml             # Main configuration file
+rl-iot-defense-system/
+.
+├── config.yml
+├── docs
+│   ├── attack_prediction.md
+│   ├── environment.md
+│   ├── evolution_roadmap.md
+│   ├── mathematical_foundations.md
+│   ├── overview.md
+│   ├── papers
+│   │   ├── A Survey for Deep Reinforcement Learning Based Network Intrusion Detection.pdf
+│   │   ├── CICIoT2023- A Real-Time Dataset and Benchmark for Large-Scale Attacks in IoT Environment.pdf
+│   │   ├── Deep Reinforcement Learning for Internet of Things- A Comprehensive Survey.pdf
+│   │   ├── Deep Reinforcement Learning for Intrusion Detection in IoT- A Survey.pdf
+│   │   ├── Enhancing IoT Intelligence- A Transformer-based Reinforcement Learning Methodology.pdf
+│   │   ├── HoneyIoT- Adaptive High-Interaction Honeypot for IoT Devices Through Reinforcement Learning.pdf
+│   │   ├── IoTWarden- A Deep Reinforcement Learning Based Real-time Defense System to Mitigate Trigger-action IoT Attacks.pdf
+│   │   ├── Reinforcement Learning for IoT Security- A Comprehensive Survey.pdf
+│   │   └── Wireless Communications and Mobile Computing - 2022 - Tharewal - Intrusion Detection System for Industrial Internet of.pdf
+│   ├── project_proposal.md
+│   ├── rl_defense_agents.md
+│   └── visual_architecture.md
+├── LICENSE
+├── main.py
+├── README.md
+├── requirements.txt
+└── src
+    ├── algorithms
+    │   ├── a2c_algorithm.py
+    │   ├── algorithm_factory.py
+    │   ├── base_algorithm.py
+    │   ├── dqn_algorithm.py
+    │   └── ppo_algorithm.py
+    ├── benchmarking
+    │   ├── benchmark_analyzer.py
+    │   ├── benchmark_runner.py
+    │   └── metrics_collector.py
+    ├── environment
+    │   └── environment.py
+    ├── predictors
+    │   ├── lstm_attack_predictor.py
+    │   └── rl_predictor_interface.py
+    ├── scripts
+    │   └── dataset_exploratory_analysis.py
+    ├── training
+    │   ├── lstm_trainer.py
+    │   ├── rl_trainer.py
+    │   └── training_manager.py
+    └── utils
+        ├── config_loader.py
+        ├── dataset_loader.py
+        └── dataset_processor.py
+
+11 directories, 40 files
 ```
 
 ## Requirements
 
-- **Python 3.12**
+- **Python 3.12+**
 - **PyTorch** (for LSTM models)
 - **Stable Baselines3** (for RL algorithms)
 - **MLflow** (for experiment tracking)
 - **Gymnasium** (for RL environment)
-- **NumPy, Matplotlib, Pandas** (for data processing and visualization)
+- **NumPy, Pandas, Scikit-learn** (for data processing)
+- **Matplotlib, Seaborn** (for visualization)
 
 ## Installation
 
@@ -73,251 +109,151 @@ src/
    pip install -r requirements.txt
    ```
 
+4. **Download CICIoT2023 Dataset:**
+   ```bash
+   # Download from: https://www.unb.ca/cic/datasets/iotdataset-2023.html
+   # Extract to: data/raw/CICIoT2023/
+   ```
+
 ## Usage
 
 ### Quick Start
 
-Train a single algorithm (e.g., PPO):
-```bash
-cd src
-python training.py --algorithm PPO
-```
-
-### Benchmarking Multiple Algorithms
-
-Compare all three algorithms (DQN, PPO, A2C) with multiple runs:
-```bash
-cd src
-python training.py --algorithm ALL --runs 3
-```
-
-Or specify particular algorithms for benchmarking:
-```bash
-cd src
-python training.py --algorithms DQN PPO --runs 5
-```
-
-### Advanced Options
+The system provides a unified training pipeline through the main entry point:
 
 ```bash
-# Skip LSTM retraining (use existing model if available)
-python training.py --algorithm ALL --skip-lstm --runs 3
+# Train both LSTM and RL agents (recommended for first run)
+python main.py --mode both
 
-# Analyze existing benchmark results without retraining
-python training.py --analyze-only
+# Train only LSTM attack predictor
+python main.py --mode lstm
 
-# Train with custom configuration (overriding config.yml for specific runs)
-python training.py --algorithm PPO --runs 1
+# Train only RL agents (requires existing LSTM model)
+python main.py --mode rl
 ```
 
-### Detailed Training Modes & Command-Line Reference
+### Training Modes
 
-The `src/training.py` script offers several modes for training and testing:
-
-**1. Single Algorithm Training:**
-   Train one specific RL algorithm. MLflow will track this run.
-   ```bash
-   cd src
-   python training.py --algorithm DQN
-   python training.py --algorithm PPO
-   python training.py --algorithm A2C
-   ```
-
-**2. Benchmark Mode (Multiple Algorithms):**
-   Run multiple specified algorithms for a set number of trials each. This mode collects comprehensive metrics and generates comparison reports.
-   ```bash
-   # Uses algorithms from config.yml (ALGORITHM_ALGORITHMS_TO_COMPARE)
-   cd src
-   python training.py --algorithm ALL --runs 3
-
-   # Explicitly specify algorithms to benchmark
-   python training.py --algorithms DQN PPO A2C --runs 5
-   ```
-
-**3. Training Options:**
-   - **Skip LSTM Training**: If you have a pre-trained LSTM model or want to test RL agents without retraining the predictor.
-     ```bash
-     python training.py --algorithm PPO --skip-lstm
-     python training.py --algorithm ALL --skip-lstm --runs 2
-     ```
-
-**4. Analysis Only Mode:**
-   Load previously saved benchmark results (from `benchmarking_results/benchmark_results.json`) and regenerate analysis plots and reports without re-running any training.
-   ```bash
-   cd src
-   python training.py --analyze-only
-   ```
-
-**5. Configuration-Based Training (Default Behavior):**
-   If no specific algorithm or mode is provided via CLI, the script will use settings from `config.yml` (e.g., `config.ALGORITHM_TYPE`).
-   ```bash
-   cd src
-   python training.py
-   ```
-
-**Full Command-Line Arguments for `src/training.py`:**
-```
-usage: training.py [-h] [--algorithm {DQN,PPO,A2C,ALL}]
-                   [--algorithms {DQN,PPO,A2C} [{DQN,PPO,A2C} ...]]
-                   [--runs RUNS] [--skip-lstm] [--analyze-only]
-
-IoT Defense System Training
-
-options:
-  -h, --help            show this help message and exit
-  --algorithm {DQN,PPO,A2C,ALL}
-                        Algorithm to train (overrides config if specified)
-  --algorithms {DQN,PPO,A2C} [{DQN,PPO,A2C} ...]
-                        Algorithms for benchmark mode (if --algorithm ALL or if specified)
-  --runs RUNS           Number of runs per algorithm for benchmarking (overrides config)
-  --skip-lstm           Skip LSTM training (use existing model if available)
-  --analyze-only        Only analyze existing benchmark results
+#### 1. Complete Training Pipeline
+Train both LSTM attack predictor and RL defense agents:
+```bash
+python main.py --mode both --lstm-epochs 50 --rl-timesteps 100000
 ```
 
-**Output Locations:**
--   **Models, Logs & MLflow Artifacts**: Organized under `./artifacts/iot_defense_system_YYYYMMDD_HHMMSS_xxxxxx/` for each main run.
--   **Benchmark Analysis Reports & Plots**: Generated in `./benchmark_analysis/`.
--   **Raw Benchmark Metrics**: Saved to `benchmarking_results/benchmark_results.json` (if `MetricsCollector.save_results()` is called, typically done by the benchmark runner).
--   **MLflow UI**: Launch with `mlflow ui` (from the root directory where `mlruns` is created) to view all experiments, parameters, metrics, and artifacts.
+#### 2. LSTM Training Only
+Train attack predictor on CICIoT2023 dataset:
+```bash
+python main.py --mode lstm --lstm-epochs 30 --lstm-batch-size 64
+```
+
+#### 3. RL Training Only
+Train defense agents (requires existing LSTM model):
+```bash
+python main.py --mode rl --rl-algorithm dqn --rl-timesteps 50000
+```
+
+### Advanced Usage
+
+#### Custom Configuration
+Use custom configuration file:
+```bash
+python main.py --config custom_config.yml --mode both
+```
+
+#### Force Retrain LSTM
+Retrain LSTM even if model exists:
+```bash
+python main.py --mode both --force-retrain-lstm
+```
+
+#### Algorithm-Specific Training
+Train with specific RL algorithm:
+```bash
+python main.py --mode rl --rl-algorithm ppo --rl-timesteps 100000
+python main.py --mode rl --rl-algorithm a2c --rl-timesteps 75000
+```
+
+#### Override Hyperparameters
+Override specific parameters:
+```bash
+python main.py --mode both --learning-rate 0.001 --lstm-batch-size 32
+```
 
 ### Configuration
 
-Modify `config.yml` to customize:
-- **Algorithm hyperparameters** (learning rates, network architectures)
-- **Environment parameters** (number of devices, actions, states)
-- **Training settings** (timesteps, evaluation episodes)
-- **Benchmarking options** (number of runs, metrics to track)
+The [`config.yml`](config.yml) file contains all system parameters.
 
-## Environment Details
+### Data Processing
 
-### Observation Space
-```python
-Dict({
-    'current_state': Box(0.0, 1.0, (12,), float32),     # Current IoT network state
-    'state_history': Box(0.0, 1.0, (5, 12), float32),  # Historical states
-    'action_history': Box(0.0, 3.0, (5,), float32)     # Previous defense actions
-})
+#### Exploratory Data Analysis
+Analyze the dataset:
+```bash
+python src/scripts/dataset_exploratory_analysis.py
 ```
-
-### Action Space
-```python
-Discrete(4)  # Defense actions: [monitor, block, quarantine, allow]
-```
-
-### Reward Function
-- **Positive rewards** for successful defense actions
-- **Negative penalties** for allowing attacks to progress
-- **Adaptive scoring** based on attack proximity and action appropriateness
 
 ## Algorithms Supported
 
 ### 1. DQN (Deep Q-Network)
 - **Value-based** learning with experience replay
-- **Epsilon-greedy** exploration strategy
 - **Target network** for stable learning
+- **Best for**: Discrete action spaces with complex state representations
 
 ### 2. PPO (Proximal Policy Optimization)
 - **Policy-based** learning with clipped surrogate objective
-- **On-policy** algorithm with advantage estimation
-- **Robust** and stable training
+- **Stable** and robust training
+- **Best for**: Consistent performance across different environments
 
 ### 3. A2C (Advantage Actor-Critic)
-- **Actor-critic** architecture with advantage estimation
+- **Actor-critic** architecture
 - **Faster** training compared to PPO
-- **Good baseline** for policy gradient methods
+- **Best for**: Quick baseline results
 
-## Benchmarking and Analysis
-
-The system automatically generates:
-
-### Performance Metrics
-- **Average reward ± standard deviation** across runs
-- **Training time** comparison
-- **Convergence analysis** and learning curves
-- **Statistical significance** testing
-
-### Visualization
-- **Performance comparison** plots (bar charts and box plots)
-- **Training time** comparison
-- **Reward distributions** histograms
-- **Learning curves** with moving averages
-
-### Output Structure
-```
-benchmark_analysis/
-├── performance_comparison.png
-├── training_time_comparison.png
-├── reward_distributions.png
-├── convergence_analysis.png
-├── summary_table.csv
-└── summary_report.txt
-
-artifacts/
-└── iot_defense_system_YYYYMMDD_HHMMSS_xxxxxx/
-    ├── models/          # Trained model files
-    ├── logs/           # Training logs and TensorBoard data
-    └── plots/          # Generated visualizations
-```
 
 ## Experiment Tracking
 
-All experiments are automatically tracked with **MLflow**:
-- **Hyperparameters** logging
-- **Training metrics** (rewards, losses, episode lengths)
-- **Model artifacts** with versioning
-- **Reproducible results** with seed control
-
-Access MLflow UI:
+### MLflow Integration
+All experiments are tracked automatically:
 ```bash
+# Start MLflow UI
 mlflow ui
+
+# Access at: http://localhost:5000
 ```
 
-## Example Results
+### Key Metrics Tracked
+- **LSTM Performance**: Accuracy, F1-score, confusion matrix
+- **RL Performance**: Episode rewards, training time, convergence
+- **Model Artifacts**: Trained models, configuration, plots
 
-After training, you'll get comprehensive analysis including:
-
-```
-ALGORITHM BENCHMARK SUMMARY
-============================
-Algorithm  | Avg Reward      | Training Time   | Runs
-DQN        | 6.45 ± 0.12    | 8.2 ± 0.5s     | 3
-PPO        | 6.58 ± 0.08    | 7.1 ± 0.3s     | 3
-A2C        | 6.36 ± 0.15    | 8.1 ± 0.4s     | 3
-```
-
-## Extending the System
-
-### Adding New Algorithms
-1. Implement `BaseAlgorithm` interface
-2. Add to `AlgorithmFactory`
-3. Update configuration file
-
-### Customizing the Environment
-- Modify `environment.py` for different IoT scenarios
-- Adjust observation/action spaces as needed
-- Update reward function for specific use cases
-
-### Custom Metrics
-- Extend `MetricsCollector` for additional metrics
-- Modify `BenchmarkAnalyzer` for custom visualizations
 
 ## Contributing
 
-1. Follow the coding standards in `.github/copilot-instructions.md`
-2. Use **type hints** for all functions
-3. Follow **Google docstring** format
-4. Ensure all algorithms use **Stable Baselines3**
-5. Test with the benchmarking framework
+1. **Follow Coding Standards**:
+   - Use **type hints** for all functions
+   - Follow **Google docstring** format
+   - Use **pathlib** for file paths
+   - Add comprehensive **error handling**
+
+2. **Testing Requirements**:
+   - Add tests for new features
+   - Ensure backward compatibility
+   - Test with all supported algorithms
+
+3. **Documentation**:
+   - Update README for new features
+   - Add docstrings to all functions
+   - Include usage examples
 
 ## Citation
 
 If you use this work in your research, please cite:
 
 ```bibtex
-@software{iot_defense_rl,
+@software{iot_defense_rl_2025,
   title={IoT Defense System powered by Reinforcement Learning},
   author={Felipe Santos},
   year={2025},
+  note={Real CICIoT2023 dataset integration with LSTM attack prediction},
   url={https://github.com/feli-santos/rl-iot-defense-system}
 }
 ```
@@ -326,6 +262,12 @@ If you use this work in your research, please cite:
 
 This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
 
+## Acknowledgments
+
+- **CICIoT2023 Dataset**: University of New Brunswick Cyber Security Research Group
+- **Stable Baselines3**: High-quality RL algorithm implementations
+- **PyTorch**: Deep learning framework for LSTM implementation
+
 ---
 
-**Keywords**: IoT Security, Reinforcement Learning, Deep Q-Network, PPO, A2C, Cybersecurity, Attack Prediction, Defense Systems
+**Keywords**: IoT Security, Reinforcement Learning, CICIoT2023, Deep Q-Network, PPO, A2C, Cybersecurity, Attack Prediction, Defense Systems, LSTM, Real Dataset
