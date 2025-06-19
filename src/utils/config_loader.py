@@ -169,13 +169,3 @@ class ConfigLoader:
         if self.paths is None:
             raise ValueError("Configuration not loaded")
         return self.paths
-
-# Load the configuration
-config_loader = ConfigLoader()
-config = config_loader.load_config(Path("../config.yml"))
-
-# Example usage:
-if __name__ == "__main__":
-    print(f"Learning rate: {config['DQN_LEARNING_RATE']}")
-    print(f"Hidden layers: {config['NETWORK_HIDDEN_LAYERS']}")
-    print(f"Log directory: {config['TRAINING_LOG_DIR']}")
