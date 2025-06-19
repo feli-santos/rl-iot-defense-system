@@ -27,8 +27,10 @@ The system consists of two main components:
 rl-iot-defense-system/
 .
 ├── config.yml
+├── data
 ├── docs
 │   ├── attack_prediction.md
+│   ├── ciciot2023_dataset.md
 │   ├── environment.md
 │   ├── evolution_roadmap.md
 │   ├── mathematical_foundations.md
@@ -67,7 +69,7 @@ rl-iot-defense-system/
     │   ├── lstm_attack_predictor.py
     │   └── rl_predictor_interface.py
     ├── scripts
-    │   └── dataset_exploratory_analysis.py
+    │   └── exploratory_data_analysis.py
     ├── training
     │   ├── lstm_trainer.py
     │   ├── rl_trainer.py
@@ -77,7 +79,7 @@ rl-iot-defense-system/
         ├── dataset_loader.py
         └── dataset_processor.py
 
-11 directories, 40 files
+12 directories, 41 files
 ```
 
 ## Requirements
