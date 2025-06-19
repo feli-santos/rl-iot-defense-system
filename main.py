@@ -133,12 +133,12 @@ def parse_arguments() -> argparse.Namespace:
 
 
 def process_dataset(config: dict, args: argparse.Namespace) -> None:
-    """Process raw CICIoT2023 dataset."""
+    """Process raw CICIoT2023 dataset with configurable splits."""
     print("📊 Starting Dataset Processing")
     print("=" * 60)
     
     try:
-        # Create processing config
+        # Create processing config with configurable splits from config file
         processing_config = DataProcessingConfig(
             dataset_path=Path(config['dataset']['raw_path']),
             output_path=Path(args.data_path),
@@ -151,9 +151,16 @@ def process_dataset(config: dict, args: argparse.Namespace) -> None:
         
         # Process dataset
         processor = CICIoTProcessor(processing_config)
-        processor.process_dataset()
+        results = processor.process_dataset()
         
         print("✅ Dataset processing completed!")
+        print(f"   - Total samples: {results['total_samples']:,}")
+        print(f"   - Train samples: {results['train_samples']:,}")
+        print(f"   - Val samples: {results['val_samples']:,}")
+        print(f"   - Test samples: {results['test_samples']:,}")
+        print(f"   - Features: {results['feature_count']}")
+        print(f"   - Classes: {results['class_count']}")
+        print(f"   - Splits: {results['splits']}")
         
     except Exception as e:
         logger.error(f"Dataset processing failed: {e}")
