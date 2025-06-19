@@ -13,7 +13,7 @@ from stable_baselines3.ppo.policies import MultiInputPolicy as PPOMultiInputPoli
 from stable_baselines3.a2c.policies import MultiInputPolicy as A2CMultiInputPolicy
 import logging
 
-from environment import IoTEnv, EnvironmentConfig
+from environment.environment import IoTEnv, EnvironmentConfig
 
 logger = logging.getLogger(__name__)
 

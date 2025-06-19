@@ -10,7 +10,7 @@ from typing import Dict, Any, Optional
 import logging
 
 from algorithms.algorithm_factory import AlgorithmFactory
-from environment import EnvironmentConfig
+from environment.environment import EnvironmentConfig
 from training.training_manager import TrainingManager
 
 logger = logging.getLogger(__name__)

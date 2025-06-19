@@ -11,7 +11,7 @@ import torch
 import mlflow
 import mlflow.pytorch
 
-from models.lstm_attack_predictor import RealDataLSTMPredictor, LSTMConfig, RealDataTrainer
+from predictors.lstm_attack_predictor import RealDataLSTMPredictor, LSTMConfig, RealDataTrainer
 from utils.config_loader import ConfigLoader
 
 logger = logging.getLogger(__name__)

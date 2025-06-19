@@ -15,8 +15,8 @@ import logging
 # Fixed imports to match new structure
 from algorithms.algorithm_factory import AlgorithmFactory
 from training.training_manager import TrainingManager
-from environment import IoTEnv, EnvironmentConfig
-from predictors.lstm_predictor import LSTMAttackPredictor
+from environment.environment import IoTEnv, EnvironmentConfig
+from predictors.lstm_attack_predictor import RealDataLSTMPredictor
 from benchmarking.metrics_collector import MetricsCollector
 from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.vec_env import DummyVecEnv

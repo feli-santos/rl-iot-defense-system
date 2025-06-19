@@ -11,14 +11,14 @@ import torch
 import matplotlib.pyplot as plt
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, Any, Optional, Tuple
+from typing import Dict, Any, Optional, Tuple, Union, List
 import logging
 import mlflow
 import mlflow.pytorch
 import numpy as np
 from stable_baselines3.common.base_class import BaseAlgorithm
 from stable_baselines3.common.evaluation import evaluate_policy
-from stable_baselines3.common.callbacks import EvalCallback, CheckpointCallback
+from stable_baselines3.common.callbacks import EvalCallback, CheckpointCallback, BaseCallback
 
 logger = logging.getLogger(__name__)
 
@@ -102,6 +102,7 @@ class TrainingManager:
         self.mlflow_run = None
         self.best_model_metric = -np.inf
         self.best_model_path: Optional[Path] = None
+        self.config: Optional[Dict[str, Any]] = None
         
         logger.info(f"Initialized TrainingManager for {experiment_name}")
     
