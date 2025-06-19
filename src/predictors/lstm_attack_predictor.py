@@ -173,61 +173,59 @@ class RealDataLSTMPredictor(nn.Module):
 
 class RealDataTrainer:
     """
-    Trainer for the real data LSTM attack predictor.
-    
-    Handles training, validation, and evaluation with CICIoT2023 dataset.
+    Trainer for RealDataLSTMPredictor using CICIoT2023 dataset.
+    Compatible with new dataset processor format.
     """
     
-    def __init__(self, config: LSTMConfig, data_path: Path) -> None:
+    def __init__(self, config: LSTMConfig, data_loader: 'CICIoTDataLoader') -> None:
         """
-        Initialize LSTM trainer.
+        Initialize trainer with data loader.
         
         Args:
-            config: LSTM configuration
-            data_path: Path to processed dataset
+            config: LSTM training configuration
+            data_loader: CICIoT data loader instance
         """
         self.config = config
-        self.data_path = data_path
-        self.device = torch.device(config.device)
+        self.data_loader = data_loader
+        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         
-        # Initialize data loader
-        loader_config = LoaderConfig(
-            data_path=data_path,
-            batch_size=config.batch_size,
-            shuffle=True,
-            num_workers=2
-        )
-        self.data_loader = CICIoTDataLoader(loader_config)
+        # Get feature info
+        feature_info = self.data_loader.get_feature_info()
+        logger.info(f"Training with {feature_info['n_features']} features, "
+                   f"{feature_info['n_classes']} classes")
         
-        # Get feature info for model configuration
-        self.feature_info = self.data_loader.get_feature_info()
+        # Store feature info for later use
+        self.feature_info = feature_info
         
-        # Update config with actual data dimensions
-        self.config.input_size = self.feature_info['n_features']
-        self.config.num_classes = self.feature_info['n_classes']
+        # Update config with actual values
+        self.config.input_size = feature_info['n_features']
+        self.config.num_classes = feature_info['n_classes']
         
-        # Initialize model
+        # Create model
         self.model = RealDataLSTMPredictor(self.config).to(self.device)
         
-        # Initialize optimizer and loss function
-        self.optimizer = optim.Adam(self.model.parameters(), lr=config.learning_rate)
+        # Get data loaders
+        self.dataloaders = self.data_loader.get_lstm_dataloaders()
         
-        # Calculate class weights for imbalanced dataset
-        if hasattr(config, 'use_class_weights') and config.use_class_weights:
+        # Setup training components
+        self.optimizer = torch.optim.Adam(
+            self.model.parameters(),
+            lr=self.config.learning_rate,
+            weight_decay=1e-5
+        )
+        
+        # Handle class imbalance if configured
+        if hasattr(self.config, 'use_class_weights') and self.config.use_class_weights:
             self.class_weights = self._calculate_class_weights()
             self.criterion = nn.CrossEntropyLoss(weight=self.class_weights)
         else:
             self.criterion = nn.CrossEntropyLoss()
         
         # Use focal loss if configured
-        if hasattr(config, 'focal_loss') and config.focal_loss:
+        if hasattr(self.config, 'focal_loss') and self.config.focal_loss:
             self.criterion = self._get_focal_loss()
         
-        # Load data loaders
-        self.dataloaders = self.data_loader.get_lstm_dataloaders()
-        
-        logger.info(f"Initialized trainer with {self.config.input_size} features, "
-                   f"{self.config.num_classes} classes")
+        logger.info(f"Trainer initialized on device: {self.device}")
     
     def _calculate_class_weights(self) -> torch.Tensor:
         """Calculate class weights for imbalanced dataset."""
@@ -245,23 +243,25 @@ class RealDataTrainer:
             y=all_labels
         )
         
+        logger.info("Class weights calculated for imbalanced dataset")
         return torch.FloatTensor(class_weights).to(self.device)
     
     def _get_focal_loss(self):
         """Focal Loss for addressing class imbalance."""
         class FocalLoss(nn.Module):
-            def __init__(self, alpha=1, gamma=2):
+            def __init__(self, alpha: float = 1, gamma: float = 2):
                 super().__init__()
                 self.alpha = alpha
                 self.gamma = gamma
                 self.ce_loss = nn.CrossEntropyLoss(reduction='none')
             
-            def forward(self, inputs, targets):
+            def forward(self, inputs: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
                 ce_loss = self.ce_loss(inputs, targets)
                 pt = torch.exp(-ce_loss)
                 focal_loss = self.alpha * (1 - pt) ** self.gamma * ce_loss
                 return focal_loss.mean()
         
+        logger.info("Using Focal Loss for class imbalance")
         return FocalLoss()
     
     def train_epoch(self, dataloader: DataLoader) -> Tuple[float, float]:
@@ -356,79 +356,81 @@ class RealDataTrainer:
         # Initialize MLflow tracking
         mlflow.start_run(run_name="lstm_real_data_training")
         
-        # Log parameters
-        mlflow.log_params({
-            'model_type': 'LSTM',
-            'dataset': 'CICIoT2023',
-            'input_size': self.config.input_size,
-            'hidden_size': self.config.hidden_size,
-            'num_layers': self.config.num_layers,
-            'num_classes': self.config.num_classes,
-            'batch_size': self.config.batch_size,
-            'learning_rate': self.config.learning_rate,
-            'num_epochs': self.config.num_epochs,
-            'device': self.config.device
-        })
-        
-        # Training history
-        history = {
-            'train_loss': [],
-            'train_accuracy': [],
-            'val_loss': [],
-            'val_accuracy': []
-        }
-        
-        best_val_accuracy = 0.0
-        
-        for epoch in range(self.config.num_epochs):
-            logger.info(f"Epoch {epoch + 1}/{self.config.num_epochs}")
+        try:
+            # Log parameters
+            mlflow.log_params({
+                'model_type': 'LSTM',
+                'dataset': 'CICIoT2023',
+                'input_size': self.config.input_size,
+                'hidden_size': self.config.hidden_size,
+                'num_layers': self.config.num_layers,
+                'num_classes': self.config.num_classes,
+                'batch_size': self.config.batch_size,
+                'learning_rate': self.config.learning_rate,
+                'num_epochs': self.config.num_epochs,
+                'device': str(self.device)
+            })
             
-            # Training
-            train_loss, train_acc = self.train_epoch(self.dataloaders['train'])
+            # Training history
+            history = {
+                'train_loss': [],
+                'train_accuracy': [],
+                'val_loss': [],
+                'val_accuracy': []
+            }
             
-            # Validation
-            val_loss, val_acc = self.validate_epoch(self.dataloaders['validation'])
+            best_val_accuracy = 0.0
             
-            # Update history
-            history['train_loss'].append(train_loss)
-            history['train_accuracy'].append(train_acc)
-            history['val_loss'].append(val_loss)
-            history['val_accuracy'].append(val_acc)
+            for epoch in range(self.config.num_epochs):
+                logger.info(f"Epoch {epoch + 1}/{self.config.num_epochs}")
+                
+                # Training
+                train_loss, train_acc = self.train_epoch(self.dataloaders['train'])
+                
+                # Validation
+                val_loss, val_acc = self.validate_epoch(self.dataloaders['val'])
+                
+                # Update history
+                history['train_loss'].append(train_loss)
+                history['train_accuracy'].append(train_acc)
+                history['val_loss'].append(val_loss)
+                history['val_accuracy'].append(val_acc)
+                
+                # Log metrics
+                mlflow.log_metrics({
+                    'train_loss': train_loss,
+                    'train_accuracy': train_acc,
+                    'val_loss': val_loss,
+                    'val_accuracy': val_acc
+                }, step=epoch)
+                
+                # Save best model
+                if val_acc > best_val_accuracy:
+                    best_val_accuracy = val_acc
+                    self.save_model()
+                    logger.info(f"New best validation accuracy: {val_acc:.4f}")
+                
+                logger.info(f"Train Loss: {train_loss:.4f}, Train Acc: {train_acc:.4f}, "
+                           f"Val Loss: {val_loss:.4f}, Val Acc: {val_acc:.4f}")
             
-            # Log metrics
+            # Log model
+            mlflow.pytorch.log_model(self.model, "lstm_model")
+            
+            # Final evaluation
+            test_loss, test_acc = self.validate_epoch(self.dataloaders['test'])
             mlflow.log_metrics({
-                'train_loss': train_loss,
-                'train_accuracy': train_acc,
-                'val_loss': val_loss,
-                'val_accuracy': val_acc
-            }, step=epoch)
+                'test_loss': test_loss,
+                'test_accuracy': test_acc,
+                'best_val_accuracy': best_val_accuracy
+            })
             
-            # Save best model
-            if val_acc > best_val_accuracy:
-                best_val_accuracy = val_acc
-                self.save_model()
-                logger.info(f"New best validation accuracy: {val_acc:.4f}")
+            logger.info(f"Training completed! Best Val Acc: {best_val_accuracy:.4f}, "
+                       f"Test Acc: {test_acc:.4f}")
             
-            logger.info(f"Train Loss: {train_loss:.4f}, Train Acc: {train_acc:.4f}, "
-                       f"Val Loss: {val_loss:.4f}, Val Acc: {val_acc:.4f}")
-        
-        # Log model
-        mlflow.pytorch.log_model(self.model, "lstm_model")
-        
-        # Final evaluation
-        test_loss, test_acc = self.validate_epoch(self.dataloaders['test'])
-        mlflow.log_metrics({
-            'test_loss': test_loss,
-            'test_accuracy': test_acc,
-            'best_val_accuracy': best_val_accuracy
-        })
-        
-        logger.info(f"Training completed! Best Val Acc: {best_val_accuracy:.4f}, "
-                   f"Test Acc: {test_acc:.4f}")
-        
-        mlflow.end_run()
-        
-        return history
+            return history
+            
+        finally:
+            mlflow.end_run()
     
     def evaluate_detailed(self) -> Dict[str, Any]:
         """
@@ -463,7 +465,8 @@ class RealDataTrainer:
         class_report = classification_report(
             all_labels, all_predictions,
             target_names=class_names,
-            output_dict=True
+            output_dict=True,
+            zero_division=0
         )
         
         # Confusion matrix
