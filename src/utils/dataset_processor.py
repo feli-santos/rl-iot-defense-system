@@ -157,47 +157,90 @@ class CICIoTProcessor:
         return combined_data
     
     def _preprocess_data(self, data: pd.DataFrame) -> pd.DataFrame:
-        """Preprocess the raw data."""
+        """Preprocess the raw data with class balancing and feature selection."""
         logger.info("Preprocessing data...")
         
         # Drop rows with missing values
         data = data.dropna()
         
         # Identify feature and target columns
-        # Assume last column is the target (attack label)
         target_column = data.columns[-1]
         feature_columns = data.columns[:-1].tolist()
-        
-        # Store for later use
-        self.feature_columns = feature_columns
         
         # Separate features and targets
         X = data[feature_columns].copy()
         y = data[target_column].copy()
         
-        # Handle categorical features (if any)
+        # Handle categorical features
         categorical_columns = X.select_dtypes(include=['object']).columns
         for col in categorical_columns:
             X[col] = X[col].astype('category').cat.codes
         
+        # Feature selection - remove zero/low variance features
+        if hasattr(self.config, 'feature_selection') and self.config.feature_selection:
+            X = self._apply_feature_selection(X)
+            logger.info(f"After feature selection: {X.shape[1]} features")
+        
         # Scale numerical features
         self.scaler = StandardScaler()
         X_scaled = self.scaler.fit_transform(X)
-        X = pd.DataFrame(X_scaled, columns=feature_columns, index=X.index)
+        X = pd.DataFrame(X_scaled, columns=X.columns, index=X.index)
         
         # Encode target labels
         self.label_encoder = LabelEncoder()
         y_encoded = self.label_encoder.fit_transform(y)
         
-        # Store class names
+        # Store class names and feature columns
         self.class_names = self.label_encoder.classes_.tolist()
+        self.feature_columns = X.columns.tolist()
+        
+        # Apply class balancing if configured
+        if hasattr(self.config, 'sampling_strategy') and self.config.sampling_strategy == 'balanced':
+            X, y_encoded = self._apply_class_balancing(X, y_encoded)
+            logger.info(f"After class balancing: {len(X)} samples")
         
         # Combine features and targets
         processed_data = X.copy()
         processed_data['target'] = y_encoded
         
-        logger.info(f"Features: {len(feature_columns)}, Classes: {len(self.class_names)}")
+        logger.info(f"Final preprocessing: {len(self.feature_columns)} features, {len(self.class_names)} classes")
         return processed_data
+
+    def _apply_feature_selection(self, X: pd.DataFrame) -> pd.DataFrame:
+        """Remove zero and low variance features."""
+        from sklearn.feature_selection import VarianceThreshold
+        
+        # Remove zero variance features
+        selector = VarianceThreshold(threshold=0)
+        X_selected = selector.fit_transform(X)
+        selected_features = X.columns[selector.get_support()].tolist()
+        
+        # Remove low variance features (bottom 5%)
+        if len(selected_features) > 10:  # Keep at least 10 features
+            variances = pd.DataFrame(X_selected, columns=selected_features).var()
+            threshold = variances.quantile(0.05)
+            high_var_features = variances[variances > threshold].index.tolist()
+            X_final = X[high_var_features]
+        else:
+            X_final = pd.DataFrame(X_selected, columns=selected_features)
+        
+        logger.info(f"Feature selection: {X.shape[1]} -> {X_final.shape[1]} features")
+        return X_final
+
+    def _apply_class_balancing(self, X: pd.DataFrame, y: np.ndarray) -> Tuple[pd.DataFrame, np.ndarray]:
+        """Apply class balancing for severe imbalance."""
+        from imblearn.over_sampling import SMOTE
+        from imblearn.under_sampling import RandomUnderSampler
+        from imblearn.pipeline import Pipeline
+        
+        # Use SMOTE + RandomUnderSampler for severe imbalance
+        over = SMOTE(sampling_strategy=0.1, random_state=self.config.random_state)  # Oversample to 10%
+        under = RandomUnderSampler(sampling_strategy=0.5, random_state=self.config.random_state) # Undersample to 50%
+        
+        pipeline = Pipeline(steps=[('over', over), ('under', under)])
+        X_balanced, y_balanced = pipeline.fit_resample(X, y)
+        
+        return pd.DataFrame(X_balanced, columns=X.columns), y_balanced
     
     def _split_data(self, data: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
         """Split data into train/validation/test sets with configurable ratios."""

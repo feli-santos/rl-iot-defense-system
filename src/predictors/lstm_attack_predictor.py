@@ -211,13 +211,58 @@ class RealDataTrainer:
         
         # Initialize optimizer and loss function
         self.optimizer = optim.Adam(self.model.parameters(), lr=config.learning_rate)
-        self.criterion = nn.CrossEntropyLoss()
+        
+        # Calculate class weights for imbalanced dataset
+        if hasattr(config, 'use_class_weights') and config.use_class_weights:
+            self.class_weights = self._calculate_class_weights()
+            self.criterion = nn.CrossEntropyLoss(weight=self.class_weights)
+        else:
+            self.criterion = nn.CrossEntropyLoss()
+        
+        # Use focal loss if configured
+        if hasattr(config, 'focal_loss') and config.focal_loss:
+            self.criterion = self._get_focal_loss()
         
         # Load data loaders
         self.dataloaders = self.data_loader.get_lstm_dataloaders()
         
         logger.info(f"Initialized trainer with {self.config.input_size} features, "
                    f"{self.config.num_classes} classes")
+    
+    def _calculate_class_weights(self) -> torch.Tensor:
+        """Calculate class weights for imbalanced dataset."""
+        from sklearn.utils.class_weight import compute_class_weight
+        
+        # Load labels to compute weights
+        train_loader = self.dataloaders['train']
+        all_labels = []
+        for _, labels in train_loader:
+            all_labels.extend(labels.numpy())
+        
+        class_weights = compute_class_weight(
+            'balanced',
+            classes=np.unique(all_labels),
+            y=all_labels
+        )
+        
+        return torch.FloatTensor(class_weights).to(self.device)
+    
+    def _get_focal_loss(self):
+        """Focal Loss for addressing class imbalance."""
+        class FocalLoss(nn.Module):
+            def __init__(self, alpha=1, gamma=2):
+                super().__init__()
+                self.alpha = alpha
+                self.gamma = gamma
+                self.ce_loss = nn.CrossEntropyLoss(reduction='none')
+            
+            def forward(self, inputs, targets):
+                ce_loss = self.ce_loss(inputs, targets)
+                pt = torch.exp(-ce_loss)
+                focal_loss = self.alpha * (1 - pt) ** self.gamma * ce_loss
+                return focal_loss.mean()
+        
+        return FocalLoss()
     
     def train_epoch(self, dataloader: DataLoader) -> Tuple[float, float]:
         """
