@@ -5,174 +5,261 @@ Provides efficient data loading utilities for the processed CICIoT2023 dataset
 to support LSTM training and RL environment integration.
 """
 
-import pandas as pd
 import numpy as np
-from pathlib import Path
-from typing import Dict, List, Tuple, Optional, Union, Generator
-import pickle
-import logging
-from dataclasses import dataclass
+import pandas as pd
 import torch
+import joblib
+import json
+import logging
+from pathlib import Path
+from typing import Dict, List, Tuple, Optional, Union, Any
+from dataclasses import dataclass
 from torch.utils.data import Dataset, DataLoader
 
 logger = logging.getLogger(__name__)
 
+
 @dataclass
 class LoaderConfig:
-    """Configuration for data loading"""
+    """Configuration for CICIoT data loader."""
     data_path: Path
     batch_size: int = 32
-    shuffle: bool = True
-    num_workers: int = 2
+    num_workers: int = 4
     pin_memory: bool = True
+    shuffle_train: bool = True
+    sequence_length: int = 5
 
 
 class CICIoTDataset(Dataset):
-    """PyTorch Dataset for CICIoT2023 data"""
+    """PyTorch Dataset for CICIoT2023 data."""
     
-    def __init__(self, sequences: np.ndarray, labels: np.ndarray):
+    def __init__(self, sequences: np.ndarray, labels: np.ndarray) -> None:
+        """
+        Initialize dataset.
+        
+        Args:
+            sequences: Input sequences [batch_size, seq_len, n_features]
+            labels: Target labels [batch_size]
+        """
         self.sequences = torch.FloatTensor(sequences)
         self.labels = torch.LongTensor(labels)
+        
+        logger.info(f"Dataset initialized: {len(self.sequences)} samples, "
+                   f"sequence shape: {self.sequences.shape}")
     
     def __len__(self) -> int:
+        """Return dataset size."""
         return len(self.sequences)
     
     def __getitem__(self, idx: int) -> Tuple[torch.Tensor, torch.Tensor]:
+        """
+        Get item by index.
+        
+        Args:
+            idx: Sample index
+            
+        Returns:
+            Tuple of (sequence, label)
+        """
         return self.sequences[idx], self.labels[idx]
 
 
 class CICIoTDataLoader:
     """
-    Main data loader for processed CICIoT2023 dataset
+    Main data loader for processed CICIoT2023 dataset.
+    Compatible with new dataset processor format.
     """
     
-    def __init__(self, config: LoaderConfig):
-        self.config = config
-        self.artifacts: Dict = {}
-        self.data_splits: Dict[str, pd.DataFrame] = {}
-        self.lstm_data: Dict[str, np.ndarray] = {}
+    def __init__(self, config: LoaderConfig) -> None:
+        """
+        Initialize data loader.
         
+        Args:
+            config: Loader configuration
+        """
+        self.config = config
+        self.data_path = Path(config.data_path)
+        
+        # Preprocessing artifacts
+        self.scaler = None
+        self.label_encoder = None
+        self.metadata: Dict[str, Any] = {}
+        
+        # Load artifacts
         self._load_artifacts()
+        
+        logger.info(f"CICIoT data loader initialized for path: {self.data_path}")
     
     def _load_artifacts(self) -> None:
-        """Load preprocessing artifacts"""
-        artifacts_path = self.config.data_path / "preprocessing_artifacts.pkl"
-        
-        if not artifacts_path.exists():
-            raise FileNotFoundError(f"Preprocessing artifacts not found: {artifacts_path}")
-        
-        with open(artifacts_path, 'rb') as f:
-            self.artifacts = pickle.load(f)
-        
-        logger.info("Loaded preprocessing artifacts")
+        """Load preprocessing artifacts from new processor format."""
+        try:
+            # Load scaler
+            scaler_path = self.data_path / "scaler.joblib"
+            if scaler_path.exists():
+                self.scaler = joblib.load(scaler_path)
+                logger.info("Scaler loaded successfully")
+            else:
+                logger.warning(f"Scaler not found at {scaler_path}")
+            
+            # Load label encoder
+            encoder_path = self.data_path / "label_encoder.joblib"
+            if encoder_path.exists():
+                self.label_encoder = joblib.load(encoder_path)
+                logger.info("Label encoder loaded successfully")
+            else:
+                logger.warning(f"Label encoder not found at {encoder_path}")
+            
+            # Load metadata
+            metadata_path = self.data_path / "metadata.json"
+            if metadata_path.exists():
+                with open(metadata_path, 'r') as f:
+                    self.metadata = json.load(f)
+                logger.info("Metadata loaded successfully")
+            else:
+                logger.warning(f"Metadata not found at {metadata_path}")
+                
+        except Exception as e:
+            logger.error(f"Failed to load preprocessing artifacts: {e}")
+            raise FileNotFoundError(f"Preprocessing artifacts not found or corrupted: {e}")
     
-    def load_data_splits(self) -> Dict[str, pd.DataFrame]:
-        """Load train/validation/test data splits"""
-        if self.data_splits:
-            return self.data_splits
+    def load_lstm_data(self) -> Tuple[Dict[str, np.ndarray], Dict[str, np.ndarray]]:
+        """
+        Load LSTM training data.
         
-        splits = ['train', 'validation', 'test']
+        Returns:
+            Tuple of (sequences_dict, targets_dict) for train/val/test splits
+        """
+        logger.info("Loading LSTM sequences and targets...")
         
-        for split in splits:
-            file_path = self.config.data_path / f"{split}_data.parquet"
-            if file_path.exists():
-                self.data_splits[split] = pd.read_parquet(file_path)
-                logger.info(f"Loaded {split} data: {len(self.data_splits[split])} records")
-        
-        return self.data_splits
-    
-    def load_lstm_data(self) -> Tuple[np.ndarray, np.ndarray]:
-        """Load LSTM sequences and labels"""
-        sequences_path = self.config.data_path / "lstm_sequences.npy"
-        labels_path = self.config.data_path / "lstm_labels.npy"
-        
-        if not (sequences_path.exists() and labels_path.exists()):
-            raise FileNotFoundError("LSTM data files not found")
-        
-        sequences = np.load(sequences_path)
-        labels = np.load(labels_path)
-        
-        logger.info(f"Loaded LSTM data: {sequences.shape} sequences, {labels.shape} labels")
-        return sequences, labels
-    
-    def load_rl_states(self) -> np.ndarray:
-        """Load RL state representations"""
-        states_path = self.config.data_path / "rl_states.npy"
-        
-        if not states_path.exists():
-            raise FileNotFoundError("RL states file not found")
-        
-        states = np.load(states_path)
-        logger.info(f"Loaded RL states: {states.shape}")
-        return states
+        try:
+            # Load sequences
+            train_sequences = np.load(self.data_path / "train_sequences.npy")
+            val_sequences = np.load(self.data_path / "val_sequences.npy")
+            test_sequences = np.load(self.data_path / "test_sequences.npy")
+            
+            # Load targets
+            train_targets = np.load(self.data_path / "train_targets.npy")
+            val_targets = np.load(self.data_path / "val_targets.npy")
+            test_targets = np.load(self.data_path / "test_targets.npy")
+            
+            sequences = {
+                'train': train_sequences,
+                'val': val_sequences,
+                'test': test_sequences
+            }
+            
+            targets = {
+                'train': train_targets,
+                'val': val_targets,
+                'test': test_targets
+            }
+            
+            logger.info(f"LSTM data loaded - Train: {len(train_sequences)}, "
+                       f"Val: {len(val_sequences)}, Test: {len(test_sequences)}")
+            
+            return sequences, targets
+            
+        except FileNotFoundError as e:
+            logger.error(f"LSTM data files not found: {e}")
+            raise FileNotFoundError(f"LSTM sequences not found in {self.data_path}")
+        except Exception as e:
+            logger.error(f"Failed to load LSTM data: {e}")
+            raise
     
     def get_lstm_dataloaders(self) -> Dict[str, DataLoader]:
-        """Get PyTorch DataLoaders for LSTM training"""
-        sequences, labels = self.load_lstm_data()
+        """
+        Create PyTorch DataLoaders for LSTM training.
+        
+        Returns:
+            Dictionary of DataLoaders for train/val/test splits
+        """
+        logger.info("Creating LSTM DataLoaders...")
+        
+        # Load data
+        sequences, targets = self.load_lstm_data()
         
         # Create datasets
-        dataset = CICIoTDataset(sequences, labels)
+        datasets = {}
+        for split in ['train', 'val', 'test']:
+            datasets[split] = CICIoTDataset(sequences[split], targets[split])
         
-        # Split dataset (assuming we want to use the same split ratios)
-        train_size = int(0.7 * len(dataset))
-        val_size = int(0.15 * len(dataset))
-        test_size = len(dataset) - train_size - val_size
+        # Create data loaders
+        dataloaders = {}
         
-        train_dataset, val_dataset, test_dataset = torch.utils.data.random_split(
-            dataset, [train_size, val_size, test_size]
+        # Training loader with shuffling
+        dataloaders['train'] = DataLoader(
+            datasets['train'],
+            batch_size=self.config.batch_size,
+            shuffle=self.config.shuffle_train,
+            num_workers=self.config.num_workers,
+            pin_memory=self.config.pin_memory,
+            drop_last=True
         )
         
-        # Create dataloaders
-        dataloaders = {
-            'train': DataLoader(
-                train_dataset,
-                batch_size=self.config.batch_size,
-                shuffle=True,
-                num_workers=self.config.num_workers,
-                pin_memory=self.config.pin_memory
-            ),
-            'validation': DataLoader(
-                val_dataset,
+        # Validation and test loaders without shuffling
+        for split in ['val', 'test']:
+            dataloaders[split] = DataLoader(
+                datasets[split],
                 batch_size=self.config.batch_size,
                 shuffle=False,
                 num_workers=self.config.num_workers,
-                pin_memory=self.config.pin_memory
-            ),
-            'test': DataLoader(
-                test_dataset,
-                batch_size=self.config.batch_size,
-                shuffle=False,
-                num_workers=self.config.num_workers,
-                pin_memory=self.config.pin_memory
+                pin_memory=self.config.pin_memory,
+                drop_last=False
             )
-        }
         
+        logger.info("LSTM DataLoaders created successfully")
         return dataloaders
     
-    def get_feature_info(self) -> Dict:
-        """Get feature information for model configuration"""
-        return {
-            'n_features': self.artifacts['feature_stats']['n_features'],
-            'feature_names': self.artifacts['feature_stats']['feature_names'],
-            'feature_groups': self.artifacts['feature_groups'],
-            'n_classes': len(self.artifacts['label_encoder'].classes_),
-            'class_names': list(self.artifacts['label_encoder'].classes_),
-            'attack_categories': self.artifacts['attack_categories'],
-            'scaler': self.artifacts['scaler'],
-            'label_encoder': self.artifacts['label_encoder']
-        }
-    
-    def get_rl_state_info(self) -> Dict:
-        """Get RL state space information"""
-        rl_states = self.load_rl_states()
+    def get_feature_info(self) -> Dict[str, Any]:
+        """
+        Get feature information from metadata.
+        
+        Returns:
+            Feature information dictionary
+        """
+        if not self.metadata:
+            raise ValueError("Metadata not loaded. Cannot provide feature info.")
         
         return {
-            'state_dim': rl_states.shape[1],
-            'n_samples': rl_states.shape[0],
-            'state_bounds': {
-                'min': rl_states.min(axis=0),
-                'max': rl_states.max(axis=0),
-                'mean': rl_states.mean(axis=0),
-                'std': rl_states.std(axis=0)
-            }
+            'n_features': len(self.metadata.get('feature_columns', [])),
+            'feature_columns': self.metadata.get('feature_columns', []),
+            'n_classes': len(self.metadata.get('class_names', [])),
+            'class_names': self.metadata.get('class_names', []),
+            'sequence_length': self.metadata.get('sequence_length', self.config.sequence_length)
         }
+    
+    def get_class_names(self) -> List[str]:
+        """Get class names from label encoder or metadata."""
+        if self.label_encoder is not None:
+            return self.label_encoder.classes_.tolist()
+        elif 'class_names' in self.metadata:
+            return self.metadata['class_names']
+        else:
+            raise ValueError("Class names not available")
+    
+    def load_rl_states(self) -> np.ndarray:
+        """
+        Load states for RL environment (uses test sequences as environment states).
+        
+        Returns:
+            Array of states for RL environment
+        """
+        logger.info("Loading RL environment states...")
+        
+        try:
+            # Use test sequences as RL states
+            test_sequences = np.load(self.data_path / "test_sequences.npy")
+            
+            # Flatten sequences for RL state representation
+            # Shape: [n_samples, seq_len * n_features]
+            rl_states = test_sequences.reshape(test_sequences.shape[0], -1)
+            
+            logger.info(f"RL states loaded: {rl_states.shape}")
+            return rl_states
+            
+        except FileNotFoundError as e:
+            logger.error(f"RL state data not found: {e}")
+            raise FileNotFoundError(f"Test sequences not found for RL states: {e}")
+        except Exception as e:
+            logger.error(f"Failed to load RL states: {e}")
+            raise

@@ -12,7 +12,7 @@ import mlflow
 import mlflow.pytorch
 
 from predictors.lstm_attack_predictor import RealDataLSTMPredictor, LSTMConfig, RealDataTrainer
-from utils.config_loader import ConfigLoader
+from utils.dataset_loader import CICIoTDataLoader, LoaderConfig
 
 logger = logging.getLogger(__name__)
 
@@ -20,23 +20,59 @@ logger = logging.getLogger(__name__)
 class LSTMTrainer:
     """
     LSTM trainer for attack prediction using CICIoT2023 dataset.
+    Compatible with new dataset processor format.
     """
     
     def __init__(self, config: Dict[str, Any], data_path: Path):
+        """
+        Initialize LSTM trainer.
+        
+        Args:
+            config: Main configuration dictionary
+            data_path: Path to processed dataset
+        """
         self.config = config
         self.data_path = data_path
+        
+        # Create data loader to get feature info
+        self.data_loader = self._create_data_loader()
+        
+        # Get actual feature info from processed data
+        feature_info = self.data_loader.get_feature_info()
+        
+        # Update config with actual feature count
+        self.config['lstm']['model']['input_size'] = feature_info['n_features']
+        
+        # Create LSTM config
         self.lstm_config = self._create_lstm_config()
         
-        logger.info("LSTM trainer initialized")
+        logger.info(f"LSTM trainer initialized with {feature_info['n_features']} features, "
+                   f"{feature_info['n_classes']} classes")
+    
+    def _create_data_loader(self) -> CICIoTDataLoader:
+        """Create data loader configuration."""
+        loader_config = LoaderConfig(
+            data_path=self.data_path,
+            batch_size=self.config['lstm']['training']['batch_size'],
+            num_workers=self.config['lstm']['data']['num_workers'],
+            pin_memory=self.config['lstm']['data']['pin_memory'],
+            sequence_length=self.config['lstm']['data']['sequence_length']
+        )
+        
+        return CICIoTDataLoader(loader_config)
     
     def _create_lstm_config(self) -> LSTMConfig:
-        """Create LSTM configuration from main config"""
+        """Create LSTM configuration from main config."""
         lstm_cfg = self.config['lstm']
+        
+        # Get number of classes from data loader
+        feature_info = self.data_loader.get_feature_info()
         
         return LSTMConfig(
             input_size=lstm_cfg['model']['input_size'],
             hidden_size=lstm_cfg['model']['hidden_size'],
             num_layers=lstm_cfg['model']['num_layers'],
+            num_classes=feature_info['n_classes'],
             dropout=lstm_cfg['model']['dropout'],
             batch_size=lstm_cfg['training']['batch_size'],
             learning_rate=lstm_cfg['training']['learning_rate'],
@@ -54,8 +90,8 @@ class LSTMTrainer:
         """
         logger.info("Starting LSTM attack predictor training...")
         
-        # Create trainer
-        trainer = RealDataTrainer(self.lstm_config, self.data_path)
+        # Create trainer with data loader
+        trainer = RealDataTrainer(self.lstm_config, self.data_loader)
         
         # Train model
         history = trainer.train()

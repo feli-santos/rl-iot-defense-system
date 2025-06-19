@@ -18,7 +18,7 @@ dataset:
 # LSTM Attack Predictor Configuration
 lstm:
   model:
-    input_size: 46 # Will be updated after feature selection
+    input_size: 46 # Will be updated dynamically
     hidden_size: 128
     num_layers: 2
     dropout: 0.3 # Increased due to feature selection needs
@@ -29,7 +29,7 @@ lstm:
     learning_rate: 0.001
     weight_decay: 1e-5
     early_stopping_patience: 5 # EDA recommendation
-    # Add class imbalance handling
+    # Add class imbalance handling from EDA
     use_class_weights: true # For severe imbalance
     focal_loss: true # Better for imbalanced classes
     gradient_accumulation_steps: 1
@@ -103,7 +103,7 @@ rl:
 # Model Paths
 models:
   lstm:
-    save_path: "models/lstm/ciciot2023_attack_predictor.pth"
+    save_path: "models/lstm_attack_predictor.pth"
     checkpoint_dir: "models/lstm/checkpoints"
 
   rl:

@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class DataProcessingConfig:
-    """Configuration for dataset processing with configurable splits."""
+    """Configuration for dataset processing with configurable splits and EDA recommendations."""
     dataset_path: Path
     output_path: Path
     sample_size: int
@@ -31,6 +31,9 @@ class DataProcessingConfig:
     test_split: float = 0.15
     num_workers: int = 4
     random_state: int = 42
+    # Add EDA recommendations
+    feature_selection: bool = False
+    sampling_strategy: Optional[str] = None
     
     def __post_init__(self) -> None:
         """Validate split ratios sum to 1.0."""

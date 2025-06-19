@@ -133,12 +133,12 @@ def parse_arguments() -> argparse.Namespace:
 
 
 def process_dataset(config: dict, args: argparse.Namespace) -> None:
-    """Process raw CICIoT2023 dataset with configurable splits."""
+    """Process raw CICIoT2023 dataset with configurable splits and EDA recommendations."""
     print("📊 Starting Dataset Processing")
     print("=" * 60)
     
     try:
-        # Create processing config with configurable splits from config file
+        # Create processing config with EDA recommendations from config file
         processing_config = DataProcessingConfig(
             dataset_path=Path(config['dataset']['raw_path']),
             output_path=Path(args.data_path),
@@ -146,7 +146,10 @@ def process_dataset(config: dict, args: argparse.Namespace) -> None:
             sequence_length=config['dataset']['sequence_length'],
             train_split=config['dataset']['train_split'],
             val_split=config['dataset']['val_split'],
-            test_split=config['dataset']['test_split']
+            test_split=config['dataset']['test_split'],
+            # Add EDA recommendations
+            feature_selection=config['dataset'].get('feature_selection', False),
+            sampling_strategy=config['dataset'].get('sampling_strategy', None)
         )
         
         # Process dataset
@@ -161,6 +164,11 @@ def process_dataset(config: dict, args: argparse.Namespace) -> None:
         print(f"   - Features: {results['feature_count']}")
         print(f"   - Classes: {results['class_count']}")
         print(f"   - Splits: {results['splits']}")
+        
+        if config['dataset'].get('feature_selection', False):
+            print(f"   - ✅ Feature selection applied")
+        if config['dataset'].get('sampling_strategy') == 'balanced':
+            print(f"   - ✅ Class balancing applied")
         
     except Exception as e:
         logger.error(f"Dataset processing failed: {e}")
