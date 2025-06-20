@@ -46,7 +46,7 @@ class LSTMConfig:
 
 class LSTMAttackPredictor(nn.Module):
     """
-    LSTM-based attack predictor trained on real CICIoT2023 dataset.
+    LSTM-based attack predictor trained on CICIoT2023 dataset.
     
     Provides sophisticated multi-class attack classification for integration
     with RL environment as attack prediction component.
@@ -152,8 +152,8 @@ class DataTrainer:
         self.config.num_classes = feature_info['n_classes']
         
         # Create model
-        self.model = RealDataLSTMPredictor(self.config).to(self.device)
-        
+        self.model = LSTMAttackPredictor(self.config).to(self.device)
+
         # Get data loaders
         self.dataloaders = self.data_loader.get_lstm_dataloaders()
         
@@ -367,8 +367,8 @@ class DataTrainer:
         print()
         
         # Initialize MLflow tracking
-        mlflow.start_run(run_name="lstm_real_data_training")
-        
+        mlflow.start_run(run_name="lstm_attack_training")
+
         try:
             # Log parameters
             mlflow.log_params({

@@ -91,7 +91,7 @@ class LSTMTrainer:
         logger.info("Starting LSTM attack predictor training...")
         
         # Create trainer with data loader
-        trainer = RealDataTrainer(self.lstm_config, self.data_loader)
+        trainer = DataTrainer(self.lstm_config, self.data_loader)
         
         # Train model
         history = trainer.train()
