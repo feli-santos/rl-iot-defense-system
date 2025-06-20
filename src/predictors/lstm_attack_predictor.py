@@ -7,18 +7,19 @@ Provides sophisticated attack classification for RL environment integration.
 
 import torch
 import torch.nn as nn
-import torch.optim as optim
-from torch.utils.data import DataLoader
 import numpy as np
-from pathlib import Path
-from typing import Dict, List, Tuple, Optional, Any
-import logging
-from dataclasses import dataclass
-import mlflow
-import mlflow.pytorch
-from sklearn.metrics import classification_report, confusion_matrix
+import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
+import mlflow
+import mlflow.pytorch
+import logging
+from torch.utils.data import DataLoader
+from pathlib import Path
+from typing import Dict, List, Tuple, Optional, Any
+from dataclasses import dataclass
+from sklearn.metrics import classification_report, confusion_matrix
+from tqdm import tqdm
 
 from utils.dataset_loader import CICIoTDataLoader, LoaderConfig
 
@@ -27,25 +28,27 @@ logger = logging.getLogger(__name__)
 @dataclass
 class LSTMConfig:
     """Configuration for LSTM attack predictor."""
-    input_size: int = 46  # CICIoT2023 features
+    input_size: int
     hidden_size: int = 128
     num_layers: int = 2
-    num_classes: int = 34  # All attack types + benign
+    num_classes: int = 10
     dropout: float = 0.2
-    sequence_length: int = 10
-    batch_size: int = 64
+    batch_size: int = 32
     learning_rate: float = 0.001
     num_epochs: int = 50
-    device: str = "cuda" if torch.cuda.is_available() else "cpu"
-    model_save_path: str = "models/lstm/ciciot2023_attack_predictor.pth"
+    sequence_length: int = 10
+    model_save_path: str = "models/lstm_attack_predictor.pth"
+    # EDA recommendations
+    use_class_weights: bool = False
+    focal_loss: bool = False
 
 
 class RealDataLSTMPredictor(nn.Module):
     """
-    LSTM-based attack predictor for real IoT network data.
+    LSTM-based attack predictor trained on real CICIoT2023 dataset.
     
-    Predicts attack types from sequences of network flow features
-    extracted from CICIoT2023 dataset.
+    Provides sophisticated multi-class attack classification for integration
+    with RL environment as attack prediction component.
     """
     
     def __init__(self, config: LSTMConfig) -> None:
@@ -55,7 +58,7 @@ class RealDataLSTMPredictor(nn.Module):
         Args:
             config: LSTM configuration parameters
         """
-        super(RealDataLSTMPredictor, self).__init__()
+        super().__init__()
         self.config = config
         
         # LSTM layers
@@ -67,108 +70,54 @@ class RealDataLSTMPredictor(nn.Module):
             batch_first=True
         )
         
-        # Dropout layer
-        self.dropout = nn.Dropout(config.dropout)
-        
-        # Classification layers
+        # Classification head
         self.classifier = nn.Sequential(
+            nn.Dropout(config.dropout),
             nn.Linear(config.hidden_size, config.hidden_size // 2),
             nn.ReLU(),
             nn.Dropout(config.dropout),
             nn.Linear(config.hidden_size // 2, config.num_classes)
         )
         
-        # Initialize weights
-        self._init_weights()
-    
-    def _init_weights(self) -> None:
-        """Initialize LSTM and linear layer weights."""
-        for name, param in self.lstm.named_parameters():
-            if 'weight_ih' in name:
-                torch.nn.init.xavier_uniform_(param.data)
-            elif 'weight_hh' in name:
-                torch.nn.init.orthogonal_(param.data)
-            elif 'bias' in name:
-                param.data.fill_(0)
-        
-        for layer in self.classifier:
-            if isinstance(layer, nn.Linear):
-                torch.nn.init.xavier_uniform_(layer.weight)
-                layer.bias.data.fill_(0)
+        logger.info(f"LSTM predictor initialized: {config.input_size} → "
+                   f"{config.hidden_size} → {config.num_classes} classes")
     
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
-        Forward pass through the network.
+        Forward pass through LSTM predictor.
         
         Args:
-            x: Input tensor of shape (batch_size, sequence_length, input_size)
+            x: Input sequences [batch_size, seq_len, features]
             
         Returns:
-            Output tensor of shape (batch_size, num_classes)
+            Attack classification logits [batch_size, num_classes]
         """
         # LSTM forward pass
-        lstm_out, _ = self.lstm(x)  # (batch_size, seq_len, hidden_size)
+        lstm_out, (hidden, cell) = self.lstm(x)
         
-        # Use the last output from the sequence
-        last_output = lstm_out[:, -1, :]  # (batch_size, hidden_size)
-        
-        # Apply dropout
-        last_output = self.dropout(last_output)
+        # Use last hidden state for classification
+        last_hidden = lstm_out[:, -1, :]  # [batch_size, hidden_size]
         
         # Classification
-        output = self.classifier(last_output)  # (batch_size, num_classes)
+        logits = self.classifier(last_hidden)
         
-        return output
+        return logits
     
-    def predict_attack_probability(self, sequences: np.ndarray) -> np.ndarray:
+    def predict_proba(self, x: torch.Tensor) -> torch.Tensor:
         """
-        Predict attack probabilities for input sequences.
+        Get attack prediction probabilities.
         
         Args:
-            sequences: Input sequences of shape (n_samples, sequence_length, input_size)
+            x: Input sequences [batch_size, seq_len, features]
             
         Returns:
-            Attack probabilities of shape (n_samples, num_classes)
+            Attack probabilities [batch_size, num_classes]
         """
-        self.eval()
         with torch.no_grad():
-            # Convert to tensor and move to device
-            x = torch.FloatTensor(sequences).to(self.config.device)
-            
-            # Forward pass
             logits = self.forward(x)
-            
-            # Apply softmax to get probabilities
             probabilities = torch.softmax(logits, dim=1)
-            
-            return probabilities.cpu().numpy()
-    
-    def predict_attack_type(self, sequences: np.ndarray, 
-                           class_names: List[str]) -> List[Dict[str, Any]]:
-        """
-        Predict attack types with confidence scores.
         
-        Args:
-            sequences: Input sequences
-            class_names: List of class names corresponding to indices
-            
-        Returns:
-            List of predictions with attack type and confidence
-        """
-        probabilities = self.predict_attack_probability(sequences)
-        
-        predictions = []
-        for prob in probabilities:
-            predicted_class = np.argmax(prob)
-            confidence = prob[predicted_class]
-            
-            predictions.append({
-                'attack_type': class_names[predicted_class],
-                'confidence': float(confidence),
-                'all_probabilities': dict(zip(class_names, prob.astype(float)))
-            })
-        
-        return predictions
+        return probabilities
 
 
 class RealDataTrainer:
@@ -231,11 +180,17 @@ class RealDataTrainer:
         """Calculate class weights for imbalanced dataset."""
         from sklearn.utils.class_weight import compute_class_weight
         
+        logger.info("Calculating class weights for imbalanced dataset...")
+        
         # Load labels to compute weights
         train_loader = self.dataloaders['train']
         all_labels = []
-        for _, labels in train_loader:
-            all_labels.extend(labels.numpy())
+        
+        # Use tqdm for progress while collecting labels
+        with tqdm(train_loader, desc="Collecting labels for class weights", 
+                 leave=False) as pbar:
+            for _, labels in pbar:
+                all_labels.extend(labels.numpy())
         
         class_weights = compute_class_weight(
             'balanced',
@@ -243,7 +198,8 @@ class RealDataTrainer:
             y=all_labels
         )
         
-        logger.info("Class weights calculated for imbalanced dataset")
+        logger.info(f"Class weights calculated: min={class_weights.min():.3f}, "
+                   f"max={class_weights.max():.3f}")
         return torch.FloatTensor(class_weights).to(self.device)
     
     def _get_focal_loss(self):
@@ -264,12 +220,15 @@ class RealDataTrainer:
         logger.info("Using Focal Loss for class imbalance")
         return FocalLoss()
     
-    def train_epoch(self, dataloader: DataLoader) -> Tuple[float, float]:
+    def train_epoch(self, dataloader: DataLoader, epoch: int, 
+                   total_epochs: int) -> Tuple[float, float]:
         """
-        Train the model for one epoch.
+        Train the model for one epoch with progress bar.
         
         Args:
             dataloader: Training data loader
+            epoch: Current epoch number (0-indexed)
+            total_epochs: Total number of epochs
             
         Returns:
             Tuple of (average_loss, accuracy)
@@ -279,7 +238,12 @@ class RealDataTrainer:
         correct_predictions = 0
         total_samples = 0
         
-        for batch_idx, (sequences, labels) in enumerate(dataloader):
+        # Create progress bar for training batches
+        pbar = tqdm(dataloader, 
+                   desc=f"Training Epoch {epoch+1}/{total_epochs}",
+                   leave=False)
+        
+        for batch_idx, (sequences, labels) in enumerate(pbar):
             # Move data to device
             sequences = sequences.to(self.device)
             labels = labels.to(self.device)
@@ -301,22 +265,29 @@ class RealDataTrainer:
             total_samples += labels.size(0)
             correct_predictions += (predicted == labels).sum().item()
             
-            # Log progress
-            if batch_idx % 100 == 0:
-                logger.info(f"Batch {batch_idx}/{len(dataloader)}, "
-                           f"Loss: {loss.item():.4f}")
+            # Update progress bar
+            current_loss = total_loss / (batch_idx + 1)
+            current_acc = correct_predictions / total_samples
+            pbar.set_postfix({
+                'Loss': f'{current_loss:.4f}',
+                'Acc': f'{current_acc:.4f}'
+            })
         
         avg_loss = total_loss / len(dataloader)
         accuracy = correct_predictions / total_samples
         
         return avg_loss, accuracy
     
-    def validate_epoch(self, dataloader: DataLoader) -> Tuple[float, float]:
+    def validate_epoch(self, dataloader: DataLoader, epoch: int, 
+                      total_epochs: int, split_name: str = "Val") -> Tuple[float, float]:
         """
-        Validate the model for one epoch.
+        Validate the model for one epoch with progress bar.
         
         Args:
             dataloader: Validation data loader
+            epoch: Current epoch number (0-indexed)
+            total_epochs: Total number of epochs
+            split_name: Name of the split (Val/Test)
             
         Returns:
             Tuple of (average_loss, accuracy)
@@ -326,8 +297,13 @@ class RealDataTrainer:
         correct_predictions = 0
         total_samples = 0
         
+        # Create progress bar for validation batches
+        pbar = tqdm(dataloader, 
+                   desc=f"{split_name} Epoch {epoch+1}/{total_epochs}",
+                   leave=False)
+        
         with torch.no_grad():
-            for sequences, labels in dataloader:
+            for sequences, labels in pbar:
                 sequences = sequences.to(self.device)
                 labels = labels.to(self.device)
                 
@@ -338,6 +314,14 @@ class RealDataTrainer:
                 _, predicted = torch.max(outputs.data, 1)
                 total_samples += labels.size(0)
                 correct_predictions += (predicted == labels).sum().item()
+                
+                # Update progress bar
+                current_loss = total_loss / (len([x for x in enumerate(pbar)]) + 1)
+                current_acc = correct_predictions / total_samples
+                pbar.set_postfix({
+                    'Loss': f'{current_loss:.4f}',
+                    'Acc': f'{current_acc:.4f}'
+                })
         
         avg_loss = total_loss / len(dataloader)
         accuracy = correct_predictions / total_samples
@@ -346,12 +330,24 @@ class RealDataTrainer:
     
     def train(self) -> Dict[str, List[float]]:
         """
-        Train the LSTM attack predictor.
+        Train the LSTM attack predictor with progress tracking.
         
         Returns:
             Training history with losses and accuracies
         """
-        logger.info("Starting LSTM training on real CICIoT2023 data...")
+        logger.info("🧠 Starting LSTM training on CICIoT2023 dataset...")
+        print(f"🎯 Training Configuration:")
+        print(f"   • Model: LSTM ({self.config.input_size} → {self.config.hidden_size} → {self.config.num_classes})")
+        print(f"   • Dataset: {len(self.dataloaders['train'].dataset):,} train samples")
+        print(f"   • Device: {self.device}")
+        print(f"   • Epochs: {self.config.num_epochs}")
+        print(f"   • Batch Size: {self.config.batch_size}")
+        print(f"   • Learning Rate: {self.config.learning_rate}")
+        if hasattr(self.config, 'use_class_weights') and self.config.use_class_weights:
+            print(f"   • ⚖️  Class weights enabled (severe imbalance handling)")
+        if hasattr(self.config, 'focal_loss') and self.config.focal_loss:
+            print(f"   • 🎯 Focal loss enabled")
+        print()
         
         # Initialize MLflow tracking
         mlflow.start_run(run_name="lstm_real_data_training")
@@ -368,7 +364,9 @@ class RealDataTrainer:
                 'batch_size': self.config.batch_size,
                 'learning_rate': self.config.learning_rate,
                 'num_epochs': self.config.num_epochs,
-                'device': str(self.device)
+                'device': str(self.device),
+                'use_class_weights': getattr(self.config, 'use_class_weights', False),
+                'focal_loss': getattr(self.config, 'focal_loss', False)
             })
             
             # Training history
@@ -381,14 +379,21 @@ class RealDataTrainer:
             
             best_val_accuracy = 0.0
             
-            for epoch in range(self.config.num_epochs):
-                logger.info(f"Epoch {epoch + 1}/{self.config.num_epochs}")
-                
+            # Main training loop with epoch progress bar
+            epoch_pbar = tqdm(range(self.config.num_epochs), 
+                             desc="🚀 LSTM Training Progress",
+                             position=0, leave=True)
+            
+            for epoch in epoch_pbar:
                 # Training
-                train_loss, train_acc = self.train_epoch(self.dataloaders['train'])
+                train_loss, train_acc = self.train_epoch(
+                    self.dataloaders['train'], epoch, self.config.num_epochs
+                )
                 
                 # Validation
-                val_loss, val_acc = self.validate_epoch(self.dataloaders['val'])
+                val_loss, val_acc = self.validate_epoch(
+                    self.dataloaders['val'], epoch, self.config.num_epochs, "Val"
+                )
                 
                 # Update history
                 history['train_loss'].append(train_loss)
@@ -408,24 +413,34 @@ class RealDataTrainer:
                 if val_acc > best_val_accuracy:
                     best_val_accuracy = val_acc
                     self.save_model()
-                    logger.info(f"New best validation accuracy: {val_acc:.4f}")
+                    epoch_pbar.write(f"✅ New best validation accuracy: {val_acc:.4f}")
                 
-                logger.info(f"Train Loss: {train_loss:.4f}, Train Acc: {train_acc:.4f}, "
-                           f"Val Loss: {val_loss:.4f}, Val Acc: {val_acc:.4f}")
+                # Update epoch progress bar
+                epoch_pbar.set_postfix({
+                    'Train Acc': f'{train_acc:.3f}',
+                    'Val Acc': f'{val_acc:.3f}',
+                    'Best Val': f'{best_val_accuracy:.3f}'
+                })
             
-            # Log model
+            # Final test evaluation
+            print("\n🧪 Final Test Evaluation...")
+            test_loss, test_acc = self.validate_epoch(
+                self.dataloaders['test'], self.config.num_epochs-1, 
+                self.config.num_epochs, "Test"
+            )
+            
+            # Log model and final metrics
             mlflow.pytorch.log_model(self.model, "lstm_model")
-            
-            # Final evaluation
-            test_loss, test_acc = self.validate_epoch(self.dataloaders['test'])
             mlflow.log_metrics({
                 'test_loss': test_loss,
                 'test_accuracy': test_acc,
                 'best_val_accuracy': best_val_accuracy
             })
             
-            logger.info(f"Training completed! Best Val Acc: {best_val_accuracy:.4f}, "
-                       f"Test Acc: {test_acc:.4f}")
+            print(f"\n🎉 LSTM Training Complete!")
+            print(f"   • Best Validation Accuracy: {best_val_accuracy:.4f}")
+            print(f"   • Final Test Accuracy: {test_acc:.4f}")
+            print(f"   • Model saved to: {self.config.model_save_path}")
             
             return history
             
@@ -439,14 +454,19 @@ class RealDataTrainer:
         Returns:
             Detailed evaluation results
         """
-        logger.info("Performing detailed evaluation...")
+        logger.info("🔍 Performing detailed evaluation...")
         
         self.model.eval()
         all_predictions = []
         all_labels = []
         
+        # Evaluation with progress bar
+        pbar = tqdm(self.dataloaders['test'], 
+                   desc="📊 Evaluating on test set",
+                   leave=False)
+        
         with torch.no_grad():
-            for sequences, labels in self.dataloaders['test']:
+            for sequences, labels in pbar:
                 sequences = sequences.to(self.device)
                 outputs = self.model(sequences)
                 _, predicted = torch.max(outputs, 1)
@@ -474,6 +494,12 @@ class RealDataTrainer:
         
         # Plot confusion matrix
         self._plot_confusion_matrix(conf_matrix, class_names)
+        
+        # Print summary
+        print(f"\n📈 Evaluation Results:")
+        print(f"   • Overall Accuracy: {class_report['accuracy']:.4f}")
+        print(f"   • Macro F1-Score: {class_report['macro avg']['f1-score']:.4f}")
+        print(f"   • Weighted F1-Score: {class_report['weighted avg']['f1-score']:.4f}")
         
         return {
             'classification_report': class_report,
@@ -520,8 +546,6 @@ class RealDataTrainer:
             'config': self.config,
             'feature_info': self.feature_info
         }, model_path)
-        
-        logger.info(f"Model saved to {model_path}")
     
     def load_model(self, model_path: Path) -> None:
         """
@@ -537,22 +561,3 @@ class RealDataTrainer:
         self.feature_info = checkpoint['feature_info']
         
         logger.info(f"Model loaded from {model_path}")
-
-
-def create_enhanced_attack_predictor(data_path: Path, 
-                                   config: Optional[LSTMConfig] = None) -> RealDataTrainer:
-    """
-    Factory function to create enhanced LSTM attack predictor.
-    
-    Args:
-        data_path: Path to processed CICIoT2023 data
-        config: Optional LSTM configuration
-        
-    Returns:
-        Configured trainer ready for training
-    """
-    if config is None:
-        config = LSTMConfig()
-    
-    trainer = RealDataTrainer(config, data_path)
-    return trainer
