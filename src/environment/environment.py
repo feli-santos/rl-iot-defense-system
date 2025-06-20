@@ -99,9 +99,9 @@ class IoTEnv(gym.Env):
                 return
             
             # Import here to avoid circular imports
-            from models.enhanced_attack_predictor import EnhancedAttackPredictor
+            from predictor.interface import AttackPredictorInterface
             
-            self.attack_predictor = EnhancedAttackPredictor(model_path, data_path)
+            self.attack_predictor = AttackPredictorInterface(model_path, data_path)
             logger.info("Attack predictor initialized successfully")
             
         except Exception as e:
@@ -405,16 +405,3 @@ class IoTEnv(gym.Env):
     def close(self) -> None:
         """Close the environment"""
         pass
-
-
-def create_enhanced_iot_env(config: Optional[EnvironmentConfig] = None) -> IoTEnv:
-    """
-    Factory function to create enhanced IoT environment.
-    
-    Args:
-        config: Optional environment configuration
-        
-    Returns:
-        Configured IoT environment instance
-    """
-    return IoTEnv(config)

@@ -6,7 +6,7 @@ dataset:
   name: "CICIoT2023"
   raw_path: "data/raw/CICIoT2023"
   processed_path: "data/processed/ciciot2023"
-  sample_size: 500000 # Start with 500K samples for manageable training
+  sample_size: 500_000 # Start with 500K samples for manageable training
   sequence_length: 5 # EDA recommendation
   train_split: 0.7
   val_split: 0.1

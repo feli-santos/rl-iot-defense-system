@@ -10,7 +10,7 @@ from tqdm import tqdm
 import os
 
 from algorithms.base_algorithm import BaseAlgorithm
-from environment import IoTEnv
+from environment.environment import IoTEnv
 
 
 class A2CAlgorithm(BaseAlgorithm):

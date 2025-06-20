@@ -77,7 +77,7 @@ class AttackPredictorInterface:
             self.feature_info = checkpoint['feature_info']
             
             # Initialize model
-            self.model = RealDataLSTMPredictor(self.config).to(self.device)
+            self.model = LSTMAttackPredictor(self.config).to(self.device)
             self.model.load_state_dict(checkpoint['model_state_dict'])
             self.model.eval()
             
