@@ -103,12 +103,12 @@ rl:
 # Model Paths
 models:
   lstm:
-    save_path: "models/lstm/attack_predictor.pth"
-    checkpoint_dir: "models/lstm/checkpoints"
+    save_path: "artifacts/lstm/attack_predictor.pth"
+    checkpoint_dir: "artifacts/lstm/checkpoints"
 
   rl:
-    save_dir: "models/rl"
-    checkpoint_dir: "models/rl/checkpoints"
+    save_dir: "artifacts/rl"
+    checkpoint_dir: "artifacts/rl/checkpoints"
 
 # Experiment Tracking
 mlflow:

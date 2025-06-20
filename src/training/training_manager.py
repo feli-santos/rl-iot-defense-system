@@ -456,20 +456,16 @@ class TrainingManager:
         """
         self.algorithm = algorithm
         self.experiment_name = experiment_name
-        self.save_path = Path(save_path)
-        self.save_path.mkdir(parents=True, exist_ok=True)
+        self.configured_save_path = Path(save_path)
         
         # Create a unique run ID
         self.run_id = f"{experiment_name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:6]}"
         
-        # Setup artifact directories
-        self.base_artifact_path = Path("./artifacts")
-        self.run_artifact_path = self.base_artifact_path / self.run_id
+        # Setup artifact directories using config path
+        self.run_artifact_path = self.configured_save_path / self.run_id
         self.models_path = self.run_artifact_path / "models"
         self.logs_path = self.run_artifact_path / "logs"
         self.plots_path = self.run_artifact_path / "plots"
-        
-        # Add save_path attribute for compatibility
         self.save_path = self.run_artifact_path
         
         # Create directories
@@ -482,6 +478,7 @@ class TrainingManager:
         self.config: Optional[Dict[str, Any]] = None
         
         logger.info(f"Initialized TrainingManager for {experiment_name}")
+        logger.info(f"Models will be saved to: {self.models_path}")
     
     def _create_directories(self) -> None:
         """Create all necessary directories"""

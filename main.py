@@ -93,6 +93,13 @@ def parse_arguments() -> argparse.Namespace:
     
     # Benchmark options
     parser.add_argument(
+        '--benchmark-mode',
+        choices=['train', 'evaluate', 'mixed'],
+        default='mixed',
+        help='Benchmark mode: train (from scratch), evaluate (pre-trained), mixed (auto)'
+    )
+    
+    parser.add_argument(
         '--benchmark-algorithms',
         nargs='+',
         choices=['dqn', 'ppo', 'a2c'],
@@ -253,7 +260,7 @@ def train_rl_agents(config: dict, args: argparse.Namespace,
 
 
 def run_benchmark(config: dict, args: argparse.Namespace) -> None:
-    """Run algorithm benchmark comparison."""
+    """Run algorithm benchmark comparison with flexible modes."""
     print("🏆 Starting Algorithm Benchmark")
     print("=" * 60)
     
@@ -264,10 +271,14 @@ def run_benchmark(config: dict, args: argparse.Namespace) -> None:
             print("❌ LSTM model not found. Train LSTM first or use --mode both")
             return
         
+        # Determine benchmark mode
+        benchmark_mode = getattr(args, 'benchmark_mode', 'mixed')
+        
         # Create benchmark runner
         runner = BenchmarkRunner(
             config=config,
-            lstm_model_path=lstm_model_path
+            lstm_model_path=lstm_model_path,
+            mode=benchmark_mode
         )
         
         # Run benchmark
