@@ -3,8 +3,8 @@
 ## 1. Objective
 To develop and refine the RL-IoT Defense System by deeply integrating and leveraging the real-world CICIoT2023 dataset. This roadmap focuses on maximizing the system's robustness, adaptability, and realism by grounding its learning and evaluation in observed attack patterns.
 
-## Phase 1: Real Data Integration & Baseline (Largely Completed)
-This foundational phase focused on adapting the system to work exclusively with the CICIoT2023 real-world dataset.
+## Phase 1: Real Data Integration & Baseline (Completed)
+This foundational phase focused on adapting the system to work exclusively with the CICIoT2023 real-world dataset. The core training pipeline is now stable and robust.
 
 ### 1.1. Data Exploration & Preprocessing (Completed)
 - **Action:** Acquired and performed thorough EDA on the CICIoT2023 dataset.

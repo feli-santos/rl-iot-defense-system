@@ -29,7 +29,7 @@ This is an **IoT Defense System** using **Reinforcement Learning** to defend aga
 ## Common Patterns
 - Use `AlgorithmFactory.create_algorithm()` to instantiate RL algorithms
 - Use `TrainingManager` for MLflow experiment tracking and model artifacts
-- Use `EnhancedAttackPredictor` to bridge LSTM predictions with RL environment
+- Use `AttackPredictorInterface` to bridge LSTM predictions with RL environment
 - Main training via `main.py` with modes: `lstm`, `rl`, `both`
 - Configuration loading via `ConfigLoader.load_config()`
 

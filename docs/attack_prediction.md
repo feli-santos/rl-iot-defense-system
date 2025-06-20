@@ -103,14 +103,14 @@ for epoch in range(self.config.num_epochs):
     # ... log epoch metrics, save best model ...
 ```
 
-## Inference Process (`EnhancedAttackPredictor`)
+## Inference Process (`AttackPredictorInterface`)
 
-The `EnhancedAttackPredictor` (`src/models/predictor_interface.py`) uses the trained `RealDataLSTMPredictor` for inference.
-1.  It receives a sequence of network states (features).
-2.  These states are preprocessed (e.g., scaled using artifacts loaded from `preprocessing_artifacts.pkl`).
-3.  The sequence is fed to the `RealDataLSTMPredictor.predict_attack_probability()` method.
-4.  The model outputs a probability distribution over attack classes.
-5.  The `EnhancedAttackPredictor` then interprets these probabilities to provide a risk assessment, predicted attack type, confidence, etc., which is used by the `IoTEnv`.
+The `AttackPredictorInterface` class in `src/predictor/interface.py` serves as the bridge between the trained LSTM model and the RL environment. It handles:
+1.  Receiving a sequence of network states (features).
+2.  Preprocessing these states (e.g., scaling using artifacts loaded from `preprocessing_artifacts.pkl`).
+3.  Feeding the sequence to the `RealDataLSTMPredictor.predict_attack_probability()` method.
+4.  Obtaining a probability distribution over attack classes from the model.
+5.  Interpreting these probabilities to provide a risk assessment, predicted attack type, confidence, etc., which is used by the `IoTEnv`.
 
 ```python
 # Conceptual inference from EnhancedAttackPredictor using RealDataLSTMPredictor

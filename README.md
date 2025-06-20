@@ -65,9 +65,9 @@ rl-iot-defense-system/
     │   └── metrics_collector.py
     ├── environment
     │   └── environment.py
-    ├── predictors
-    │   ├── lstm_attack_predictor.py
-    │   └── rl_predictor_interface.py
+    ├── predictor
+    │   ├── attack.py
+    │   └── interface.py
     ├── scripts
     │   └── exploratory_data_analysis.py
     ├── training
