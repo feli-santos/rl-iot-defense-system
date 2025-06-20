@@ -6,7 +6,7 @@ Enhanced configuration loader with validation and environment variable support.
 
 import yaml
 from pathlib import Path
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, Union
 import logging
 import os
 from dataclasses import dataclass
@@ -58,6 +58,9 @@ class ConfigLoader:
             # Substitute environment variables
             config = self._substitute_env_vars(config)
             
+            # Convert scientific notation strings to floats
+            config = self._convert_numeric_values(config)
+            
             # Validate configuration
             self._validate_config(config)
             
@@ -86,6 +89,50 @@ class ConfigLoader:
         else:
             return config
     
+    def _convert_numeric_values(self, config: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Recursively convert string numeric values to proper types.
+        Handles scientific notation like '1e-4', '3e-4', etc.
+        
+        Args:
+            config: Configuration dictionary
+            
+        Returns:
+            Configuration with converted numeric values
+        """
+        if isinstance(config, dict):
+            return {k: self._convert_numeric_values(v) for k, v in config.items()}
+        elif isinstance(config, list):
+            return [self._convert_numeric_values(item) for item in config]
+        elif isinstance(config, str):
+            # Try to convert scientific notation strings to floats
+            if self._is_scientific_notation(config):
+                try:
+                    return float(config)
+                except ValueError:
+                    return config
+            return config
+        else:
+            return config
+    
+    def _is_scientific_notation(self, value: str) -> bool:
+        """
+        Check if a string represents scientific notation.
+        
+        Args:
+            value: String to check
+            
+        Returns:
+            True if the string is scientific notation
+        """
+        if not isinstance(value, str):
+            return False
+        
+        # Common patterns for scientific notation
+        import re
+        scientific_pattern = r'^[+-]?(\d+\.?\d*|\.\d+)[eE][+-]?\d+$'
+        return bool(re.match(scientific_pattern, value))
+    
     def _validate_config(self, config: Dict[str, Any]) -> None:
         """Validate configuration structure"""
         required_sections = ['dataset', 'lstm', 'environment', 'rl', 'models']
@@ -106,7 +153,40 @@ class ConfigLoader:
         if 'lstm' not in models_config or 'save_path' not in models_config['lstm']:
             raise ValueError("Missing LSTM model save path in configuration")
         
+        # Validate RL algorithm hyperparameters are numeric
+        self._validate_rl_hyperparams(config)
+        
         logger.info("Configuration validation passed")
+    
+    def _validate_rl_hyperparams(self, config: Dict[str, Any]) -> None:
+        """
+        Validate that RL hyperparameters are proper numeric types.
+        
+        Args:
+            config: Configuration dictionary
+        """
+        rl_config = config.get('rl', {})
+        algorithms = rl_config.get('algorithms', {})
+        
+        numeric_params = [
+            'learning_rate', 'buffer_size', 'batch_size', 'gamma', 'tau',
+            'n_steps', 'n_epochs', 'gae_lambda', 'clip_range', 'ent_coef',
+            'vf_coef', 'max_grad_norm', 'rms_prop_eps'
+        ]
+        
+        for alg_name, alg_config in algorithms.items():
+            for param_name, param_value in alg_config.items():
+                if param_name in numeric_params:
+                    if not isinstance(param_value, (int, float)):
+                        logger.warning(
+                            f"Parameter {alg_name}.{param_name} = {param_value} "
+                            f"(type: {type(param_value)}) should be numeric"
+                        )
+                    else:
+                        logger.debug(
+                            f"✅ {alg_name}.{param_name} = {param_value} "
+                            f"(type: {type(param_value).__name__})"
+                        )
     
     def _create_paths(self, config: Dict[str, Any]) -> ConfigPaths:
         """Create paths structure from configuration"""
@@ -162,7 +242,15 @@ class ConfigLoader:
             available = list(rl_config['algorithms'].keys())
             raise ValueError(f"Algorithm '{algorithm}' not configured. Available: {available}")
         
-        return rl_config['algorithms'][algorithm]
+        # Ensure all hyperparameters are properly typed
+        hyperparams = rl_config['algorithms'][algorithm].copy()
+        
+        # Log hyperparameter types for debugging
+        logger.debug(f"Hyperparameters for {algorithm}:")
+        for key, value in hyperparams.items():
+            logger.debug(f"  {key}: {value} (type: {type(value).__name__})")
+        
+        return hyperparams
     
     def get_paths(self) -> ConfigPaths:
         """Get paths structure"""
