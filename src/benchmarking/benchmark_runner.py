@@ -101,7 +101,7 @@ class BenchmarkRunner:
             
             # Save results
             self.metrics_collector.save_results(
-                str(self.results_path / f"benchmark_results_{self.mode}.json")
+                f"{self.mode}.json"
             )
             
             print(f"\n🎉 Benchmark completed successfully!")
@@ -180,19 +180,21 @@ class BenchmarkRunner:
             print(f"{'='*50}")
             
             for i, model_path in enumerate(paths):
-                print(f"\n📊 Evaluating model {i+1}/{len(paths)}: {Path(model_path).name}")
+                model_full_path = Path(model_path).resolve()
+                model_name = Path(model_path).name
+                print(f"\n📊 Evaluating model {i+1}/{len(paths)}")
+                print(f"📁 File: {model_name}")
+                print(f"🗂️  Path: {model_full_path}")
                 
                 try:
-                    # Load and evaluate model
-                    evaluation_results = self._evaluate_pretrained_model(
-                        algorithm_name, model_path
-                    )
+                    evaluation_results = self._evaluate_pretrained_model(algorithm_name, model_path)
+                    avg_reward = evaluation_results.get('avg_reward', 0.0)
                     
-                    # Store results
+                    # Collect metrics
                     self.metrics_collector.start_run(
                         algorithm_name=algorithm_name,
                         run_id=i,
-                        hyperparameters={'model_path': model_path}
+                        hyperparameters={"model_path": str(model_full_path)}
                     )
                     
                     self.metrics_collector.update_evaluation_metrics(
@@ -201,11 +203,11 @@ class BenchmarkRunner:
                         evaluation_results=evaluation_results
                     )
                     
-                    print(f"  ✅ Evaluation completed: Reward={evaluation_results['avg_reward']:.3f}")
+                    print(f"  ✅ Evaluation completed: Reward={avg_reward:.3f}")
                     
                 except Exception as e:
-                    logger.error(f"Failed to evaluate {model_path}: {e}")
                     print(f"  ❌ Evaluation failed: {e}")
+                    logger.error(f"Failed to evaluate {model_full_path}: {e}")
                     continue
     
     def _run_mixed_benchmark(self, algorithms: List[str], num_runs: int,
@@ -224,15 +226,21 @@ class BenchmarkRunner:
                 paths = discovered_models[algorithm_name][:num_runs]  # Limit to num_runs
                 
                 for i, model_path in enumerate(paths):
+                    model_full_path = Path(model_path).resolve()
+                    model_name = Path(model_path).name
+                    print(f"\n📊 Evaluating existing model {i+1}/{len(paths)}")
+                    print(f"📁 File: {model_name}")
+                    print(f"🗂️  Path: {model_full_path}")
+                    
                     try:
-                        evaluation_results = self._evaluate_pretrained_model(
-                            algorithm_name, model_path
-                        )
+                        evaluation_results = self._evaluate_pretrained_model(algorithm_name, model_path)
+                        avg_reward = evaluation_results.get('avg_reward', 0.0)
                         
+                        # Collect metrics
                         self.metrics_collector.start_run(
                             algorithm_name=algorithm_name,
                             run_id=i,
-                            hyperparameters={'model_path': model_path}
+                            hyperparameters={"model_path": str(model_full_path)}
                         )
                         
                         self.metrics_collector.update_evaluation_metrics(
@@ -241,14 +249,15 @@ class BenchmarkRunner:
                             evaluation_results=evaluation_results
                         )
                         
-                        print(f"  ✅ Model {i+1}: Reward={evaluation_results['avg_reward']:.3f}")
+                        print(f"  ✅ Evaluation completed: Reward={avg_reward:.3f}")
                         
                     except Exception as e:
-                        logger.error(f"Failed to evaluate {model_path}: {e}")
-                        continue
+                        print(f"  ❌ Evaluation failed: {e}")
+                        logger.error(f"Failed to evaluate {model_full_path}: {e}")
+
             else:
-                # Train from scratch
-                print(f"🏋️ No existing models found - training from scratch")
+                # Train new models
+                print(f"🔄 No existing models found - training {num_runs} new models")
                 self._run_algorithm_benchmark(algorithm_name, num_runs)
     
     def _evaluate_pretrained_model(self, algorithm_name: str, model_path: str) -> Dict[str, Any]:

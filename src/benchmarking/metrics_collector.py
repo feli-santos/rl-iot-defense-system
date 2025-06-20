@@ -132,7 +132,14 @@ class MetricsCollector:
         for algorithm_name, runs in self.metrics.items():
             results[algorithm_name] = [run.to_dict() for run in runs]
             
-        save_file = self.save_path / filename
+        if Path(filename).is_absolute():
+            save_file = Path(filename)
+        else:
+            save_file = self.save_path / filename
+        
+        # Ensure parent directory exists
+        save_file.parent.mkdir(parents=True, exist_ok=True)
+        
         with open(save_file, 'w') as f:
             json.dump(results, f, indent=2)
             
@@ -140,7 +147,11 @@ class MetricsCollector:
         
     def load_results(self, filename: str = "benchmark_results.json") -> None:
         """Load metrics from file"""
-        load_file = self.save_path / filename
+        if Path(filename).is_absolute():
+            load_file = Path(filename)
+        else:
+            load_file = self.save_path / filename
+            
         if not load_file.exists():
             print(f"Results file not found: {load_file}")
             return
