@@ -1,7 +1,7 @@
 """
-Enhanced Algorithm Factory with Real Attack Prediction Support
+Algorithm Factory with Real Attack Prediction Support
 
-Factory for creating RL algorithms that work with the enhanced IoT environment
+Factory for creating RL algorithms that work with the IoT environment
 using real attack prediction from CICIoT2023 dataset.
 """
 
@@ -20,8 +20,8 @@ logger = logging.getLogger(__name__)
 
 class AlgorithmFactory:
     """
-    Factory for creating RL algorithms with enhanced IoT environment support.
-    
+    Factory for creating RL algorithms with IoT environment support.
+
     Automatically configures algorithms to work with Dict observation spaces
     and real attack prediction from trained LSTM models.
     """
@@ -90,7 +90,7 @@ class AlgorithmFactory:
     @classmethod
     def create_environment(cls, config: Optional[EnvironmentConfig] = None) -> IoTEnv:
         """
-        Create enhanced IoT environment with real attack prediction.
+        Create IoT environment with real attack prediction.
         
         Args:
             config: Optional environment configuration
@@ -108,7 +108,7 @@ class AlgorithmFactory:
             )
         
         env = IoTEnv(config)
-        logger.info(f"Created enhanced IoT environment with real attack prediction")
+        logger.info(f"Created IoT environment with real attack prediction")
         return env
     
     @classmethod
@@ -116,11 +116,11 @@ class AlgorithmFactory:
                         hyperparams: Optional[Dict[str, Any]] = None,
                         verbose: int = 1) -> BaseAlgorithm:
         """
-        Create RL algorithm instance configured for enhanced IoT environment.
-        
+        Create RL algorithm instance configured for IoT environment.
+
         Args:
             algorithm_name: Name of the algorithm ('dqn', 'ppo', 'a2c')
-            env: Enhanced IoT environment instance
+            env: IoT environment instance
             hyperparams: Optional hyperparameter overrides
             verbose: Verbosity level for training output
             

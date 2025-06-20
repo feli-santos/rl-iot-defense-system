@@ -293,7 +293,7 @@ class IoTEnv(gym.Env):
                     feature_dict = {f'feature_{i}': float(state[i]) for i in range(len(state))}
                     network_sequence.append(feature_dict)
                 
-                reward = self.attack_predictor.calculate_rl_reward(
+                reward = self.attack_predictor.calculate_reward(
                     network_sequence, action, attack_occurred
                 )
                 return reward * self.config.reward_scale
