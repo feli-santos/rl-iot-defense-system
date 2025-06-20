@@ -99,7 +99,7 @@ class TrainingManager:
         self._create_directories()
         
         # MLflow tracking
-        self.mlflow_run = None
+        self.current_run = None
         self.best_model_metric = -np.inf
         self.best_model_path: Optional[Path] = None
         self.config: Optional[Dict[str, Any]] = None
@@ -125,7 +125,7 @@ class TrainingManager:
                 mlflow.end_run()
             
             mlflow.set_experiment(self.experiment_name)
-            self.mlflow_run = mlflow.start_run(
+            self.current_run = mlflow.start_run(
                 run_name=run_name or self.run_id,
                 nested=nested
             )
@@ -137,7 +137,7 @@ class TrainingManager:
                 elif isinstance(self.config, dict):
                     mlflow.log_params(self.config)
             
-            logger.info(f"Started MLflow run: {self.mlflow_run.info.run_id}")
+            logger.info(f"Started MLflow run: {self.current_run.info.run_id}")
             
         except Exception as e:
             logger.error(f"Failed to start MLflow run: {e}")
@@ -145,8 +145,9 @@ class TrainingManager:
     def end_run(self) -> None:
         """End the current MLflow run"""
         try:
-            if self.mlflow_run:
+            if self.current_run:
                 mlflow.end_run()
+                self.current_run = None
                 logger.info("Ended MLflow run")
         except Exception as e:
             logger.error(f"Failed to end MLflow run: {e}")
@@ -159,6 +160,10 @@ class TrainingManager:
             metrics: Dictionary of metrics to log
             step: Optional step number
         """
+        if not self.current_run:
+            logger.warning("No active MLflow run for metric logging")
+            return
+            
         try:
             # Filter out non-numeric values and convert to proper types
             numeric_metrics = {}
@@ -171,20 +176,45 @@ class TrainingManager:
             
             if numeric_metrics:
                 mlflow.log_metrics(numeric_metrics, step=step)
+                logger.debug(f"Logged {len(numeric_metrics)} metrics to MLflow")
                 
         except Exception as e:
             logger.error(f"Failed to log metrics: {e}")
     
     def log_params(self, params: Dict[str, Any]) -> None:
-        """Log parameters to MLflow"""
+        """
+        Log parameters to MLflow with conflict prevention.
+        
+        Args:
+            params: Parameters to log
+        """
+        if not self.current_run:
+            logger.warning("No active MLflow run for parameter logging")
+            return
+        
         try:
-            # Convert complex objects to strings
-            string_params = {
-                k: str(v) if not isinstance(v, (str, int, float, bool)) else v
-                for k, v in params.items()
-            }
-            mlflow.log_params(string_params)
+            # Get already logged parameters to avoid conflicts
+            run_data = mlflow.get_run(self.current_run.info.run_id)
+            existing_params = run_data.data.params
             
+            # Filter out parameters that are already logged with same values
+            params_to_log = {}
+            for key, value in params.items():
+                str_value = str(value)
+                if key not in existing_params:
+                    params_to_log[key] = str_value
+                elif existing_params[key] != str_value:
+                    # Log with suffix if value differs
+                    new_key = f"{key}_updated"
+                    params_to_log[new_key] = str_value
+                    logger.warning(f"Parameter conflict: {key}={existing_params[key]} vs {str_value}, logging as {new_key}")
+            
+            if params_to_log:
+                mlflow.log_params(params_to_log)
+                logger.info(f"Logged {len(params_to_log)} parameters to MLflow")
+            else:
+                logger.info("All parameters already logged with same values")
+                
         except Exception as e:
             logger.error(f"Failed to log parameters: {e}")
     
@@ -209,14 +239,15 @@ class TrainingManager:
         """
         logger.info(f"Starting training for {total_timesteps:,} timesteps")
         
-        # Log training parameters
-        self.log_params({
-            'algorithm': algorithm.__class__.__name__,
-            'total_timesteps': total_timesteps,
-            'eval_freq': eval_freq,
-            'n_eval_episodes': n_eval_episodes,
-            'save_freq': save_freq
-        })
+        # Log training parameters only if we have an active run
+        if self.current_run:
+            self.log_params({
+                'algorithm_class': algorithm.__class__.__name__,
+                'total_timesteps': total_timesteps,
+                'eval_freq': eval_freq,
+                'n_eval_episodes': n_eval_episodes,
+                'save_freq': save_freq
+            })
         
         # Setup callbacks
         callbacks = []
@@ -274,11 +305,12 @@ class TrainingManager:
                 results['best_mean_reward'] = final_eval.get('mean_reward', 0.0)
             
             # Log final metrics
-            self.log_metrics({
-                'training_time_seconds': training_time,
-                'final_mean_reward': final_eval.get('mean_reward', 0.0),
-                'final_std_reward': final_eval.get('std_reward', 0.0)
-            })
+            if self.current_run:
+                self.log_metrics({
+                    'training_time_seconds': training_time,
+                    'final_mean_reward': final_eval.get('mean_reward', 0.0),
+                    'final_std_reward': final_eval.get('std_reward', 0.0)
+                })
             
             logger.info(f"Training completed successfully in {training_time:.2f}s")
             return results
@@ -414,6 +446,10 @@ class TrainingManager:
             model: PyTorch model to log
             name: Name for the model artifact
         """
+        if not self.current_run:
+            logger.warning("No active MLflow run for model logging")
+            return
+            
         try:
             mlflow.pytorch.log_model(model, name)
             logger.info(f"Logged model: {name}")
@@ -429,6 +465,10 @@ class TrainingManager:
             figure: Matplotlib figure to log
             name: Name for the figure
         """
+        if not self.current_run:
+            logger.warning("No active MLflow run for figure logging")
+            return
+            
         try:
             # Save locally
             figure_path = self.plots_path / f"{name}.png"
@@ -535,7 +575,8 @@ class TrainingManager:
             logger.info(f"Saved new best model with {metric_name}={metric_value:.4f}")
             
             # Log to MLflow
-            self.log_metrics({f'best_{metric_name}': metric_value})
+            if self.current_run:
+                self.log_metrics({f'best_{metric_name}': metric_value})
         
         return is_best
     
