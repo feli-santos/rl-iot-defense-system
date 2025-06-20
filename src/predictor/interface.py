@@ -1,5 +1,5 @@
 """
-Enhanced Attack Predictor Interface
+Attack Predictor Interface
 
 Bridges between LSTM predictions and RL environment needs.
 Provides real-time attack prediction and risk assessment for reward calculation.
@@ -12,15 +12,15 @@ import torch
 import pickle
 import logging
 
-from models.lstm_attack_predictor import RealDataLSTMPredictor, LSTMConfig
+from predictor.attack import LSTMAttackPredictor, LSTMConfig
 from utils.dataset_loader import CICIoTDataLoader, LoaderConfig
 
 logger = logging.getLogger(__name__)
 
 
-class EnhancedAttackPredictor:
+class AttackPredictorInterface:
     """
-    Enhanced attack predictor that bridges between LSTM predictions 
+    Attack predictor interface that bridges between LSTM predictions 
     and RL environment needs.
     
     Provides both real-time attack prediction and risk assessment
@@ -29,7 +29,7 @@ class EnhancedAttackPredictor:
     
     def __init__(self, model_path: Path, data_path: Path) -> None:
         """
-        Initialize enhanced attack predictor.
+        Initialize attack predictor interface.
         
         Args:
             model_path: Path to trained LSTM model
@@ -199,18 +199,18 @@ class EnhancedAttackPredictor:
         else:
             return 'critical'
     
-    def calculate_rl_reward(self, network_sequence: List[Dict[str, float]], 
+    def calculate_reward(self, network_sequence: List[Dict[str, float]], 
                            defense_action: int, attack_occurred: bool) -> float:
         """
-        Calculate RL reward based on attack prediction and defense effectiveness.
-        
+        Calculate reward based on attack prediction and defense effectiveness.
+
         Args:
             network_sequence: Sequence of network states
             defense_action: Defense action taken (0-3)
             attack_occurred: Whether an actual attack occurred
             
         Returns:
-            Reward value for RL training
+            Reward value for training
         """
         # Get attack risk assessment
         risk_assessment = self.predict_attack_risk(network_sequence)
