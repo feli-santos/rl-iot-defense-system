@@ -20,6 +20,7 @@ from typing import Dict, List, Tuple, Optional, Any
 from dataclasses import dataclass
 from sklearn.metrics import classification_report, confusion_matrix
 from tqdm import tqdm
+import sys
 
 from utils.dataset_loader import CICIoTDataLoader, LoaderConfig
 
@@ -182,15 +183,13 @@ class RealDataTrainer:
         
         logger.info("Calculating class weights for imbalanced dataset...")
         
-        # Load labels to compute weights
+        # Load labels to compute weights with simple progress
         train_loader = self.dataloaders['train']
         all_labels = []
         
-        # Use tqdm for progress while collecting labels
-        with tqdm(train_loader, desc="Collecting labels for class weights", 
-                 leave=False) as pbar:
-            for _, labels in pbar:
-                all_labels.extend(labels.numpy())
+        print("📊 Collecting labels for class weights...")
+        for _, labels in train_loader:
+            all_labels.extend(labels.numpy())
         
         class_weights = compute_class_weight(
             'balanced',
@@ -223,7 +222,7 @@ class RealDataTrainer:
     def train_epoch(self, dataloader: DataLoader, epoch: int, 
                    total_epochs: int) -> Tuple[float, float]:
         """
-        Train the model for one epoch with progress bar.
+        Train the model for one epoch with clean progress bar.
         
         Args:
             dataloader: Training data loader
@@ -238,10 +237,16 @@ class RealDataTrainer:
         correct_predictions = 0
         total_samples = 0
         
-        # Create progress bar for training batches
-        pbar = tqdm(dataloader, 
-                   desc=f"Training Epoch {epoch+1}/{total_epochs}",
-                   leave=False)
+        # Create clean progress bar
+        pbar = tqdm(
+            dataloader, 
+            desc=f"Epoch {epoch+1:2d}/{total_epochs}",
+            ncols=100,  # Fixed width
+            file=sys.stdout,
+            leave=False,  # Don't leave progress bar after completion
+            miniters=len(dataloader)//20,  # Update every 5%
+            maxinterval=2.0  # Max 2 second updates
+        )
         
         for batch_idx, (sequences, labels) in enumerate(pbar):
             # Move data to device
@@ -265,13 +270,16 @@ class RealDataTrainer:
             total_samples += labels.size(0)
             correct_predictions += (predicted == labels).sum().item()
             
-            # Update progress bar
-            current_loss = total_loss / (batch_idx + 1)
-            current_acc = correct_predictions / total_samples
-            pbar.set_postfix({
-                'Loss': f'{current_loss:.4f}',
-                'Acc': f'{current_acc:.4f}'
-            })
+            # Update progress bar every 5% or last batch
+            if batch_idx % max(1, len(dataloader) // 20) == 0 or batch_idx == len(dataloader) - 1:
+                current_loss = total_loss / (batch_idx + 1)
+                current_acc = correct_predictions / total_samples
+                pbar.set_postfix({
+                    'Loss': f'{current_loss:.4f}',
+                    'Acc': f'{current_acc:.3f}'
+                }, refresh=True)
+        
+        pbar.close()  # Ensure progress bar is closed
         
         avg_loss = total_loss / len(dataloader)
         accuracy = correct_predictions / total_samples
@@ -281,7 +289,7 @@ class RealDataTrainer:
     def validate_epoch(self, dataloader: DataLoader, epoch: int, 
                       total_epochs: int, split_name: str = "Val") -> Tuple[float, float]:
         """
-        Validate the model for one epoch with progress bar.
+        Validate the model for one epoch with clean progress bar.
         
         Args:
             dataloader: Validation data loader
@@ -297,13 +305,19 @@ class RealDataTrainer:
         correct_predictions = 0
         total_samples = 0
         
-        # Create progress bar for validation batches
-        pbar = tqdm(dataloader, 
-                   desc=f"{split_name} Epoch {epoch+1}/{total_epochs}",
-                   leave=False)
+        # Create clean progress bar
+        pbar = tqdm(
+            dataloader, 
+            desc=f"{split_name} {epoch+1:2d}/{total_epochs}",
+            ncols=100,
+            file=sys.stdout,
+            leave=False,
+            miniters=len(dataloader)//10,  # Update every 10% for validation
+            maxinterval=3.0
+        )
         
         with torch.no_grad():
-            for sequences, labels in pbar:
+            for batch_idx, (sequences, labels) in enumerate(pbar):
                 sequences = sequences.to(self.device)
                 labels = labels.to(self.device)
                 
@@ -315,13 +329,16 @@ class RealDataTrainer:
                 total_samples += labels.size(0)
                 correct_predictions += (predicted == labels).sum().item()
                 
-                # Update progress bar
-                current_loss = total_loss / (len([x for x in enumerate(pbar)]) + 1)
-                current_acc = correct_predictions / total_samples
-                pbar.set_postfix({
-                    'Loss': f'{current_loss:.4f}',
-                    'Acc': f'{current_acc:.4f}'
-                })
+                # Update less frequently for validation
+                if batch_idx % max(1, len(dataloader) // 10) == 0 or batch_idx == len(dataloader) - 1:
+                    current_loss = total_loss / (batch_idx + 1)
+                    current_acc = correct_predictions / total_samples
+                    pbar.set_postfix({
+                        'Loss': f'{current_loss:.4f}',
+                        'Acc': f'{current_acc:.3f}'
+                    }, refresh=True)
+        
+        pbar.close()
         
         avg_loss = total_loss / len(dataloader)
         accuracy = correct_predictions / total_samples
@@ -330,13 +347,13 @@ class RealDataTrainer:
     
     def train(self) -> Dict[str, List[float]]:
         """
-        Train the LSTM attack predictor with progress tracking.
+        Train the LSTM attack predictor with clean progress tracking.
         
         Returns:
             Training history with losses and accuracies
         """
         logger.info("🧠 Starting LSTM training on CICIoT2023 dataset...")
-        print(f"🎯 Training Configuration:")
+        print(f"\n🎯 Training Configuration:")
         print(f"   • Model: LSTM ({self.config.input_size} → {self.config.hidden_size} → {self.config.num_classes})")
         print(f"   • Dataset: {len(self.dataloaders['train'].dataset):,} train samples")
         print(f"   • Device: {self.device}")
@@ -379,12 +396,9 @@ class RealDataTrainer:
             
             best_val_accuracy = 0.0
             
-            # Main training loop with epoch progress bar
-            epoch_pbar = tqdm(range(self.config.num_epochs), 
-                             desc="🚀 LSTM Training Progress",
-                             position=0, leave=True)
-            
-            for epoch in epoch_pbar:
+            # Main training loop - simple epoch counter
+            print("🚀 Starting Training...")
+            for epoch in range(self.config.num_epochs):
                 # Training
                 train_loss, train_acc = self.train_epoch(
                     self.dataloaders['train'], epoch, self.config.num_epochs
@@ -409,18 +423,16 @@ class RealDataTrainer:
                     'val_accuracy': val_acc
                 }, step=epoch)
                 
-                # Save best model
+                # Save best model and print summary
                 if val_acc > best_val_accuracy:
                     best_val_accuracy = val_acc
                     self.save_model()
-                    epoch_pbar.write(f"✅ New best validation accuracy: {val_acc:.4f}")
-                
-                # Update epoch progress bar
-                epoch_pbar.set_postfix({
-                    'Train Acc': f'{train_acc:.3f}',
-                    'Val Acc': f'{val_acc:.3f}',
-                    'Best Val': f'{best_val_accuracy:.3f}'
-                })
+                    print(f"✅ Epoch {epoch+1:2d}/{self.config.num_epochs} | "
+                          f"Train: {train_acc:.3f} | Val: {val_acc:.3f} | "
+                          f"🎯 NEW BEST")
+                else:
+                    print(f"📊 Epoch {epoch+1:2d}/{self.config.num_epochs} | "
+                          f"Train: {train_acc:.3f} | Val: {val_acc:.3f}")
             
             # Final test evaluation
             print("\n🧪 Final Test Evaluation...")
@@ -460,13 +472,10 @@ class RealDataTrainer:
         all_predictions = []
         all_labels = []
         
-        # Evaluation with progress bar
-        pbar = tqdm(self.dataloaders['test'], 
-                   desc="📊 Evaluating on test set",
-                   leave=False)
-        
+        # Evaluation with simple progress
+        print("📊 Evaluating on test set...")
         with torch.no_grad():
-            for sequences, labels in pbar:
+            for sequences, labels in self.dataloaders['test']:
                 sequences = sequences.to(self.device)
                 outputs = self.model(sequences)
                 _, predicted = torch.max(outputs, 1)

@@ -103,7 +103,7 @@ rl:
 # Model Paths
 models:
   lstm:
-    save_path: "models/lstm_attack_predictor.pth"
+    save_path: "models/lstm/attack_predictor.pth"
     checkpoint_dir: "models/lstm/checkpoints"
 
   rl:
