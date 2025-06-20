@@ -23,40 +23,417 @@ from stable_baselines3.common.callbacks import EvalCallback, CheckpointCallback,
 logger = logging.getLogger(__name__)
 
 
-class MLflowLoggingCallback(BaseCallback):
-    """Custom callback for logging training metrics to MLflow"""
+class MLflowCallback(BaseCallback):
+    """
+    MLflow callback that captures comprehensive RL training metrics
+    for DQN, PPO, and A2C algorithms with detailed performance insights.
+    """
     
     def __init__(self, log_freq: int = 1000, verbose: int = 0):
         super().__init__(verbose)
         self.log_freq = log_freq
+        self.last_log_timestep = 0
+        
+        # Episode tracking
         self.episode_rewards: List[float] = []
         self.episode_lengths: List[int] = []
+        self.episode_count = 0
+        self.current_episode_reward = 0.0
+        self.current_episode_length = 0
+        
+        # Reward analysis
+        self.reward_buffer: List[float] = []
+        self.cumulative_rewards: List[float] = []
+        
+        # Training metrics
+        self.loss_values: List[float] = []
+        self.policy_losses: List[float] = []
+        self.value_losses: List[float] = []
+        self.entropy_losses: List[float] = []
+        self.learning_rates: List[float] = []
+        self.explained_variances: List[float] = []
+        
+        # Performance metrics
+        self.fps_values: List[float] = []
+        self.exploration_rates: List[float] = []
+        self.clipfracs: List[float] = []  # PPO specific
+        self.kl_divergences: List[float] = []  # PPO specific
+        
+        # Time tracking
+        self.step_times: List[float] = []
+        self.last_time = time.time()
+        
+        # Action distribution tracking
+        self.action_counts = {0: 0, 1: 0, 2: 0, 3: 0}  # 4 defense actions
+        
+    def _on_training_start(self) -> None:
+        """Called when training starts"""
+        try:
+            mlflow.log_metrics({
+                'training/timesteps_total': 0,
+                'training/episodes_total': 0,
+                'training/started': 1,
+                'performance/fps': 0.0
+            }, step=0)
+            
+            if self.verbose > 0:
+                print("📊 MLflow callback initialized - comprehensive RL metrics logging enabled")
+                
+        except Exception as e:
+            logger.warning(f"Failed to log training start: {e}")
     
     def _on_step(self) -> bool:
-        """Called at each training step"""
-        # Log episode-level metrics when episode ends
-        if len(self.locals.get('infos', [])) > 0:
-            info = self.locals['infos'][0]
-            if 'episode' in info:
-                episode_info = info['episode']
-                self.episode_rewards.append(episode_info['r'])
-                self.episode_lengths.append(episode_info['l'])
+        """Called at each training step with comprehensive metric capture"""
+        try:
+            # Track step timing for FPS calculation
+            current_time = time.time()
+            step_time = current_time - self.last_time
+            self.step_times.append(step_time)
+            self.last_time = current_time
+            
+            # Capture episode data
+            self._capture_episode_data()
+            
+            # Capture training metrics
+            self._capture_training_metrics()
+            
+            # Track actions for distribution analysis
+            self._track_action_distribution()
+            
+            # Log metrics at specified frequency
+            if self.num_timesteps - self.last_log_timestep >= self.log_freq:
+                self._log_comprehensive_metrics()
+                self.last_log_timestep = self.num_timesteps
+            
+            return True
+            
+        except Exception as e:
+            logger.warning(f"Error in MLflow callback step: {e}")
+            return True
+    
+    def _capture_episode_data(self) -> None:
+        """Capture detailed episode completion data"""
+        try:
+            # Method 1: Check infos for episode data (most reliable)
+            if hasattr(self.locals, 'infos') and self.locals.get('infos'):
+                for info in self.locals['infos']:
+                    if isinstance(info, dict) and 'episode' in info:
+                        episode_info = info['episode']
+                        if 'r' in episode_info and 'l' in episode_info:
+                            episode_reward = float(episode_info['r'])
+                            episode_length = int(episode_info['l'])
+                            
+                            self.episode_rewards.append(episode_reward)
+                            self.episode_lengths.append(episode_length)
+                            self.episode_count += 1
+                            
+                            # Log individual episode completion
+                            mlflow.log_metrics({
+                                'episodes/reward': episode_reward,
+                                'episodes/length': episode_length,
+                                'episodes/count': self.episode_count
+                            }, step=self.num_timesteps)
+            
+            # Method 2: Track current episode progress
+            if hasattr(self.locals, 'rewards') and self.locals.get('rewards') is not None:
+                rewards = self.locals['rewards']
+                if hasattr(rewards, '__iter__'):
+                    # VecEnv case
+                    for reward in rewards:
+                        self.reward_buffer.append(float(reward))
+                        self.current_episode_reward += float(reward)
+                else:
+                    # Single env case
+                    self.reward_buffer.append(float(rewards))
+                    self.current_episode_reward += float(rewards)
                 
-                # Log to MLflow every log_freq episodes
-                if len(self.episode_rewards) % self.log_freq == 0:
-                    try:
-                        mean_reward = np.mean(self.episode_rewards[-self.log_freq:])
-                        mean_length = np.mean(self.episode_lengths[-self.log_freq:])
+                self.current_episode_length += 1
+            
+            # Check for episode termination
+            if hasattr(self.locals, 'dones') and self.locals.get('dones') is not None:
+                dones = self.locals['dones']
+                if hasattr(dones, '__iter__'):
+                    for done in dones:
+                        if done:
+                            self._finalize_episode()
+                else:
+                    if dones:
+                        self._finalize_episode()
                         
-                        mlflow.log_metrics({
-                            'episode_reward_mean': mean_reward,
-                            'episode_length_mean': mean_length,
-                            'total_episodes': len(self.episode_rewards)
-                        }, step=self.num_timesteps)
-                    except Exception as e:
-                        logger.warning(f"Failed to log metrics: {e}")
-        
-        return True
+        except Exception as e:
+            logger.debug(f"Could not capture episode data: {e}")
+    
+    def _finalize_episode(self) -> None:
+        """Finalize episode tracking when episode ends"""
+        if self.current_episode_length > 0:
+            self.episode_rewards.append(self.current_episode_reward)
+            self.episode_lengths.append(self.current_episode_length)
+            self.episode_count += 1
+            
+            # Reset for next episode
+            self.current_episode_reward = 0.0
+            self.current_episode_length = 0
+    
+    def _capture_training_metrics(self) -> None:
+        """Capture algorithm-specific training metrics"""
+        try:
+            model = self.model
+            
+            # DQN-specific metrics
+            if hasattr(model, 'logger') and model.logger is not None:
+                logger_data = model.logger.name_to_value
+                
+                # Loss metrics
+                for loss_key in ['train/loss', 'loss', 'train/q_loss']:
+                    if loss_key in logger_data:
+                        self.loss_values.append(float(logger_data[loss_key]))
+                        break
+                
+                # Learning rate
+                for lr_key in ['train/learning_rate', 'learning_rate']:
+                    if lr_key in logger_data:
+                        self.learning_rates.append(float(logger_data[lr_key]))
+                        break
+                
+                # Exploration rate (DQN epsilon)
+                for eps_key in ['train/exploration_rate', 'exploration_rate', 'eps']:
+                    if eps_key in logger_data:
+                        self.exploration_rates.append(float(logger_data[eps_key]))
+                        break
+            
+            # PPO/A2C-specific metrics
+            if hasattr(self.locals, 'logger') and self.locals['logger'] is not None:
+                logger_data = self.locals['logger'].name_to_value
+                
+                # Policy and value losses
+                loss_mappings = {
+                    'train/policy_loss': self.policy_losses,
+                    'train/value_loss': self.value_losses,
+                    'train/entropy_loss': self.entropy_losses,
+                    'train/explained_variance': self.explained_variances,
+                    'train/clip_fraction': self.clipfracs,
+                    'train/kl_divergence': self.kl_divergences
+                }
+                
+                for key, storage in loss_mappings.items():
+                    if key in logger_data:
+                        storage.append(float(logger_data[key]))
+                
+                # Learning rate for PPO/A2C
+                if 'train/learning_rate' in logger_data:
+                    self.learning_rates.append(float(logger_data['train/learning_rate']))
+            
+            # Calculate FPS
+            if len(self.step_times) >= 10:
+                recent_times = self.step_times[-10:]
+                fps = 1.0 / (np.mean(recent_times) + 1e-8)
+                self.fps_values.append(fps)
+                
+        except Exception as e:
+            logger.debug(f"Could not capture training metrics: {e}")
+    
+    def _track_action_distribution(self) -> None:
+        """Track action distribution for policy analysis"""
+        try:
+            if hasattr(self.locals, 'actions') and self.locals.get('actions') is not None:
+                actions = self.locals['actions']
+                if hasattr(actions, '__iter__'):
+                    for action in actions:
+                        action_idx = int(action)
+                        if action_idx in self.action_counts:
+                            self.action_counts[action_idx] += 1
+                else:
+                    action_idx = int(actions)
+                    if action_idx in self.action_counts:
+                        self.action_counts[action_idx] += 1
+        except Exception as e:
+            logger.debug(f"Could not track action distribution: {e}")
+    
+    def _log_comprehensive_metrics(self) -> None:
+        """Log comprehensive RL training metrics to MLflow"""
+        try:
+            metrics = {
+                'training/timesteps': self.num_timesteps,
+                'training/episodes_total': self.episode_count
+            }
+            
+            # === REWARD METRICS ===
+            if self.episode_rewards:
+                recent_rewards = self.episode_rewards[-100:]  # Last 100 episodes
+                all_rewards = self.episode_rewards
+                
+                metrics.update({
+                    'rewards/episode_mean_recent': float(np.mean(recent_rewards)),
+                    'rewards/episode_std_recent': float(np.std(recent_rewards)),
+                    'rewards/episode_min_recent': float(np.min(recent_rewards)),
+                    'rewards/episode_max_recent': float(np.max(recent_rewards)),
+                    'rewards/episode_mean_all': float(np.mean(all_rewards)),
+                    'rewards/episode_best': float(np.max(all_rewards)),
+                    'rewards/episode_worst': float(np.min(all_rewards)),
+                })
+                
+                # Reward trend analysis
+                if len(all_rewards) >= 20:
+                    early_rewards = np.mean(all_rewards[:10])
+                    recent_rewards_mean = np.mean(recent_rewards[-10:])
+                    metrics['rewards/improvement'] = float(recent_rewards_mean - early_rewards)
+                
+                # Success rate (positive rewards)
+                positive_rewards = [r for r in recent_rewards if r > 0]
+                metrics['rewards/success_rate'] = float(len(positive_rewards) / len(recent_rewards))
+            
+            # === EPISODE LENGTH METRICS ===
+            if self.episode_lengths:
+                recent_lengths = self.episode_lengths[-100:]
+                metrics.update({
+                    'episodes/length_mean': float(np.mean(recent_lengths)),
+                    'episodes/length_std': float(np.std(recent_lengths)),
+                    'episodes/length_min': float(np.min(recent_lengths)),
+                    'episodes/length_max': float(np.max(recent_lengths)),
+                })
+            
+            # === TRAINING LOSS METRICS ===
+            if self.loss_values:
+                recent_losses = self.loss_values[-10:]
+                metrics.update({
+                    'losses/total_loss_mean': float(np.mean(recent_losses)),
+                    'losses/total_loss_current': float(recent_losses[-1]),
+                    'losses/total_loss_std': float(np.std(recent_losses)),
+                })
+            
+            if self.policy_losses:
+                recent_policy = self.policy_losses[-10:]
+                metrics.update({
+                    'losses/policy_loss_mean': float(np.mean(recent_policy)),
+                    'losses/policy_loss_current': float(recent_policy[-1]),
+                })
+            
+            if self.value_losses:
+                recent_value = self.value_losses[-10:]
+                metrics.update({
+                    'losses/value_loss_mean': float(np.mean(recent_value)),
+                    'losses/value_loss_current': float(recent_value[-1]),
+                })
+            
+            if self.entropy_losses:
+                recent_entropy = self.entropy_losses[-10:]
+                metrics.update({
+                    'losses/entropy_loss_mean': float(np.mean(recent_entropy)),
+                    'losses/entropy_loss_current': float(recent_entropy[-1]),
+                })
+            
+            # === LEARNING METRICS ===
+            if self.learning_rates:
+                metrics['training/learning_rate'] = float(self.learning_rates[-1])
+            
+            if self.explained_variances:
+                metrics['training/explained_variance'] = float(self.explained_variances[-1])
+            
+            if self.exploration_rates:
+                metrics['training/exploration_rate'] = float(self.exploration_rates[-1])
+            
+            if self.clipfracs:
+                metrics['training/clip_fraction'] = float(self.clipfracs[-1])
+            
+            if self.kl_divergences:
+                metrics['training/kl_divergence'] = float(self.kl_divergences[-1])
+            
+            # === PERFORMANCE METRICS ===
+            if self.fps_values:
+                metrics['performance/fps'] = float(self.fps_values[-1])
+                metrics['performance/fps_mean'] = float(np.mean(self.fps_values[-10:]))
+            
+            # Time per step
+            if self.step_times:
+                recent_step_times = self.step_times[-100:]
+                metrics.update({
+                    'performance/step_time_mean': float(np.mean(recent_step_times)),
+                    'performance/step_time_std': float(np.std(recent_step_times)),
+                })
+            
+            # === ACTION DISTRIBUTION METRICS ===
+            total_actions = sum(self.action_counts.values())
+            if total_actions > 0:
+                action_names = ['monitor', 'rate_limit', 'block_ips', 'shutdown_services']
+                for i, action_name in enumerate(action_names):
+                    action_prob = self.action_counts[i] / total_actions
+                    metrics[f'actions/{action_name}_probability'] = float(action_prob)
+                
+                # Action entropy (policy diversity)
+                probs = [self.action_counts[i] / total_actions for i in range(4)]
+                action_entropy = -sum(p * np.log(p + 1e-8) for p in probs if p > 0)
+                metrics['actions/entropy'] = float(action_entropy)
+            
+            # === STABILITY METRICS ===
+            if len(self.episode_rewards) >= 50:
+                # Coefficient of variation for reward stability
+                recent_50 = self.episode_rewards[-50:]
+                cv = np.std(recent_50) / (abs(np.mean(recent_50)) + 1e-8)
+                metrics['stability/reward_coefficient_variation'] = float(cv)
+                
+                # Moving average convergence
+                if len(self.episode_rewards) >= 100:
+                    ma_20 = np.mean(self.episode_rewards[-20:])
+                    ma_50 = np.mean(self.episode_rewards[-50:])
+                    convergence = abs(ma_20 - ma_50) / (abs(ma_50) + 1e-8)
+                    metrics['stability/convergence_metric'] = float(convergence)
+            
+            # Log all metrics to MLflow
+            mlflow.log_metrics(metrics, step=self.num_timesteps)
+            
+            if self.verbose > 1:
+                print(f"📊 Logged {len(metrics)} comprehensive metrics at timestep {self.num_timesteps}")
+                print(f"   • Episode reward (recent): {metrics.get('rewards/episode_mean_recent', 0):.3f}")
+                print(f"   • Episodes completed: {self.episode_count}")
+                print(f"   • FPS: {metrics.get('performance/fps', 0):.1f}")
+                
+        except Exception as e:
+            logger.warning(f"Failed to log comprehensive metrics: {e}")
+    
+    def _on_training_end(self) -> None:
+        """Called when training ends with final summary"""
+        try:
+            final_metrics = {
+                'training/completed': 1,
+                'training/total_timesteps': self.num_timesteps,
+                'training/total_episodes': self.episode_count,
+            }
+            
+            if self.episode_rewards:
+                final_metrics.update({
+                    'final/mean_reward': float(np.mean(self.episode_rewards[-50:])),
+                    'final/best_reward': float(np.max(self.episode_rewards)),
+                    'final/total_episodes_logged': len(self.episode_rewards),
+                    'final/final_10_episodes_mean': float(np.mean(self.episode_rewards[-10:])),
+                })
+                
+                # Training progression
+                if len(self.episode_rewards) >= 100:
+                    first_100 = np.mean(self.episode_rewards[:100])
+                    last_100 = np.mean(self.episode_rewards[-100:])
+                    final_metrics['final/total_improvement'] = float(last_100 - first_100)
+            
+            # Final performance metrics
+            if self.fps_values:
+                final_metrics['final/average_fps'] = float(np.mean(self.fps_values))
+            
+            # Action distribution summary
+            total_actions = sum(self.action_counts.values())
+            if total_actions > 0:
+                action_names = ['monitor', 'rate_limit', 'block_ips', 'shutdown_services']
+                for i, action_name in enumerate(action_names):
+                    final_metrics[f'final/{action_name}_usage'] = float(self.action_counts[i] / total_actions)
+            
+            mlflow.log_metrics(final_metrics, step=self.num_timesteps)
+            
+            if self.verbose > 0:
+                print(f"✅ Training completed - logged {len(self.episode_rewards)} episodes")
+                print(f"   • Final mean reward: {final_metrics.get('final/mean_reward', 0):.3f}")
+                print(f"   • Best episode reward: {final_metrics.get('final/best_reward', 0):.3f}")
+                print(f"   • Total improvement: {final_metrics.get('final/total_improvement', 0):.3f}")
+                
+        except Exception as e:
+            logger.warning(f"Failed to log final metrics: {e}")
 
 
 class TrainingManager:
@@ -113,7 +490,7 @@ class TrainingManager:
     
     def start_run(self, run_name: Optional[str] = None, nested: bool = False) -> None:
         """
-        Start MLflow run
+        Start MLflow run with comprehensive experiment setup.
         
         Args:
             run_name: Optional custom run name
@@ -225,7 +602,7 @@ class TrainingManager:
                        n_eval_episodes: int = 10,
                        save_freq: int = 50000) -> Dict[str, Any]:
         """
-        Train RL algorithm with evaluation and checkpointing
+        Train RL algorithm with comprehensive MLflow metrics logging
         
         Args:
             algorithm: RL algorithm instance
@@ -252,6 +629,13 @@ class TrainingManager:
         # Setup callbacks
         callbacks = []
         
+        # MLflow callback for comprehensive metrics
+        mlflow_callback = MLflowCallback(
+            log_freq=max(1000, total_timesteps // 100),  # Log ~100 times during training
+            verbose=1
+        )
+        callbacks.append(mlflow_callback)
+        
         # Evaluation callback
         if eval_freq > 0:
             eval_callback = EvalCallback(
@@ -261,17 +645,18 @@ class TrainingManager:
                 eval_freq=eval_freq,
                 n_eval_episodes=n_eval_episodes,
                 deterministic=True,
-                render=False
+                render=False,
+                verbose=1
             )
             callbacks.append(eval_callback)
-        
-        # MLflow logging callback
-        mlflow_callback = MLflowLoggingCallback(log_freq=max(1000, eval_freq // 5))
-        callbacks.append(mlflow_callback)
         
         try:
             # Train the algorithm
             start_time = datetime.now()
+            
+            print(f"🚀 Training {algorithm.__class__.__name__} for {total_timesteps:,} timesteps...")
+            print(f"📊 Comprehensive metrics will be logged every {mlflow_callback.log_freq:,} timesteps")
+            print(f"📈 Tracking: rewards, losses, episode lengths, action distribution, performance")
             
             algorithm.learn(
                 total_timesteps=total_timesteps,
@@ -294,7 +679,9 @@ class TrainingManager:
                 'training_time': training_time,
                 'final_model_path': str(final_model_path),
                 'final_evaluation': final_eval,
-                'success': True
+                'success': True,
+                'total_episodes': mlflow_callback.episode_count,
+                'metrics_logged': len(mlflow_callback.episode_rewards)
             }
             
             # Add best model info if available
@@ -304,13 +691,29 @@ class TrainingManager:
             else:
                 results['best_mean_reward'] = final_eval.get('mean_reward', 0.0)
             
-            # Log final metrics
-            if self.current_run:
-                self.log_metrics({
-                    'training_time_seconds': training_time,
-                    'final_mean_reward': final_eval.get('mean_reward', 0.0),
-                    'final_std_reward': final_eval.get('std_reward', 0.0)
-                })
+            # Log final comprehensive summary
+            if self.current_run and mlflow_callback.episode_rewards:
+                final_metrics = {
+                    'summary/training_time_seconds': training_time,
+                    'summary/final_mean_reward': final_eval.get('mean_reward', 0.0),
+                    'summary/final_std_reward': final_eval.get('std_reward', 0.0),
+                    'summary/total_episodes_trained': mlflow_callback.episode_count,
+                    'summary/episodes_logged': len(mlflow_callback.episode_rewards),
+                    'summary/training_success': 1,
+                    'summary/best_episode_reward': float(np.max(mlflow_callback.episode_rewards)),
+                    'summary/reward_improvement': float(np.mean(mlflow_callback.episode_rewards[-10:]) - np.mean(mlflow_callback.episode_rewards[:10])) if len(mlflow_callback.episode_rewards) >= 20 else 0.0,
+                    'summary/average_fps': float(np.mean(mlflow_callback.fps_values)) if mlflow_callback.fps_values else 0.0
+                }
+                
+                self.log_metrics(final_metrics)
+            
+            print(f"✅ Training completed successfully!")
+            print(f"   • Episodes trained: {mlflow_callback.episode_count}")
+            print(f"   • Episodes with rewards logged: {len(mlflow_callback.episode_rewards)}")
+            print(f"   • Training time: {training_time:.1f}s")
+            if mlflow_callback.episode_rewards:
+                print(f"   • Final reward: {np.mean(mlflow_callback.episode_rewards[-10:]):.3f}")
+                print(f"   • Best episode: {np.max(mlflow_callback.episode_rewards):.3f}")
             
             logger.info(f"Training completed successfully in {training_time:.2f}s")
             return results
@@ -318,12 +721,21 @@ class TrainingManager:
         except Exception as e:
             training_time = (datetime.now() - start_time).total_seconds() if 'start_time' in locals() else 0
             logger.error(f"Training failed: {e}")
+            
+            # Log failure metrics
+            if self.current_run:
+                self.log_metrics({
+                    'summary/training_time_seconds': training_time,
+                    'summary/training_success': 0,
+                    'summary/training_failed': 1
+                })
+            
             return {
                 'success': False,
                 'error': str(e),
                 'training_time': training_time
             }
-    
+
     def evaluate_algorithm(self, 
                           algorithm: BaseAlgorithm,
                           n_episodes: int = 20,
