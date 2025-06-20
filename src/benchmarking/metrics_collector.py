@@ -49,8 +49,8 @@ class MetricsCollector:
     
     def __init__(self, save_path: Optional[Path] = None):
         self.metrics: Dict[str, List[RunMetrics]] = {}
-        self.save_path = save_path or Path("./benchmarking_results")
-        self.save_path.mkdir(exist_ok=True)
+        self.save_path = save_path or Path("results/benchmark")
+        self.save_path.mkdir(parents=True, exist_ok=True)
         
     def start_run(self, algorithm_name: str, run_id: int, hyperparameters: Dict[str, Any]) -> None:
         """Start tracking a new run"""

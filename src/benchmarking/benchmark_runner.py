@@ -50,17 +50,20 @@ class BenchmarkRunner:
         self.config = config
         self.lstm_model_path = lstm_model_path
         self.mode = mode
-        self.metrics_collector = MetricsCollector()
         
         # Create results directory
-        self.results_path = Path("results/benchmarks")
+        self.results_path = Path("results/benchmark")
         self.results_path.mkdir(parents=True, exist_ok=True)
+        
+        # Initialize metrics collector with correct path - FIXED
+        self.metrics_collector = MetricsCollector(save_path=self.results_path)
         
         # Model storage paths
         self.models_path = Path(config['models']['rl']['save_dir'])
         self.models_path.mkdir(parents=True, exist_ok=True)
         
         logger.info(f"Benchmark runner initialized in {mode} mode")
+        logger.info(f"Results will be saved to: {self.results_path}")
     
     def run_benchmark(self, algorithms: Optional[List[str]] = None, 
                      num_runs: int = 3,

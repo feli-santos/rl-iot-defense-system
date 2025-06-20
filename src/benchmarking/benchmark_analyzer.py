@@ -18,8 +18,8 @@ class BenchmarkAnalyzer:
     
     def __init__(self, metrics_collector: MetricsCollector):
         self.metrics_collector = metrics_collector
-        self.results_path = Path("./benchmark_analysis")
-        self.results_path.mkdir(exist_ok=True)
+        self.results_path = Path("results/benchmark/analysis")
+        self.results_path.mkdir(parents=True, exist_ok=True)
         
     def generate_comparison_report(self) -> None:
         """Generate comprehensive comparison report"""
