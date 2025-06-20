@@ -9,8 +9,10 @@ from pathlib import Path
 from typing import Dict, List, Tuple, Optional, Any
 import numpy as np
 import torch
-import pickle
+import json
+import joblib
 import logging
+import pandas as pd
 
 from predictor.attack import LSTMAttackPredictor, LSTMConfig
 from utils.dataset_loader import CICIoTDataLoader, LoaderConfig
@@ -88,22 +90,82 @@ class AttackPredictorInterface:
             raise
     
     def _load_preprocessing_artifacts(self) -> None:
-        """Load preprocessing artifacts for data transformation."""
-        artifacts_path = self.data_path / "preprocessing_artifacts.pkl"
-        
+        """Load preprocessing artifacts from new file structure."""
         try:
-            with open(artifacts_path, 'rb') as f:
-                artifacts = pickle.load(f)
+            # Load scaler
+            scaler_path = self.data_path / "scaler.joblib"
+            if scaler_path.exists():
+                self.scaler = joblib.load(scaler_path)
+                logger.info("Scaler loaded successfully")
+            else:
+                raise FileNotFoundError(f"Scaler not found: {scaler_path}")
             
-            self.scaler = artifacts['scaler']
-            self.label_encoder = artifacts['label_encoder']
-            self.attack_categories = artifacts['attack_categories']
+            # Load label encoder
+            encoder_path = self.data_path / "label_encoder.joblib"
+            if encoder_path.exists():
+                self.label_encoder = joblib.load(encoder_path)
+                logger.info("Label encoder loaded successfully")
+            else:
+                raise FileNotFoundError(f"Label encoder not found: {encoder_path}")
             
-            logger.info("Preprocessing artifacts loaded")
+            # Load metadata
+            metadata_path = self.data_path / "metadata.json"
+            if metadata_path.exists():
+                with open(metadata_path, 'r') as f:
+                    metadata = json.load(f)
+                
+                self.feature_columns = metadata['feature_columns']
+                self.class_names = metadata['class_names']
+                
+                # Create attack categories mapping
+                self.attack_categories = self._create_attack_categories_mapping()
+                
+                logger.info(f"Metadata loaded: {len(self.feature_columns)} features, {len(self.class_names)} classes")
+            else:
+                raise FileNotFoundError(f"Metadata not found: {metadata_path}")
             
         except Exception as e:
             logger.error(f"Failed to load preprocessing artifacts: {e}")
             raise
+    
+    def _create_attack_categories_mapping(self) -> Dict[str, Any]:
+        """
+        Create attack categories mapping from class names.
+        
+        Returns:
+            Attack categories dictionary
+        """
+        # Map attack types to categories based on class names
+        attack_mapping = {}
+        
+        for class_name in self.class_names:
+            class_lower = class_name.lower()
+            
+            if 'benign' in class_lower or 'normal' in class_lower:
+                attack_mapping[class_name] = 'benign'
+            elif 'ddos' in class_lower:
+                attack_mapping[class_name] = 'ddos'
+            elif 'dos' in class_lower:
+                attack_mapping[class_name] = 'dos'
+            elif 'botnet' in class_lower or 'mirai' in class_lower:
+                attack_mapping[class_name] = 'botnet'
+            elif 'mitm' in class_lower or 'man_in_the_middle' in class_lower:
+                attack_mapping[class_name] = 'mitm'
+            elif 'recon' in class_lower or 'scan' in class_lower:
+                attack_mapping[class_name] = 'reconnaissance'
+            elif 'web' in class_lower or 'http' in class_lower or 'sql' in class_lower:
+                attack_mapping[class_name] = 'web_attacks'
+            elif 'brute' in class_lower or 'password' in class_lower:
+                attack_mapping[class_name] = 'brute_force'
+            elif 'malware' in class_lower or 'trojan' in class_lower:
+                attack_mapping[class_name] = 'malware'
+            else:
+                attack_mapping[class_name] = 'unknown'
+        
+        return {
+            'mapping': attack_mapping,
+            'categories': list(set(attack_mapping.values()))
+        }
     
     def preprocess_network_state(self, network_features: Dict[str, float]) -> np.ndarray:
         """
@@ -119,16 +181,17 @@ class AttackPredictorInterface:
         feature_vector = np.zeros(self.config.input_size)
         
         # Map network features to LSTM input format
-        feature_names = self.feature_info['feature_names']
-        
-        for i, feature_name in enumerate(feature_names):
+        for i, feature_name in enumerate(self.feature_columns):
             if feature_name in network_features:
                 feature_vector[i] = network_features[feature_name]
         
-        # Normalize using trained scaler
-        feature_vector = self.scaler.transform(feature_vector.reshape(1, -1)).flatten()
+        # Create pandas DataFrame to avoid sklearn feature name warnings
+        feature_df = pd.DataFrame([feature_vector], columns=self.feature_columns)
         
-        return feature_vector
+        # Normalize using trained scaler
+        normalized_features = self.scaler.transform(feature_df)
+        
+        return normalized_features.flatten()
     
     def predict_attack_risk(self, network_sequence: List[Dict[str, float]]) -> Dict[str, Any]:
         """
@@ -156,12 +219,19 @@ class AttackPredictorInterface:
         
         processed_sequence = np.array(processed_sequence).reshape(1, self.config.sequence_length, -1)
         
-        # Predict attack probabilities
-        probabilities = self.model.predict_attack_probability(processed_sequence)[0]
+        # Convert to tensor for LSTM prediction
+        sequence_tensor = torch.FloatTensor(processed_sequence).to(self.device)
+        
+        # Predict attack probabilities using correct method name
+        probabilities = self.model.predict_proba(sequence_tensor)[0]
+        
+        # Convert to numpy if it's a tensor
+        if isinstance(probabilities, torch.Tensor):
+            probabilities = probabilities.cpu().numpy()
         
         # Get predicted attack type
         predicted_class_idx = np.argmax(probabilities)
-        predicted_attack = self.feature_info['class_names'][predicted_class_idx]
+        predicted_attack = self.class_names[predicted_class_idx]
         predicted_category = self.attack_categories['mapping'].get(predicted_attack, 'unknown')
         
         # Calculate risk score
@@ -173,7 +243,7 @@ class AttackPredictorInterface:
             'confidence': float(probabilities[predicted_class_idx]),
             'risk_score': float(risk_score),
             'all_probabilities': {
-                self.feature_info['class_names'][i]: float(prob) 
+                self.class_names[i]: float(prob) 
                 for i, prob in enumerate(probabilities)
             },
             'is_attack': predicted_category != 'benign',
