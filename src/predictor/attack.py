@@ -44,7 +44,7 @@ class LSTMConfig:
     focal_loss: bool = False
 
 
-class RealDataLSTMPredictor(nn.Module):
+class LSTMAttackPredictor(nn.Module):
     """
     LSTM-based attack predictor trained on real CICIoT2023 dataset.
     
@@ -121,9 +121,9 @@ class RealDataLSTMPredictor(nn.Module):
         return probabilities
 
 
-class RealDataTrainer:
+class DataTrainer:
     """
-    Trainer for RealDataLSTMPredictor using CICIoT2023 dataset.
+    Trainer for LSTM Predictor using CICIoT2023 dataset.
     Compatible with new dataset processor format.
     """
     

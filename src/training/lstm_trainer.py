@@ -11,7 +11,7 @@ import torch
 import mlflow
 import mlflow.pytorch
 
-from predictors.lstm_attack_predictor import RealDataLSTMPredictor, LSTMConfig, RealDataTrainer
+from predictor.attack import LSTMAttackPredictor, LSTMConfig, DataTrainer
 from utils.dataset_loader import CICIoTDataLoader, LoaderConfig
 
 logger = logging.getLogger(__name__)
