@@ -115,7 +115,7 @@ class BenchmarkRunner:
     
     def _discover_trained_models(self, algorithms: List[str]) -> Dict[str, List[str]]:
         """
-        Discover pre-trained models in the models directory.
+        Discover pre-trained models.
         
         Args:
             algorithms: List of algorithm names to look for
@@ -123,43 +123,43 @@ class BenchmarkRunner:
         Returns:
             Dict mapping algorithm names to lists of model paths
         """
-        model_paths = {}
+        model_paths: Dict[str, List[str]] = {}
+        
+        # Search in MLflow artifacts structure only
+        artifacts_path = Path("artifacts/rl")
+        
+        if not artifacts_path.exists():
+            logger.warning(f"MLflow artifacts directory not found: {artifacts_path}")
+            return model_paths
         
         for algorithm in algorithms:
-            algorithm_models = []
+            algorithm_models: List[str] = []
             
-            # Look for models in different locations
-            search_paths = [
-                self.models_path / algorithm,
-                self.models_path,
-            ]
+            # Look for algorithm-specific experiment directories
+            # Pattern: artifacts/rl/{algorithm}_timestamp_hash/
+            for exp_dir in artifacts_path.glob(f"{algorithm}_*"):
+                if exp_dir.is_dir():
+                    models_dir = exp_dir / "models"
+                    if models_dir.exists():
+                        # Find all .zip files in the models directory
+                        for model_file in models_dir.rglob("*.zip"):
+                            algorithm_models.append(str(model_file))
             
-            for search_path in search_paths:
-                if search_path.exists():
-                    # Look for .zip files (SB3 format) with algorithm name
-                    model_files = list(search_path.glob(f"*{algorithm}*.zip"))
-                    model_files.extend(search_path.glob(f"{algorithm}_*.zip"))
-                    
-                    # Look in subdirectories but filter by algorithm name
-                    for subdir in search_path.iterdir():
-                        if subdir.is_dir():
-                            # Only include subdirectories that contain the algorithm name
-                            if algorithm.lower() in subdir.name.lower():
-                                model_files.extend(subdir.glob("*.zip"))
-                                model_files.extend(subdir.glob("**/final_model.zip"))
-                                model_files.extend(subdir.glob("**/best_model.zip"))
+            # Remove duplicates and sort by modification time (newest first)
+            algorithm_models = sorted(
+                list(set(algorithm_models)),
+                key=lambda x: Path(x).stat().st_mtime,
+                reverse=True
+            )
+            
+            if algorithm_models:
+                model_paths[algorithm] = algorithm_models
+                print(f"🔍 Found {len(algorithm_models)} {algorithm.upper()} models")
+                if len(algorithm_models) > 3:
+                    print(f"   ... and {len(algorithm_models) - 3} more")
+            else:
+                print(f"⚠️  No {algorithm.upper()} models found in MLflow artifacts")
                 
-                    algorithm_models.extend([str(p) for p in model_files])
-        
-        # Remove duplicates and sort
-        algorithm_models = sorted(list(set(algorithm_models)))
-        
-        if algorithm_models:
-            model_paths[algorithm] = algorithm_models
-            print(f"🔍 Found {len(algorithm_models)} {algorithm.upper()} models")
-        else:
-            print(f"⚠️  No pre-trained {algorithm.upper()} models found")
-    
         return model_paths
     
     def _run_training_benchmark(self, algorithms: List[str], num_runs: int) -> None:
@@ -180,11 +180,13 @@ class BenchmarkRunner:
             print(f"{'='*50}")
             
             for i, model_path in enumerate(paths):
-                model_full_path = Path(model_path).resolve()
-                model_name = Path(model_path).name
+                model_path_obj = Path(model_path)
+                relative_path = str(model_path_obj).replace(str(Path.cwd()) + "/", "")
+                model_name = model_path_obj.name
+                
                 print(f"\n📊 Evaluating model {i+1}/{len(paths)}")
                 print(f"📁 File: {model_name}")
-                print(f"🗂️  Path: {model_full_path}")
+                print(f"🗂️  Path: {relative_path}")
                 
                 try:
                     evaluation_results = self._evaluate_pretrained_model(algorithm_name, model_path)
@@ -194,7 +196,7 @@ class BenchmarkRunner:
                     self.metrics_collector.start_run(
                         algorithm_name=algorithm_name,
                         run_id=i,
-                        hyperparameters={"model_path": str(model_full_path)}
+                        hyperparameters={"model_path": relative_path}
                     )
                     
                     self.metrics_collector.update_evaluation_metrics(
@@ -207,7 +209,7 @@ class BenchmarkRunner:
                     
                 except Exception as e:
                     print(f"  ❌ Evaluation failed: {e}")
-                    logger.error(f"Failed to evaluate {model_full_path}: {e}")
+                    logger.error(f"Failed to evaluate {relative_path}: {e}")
                     continue
     
     def _run_mixed_benchmark(self, algorithms: List[str], num_runs: int,
