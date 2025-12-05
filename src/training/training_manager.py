@@ -63,8 +63,8 @@ class MLflowCallback(BaseCallback):
         self.step_times: List[float] = []
         self.last_time = time.time()
         
-        # Action distribution tracking
-        self.action_counts = {0: 0, 1: 0, 2: 0, 3: 0}  # 4 defense actions
+        # Action distribution tracking (5 force continuum actions)
+        self.action_counts = {0: 0, 1: 0, 2: 0, 3: 0, 4: 0}
         
     def _on_training_start(self) -> None:
         """Called when training starts"""
@@ -354,13 +354,14 @@ class MLflowCallback(BaseCallback):
             # === ACTION DISTRIBUTION METRICS ===
             total_actions = sum(self.action_counts.values())
             if total_actions > 0:
-                action_names = ['monitor', 'rate_limit', 'block_ips', 'shutdown_services']
+                # Force continuum actions (5 levels)
+                action_names = ['observe', 'log', 'throttle', 'block', 'isolate']
                 for i, action_name in enumerate(action_names):
                     action_prob = self.action_counts[i] / total_actions
                     metrics[f'actions/{action_name}_probability'] = float(action_prob)
                 
                 # Action entropy (policy diversity)
-                probs = [self.action_counts[i] / total_actions for i in range(4)]
+                probs = [self.action_counts[i] / total_actions for i in range(5)]
                 action_entropy = -sum(p * np.log(p + 1e-8) for p in probs if p > 0)
                 metrics['actions/entropy'] = float(action_entropy)
             
@@ -420,7 +421,8 @@ class MLflowCallback(BaseCallback):
             # Action distribution summary
             total_actions = sum(self.action_counts.values())
             if total_actions > 0:
-                action_names = ['monitor', 'rate_limit', 'block_ips', 'shutdown_services']
+                # Force continuum actions (5 levels)
+                action_names = ['observe', 'log', 'throttle', 'block', 'isolate']
                 for i, action_name in enumerate(action_names):
                     final_metrics[f'final/{action_name}_usage'] = float(self.action_counts[i] / total_actions)
             
