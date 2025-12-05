@@ -1,5 +1,10 @@
 # IoT Defense System Configuration
-# Main configuration for LSTM attack prediction and RL defense training
+# Main configuration for Adversarial RL Defense System
+#
+# System Overview (PRD):
+# - Red Team: Attack Sequence Generator (LSTM) produces attack sequences
+# - Blue Team: RL agents (DQN/PPO/A2C) learn defense policies
+# - Kill Chain Stages: BENIGN(0), RECON(1), ACCESS(2), MANEUVER(3), IMPACT(4)
 
 # Dataset Configuration
 dataset:
@@ -15,37 +20,94 @@ dataset:
   sampling_strategy: "balanced" # For severe imbalance
   feature_selection: true # Remove low/zero variance features
 
-# LSTM Attack Predictor Configuration
-lstm:
+# =============================================================================
+# ATTACK SEQUENCE GENERATOR (RED TEAM)
+# =============================================================================
+
+# Episode Generation Configuration
+# Generates synthetic attack episodes following Kill Chain grammar
+episode_generation:
+  num_episodes: 10000 # Number of training episodes
+  min_length: 5 # Minimum episode length
+  max_length: 30 # Maximum episode length
+  num_stages: 5 # Kill Chain stages (fixed)
+  benign_start_prob: 0.8 # Probability of starting with BENIGN
+  progression_weight: 0.5 # Weight for escalation transitions
+  persistence_weight: 0.3 # Weight for staying at same stage
+  skip_weight: 0.2 # Weight for skipping stages
+
+# Attack Sequence Generator (LSTM) Configuration
+attack_generator:
   model:
-    input_size: 46 # Will be updated dynamically
-    hidden_size: 128
-    num_layers: 2
-    dropout: 0.3 # Increased due to feature selection needs
+    num_stages: 5 # Kill Chain stages (fixed)
+    embedding_dim: 32 # Stage embedding dimension
+    hidden_size: 64 # LSTM hidden state size
+    num_layers: 2 # Number of LSTM layers
+    dropout: 0.1 # Dropout between LSTM layers
+    temperature: 1.0 # Default sampling temperature
 
   training:
-    epochs: 20 # EDA recommendation
-    batch_size: 32 # EDA recommendation
-    learning_rate: 0.001
-    weight_decay: 1e-5
-    early_stopping_patience: 5 # EDA recommendation
-    # Add class imbalance handling from EDA
-    use_class_weights: true # For severe imbalance
-    focal_loss: true # Better for imbalanced classes
-    gradient_accumulation_steps: 1
+    epochs: 50 # Training epochs
+    batch_size: 32 # Training batch size
+    learning_rate: 0.001 # Adam learning rate
+    sequence_length: 5 # Input sequence length
+    val_split: 0.2 # Validation split
+    early_stopping_patience: 10 # Epochs before early stopping
+    device: "cpu" # Training device (cpu, cuda, mps)
 
-  data:
-    sequence_length: 5 # EDA recommendation
-    num_workers: 4 # EDA optimization recommendation
-    pin_memory: true
+  output:
+    save_dir: "artifacts/generator" # Model output directory
 
-# RL Environment Configuration
-environment:
-  max_steps: 1000
-  attack_probability: 0.3
-  state_history_length: 10
-  action_history_length: 5
-  reward_scale: 1.0
+# =============================================================================
+# ADVERSARIAL ENVIRONMENT (BLUE TEAM TRAINING)
+# =============================================================================
+
+# Adversarial Environment Configuration
+# Agent observes realized feature vectors, hidden attack state is not visible
+adversarial_environment:
+  max_steps: 500 # Steps per episode
+  observation:
+    # Box observation space: window of realized features
+    window_size: 5 # Number of previous observations in window
+    # Feature dimension determined at runtime from dataset
+
+  # Force Continuum Actions (5 discrete levels)
+  # Higher levels = more defensive but more costly
+  actions:
+    num_actions: 5
+    levels:
+      - name: "OBSERVE"
+        description: "Passive monitoring, no intervention"
+        cost: 0.0
+      - name: "LOG"
+        description: "Enhanced logging, minimal impact"
+        cost: 0.1
+      - name: "THROTTLE"
+        description: "Rate limiting suspicious traffic"
+        cost: 0.3
+      - name: "BLOCK"
+        description: "Block suspicious IPs/connections"
+        cost: 0.5
+      - name: "ISOLATE"
+        description: "Isolate affected systems"
+        cost: 0.8
+
+  # Reward Function: R_t = R_defense - C_action - P_impact
+  reward:
+    # R_defense: positive reward for correct defense actions
+    defense_reward:
+      correct_escalation: 1.0 # Escalate when attack escalates
+      correct_de_escalation: 0.5 # De-escalate when threat reduces
+      maintained_defense: 0.2 # Hold appropriate level
+
+    # C_action: cost of defensive actions (from actions.levels.cost)
+    action_cost_scale: 1.0
+
+    # P_impact: penalty when attack reaches IMPACT stage
+    impact_penalty: 5.0
+
+    # Bonus for successfully defending (attack terminates at lower stage)
+    defense_success_bonus: 2.0
 
 # RL Training Configuration
 rl:
@@ -102,10 +164,14 @@ rl:
 
 # Model Paths
 models:
-  lstm:
-    save_path: "artifacts/lstm/attack_predictor.pth"
-    checkpoint_dir: "artifacts/lstm/checkpoints"
+  # Attack Sequence Generator (Red Team)
+  generator:
+    save_dir: "artifacts/generator"
+    model_file: "attack_sequence_generator.pth"
+    config_file: "config.json"
+    training_config_file: "training_config.json"
 
+  # RL Agent (Blue Team)
   rl:
     save_dir: "artifacts/rl"
     checkpoint_dir: "artifacts/rl/checkpoints"
