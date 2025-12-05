@@ -1,429 +1,550 @@
 """
-Benchmark Runner
+Benchmark Runner for Adversarial RL Evaluation.
 
-This module provides a flexible benchmark runner for comparing different RL algorithms.
+This module provides evaluation capabilities for RL models trained on
+the AdversarialIoTEnv. It supports both single-model detailed evaluation
+and multi-model comparison benchmarking.
+
+Usage:
+    - Single model: Detailed metrics with episode-by-episode analysis
+    - Multiple models: Comparison across algorithms with summary statistics
 """
 
-import os
-import time
-from typing import List, Dict, Any, Optional, Union
-from pathlib import Path
-import numpy as np
-from tqdm import tqdm
 import logging
-import json
+import time
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Union
 
-from algorithms.algorithm_factory import AlgorithmFactory
-from training.training_manager import TrainingManager
-from environment.environment import IoTEnv, EnvironmentConfig
-from predictor.attack import LSTMAttackPredictor
-from benchmarking.metrics_collector import MetricsCollector
+import numpy as np
+from stable_baselines3 import A2C, DQN, PPO
+from stable_baselines3.common.base_class import BaseAlgorithm
 from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.vec_env import DummyVecEnv
-from stable_baselines3.common.evaluation import evaluate_policy
-from stable_baselines3.common.base_class import BaseAlgorithm
+
+from src.environment.adversarial_env import (
+    AdversarialEnvConfig,
+    AdversarialIoTEnv,
+)
+from src.benchmarking.metrics_collector import MetricsCollector
 
 logger = logging.getLogger(__name__)
 
 
+# =============================================================================
+# CONFIGURATION
+# =============================================================================
+
+@dataclass
+class BenchmarkConfig:
+    """Configuration for benchmark runs.
+    
+    Attributes:
+        num_episodes: Number of evaluation episodes per model.
+        generator_path: Path to Attack Sequence Generator.
+        dataset_path: Path to processed dataset.
+        results_path: Path for saving benchmark results.
+        env_config: Environment configuration overrides.
+        deterministic: Whether to use deterministic actions.
+    """
+    num_episodes: int = 20
+    generator_path: Optional[Path] = None
+    dataset_path: Optional[Path] = None
+    results_path: Path = Path("results/benchmark")
+    env_config: Optional[AdversarialEnvConfig] = None
+    deterministic: bool = True
+
+
+# =============================================================================
+# ALGORITHM DETECTION
+# =============================================================================
+
+ALGORITHM_CLASSES = {
+    "dqn": DQN,
+    "ppo": PPO,
+    "a2c": A2C,
+}
+
+
+def detect_algorithm_type(model_path: Path) -> Optional[str]:
+    """Detect algorithm type from model path or metadata.
+    
+    Args:
+        model_path: Path to the model file.
+    
+    Returns:
+        Algorithm name ('dqn', 'ppo', 'a2c') or None if unknown.
+    """
+    # Check if algorithm name is in the path
+    path_str = str(model_path).lower()
+    
+    for alg_name in ALGORITHM_CLASSES:
+        if alg_name in path_str:
+            return alg_name
+    
+    # Try to infer from parent directory names
+    for parent in model_path.parents:
+        parent_name = parent.name.lower()
+        for alg_name in ALGORITHM_CLASSES:
+            if parent_name.startswith(alg_name):
+                return alg_name
+    
+    return None
+
+
+def load_model(
+    model_path: Path,
+    algorithm_type: Optional[str] = None,
+    env: Optional[DummyVecEnv] = None,
+) -> BaseAlgorithm:
+    """Load a trained model from disk.
+    
+    Args:
+        model_path: Path to the model file.
+        algorithm_type: Algorithm type (auto-detected if None).
+        env: Optional environment to attach.
+    
+    Returns:
+        Loaded SB3 model.
+    
+    Raises:
+        ValueError: If algorithm type cannot be determined.
+    """
+    if algorithm_type is None:
+        algorithm_type = detect_algorithm_type(model_path)
+    
+    if algorithm_type is None:
+        raise ValueError(
+            f"Cannot determine algorithm type for {model_path}. "
+            f"Please specify algorithm_type explicitly."
+        )
+    
+    if algorithm_type not in ALGORITHM_CLASSES:
+        raise ValueError(
+            f"Unknown algorithm type: {algorithm_type}. "
+            f"Supported: {list(ALGORITHM_CLASSES.keys())}"
+        )
+    
+    alg_class = ALGORITHM_CLASSES[algorithm_type]
+    model = alg_class.load(str(model_path), env=env)
+    
+    logger.info(f"Loaded {algorithm_type.upper()} model from {model_path}")
+    return model
+
+
+# =============================================================================
+# BENCHMARK RUNNER
+# =============================================================================
+
 class BenchmarkRunner:
-    """
-    Benchmark Runner for comparing RL algorithms on IoT environments.
+    """Runner for evaluating and comparing RL models.
     
-    Modes:
-    - 'train': Train algorithms from scratch then evaluate
-    - 'evaluate': Load pre-trained models and evaluate only
-    - 'mixed': Mix of training and loading based on availability
+    This class provides a unified interface for:
+    - Evaluating single models with detailed metrics
+    - Comparing multiple models with summary statistics
+    - Discovering and auto-loading trained models
+    
+    The runner uses the new metrics collector with PRD 7.2 metrics:
+    - Attack Mitigation Rate
+    - False Positive Rate
+    - Mean Time to Contain
+    - Availability Score
+    
+    Example:
+        >>> runner = BenchmarkRunner(config, benchmark_config)
+        >>> results = runner.evaluate_model("path/to/model.zip")
+        >>> comparison = runner.run_comparison(["dqn", "ppo", "a2c"])
     """
     
-    def __init__(self, config: Dict[str, Any], 
-                 lstm_model_path: Optional[Path] = None,
-                 mode: str = 'evaluate'):
-        """
-        Initialize benchmark runner.
+    def __init__(
+        self,
+        config: Dict[str, Any],
+        benchmark_config: Optional[BenchmarkConfig] = None,
+    ) -> None:
+        """Initialize the benchmark runner.
         
         Args:
-            config: Configuration dictionary
-            lstm_model_path: Path to trained LSTM model
-            mode: Benchmark mode ('train', 'evaluate', 'mixed')
+            config: System configuration dictionary.
+            benchmark_config: Benchmark-specific configuration.
         """
         self.config = config
-        self.lstm_model_path = lstm_model_path
-        self.mode = mode
+        self.benchmark_config = benchmark_config or BenchmarkConfig()
         
-        # Create results directory
-        self.results_path = Path("results/benchmark")
+        # Setup paths from config or benchmark_config
+        self._setup_paths()
+        
+        # Initialize metrics collector
+        self.results_path = self.benchmark_config.results_path
         self.results_path.mkdir(parents=True, exist_ok=True)
-        
-        # Initialize metrics collector with correct path - FIXED
         self.metrics_collector = MetricsCollector(save_path=self.results_path)
         
-        # Model storage paths
-        self.models_path = Path(config['models']['rl']['save_dir'])
-        self.models_path.mkdir(parents=True, exist_ok=True)
-        
-        logger.info(f"Benchmark runner initialized in {mode} mode")
-        logger.info(f"Results will be saved to: {self.results_path}")
+        logger.info(f"BenchmarkRunner initialized")
+        logger.info(f"  Generator: {self.generator_path}")
+        logger.info(f"  Dataset: {self.dataset_path}")
+        logger.info(f"  Results: {self.results_path}")
     
-    def run_benchmark(self, algorithms: Optional[List[str]] = None, 
-                     num_runs: int = 3,
-                     model_paths: Optional[Dict[str, List[str]]] = None) -> MetricsCollector:
+    def _setup_paths(self) -> None:
+        """Setup generator and dataset paths from config."""
+        # Generator path
+        if self.benchmark_config.generator_path:
+            self.generator_path = self.benchmark_config.generator_path
+        else:
+            gen_config = self.config.get("attack_generator", {})
+            self.generator_path = Path(gen_config.get("output_dir", "artifacts/generator"))
+        
+        # Dataset path
+        if self.benchmark_config.dataset_path:
+            self.dataset_path = self.benchmark_config.dataset_path
+        else:
+            ds_config = self.config.get("dataset", {})
+            self.dataset_path = Path(ds_config.get("processed_path", "data/processed/ciciot2023"))
+    
+    def _create_env(self) -> AdversarialIoTEnv:
+        """Create an evaluation environment.
+        
+        Returns:
+            Configured AdversarialIoTEnv instance.
         """
-        Run benchmark comparison across multiple algorithms.
+        env_config = self.benchmark_config.env_config
+        if env_config is None:
+            # Load from config
+            adv_config = self.config.get("adversarial_environment", {})
+            env_config = AdversarialEnvConfig(
+                max_steps=adv_config.get("max_steps", 500),
+                window_size=adv_config.get("observation", {}).get("window_size", 5),
+                num_actions=adv_config.get("actions", {}).get("num_actions", 5),
+                action_cost_scale=adv_config.get("reward", {}).get("action_cost_scale", 1.0),
+                impact_penalty=adv_config.get("reward", {}).get("impact_penalty", 5.0),
+            )
+        
+        env = AdversarialIoTEnv(
+            generator_path=self.generator_path,
+            dataset_path=self.dataset_path,
+            config=env_config,
+        )
+        
+        return env
+    
+    def evaluate_model(
+        self,
+        model_path: Union[str, Path],
+        algorithm_type: Optional[str] = None,
+        num_episodes: Optional[int] = None,
+        run_id: int = 0,
+    ) -> Dict[str, Any]:
+        """Evaluate a single model with detailed episode-by-episode metrics.
         
         Args:
-            algorithms: List of algorithm names to benchmark
-            num_runs: Number of independent runs per algorithm (for training mode)
-            model_paths: Dict mapping algorithm names to lists of model paths (for evaluate mode)
-            
-        Returns:
-            MetricsCollector with results
-        """
-        if algorithms is None:
-            algorithms = ['dqn', 'ppo', 'a2c']
+            model_path: Path to the trained model.
+            algorithm_type: Algorithm type (auto-detected if None).
+            num_episodes: Override for number of episodes.
+            run_id: Run identifier for metrics collection.
         
-        print(f"🚀 Starting Benchmark in {self.mode.upper()} mode")
-        print(f"📊 Algorithms: {algorithms}")
-        print(f"🔄 Runs per algorithm: {num_runs}")
-        print("=" * 60)
+        Returns:
+            Dictionary with evaluation results and PRD metrics.
+        """
+        model_path = Path(model_path)
+        num_episodes = num_episodes or self.benchmark_config.num_episodes
+        
+        # Detect algorithm type
+        if algorithm_type is None:
+            algorithm_type = detect_algorithm_type(model_path)
+        
+        if algorithm_type is None:
+            raise ValueError(f"Cannot determine algorithm for {model_path}")
+        
+        print(f"\n{'='*60}")
+        print(f"📊 Evaluating {algorithm_type.upper()} Model")
+        print(f"📁 Path: {model_path}")
+        print(f"🔄 Episodes: {num_episodes}")
+        print(f"{'='*60}")
+        
+        # Create environment
+        env = self._create_env()
+        vec_env = DummyVecEnv([lambda: Monitor(env)])
         
         try:
-            if self.mode == 'train':
-                self._run_training_benchmark(algorithms, num_runs)
-            elif self.mode == 'evaluate':
-                if not model_paths:
-                    model_paths = self._discover_trained_models(algorithms)
-                self._run_evaluation_benchmark(model_paths)
-            elif self.mode == 'mixed':
-                self._run_mixed_benchmark(algorithms, num_runs, model_paths)
-            else:
-                raise ValueError(f"Unknown benchmark mode: {self.mode}")
+            # Load model
+            model = load_model(model_path, algorithm_type, env=vec_env)
             
-            # Save results
-            self.metrics_collector.save_results(
-                f"{self.mode}.json"
+            # Start metrics collection
+            self.metrics_collector.start_run(
+                algorithm_name=algorithm_type,
+                run_id=run_id,
+                hyperparameters={"model_path": str(model_path)},
             )
             
-            print(f"\n🎉 Benchmark completed successfully!")
-            print(f"📁 Results saved to: {self.results_path}")
+            # Run evaluation episodes
+            episode_rewards = []
+            episode_lengths = []
             
-        except Exception as e:
-            logger.error(f"Benchmark failed: {e}")
-            raise
+            for ep_idx in range(num_episodes):
+                episode_data = self._run_episode(model, env)
+                
+                episode_rewards.append(episode_data["reward"])
+                episode_lengths.append(episode_data["length"])
+                
+                # Add episode to metrics collector
+                self.metrics_collector.add_episode(
+                    algorithm_name=algorithm_type,
+                    run_id=run_id,
+                    attack_stages=episode_data["attack_stages"],
+                    actions=episode_data["actions"],
+                    rewards=episode_data["step_rewards"],
+                )
+                
+                if (ep_idx + 1) % 5 == 0:
+                    print(f"  Episode {ep_idx + 1}/{num_episodes}: "
+                          f"Reward={episode_data['reward']:.2f}")
+            
+            # Finalize run to compute PRD metrics
+            self.metrics_collector.finalize_run(algorithm_type, run_id)
+            
+            # Get results
+            run_metrics = self.metrics_collector.metrics[algorithm_type][run_id]
+            
+            results = {
+                "algorithm": algorithm_type,
+                "model_path": str(model_path),
+                "num_episodes": num_episodes,
+                "avg_reward": float(np.mean(episode_rewards)),
+                "std_reward": float(np.std(episode_rewards)),
+                "avg_length": float(np.mean(episode_lengths)),
+                "episode_rewards": episode_rewards,
+                "episode_lengths": episode_lengths,
+                # PRD 7.2 Metrics
+                "attack_mitigation_rate": run_metrics.attack_mitigation_rate,
+                "false_positive_rate": run_metrics.false_positive_rate,
+                "mean_time_to_contain": run_metrics.mean_time_to_contain,
+                "availability_score": run_metrics.availability_score,
+            }
+            
+            self._print_results(results)
+            
+            return results
+            
+        finally:
+            env.close()
+            vec_env.close()
+    
+    def _run_episode(
+        self,
+        model: BaseAlgorithm,
+        env: AdversarialIoTEnv,
+    ) -> Dict[str, Any]:
+        """Run a single evaluation episode.
+        
+        Args:
+            model: Trained model to evaluate.
+            env: Environment to run in.
+        
+        Returns:
+            Episode data dictionary.
+        """
+        obs, info = env.reset()
+        
+        attack_stages = [info["attack_stage"]]
+        actions = []
+        step_rewards = []
+        
+        total_reward = 0.0
+        done = False
+        step_count = 0
+        
+        while not done:
+            # Get action from model
+            action, _ = model.predict(obs, deterministic=self.benchmark_config.deterministic)
+            if isinstance(action, np.ndarray):
+                action = int(action.item())
+            
+            # Step environment
+            obs, reward, terminated, truncated, info = env.step(action)
+            
+            # Record data
+            attack_stages.append(info["attack_stage"])
+            actions.append(action)
+            step_rewards.append(float(reward))
+            
+            total_reward += reward
+            step_count += 1
+            done = terminated or truncated
+        
+        return {
+            "reward": total_reward,
+            "length": step_count,
+            "attack_stages": attack_stages,
+            "actions": actions,
+            "step_rewards": step_rewards,
+        }
+    
+    def _print_results(self, results: Dict[str, Any]) -> None:
+        """Print evaluation results summary."""
+        print(f"\n📈 Results for {results['algorithm'].upper()}")
+        print(f"   Average Reward: {results['avg_reward']:.3f} ± {results['std_reward']:.3f}")
+        print(f"   Average Length: {results['avg_length']:.1f} steps")
+        print(f"\n🎯 PRD 7.2 Metrics:")
+        print(f"   Attack Mitigation Rate: {results['attack_mitigation_rate']:.1%}")
+        print(f"   False Positive Rate:    {results['false_positive_rate']:.1%}")
+        print(f"   Mean Time to Contain:   {results['mean_time_to_contain']:.1f} steps")
+        print(f"   Availability Score:     {results['availability_score']:.3f}")
+    
+    def run_comparison(
+        self,
+        algorithms: Optional[List[str]] = None,
+        model_paths: Optional[Dict[str, List[Path]]] = None,
+    ) -> MetricsCollector:
+        """Run comparison benchmark across multiple algorithms.
+        
+        Args:
+            algorithms: List of algorithm names to compare.
+            model_paths: Dict mapping algorithm names to model paths.
+        
+        Returns:
+            MetricsCollector with all results.
+        """
+        if algorithms is None:
+            algorithms = ["dqn", "ppo", "a2c"]
+        
+        # Auto-discover models if not provided
+        if model_paths is None:
+            model_paths = self._discover_models(algorithms)
+        
+        print(f"\n🚀 Starting Algorithm Comparison")
+        print(f"📊 Algorithms: {algorithms}")
+        print(f"🔄 Episodes per model: {self.benchmark_config.num_episodes}")
+        print("=" * 60)
+        
+        for algorithm in algorithms:
+            if algorithm not in model_paths or not model_paths[algorithm]:
+                print(f"⚠️  No models found for {algorithm.upper()}")
+                continue
+            
+            paths = model_paths[algorithm]
+            print(f"\n{'='*50}")
+            print(f"🧪 Evaluating {algorithm.upper()}: {len(paths)} model(s)")
+            print(f"{'='*50}")
+            
+            for run_id, model_path in enumerate(paths):
+                try:
+                    self.evaluate_model(
+                        model_path=model_path,
+                        algorithm_type=algorithm,
+                        run_id=run_id,
+                    )
+                except Exception as e:
+                    logger.error(f"Failed to evaluate {model_path}: {e}")
+                    print(f"❌ Failed: {e}")
+        
+        # Save results
+        self.metrics_collector.save_results("comparison.json")
+        
+        print(f"\n🎉 Comparison completed!")
+        print(f"📁 Results saved to: {self.results_path}")
         
         return self.metrics_collector
     
-    def _discover_trained_models(self, algorithms: List[str]) -> Dict[str, List[str]]:
-        """
-        Discover pre-trained models.
+    def _discover_models(
+        self,
+        algorithms: List[str],
+    ) -> Dict[str, List[Path]]:
+        """Discover trained models in artifacts directory.
         
         Args:
-            algorithms: List of algorithm names to look for
-            
-        Returns:
-            Dict mapping algorithm names to lists of model paths
-        """
-        model_paths: Dict[str, List[str]] = {}
+            algorithms: List of algorithm names to search for.
         
-        # Search in MLflow artifacts structure only
+        Returns:
+            Dict mapping algorithm names to lists of model paths.
+        """
+        model_paths: Dict[str, List[Path]] = {}
         artifacts_path = Path("artifacts/rl")
         
         if not artifacts_path.exists():
-            logger.warning(f"MLflow artifacts directory not found: {artifacts_path}")
+            logger.warning(f"Artifacts directory not found: {artifacts_path}")
             return model_paths
         
         for algorithm in algorithms:
-            algorithm_models: List[str] = []
+            algorithm_models: List[Path] = []
             
-            # Look for algorithm-specific experiment directories
-            # Pattern: artifacts/rl/{algorithm}_timestamp_hash/
+            # Search for algorithm-specific directories
             for exp_dir in artifacts_path.glob(f"{algorithm}_*"):
                 if exp_dir.is_dir():
                     models_dir = exp_dir / "models"
                     if models_dir.exists():
-                        # Find all .zip files in the models directory
                         for model_file in models_dir.rglob("*.zip"):
-                            algorithm_models.append(str(model_file))
+                            algorithm_models.append(model_file)
             
-            # Remove duplicates and sort by modification time (newest first)
+            # Sort by modification time (newest first)
             algorithm_models = sorted(
                 list(set(algorithm_models)),
-                key=lambda x: Path(x).stat().st_mtime,
-                reverse=True
+                key=lambda x: x.stat().st_mtime,
+                reverse=True,
             )
             
             if algorithm_models:
                 model_paths[algorithm] = algorithm_models
-                print(f"🔍 Found {len(algorithm_models)} {algorithm.upper()} models")
-                if len(algorithm_models) > 3:
-                    print(f"   ... and {len(algorithm_models) - 3} more")
+                print(f"🔍 Found {len(algorithm_models)} {algorithm.upper()} model(s)")
             else:
-                print(f"⚠️  No {algorithm.upper()} models found in MLflow artifacts")
-                
+                print(f"⚠️  No {algorithm.upper()} models found")
+        
         return model_paths
     
-    def _run_training_benchmark(self, algorithms: List[str], num_runs: int) -> None:
-        """Run benchmark by training algorithms from scratch."""
-        for algorithm_name in algorithms:
-            print(f"\n{'='*50}")
-            print(f"🧪 Training & Benchmarking {algorithm_name.upper()}")
-            print(f"{'='*50}")
-            
-            self._run_algorithm_benchmark(algorithm_name, num_runs)
-    
-    def _run_evaluation_benchmark(self, model_paths: Dict[str, List[str]]) -> None:
-        """Run benchmark by evaluating pre-trained models."""
-        for algorithm_name, paths in model_paths.items():
-            print(f"\n{'='*50}")
-            print(f"🧪 Evaluating {algorithm_name.upper()} Models")
-            print(f"📁 Found {len(paths)} models")
-            print(f"{'='*50}")
-            
-            for i, model_path in enumerate(paths):
-                model_path_obj = Path(model_path)
-                relative_path = str(model_path_obj).replace(str(Path.cwd()) + "/", "")
-                model_name = model_path_obj.name
-                
-                print(f"\n📊 Evaluating model {i+1}/{len(paths)}")
-                print(f"📁 File: {model_name}")
-                print(f"🗂️  Path: {relative_path}")
-                
-                try:
-                    evaluation_results = self._evaluate_pretrained_model(algorithm_name, model_path)
-                    avg_reward = evaluation_results.get('avg_reward', 0.0)
-                    
-                    # Collect metrics
-                    self.metrics_collector.start_run(
-                        algorithm_name=algorithm_name,
-                        run_id=i,
-                        hyperparameters={"model_path": relative_path}
-                    )
-                    
-                    self.metrics_collector.update_evaluation_metrics(
-                        algorithm_name=algorithm_name,
-                        run_id=i,
-                        evaluation_results=evaluation_results
-                    )
-                    
-                    print(f"  ✅ Evaluation completed: Reward={avg_reward:.3f}")
-                    
-                except Exception as e:
-                    print(f"  ❌ Evaluation failed: {e}")
-                    logger.error(f"Failed to evaluate {relative_path}: {e}")
-                    continue
-    
-    def _run_mixed_benchmark(self, algorithms: List[str], num_runs: int,
-                           model_paths: Optional[Dict[str, List[str]]]) -> None:
-        """Run mixed benchmark (evaluate existing, train missing)."""
-        discovered_models = self._discover_trained_models(algorithms)
+    def get_summary(self) -> Dict[str, Any]:
+        """Get summary statistics for all evaluated models.
         
-        for algorithm_name in algorithms:
-            print(f"\n{'='*50}")
-            print(f"🔍 Processing {algorithm_name.upper()}")
-            print(f"{'='*50}")
-            
-            if algorithm_name in discovered_models and discovered_models[algorithm_name]:
-                # Evaluate existing models
-                print(f"📁 Found {len(discovered_models[algorithm_name])} existing models - evaluating")
-                paths = discovered_models[algorithm_name][:num_runs]  # Limit to num_runs
-                
-                for i, model_path in enumerate(paths):
-                    model_full_path = Path(model_path).resolve()
-                    model_name = Path(model_path).name
-                    print(f"\n📊 Evaluating existing model {i+1}/{len(paths)}")
-                    print(f"📁 File: {model_name}")
-                    print(f"🗂️  Path: {model_full_path}")
-                    
-                    try:
-                        evaluation_results = self._evaluate_pretrained_model(algorithm_name, model_path)
-                        avg_reward = evaluation_results.get('avg_reward', 0.0)
-                        
-                        # Collect metrics
-                        self.metrics_collector.start_run(
-                            algorithm_name=algorithm_name,
-                            run_id=i,
-                            hyperparameters={"model_path": str(model_full_path)}
-                        )
-                        
-                        self.metrics_collector.update_evaluation_metrics(
-                            algorithm_name=algorithm_name,
-                            run_id=i,
-                            evaluation_results=evaluation_results
-                        )
-                        
-                        print(f"  ✅ Evaluation completed: Reward={avg_reward:.3f}")
-                        
-                    except Exception as e:
-                        print(f"  ❌ Evaluation failed: {e}")
-                        logger.error(f"Failed to evaluate {model_full_path}: {e}")
-
-            else:
-                # Train new models
-                print(f"🔄 No existing models found - training {num_runs} new models")
-                self._run_algorithm_benchmark(algorithm_name, num_runs)
-    
-    def _evaluate_pretrained_model(self, algorithm_name: str, model_path: str) -> Dict[str, Any]:
-        """
-        Evaluate a pre-trained model.
-        
-        Args:
-            algorithm_name: Name of the algorithm
-            model_path: Path to the trained model
-            
         Returns:
-            Evaluation results dictionary
+            Dictionary with summary statistics per algorithm.
         """
-        # Create environment
-        env_config = EnvironmentConfig(
-            max_steps=self.config.get('environment', {}).get('max_steps', 1000),
-            attack_probability=self.config.get('environment', {}).get('attack_probability', 0.3),
-            state_history_length=self.config.get('environment', {}).get('state_history_length', 10),
-            action_history_length=self.config.get('environment', {}).get('action_history_length', 5),
-            reward_scale=self.config.get('environment', {}).get('reward_scale', 1.0),
-            model_path=str(self.lstm_model_path) if self.lstm_model_path else None,
-            data_path=self.config.get('data_path', 'data/processed/ciciot2023')
-        )
-        
-        # Create environment
-        env = IoTEnv(env_config)
-        env = Monitor(env)
-        env = DummyVecEnv([lambda: env])
-        
-        try:
-            # Load algorithm based on type
-            if algorithm_name.lower() == 'dqn':
-                from stable_baselines3 import DQN
-                algorithm = DQN.load(model_path, env=env)
-            elif algorithm_name.lower() == 'ppo':
-                from stable_baselines3 import PPO
-                algorithm = PPO.load(model_path, env=env)
-            elif algorithm_name.lower() == 'a2c':
-                from stable_baselines3 import A2C
-                algorithm = A2C.load(model_path, env=env)
-            else:
-                raise ValueError(f"Unknown algorithm: {algorithm_name}")
-            
-            # Evaluate
-            evaluation_results = self._evaluate_algorithm(algorithm, env)
-            
-            # Clean up
-            env.close()
-            
-            return evaluation_results
-            
-        except Exception as e:
-            env.close()
-            raise e
+        return self.metrics_collector.get_comparison_data()
+
+
+# =============================================================================
+# CONVENIENCE FUNCTIONS
+# =============================================================================
+
+def evaluate_single_model(
+    model_path: Union[str, Path],
+    config: Dict[str, Any],
+    generator_path: Optional[Path] = None,
+    dataset_path: Optional[Path] = None,
+    num_episodes: int = 20,
+) -> Dict[str, Any]:
+    """Convenience function to evaluate a single model.
     
-    def _run_algorithm_benchmark(self, algorithm_name: str, num_runs: int) -> None:
-        """Run benchmark for specific algorithm (training mode)."""
-        
-        for run_id in range(num_runs):
-            print(f"\n🏃 Run {run_id + 1}/{num_runs} for {algorithm_name}")
-            
-            try:
-                # Create environment configuration  
-                env_config = EnvironmentConfig(
-                    max_steps=self.config.get('environment', {}).get('max_steps', 1000),
-                    attack_probability=self.config.get('environment', {}).get('attack_probability', 0.3),
-                    state_history_length=self.config.get('environment', {}).get('state_history_length', 10),
-                    action_history_length=self.config.get('environment', {}).get('action_history_length', 5),
-                    reward_scale=self.config.get('environment', {}).get('reward_scale', 1.0),
-                    model_path=str(self.lstm_model_path) if self.lstm_model_path else None,
-                    data_path=self.config.get('data_path', 'data/processed/ciciot2023')
-                )
-                
-                # Get algorithm hyperparameters from config
-                algo_config = self.config.get('rl', {}).get('algorithms', {}).get(algorithm_name, {})
-                
-                # Create algorithm and environment
-                algorithm, env = AlgorithmFactory.create_algorithm_with_env(
-                    algorithm_name=algorithm_name,
-                    env_config=env_config,
-                    hyperparams=algo_config,
-                    verbose=0  # Reduce verbosity for benchmarking
-                )
-                
-                # Start metrics collection
-                self.metrics_collector.start_run(
-                    algorithm_name=algorithm_name,
-                    run_id=run_id,
-                    hyperparameters=algo_config
-                )
-                
-                # Train algorithm
-                start_time = time.time()
-                training_timesteps = self.config.get('rl', {}).get('training', {}).get('total_timesteps', 50000)
-                
-                print(f"  🏋️ Training for {training_timesteps:,} timesteps...")
-                algorithm.learn(total_timesteps=training_timesteps)
-                
-                training_time = time.time() - start_time
-                
-                # Save trained model
-                model_save_path = self.models_path / f"{algorithm_name}_benchmark_run_{run_id}.zip"
-                algorithm.save(str(model_save_path))
-                print(f"  💾 Model saved: {model_save_path}")
-                
-                # Evaluate algorithm
-                print(f"  📊 Evaluating...")
-                evaluation_results = self._evaluate_algorithm(algorithm, env)
-                
-                # Update metrics
-                self.metrics_collector.update_training_metrics(
-                    algorithm_name=algorithm_name,
-                    run_id=run_id,
-                    training_time=training_time
-                )
-                
-                self.metrics_collector.update_evaluation_metrics(
-                    algorithm_name=algorithm_name,
-                    run_id=run_id,
-                    evaluation_results=evaluation_results
-                )
-                
-                print(f"  ✅ Completed: Reward={evaluation_results['avg_reward']:.2f}, Time={training_time:.1f}s")
-                
-                # Clean up
-                env.close()
-                
-            except Exception as e:
-                logger.error(f"Error in {algorithm_name} run {run_id}: {e}")
-                print(f"  ❌ Run failed: {e}")
-                continue
+    Args:
+        model_path: Path to the model file.
+        config: System configuration.
+        generator_path: Path to generator (optional).
+        dataset_path: Path to dataset (optional).
+        num_episodes: Number of evaluation episodes.
     
-    def _evaluate_algorithm(self, algorithm, env) -> Dict[str, Any]:
-        """Evaluate trained algorithm."""
-        num_episodes = self.config.get('evaluation_episodes', 20)
-        
-        try:
-            episode_rewards, episode_lengths = evaluate_policy(
-                algorithm, 
-                env, 
-                n_eval_episodes=num_episodes,
-                return_episode_rewards=True,
-                deterministic=True
-            )
-            
-            return {
-                'avg_reward': float(np.mean(episode_rewards)),
-                'std_reward': float(np.std(episode_rewards)),
-                'final_reward': float(episode_rewards[-1]) if episode_rewards else 0.0,
-                'episode_rewards': [float(r) for r in episode_rewards],
-                'episode_lengths': [int(l) for l in episode_lengths],
-                'evaluation_metrics': {
-                    'success_rate': float(np.mean([r > 0 for r in episode_rewards])),
-                    'avg_episode_length': float(np.mean(episode_lengths))
-                }
-            }
-            
-        except Exception as e:
-            logger.error(f"Evaluation failed: {e}")
-            return {
-                'avg_reward': 0.0,
-                'std_reward': 0.0,
-                'final_reward': 0.0,
-                'episode_rewards': [],
-                'episode_lengths': [],
-                'evaluation_metrics': {}
-            }
+    Returns:
+        Evaluation results dictionary.
+    """
+    benchmark_config = BenchmarkConfig(
+        num_episodes=num_episodes,
+        generator_path=generator_path,
+        dataset_path=dataset_path,
+    )
+    
+    runner = BenchmarkRunner(config, benchmark_config)
+    return runner.evaluate_model(model_path)
+
+
+def run_algorithm_comparison(
+    config: Dict[str, Any],
+    algorithms: Optional[List[str]] = None,
+    num_episodes: int = 20,
+) -> MetricsCollector:
+    """Convenience function to run algorithm comparison.
+    
+    Args:
+        config: System configuration.
+        algorithms: List of algorithms to compare.
+        num_episodes: Episodes per model.
+    
+    Returns:
+        MetricsCollector with results.
+    """
+    benchmark_config = BenchmarkConfig(num_episodes=num_episodes)
+    runner = BenchmarkRunner(config, benchmark_config)
+    return runner.run_comparison(algorithms)
