@@ -1,20 +1,30 @@
 """
 CICIoT2023 Dataset Processor
 
-Processes raw CICIoT2023 dataset for LSTM training and RL environment integration.
-Enhanced with configurable train/validation/test splits and comprehensive preprocessing.
+Processes raw CICIoT2023 dataset for Attack Sequence Generator training
+and Adversarial Environment integration (PRD compliant).
+
+Key outputs:
+- features.npy: Normalized feature matrix for RealizationEngine
+- labels.npy: CICIoT2023 label strings for each sample
+- state_indices.json: Mapping from Kill Chain stages to dataset row indices
+- scaler.joblib: StandardScaler for feature normalization
+- metadata.json: Dataset metadata and configuration
 """
 
-import pandas as pd
-import numpy as np
-from pathlib import Path
-from typing import Dict, List, Tuple, Optional, Any
-from dataclasses import dataclass
-import logging
-from sklearn.preprocessing import StandardScaler, LabelEncoder
-from sklearn.model_selection import train_test_split
-import joblib
 import json
+import logging
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple
+
+import joblib
+import numpy as np
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import LabelEncoder, StandardScaler
+
+from src.utils.label_mapper import AbstractStateLabelMapper, KillChainStage
 
 logger = logging.getLogger(__name__)
 
@@ -338,6 +348,172 @@ class CICIoTProcessor:
             json.dump(metadata, f, indent=2)
         
         logger.info("Preprocessing artifacts saved")
+    
+    def process_for_adversarial_env(self) -> Dict[str, Any]:
+        """
+        Process dataset for the Adversarial IoT Environment (PRD compliant).
+        
+        Creates:
+        - features.npy: Normalized feature matrix (num_samples, num_features)
+        - labels.npy: Original CICIoT2023 labels (strings)
+        - state_indices.json: Kill Chain stage to row indices mapping
+        - scaler.joblib: Feature scaler
+        - metadata.json: Dataset metadata
+        
+        Returns:
+            Processing results dictionary
+        """
+        logger.info("Processing dataset for Adversarial Environment...")
+        
+        try:
+            # Load raw data
+            raw_data = self._load_raw_data()
+            logger.info(f"Loaded {len(raw_data):,} raw samples")
+            
+            # Sample data if needed
+            if self.config.sample_size < len(raw_data):
+                raw_data = raw_data.sample(
+                    n=self.config.sample_size,
+                    random_state=self.config.random_state
+                )
+                logger.info(f"Sampled to {len(raw_data):,} samples")
+            
+            # Extract features and labels
+            features, labels = self._extract_features_and_labels(raw_data)
+            
+            # Normalize features
+            self.scaler = StandardScaler()
+            normalized_features = self.scaler.fit_transform(features)
+            
+            # Build state indices using AbstractStateLabelMapper
+            state_indices = self._build_state_indices(labels)
+            
+            # Save artifacts
+            self._save_adversarial_artifacts(
+                normalized_features,
+                labels,
+                state_indices,
+                features,  # Save raw features too
+            )
+            
+            results = {
+                'total_samples': len(normalized_features),
+                'num_features': normalized_features.shape[1],
+                'num_stages': 5,
+                'stage_counts': {
+                    int(k): len(v) for k, v in state_indices.items()
+                },
+                'class_names': list(set(labels)),
+            }
+            
+            logger.info("Adversarial environment dataset processing completed")
+            return results
+            
+        except Exception as e:
+            logger.error(f"Adversarial env processing failed: {e}")
+            raise
+    
+    def _extract_features_and_labels(
+        self, data: pd.DataFrame
+    ) -> Tuple[np.ndarray, np.ndarray]:
+        """Extract feature matrix and label array from raw data."""
+        # Identify target column (usually last column named 'label' or similar)
+        target_column = data.columns[-1]
+        feature_columns = data.columns[:-1].tolist()
+        
+        # Drop rows with missing values
+        data = data.dropna()
+        
+        # Extract features
+        X = data[feature_columns].copy()
+        
+        # Handle categorical features (convert to numeric)
+        categorical_columns = X.select_dtypes(include=['object']).columns
+        for col in categorical_columns:
+            X[col] = X[col].astype('category').cat.codes
+        
+        # Convert to numpy
+        features = X.values.astype(np.float32)
+        labels = data[target_column].values.astype(str)
+        
+        self.feature_columns = feature_columns
+        
+        logger.info(f"Extracted {features.shape[1]} features, {len(set(labels))} unique labels")
+        return features, labels
+    
+    def _build_state_indices(self, labels: np.ndarray) -> Dict[int, List[int]]:
+        """Build mapping from Kill Chain stages to dataset row indices.
+        
+        Uses AbstractStateLabelMapper to convert CICIoT2023 labels to
+        abstract Kill Chain stages (0-4), then groups row indices by stage.
+        """
+        mapper = AbstractStateLabelMapper()
+        state_indices: Dict[int, List[int]] = {i: [] for i in range(5)}
+        
+        unknown_labels = set()
+        
+        for idx, label in enumerate(labels):
+            stage_id = mapper.get_stage_id_safe(label, default=-1)
+            
+            if stage_id == -1:
+                unknown_labels.add(label)
+                # Default unknown labels to BENIGN for safety
+                stage_id = 0
+            
+            state_indices[stage_id].append(idx)
+        
+        if unknown_labels:
+            logger.warning(
+                f"Found {len(unknown_labels)} unknown labels mapped to BENIGN: "
+                f"{list(unknown_labels)[:5]}..."
+            )
+        
+        # Log distribution
+        for stage_id, indices in state_indices.items():
+            stage_name = mapper.get_stage_name(stage_id)
+            logger.info(f"Stage {stage_id} ({stage_name}): {len(indices):,} samples")
+        
+        return state_indices
+    
+    def _save_adversarial_artifacts(
+        self,
+        normalized_features: np.ndarray,
+        labels: np.ndarray,
+        state_indices: Dict[int, List[int]],
+        raw_features: np.ndarray,
+    ) -> None:
+        """Save artifacts for RealizationEngine and Adversarial Environment."""
+        logger.info(f"Saving adversarial environment artifacts to {self.output_path}...")
+        
+        # Save normalized features
+        np.save(self.output_path / "features.npy", normalized_features.astype(np.float32))
+        
+        # Save raw features (for normalize=False option)
+        np.save(self.output_path / "features_raw.npy", raw_features.astype(np.float32))
+        
+        # Save labels (as strings)
+        np.save(self.output_path / "labels.npy", labels)
+        
+        # Save state indices
+        with open(self.output_path / "state_indices.json", "w") as f:
+            json.dump({str(k): v for k, v in state_indices.items()}, f)
+        
+        # Save scaler
+        if self.scaler:
+            joblib.dump(self.scaler, self.output_path / "scaler.joblib")
+        
+        # Save metadata
+        metadata = {
+            'num_samples': len(normalized_features),
+            'num_features': normalized_features.shape[1],
+            'num_stages': 5,
+            'feature_columns': self.feature_columns,
+            'stage_counts': {int(k): len(v) for k, v in state_indices.items()},
+        }
+        with open(self.output_path / "metadata.json", "w") as f:
+            json.dump(metadata, f, indent=2)
+        
+        logger.info("Adversarial environment artifacts saved successfully")
     
     def load_artifacts(self) -> Dict[str, Any]:
         """Load preprocessing artifacts."""

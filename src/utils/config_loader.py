@@ -135,7 +135,7 @@ class ConfigLoader:
     
     def _validate_config(self, config: Dict[str, Any]) -> None:
         """Validate configuration structure"""
-        required_sections = ['dataset', 'lstm', 'environment', 'rl', 'models']
+        required_sections = ['dataset', 'attack_generator', 'adversarial_environment', 'rl', 'models']
         
         for section in required_sections:
             if section not in config:
@@ -148,10 +148,10 @@ class ConfigLoader:
             if key not in dataset_config:
                 raise ValueError(f"Missing required dataset config key: {key}")
         
-        # Validate model paths
+        # Validate generator model paths
         models_config = config['models']
-        if 'lstm' not in models_config or 'save_path' not in models_config['lstm']:
-            raise ValueError("Missing LSTM model save path in configuration")
+        if 'generator' not in models_config or 'save_dir' not in models_config['generator']:
+            raise ValueError("Missing generator model save_dir in configuration")
         
         # Validate RL algorithm hyperparameters are numeric
         self._validate_rl_hyperparams(config)
@@ -193,7 +193,7 @@ class ConfigLoader:
         return ConfigPaths(
             data_raw=Path(config['dataset'].get('raw_path', 'data/raw')),
             data_processed=Path(config['dataset']['processed_path']),
-            models_lstm=Path(config['models']['lstm']['save_path']).parent,
+            models_lstm=Path(config['models']['generator']['save_dir']),  # Now points to generator
             models_rl=Path(config['models']['rl']['save_dir']),
             results_logs=Path(config.get('logging', {}).get('log_dir', 'results/logs')),
             results_plots=Path(config.get('results', {}).get('plots_dir', 'results/plots')),
