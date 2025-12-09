@@ -379,7 +379,8 @@ class BenchmarkAnalyzer:
         has_episode_data = False
         for alg, runs in self.metrics_collector.metrics.items():
             for run in runs:
-                if run.episodes and run.episodes[0].attack_stages:
+                episodes = getattr(run, "episodes", []) or []
+                if episodes and episodes[0].attack_stages:
                     has_episode_data = True
                     break
             if has_episode_data:
@@ -399,7 +400,7 @@ class BenchmarkAnalyzer:
         
         for i, alg in enumerate(algorithms):
             for run in self.metrics_collector.metrics[alg]:
-                for ep in run.episodes:
+                for ep in getattr(run, "episodes", []) or []:
                     for stage in ep.attack_stages:
                         if 0 <= stage < 5:
                             stage_counts[i, stage] += 1
@@ -427,7 +428,7 @@ class BenchmarkAnalyzer:
             total_episodes = 0
             impact_count = 0
             for run in self.metrics_collector.metrics[alg]:
-                for ep in run.episodes:
+                for ep in getattr(run, "episodes", []) or []:
                     total_episodes += 1
                     if ep.reached_impact:
                         impact_count += 1
@@ -465,7 +466,8 @@ class BenchmarkAnalyzer:
         has_episode_data = False
         for alg, runs in self.metrics_collector.metrics.items():
             for run in runs:
-                if run.episodes and run.episodes[0].actions:
+                episodes = getattr(run, "episodes", []) or []
+                if episodes and episodes[0].actions:
                     has_episode_data = True
                     break
             if has_episode_data:
@@ -489,7 +491,7 @@ class BenchmarkAnalyzer:
             action_by_stage = np.zeros((5, 5))  # 5 stages x 5 actions
             
             for run in self.metrics_collector.metrics[alg]:
-                for ep in run.episodes:
+                for ep in getattr(run, "episodes", []) or []:
                     # Match actions with attack stages
                     # Note: attack_stages has one more element than actions (initial state)
                     for i, action in enumerate(ep.actions):

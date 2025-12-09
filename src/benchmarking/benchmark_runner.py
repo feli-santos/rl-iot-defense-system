@@ -468,10 +468,12 @@ class BenchmarkRunner:
             # Search for algorithm-specific directories
             for exp_dir in artifacts_path.glob(f"{algorithm}_*"):
                 if exp_dir.is_dir():
-                    models_dir = exp_dir / "models"
-                    if models_dir.exists():
-                        for model_file in models_dir.rglob("*.zip"):
-                            algorithm_models.append(model_file)
+                    # Prefer explicit models/ subdir, but also scan root for backwards compatibility
+                    candidate_dirs = [exp_dir / "models", exp_dir]
+                    for candidate in candidate_dirs:
+                        if candidate.exists():
+                            for model_file in candidate.rglob("*.zip"):
+                                algorithm_models.append(model_file)
             
             # Sort by modification time (newest first)
             algorithm_models = sorted(

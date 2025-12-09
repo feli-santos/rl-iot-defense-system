@@ -156,11 +156,13 @@ class AdversarialAlgorithm:
         """
         alg_class = self.ALGORITHMS[self._config.algorithm_type]
         
+        lr = float(self._config.learning_rate)
+
         if self._config.algorithm_type == "dqn":
             model = alg_class(
                 self._config.policy,
                 env,
-                learning_rate=self._config.learning_rate,
+            learning_rate=lr,
                 buffer_size=self._config.buffer_size,
                 learning_starts=self._config.learning_starts,
                 batch_size=self._config.batch_size,
@@ -178,7 +180,7 @@ class AdversarialAlgorithm:
             model = alg_class(
                 self._config.policy,
                 env,
-                learning_rate=self._config.learning_rate,
+            learning_rate=lr,
                 n_steps=self._config.n_steps,
                 batch_size=self._config.batch_size,
                 n_epochs=self._config.n_epochs,
@@ -195,7 +197,7 @@ class AdversarialAlgorithm:
             model = alg_class(
                 self._config.policy,
                 env,
-                learning_rate=self._config.learning_rate,
+            learning_rate=lr,
                 n_steps=min(self._config.n_steps, 5),  # A2C uses smaller n_steps
                 gamma=self._config.gamma,
                 gae_lambda=self._config.gae_lambda,
