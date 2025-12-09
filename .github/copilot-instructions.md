@@ -1,54 +1,54 @@
 # Copilot Instructions
 
 ## Project Overview
-This is an **IoT Defense System** using **Reinforcement Learning** to defend against cyberattacks. The system combines LSTM attack prediction trained on **CICIoT2023** dataset with RL algorithms (DQN, PPO, A2C) for adaptive defense policy learning.
+Adversarial **IoT Defense System** on **CICIoT2023**. The LSTM is the **Attack Sequence Generator (Red Team)** that learns Kill Chain grammar (5 stages) and drives stochastic attack transitions. RL agents (**DQN/PPO/A2C**, Blue Team) learn to interrupt these sequences using realized traffic samples. End-to-end pipeline runs via `main.py` modes: `process-data` → `train-generator` → `train-rl` / `train-all-rl` / `train-all` → `evaluate`.
 
 ## Key Technologies
-- **Python 3.12** with virtual environment
-- **Stable Baselines3** for RL algorithms  
-- **PyTorch** for LSTM attack predictor
-- **Gymnasium** for custom IoT environment
+- **Python 3.12** (venv)
+- **PyTorch** for the LSTM Attack Sequence Generator
+- **Stable Baselines3** (DQN/PPO/A2C) for RL defense
+- **Gymnasium** custom adversarial environment
 - **MLflow** for experiment tracking
-- **CICIoT2023** dataset for real attack data
+- **CICIoT2023** (real data only)
 
 ## Coding Standards
-- Use **type hints** for all function parameters and returns
-- Follow **Google docstring** format
-- Use **pathlib.Path** for file paths, not os.path
-- Prefer **f-strings** for string formatting
-- Add comprehensive **error handling** with descriptive messages
-- Use **dataclasses** for configuration objects
+- Type hints for all params/returns
+- Google docstring format
+- Prefer `pathlib.Path`, f-strings
+- Add descriptive error handling
+- Use `dataclasses` for configs
 
 ## Key Technical Constraints
-- **Discrete action space** (4 defense actions: monitor, rate_limit, block_ips, shutdown_services)
-- **Dict observation space** with keys: `current_state`, `state_history`, `action_history`, `attack_prediction`
-- **MultiInputPolicy** required for all SB3 algorithms due to Dict observations
-- **Real data only** - CICIoT2023 dataset, no synthetic data generation
-- **Stable Baselines3** - use SB3 implementations, not custom RL algorithms
+- **Kill Chain stages:** 5 (BENIGN, RECON, ACCESS, MANEUVER, IMPACT) via `AbstractStateLabelMapper`.
+- **Action space:** Discrete(5) Force Continuum (OBSERVE, LOG, THROTTLE, BLOCK, ISOLATE) with tunable costs.
+- **Observations:** Realized CICIoT2023 feature vectors (windowed) scaled by `scaler.joblib`; hidden state is the abstract stage.
+- **Real data only**; no synthetic traffic. Episodes come from real samples mapped to stages.
+- **Stable Baselines3** only; use appropriate policy for observation shape (current env emits Box/Dict per implementation).
 
 ## Common Patterns
-- Use `AlgorithmFactory.create_algorithm()` to instantiate RL algorithms
-- Use `TrainingManager` for MLflow experiment tracking and model artifacts
-- Use `AttackPredictorInterface` to bridge LSTM predictions with RL environment
-- Main training via `main.py` with modes: `lstm`, `rl`, `both`
-- Configuration loading via `ConfigLoader.load_config()`
+- Run end-to-end via `main.py` modes: `process-data`, `train-generator`, `train-rl`, `train-all-rl`, `train-all`, `evaluate`.
+- Data prep uses `CICIoTProcessor.process_for_adversarial_env` → outputs `features.npy`, `labels.npy`, `state_indices.json`, `scaler.joblib`, `metadata.json` (includes stage_distribution and feature_selection flag).
+- LSTM training uses `EpisodeGenerator` + `AttackSequenceGenerator`; inference provides next-stage logits with temperature sampling.
+- RL uses `AdversarialIoTEnv` and `AdversarialAlgorithm` wrappers; configure via `config.yml` and CLI overrides (timesteps, algorithm, device, seeds).
+- Use MLflow experiments implicitly via training managers where applicable.
 
 ## Data Flow
 ```
-CICIoT2023 → RealDataLSTMPredictor → EnhancedAttackPredictor → IoTEnv → RL Agent
+CICIoT2023 → dataset_processor (scaler, stage_indices) → AdversarialIoTEnv realization → RL Agent
+LSTM Attack Sequence Generator → adversarial env state transitions → sampled CICIoT2023 rows → RL defense
 ```
 
 ## Debugging Tips
-- Verify **observation/action space compatibility** between environment and algorithm
-- Ensure **MultiInputPolicy** is used for Dict observation spaces
-- Check **config parameter names** match between algorithms (dqn/ppo/a2c sections)
-- Test **LSTM model loading** before RL training (use `--force-retrain-lstm` if needed)
-- Use **--log-level DEBUG** for detailed troubleshooting
-- Validate **preprocessing artifacts** exist for dataset loading
+- Ensure processed data exists: `features.npy`, `labels.npy`, `state_indices.json`, `scaler.joblib`, `metadata.json` in `data/processed/ciciot2023` (or CLI `--data-path`).
+- Check stage distribution via metadata; imbalance may require `sampling_strategy: balanced` and `feature_selection: true` in `config.yml`.
+- Use `--force` to reprocess or retrain generator/RL when artifacts exist.
+- For RL, confirm environment observation shape matches chosen policy (Box vs Dict). Use proper SB3 policy (e.g., `MlpPolicy`/`MultiInputPolicy`).
+- Run with `--log-level DEBUG` for detailed traces; validate scaler loading in env.
 
 ## Critical Implementation Notes
-- Environment uses `EnhancedAttackPredictor` internally for attack predictions
-- All RL algorithms must handle 4-element Dict observation space
-- LSTM predictions are integrated into RL observation via `attack_prediction` key
-- Training modes can be run independently or together via main.py CLI
-- MLflow tracking is automatic for both LSTM and RL training phases
+- Label mapping is PRD-compliant; unknown labels default to BENIGN with warning.
+- Process-data now supports variance-based feature selection and safe inf/NaN handling.
+- `state_indices.json` powers stage → row sampling; keep scaler and features in sync.
+- Stage distribution exposed in processing results and metadata.
+- RL uses 5-action space per PRD Force Continuum; costs configured in `config.yml` adversarial_environment.actions.
+- Use CLI overrides for seeds/timesteps/device to generate comparison runs.
