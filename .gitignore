@@ -49,7 +49,6 @@ coverage.xml
 
 # Jupyter Notebooks
 .ipynb_checkpoints
-*.ipynb
 
 # PyTorch Models
 *.pth

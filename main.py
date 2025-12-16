@@ -270,6 +270,8 @@ def process_data(config: dict, args: argparse.Namespace) -> bool:
             val_split=config['dataset']['val_split'],
             test_split=config['dataset']['test_split'],
             feature_selection=config['dataset'].get('feature_selection', False),
+            variance_threshold=config['dataset'].get('variance_threshold', 0.01),
+            correlation_threshold=config['dataset'].get('correlation_threshold', 0.95),
             sampling_strategy=config['dataset'].get('sampling_strategy', None)
         )
         

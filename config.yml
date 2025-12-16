@@ -16,9 +16,11 @@ dataset:
   train_split: 0.7
   val_split: 0.1
   test_split: 0.2
-  # Add class balancing strategy
-  sampling_strategy: "balanced" # For severe imbalance
+  # Data quality and feature engineering
+  sampling_strategy: "balanced" # For severe imbalance (1059:1 ratio)
   feature_selection: true # Remove low/zero variance features
+  variance_threshold: 0.01 # Remove features with variance < 0.01
+  correlation_threshold: 0.95 # Remove redundant features with corr > 0.95
 
 # =============================================================================
 # ATTACK SEQUENCE GENERATOR (RED TEAM)
