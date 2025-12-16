@@ -18,6 +18,9 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
+import matplotlib.pyplot as plt
+import mlflow
+import mlflow.pytorch
 import numpy as np
 import torch
 import torch.nn as nn
@@ -56,6 +59,8 @@ class GeneratorTrainingConfig:
     early_stopping_patience: int = 10
     output_dir: Optional[Path] = None
     device: str = "cpu"
+    use_mlflow: bool = True
+    mlflow_experiment_name: str = "lstm_attack_generator"
 
 
 class GeneratorTrainer:
@@ -186,7 +191,7 @@ class GeneratorTrainer:
         self,
         episodes: List[List[int]],
     ) -> Dict[str, Any]:
-        """Train the generator model.
+        """Train the generator model with MLflow tracking.
         
         Args:
             episodes: List of episode sequences.
@@ -196,64 +201,107 @@ class GeneratorTrainer:
         """
         logger.info("Starting generator training...")
         
-        # Prepare data
-        train_loader, val_loader = self.prepare_data(episodes)
+        # Start MLflow run if enabled
+        mlflow_run_active = False
+        if self._config.use_mlflow:
+            try:
+                mlflow.set_experiment(self._config.mlflow_experiment_name)
+                mlflow.start_run()
+                mlflow_run_active = True
+                logger.info(f"MLflow run started: {mlflow.active_run().info.run_id}")
+                
+                # Log training parameters
+                self._log_training_params(episodes)
+            except Exception as e:
+                logger.warning(f"Failed to start MLflow run: {e}. Continuing without MLflow.")
+                self._config.use_mlflow = False
         
-        # Setup optimizer
-        self._optimizer = Adam(
-            self._model.parameters(),
-            lr=self._config.learning_rate,
-        )
-        
-        # Training history
-        train_losses: List[float] = []
-        val_losses: List[float] = []
-        
-        # Early stopping
-        patience_counter = 0
-        
-        for epoch in range(self._config.epochs):
-            # Train epoch
-            train_loss = self._train_epoch(train_loader)
-            train_losses.append(train_loss)
+        try:
+            # Prepare data
+            train_loader, val_loader = self.prepare_data(episodes)
             
-            # Validate
-            val_loss = self._validate(val_loader)
-            val_losses.append(val_loss)
+            # Log dataset statistics
+            if self._config.use_mlflow:
+                self._log_dataset_stats(train_loader, val_loader, episodes)
             
-            logger.info(
-                f"Epoch {epoch + 1}/{self._config.epochs}: "
-                f"train_loss={train_loss:.4f}, val_loss={val_loss:.4f}"
+            # Setup optimizer
+            self._optimizer = Adam(
+                self._model.parameters(),
+                lr=self._config.learning_rate,
             )
             
-            # Check for improvement
-            if val_loss < self._best_val_loss:
-                self._best_val_loss = val_loss
-                patience_counter = 0
-                self._save_checkpoint()
-            else:
-                patience_counter += 1
+            # Training history
+            train_losses: List[float] = []
+            val_losses: List[float] = []
             
             # Early stopping
-            if patience_counter >= self._config.early_stopping_patience:
-                logger.info(f"Early stopping at epoch {epoch + 1}")
-                break
-        
-        # Load best model
-        self._load_best_checkpoint()
-        
-        # Save final model and config
-        self._save_final()
-        
-        results = {
-            "train_losses": train_losses,
-            "val_losses": val_losses,
-            "best_val_loss": self._best_val_loss,
-            "epochs_trained": len(train_losses),
-        }
-        
-        logger.info(f"Training complete. Best val_loss: {self._best_val_loss:.4f}")
-        return results
+            patience_counter = 0
+            best_epoch = 0
+            
+            for epoch in range(self._config.epochs):
+                # Train epoch
+                train_loss = self._train_epoch(train_loader)
+                train_losses.append(train_loss)
+                
+                # Validate
+                val_loss = self._validate(val_loader)
+                val_losses.append(val_loss)
+                
+                logger.info(
+                    f"Epoch {epoch + 1}/{self._config.epochs}: "
+                    f"train_loss={train_loss:.4f}, val_loss={val_loss:.4f}"
+                )
+                
+                # Log metrics to MLflow
+                if self._config.use_mlflow:
+                    self._log_epoch_metrics(epoch, train_loss, val_loss, patience_counter)
+                
+                # Check for improvement
+                if val_loss < self._best_val_loss:
+                    self._best_val_loss = val_loss
+                    patience_counter = 0
+                    best_epoch = epoch
+                    self._save_checkpoint()
+                else:
+                    patience_counter += 1
+                
+                # Early stopping
+                if patience_counter >= self._config.early_stopping_patience:
+                    logger.info(f"Early stopping at epoch {epoch + 1}")
+                    if self._config.use_mlflow:
+                        mlflow.log_metric("training/early_stopped", 1.0)
+                        mlflow.log_metric("training/early_stop_epoch", epoch + 1)
+                    break
+            
+            # Load best model
+            self._load_best_checkpoint()
+            
+            # Save final model and config
+            self._save_final()
+            
+            results = {
+                "train_losses": train_losses,
+                "val_losses": val_losses,
+                "best_val_loss": self._best_val_loss,
+                "epochs_trained": len(train_losses),
+                "best_epoch": best_epoch,
+            }
+            
+            # Log final metrics and artifacts to MLflow
+            if self._config.use_mlflow:
+                self._log_final_results(results, train_losses, val_losses)
+            
+            logger.info(f"Training complete. Best val_loss: {self._best_val_loss:.4f}")
+            return results
+            
+        finally:
+            # Always end MLflow run
+            if mlflow_run_active:
+                try:
+                    mlflow.end_run()
+                    logger.info("MLflow run ended")
+                except Exception as e:
+                    logger.warning(f"Failed to end MLflow run: {e}")
     
     def _train_epoch(self, train_loader: DataLoader) -> float:
         """Train for one epoch."""
@@ -427,3 +475,210 @@ class GeneratorTrainer:
         
         logger.info(f"Trainer loaded from {model_dir}")
         return trainer
+    
+    # =========================================================================
+    # MLflow Logging Helpers
+    # =========================================================================
+    
+    def _log_training_params(self, episodes: List[List[int]]) -> None:
+        """Log training parameters to MLflow."""
+        try:
+            # Training config
+            mlflow.log_params({
+                "epochs": self._config.epochs,
+                "batch_size": self._config.batch_size,
+                "learning_rate": self._config.learning_rate,
+                "sequence_length": self._config.sequence_length,
+                "val_split": self._config.val_split,
+                "early_stopping_patience": self._config.early_stopping_patience,
+                "device": self._config.device,
+            })
+            
+            # Model config
+            mlflow.log_params({
+                "num_stages": self._model_config.num_stages,
+                "embedding_dim": self._model_config.embedding_dim,
+                "hidden_size": self._model_config.hidden_size,
+                "num_layers": self._model_config.num_layers,
+                "dropout": self._model_config.dropout,
+                "temperature": self._model_config.temperature,
+            })
+            
+            # Episode statistics
+            episode_lengths = [len(ep) for ep in episodes]
+            mlflow.log_params({
+                "num_episodes": len(episodes),
+                "min_episode_length": min(episode_lengths),
+                "max_episode_length": max(episode_lengths),
+                "mean_episode_length": np.mean(episode_lengths),
+            })
+            
+            logger.info("Logged training parameters to MLflow")
+        except Exception as e:
+            logger.warning(f"Failed to log training params: {e}")
+    
+    def _log_dataset_stats(
+        self, 
+        train_loader: DataLoader, 
+        val_loader: DataLoader,
+        episodes: List[List[int]]
+    ) -> None:
+        """Log dataset statistics to MLflow."""
+        try:
+            # Dataset sizes
+            train_size = len(train_loader.dataset)
+            val_size = len(val_loader.dataset)
+            total_size = train_size + val_size
+            
+            mlflow.log_metrics({
+                "data/train_sequences": train_size,
+                "data/val_sequences": val_size,
+                "data/total_sequences": total_size,
+                "data/train_ratio": train_size / total_size,
+            })
+            
+            # Stage distribution in episodes
+            all_stages = [stage for ep in episodes for stage in ep]
+            stage_counts = np.bincount(all_stages, minlength=5)
+            stage_proportions = stage_counts / len(all_stages)
+            
+            for stage_id in range(5):
+                mlflow.log_metrics({
+                    f"data/stage_{stage_id}_count": int(stage_counts[stage_id]),
+                    f"data/stage_{stage_id}_proportion": float(stage_proportions[stage_id]),
+                })
+            
+            logger.info("Logged dataset statistics to MLflow")
+        except Exception as e:
+            logger.warning(f"Failed to log dataset stats: {e}")
+    
+    def _log_epoch_metrics(
+        self, 
+        epoch: int, 
+        train_loss: float, 
+        val_loss: float,
+        patience_counter: int
+    ) -> None:
+        """Log per-epoch metrics to MLflow."""
+        try:
+            mlflow.log_metrics({
+                "loss/train": train_loss,
+                "loss/val": val_loss,
+                "loss/train_val_gap": abs(train_loss - val_loss),
+                "training/epoch": epoch + 1,
+                "training/patience_counter": patience_counter,
+            }, step=epoch)
+            
+            # Log improvement indicator
+            if patience_counter == 0:
+                mlflow.log_metric("training/improved", 1.0, step=epoch)
+            else:
+                mlflow.log_metric("training/improved", 0.0, step=epoch)
+                
+        except Exception as e:
+            logger.warning(f"Failed to log epoch metrics: {e}")
+    
+    def _log_final_results(
+        self, 
+        results: Dict[str, Any],
+        train_losses: List[float],
+        val_losses: List[float]
+    ) -> None:
+        """Log final results and artifacts to MLflow."""
+        try:
+            # Final metrics
+            mlflow.log_metrics({
+                "final/best_val_loss": results["best_val_loss"],
+                "final/epochs_trained": results["epochs_trained"],
+                "final/best_epoch": results["best_epoch"],
+                "final/final_train_loss": train_losses[-1],
+                "final/final_val_loss": val_losses[-1],
+                "final/min_train_loss": min(train_losses),
+                "final/min_val_loss": min(val_losses),
+            })
+            
+            # Model performance indicators
+            train_val_gap = abs(train_losses[-1] - val_losses[-1])
+            convergence_rate = (train_losses[0] - train_losses[-1]) / max(train_losses[0], 1e-8)
+            
+            mlflow.log_metrics({
+                "quality/train_val_gap": train_val_gap,
+                "quality/convergence_rate": convergence_rate,
+                "quality/early_stop_triggered": 1.0 if results["epochs_trained"] < self._config.epochs else 0.0,
+            })
+            
+            # Generate and log loss curves
+            self._log_loss_curves(train_losses, val_losses)
+            
+            # Log model artifacts
+            self._log_model_artifacts()
+            
+            # Log config files
+            config_files = [
+                self._config.output_dir / "config.json",
+                self._config.output_dir / "training_config.json",
+            ]
+            for config_file in config_files:
+                if config_file.exists():
+                    mlflow.log_artifact(str(config_file))
+            
+            logger.info("Logged final results to MLflow")
+        except Exception as e:
+            logger.warning(f"Failed to log final results: {e}")
+    
+    def _log_loss_curves(self, train_losses: List[float], val_losses: List[float]) -> None:
+        """Generate and log loss curve plots to MLflow."""
+        try:
+            fig, axes = plt.subplots(1, 2, figsize=(14, 5))
+            
+            # Loss curves
+            epochs = range(1, len(train_losses) + 1)
+            axes[0].plot(epochs, train_losses, label='Train Loss', marker='o', markersize=3)
+            axes[0].plot(epochs, val_losses, label='Val Loss', marker='s', markersize=3)
+            axes[0].set_xlabel('Epoch')
+            axes[0].set_ylabel('Loss')
+            axes[0].set_title('Training and Validation Loss')
+            axes[0].legend()
+            axes[0].grid(True, alpha=0.3)
+            
+            # Train/Val gap
+            gap = [abs(t - v) for t, v in zip(train_losses, val_losses)]
+            axes[1].plot(epochs, gap, label='Train-Val Gap', marker='o', markersize=3, color='orange')
+            axes[1].set_xlabel('Epoch')
+            axes[1].set_ylabel('Absolute Gap')
+            axes[1].set_title('Train-Val Loss Gap')
+            axes[1].legend()
+            axes[1].grid(True, alpha=0.3)
+            
+            plt.tight_layout()
+            
+            # Save and log
+            plot_path = self._config.output_dir / "loss_curves.png"
+            plt.savefig(plot_path, dpi=150, bbox_inches='tight')
+            plt.close()
+            
+            mlflow.log_artifact(str(plot_path))
+            logger.info(f"Logged loss curves to MLflow: {plot_path}")
+            
+        except Exception as e:
+            logger.warning(f"Failed to log loss curves: {e}")
+            plt.close('all')
+    
+    def _log_model_artifacts(self) -> None:
+        """Log trained model to MLflow."""
+        try:
+            # Log PyTorch model
+            model_path = self._config.output_dir / "attack_sequence_generator.pth"
+            if model_path.exists():
+                mlflow.log_artifact(str(model_path))
+                
+                # Also log using MLflow's PyTorch integration
+                mlflow.pytorch.log_model(
+                    pytorch_model=self._model,
+                    artifact_path="lstm_model",
+                    registered_model_name=None,  # Optional: register model
+                )
+            
+            logger.info("Logged model artifacts to MLflow")
+        except Exception as e:
+            logger.warning(f"Failed to log model artifacts: {e}")
