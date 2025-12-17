@@ -1,295 +1,365 @@
-# IoT Defense System powered by Reinforcement Learning
+# IoT Defense System - Adversarial Reinforcement Learning
 
-## Overview
+A research project using **Adversarial Reinforcement Learning** for IoT network defense. The system implements a Red Team vs Blue Team paradigm where an **LSTM-based Attack Sequence Generator** (Red Team) learns realistic attack patterns from the CICIoT2023 dataset, and **RL Defense Agents** (Blue Team) learn optimal defense policies through adversarial training.
 
-This project implements a comprehensive IoT defense system that uses **Reinforcement Learning** to defend against cyberattacks in smart IoT environments. The system combines LSTM-based attack prediction trained on real **CICIoT2023** dataset with RL-based defense policy learning, providing an adaptive defense mechanism that learns optimal strategies through experience.
+## Key Features
+
+- **Kill Chain Abstraction**: 33 CICIoT2023 attack classes mapped to 5 tactical stages (BENIGN → RECON → ACCESS → MANEUVER → IMPACT)
+- **Attack Sequence Generator**: LSTM next-token predictor trained on real attack patterns
+- **Adversarial Environment**: Gymnasium-compatible environment with hidden attack state and force continuum actions
+- **Multiple RL Algorithms**: DQN, PPO, and A2C via Stable Baselines3
+- **MLflow Integration**: Experiment tracking and model versioning
+- **Comprehensive Testing**: 179+ unit tests with pytest
 
 ## Architecture
 
-The system consists of two main components:
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                    ADVERSARIAL TRAINING LOOP                        │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│  ┌─────────────────────┐         ┌─────────────────────────────┐   │
+│  │    RED TEAM         │         │        BLUE TEAM            │   │
+│  │    (Attacker)       │         │        (Defender)           │   │
+│  ├─────────────────────┤         ├─────────────────────────────┤   │
+│  │                     │         │                             │   │
+│  │  Attack Sequence    │  attack │    RL Defense Agent         │   │
+│  │  Generator (LSTM)   │ ──────► │    (DQN/PPO/A2C)            │   │
+│  │                     │  state  │                             │   │
+│  │  Next-token         │         │    Force Continuum:         │   │
+│  │  predictor for      │         │    • MONITOR (observe)      │   │
+│  │  Kill Chain stages  │ ◄────── │    • RATE_LIMIT (slow)      │   │
+│  │                     │ defense │    • BLOCK (deny)           │   │
+│  │                     │ action  │    • ISOLATE (contain)      │   │
+│  └─────────────────────┘         └─────────────────────────────┘   │
+│            │                                   │                    │
+│            ▼                                   ▼                    │
+│  ┌─────────────────────┐         ┌─────────────────────────────┐   │
+│  │  CICIoT2023 Dataset │         │   AdversarialIoTEnv         │   │
+│  │  (33 attack classes)│         │   (Gymnasium Environment)   │   │
+│  └─────────────────────┘         └─────────────────────────────┘   │
+│                                                                     │
+└─────────────────────────────────────────────────────────────────────┘
+```
 
-1. **LSTM Attack Predictor**: Trained on real CICIoT2023 IoT attack data to predict attack types and risk levels
-2. **RL Defense Agent**: Learns optimal defense policies using state-of-the-art RL algorithms (DQN, PPO, A2C)
+## Kill Chain Stages
 
-### Key Features
+| Stage | ID | Description | Example Attacks |
+|-------|----|----|-----------------|
+| BENIGN | 0 | Normal network traffic | Legitimate IoT communication |
+| RECON | 1 | Reconnaissance | Port scanning, vulnerability probing |
+| ACCESS | 2 | Initial access | Brute force, credential stuffing |
+| MANEUVER | 3 | Lateral movement | Backdoor, C2 communication |
+| IMPACT | 4 | Final objective | DDoS, ransomware, data theft |
 
-- **Real IoT Attack Data**: Uses CICIoT2023 dataset with 33 attack types for realistic training
-- **Custom Gymnasium Environment**: Simulates IoT network defense with Dict observation spaces
-- **Multiple RL Algorithms**: Supports DQN, PPO, and A2C with consistent Stable Baselines3 implementations
-- **LSTM Attack Prediction**: 98%+ accuracy on real IoT attack classification
-- **Comprehensive Benchmarking**: Built-in comparison framework for algorithm performance analysis
-- **MLflow Integration**: Complete experiment tracking with artifacts, metrics, and model versioning
-- **Unified Training Pipeline**: Single entry point for both LSTM and RL training
+## Installation
+
+### Prerequisites
+
+- Python 3.12+
+- Virtual environment recommended
+
+### Setup
+
+```bash
+# Clone repository
+git clone https://github.com/your-username/rl-iot-defense-system.git
+cd rl-iot-defense-system
+
+# Create virtual environment
+python -m venv .venv
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+
+# Install dependencies
+pip install -r requirements.txt
+```
+
+### Dataset
+
+Download the CICIoT2023 dataset and place it in `data/raw/CICIoT2023/`:
+
+```bash
+# Directory structure after download
+data/
+├── raw/
+│   └── CICIoT2023/
+│       └── *.csv  # Attack trace files
+└── processed/
+    └── ciciot2023/
+        └── *.parquet  # Processed files (generated by pipeline)
+```
+
+## Usage
+
+### Command Line Interface
+
+The system provides a unified CLI via `main.py`:
+
+```bash
+# View all available commands
+python main.py --help
+
+# View command-specific help
+python main.py train-generator --help
+```
+
+### Pipeline Modes
+
+#### 1. Process Dataset
+
+Convert raw CICIoT2023 CSV files to processed format with Kill Chain labels:
+
+```bash
+python main.py process-data \
+    --input-dir data/raw/CICIoT2023 \
+    --output-dir data/processed/ciciot2023
+```
+
+#### 2. Train Attack Sequence Generator (Red Team)
+
+Train the LSTM-based attack sequence generator:
+
+```bash
+python main.py train-generator \
+    --data-dir data/processed/ciciot2023 \
+    --epochs 50 \
+    --batch-size 64 \
+    --seq-length 16 \
+    --hidden-dim 128
+```
+
+#### 3. Train Defense Agent (Blue Team)
+
+Train an RL defense agent against the attack generator:
+
+```bash
+# Train with PPO (recommended)
+python main.py train-rl \
+    --algorithm ppo \
+    --total-timesteps 100000 \
+    --generator-model artifacts/generator/attack_generator.pth
+
+# Train with DQN
+python main.py train-rl \
+    --algorithm dqn \
+    --total-timesteps 100000
+
+# Train with A2C
+python main.py train-rl \
+    --algorithm a2c \
+    --total-timesteps 100000
+```
+
+#### 4. Full Training Pipeline
+
+Run the complete training pipeline (generator + RL):
+
+```bash
+python main.py train-all \
+    --data-dir data/processed/ciciot2023 \
+    --algorithm ppo \
+    --generator-epochs 50 \
+    --rl-timesteps 100000
+```
+
+#### 5. Evaluate Trained Agent
+
+Evaluate a trained defense agent:
+
+```bash
+python main.py evaluate \
+    --model-path artifacts/rl/ppo_model.zip \
+    --episodes 100
+```
+
+#### 6. Benchmark All Algorithms
+
+Compare DQN, PPO, and A2C performance:
+
+```bash
+python main.py benchmark \
+    --timesteps 50000 \
+    --eval-episodes 100
+```
+
+## Configuration
+
+All parameters can be configured via `config.yml`:
+
+```yaml
+# Attack Sequence Generator
+attack_generator:
+  embed_dim: 64
+  hidden_dim: 128
+  num_layers: 2
+  dropout: 0.2
+  learning_rate: 0.001
+
+# Episode Generation
+episode_generation:
+  min_episode_length: 5
+  max_episode_length: 50
+  attack_probability: 0.7
+
+# Adversarial Environment
+adversarial_env:
+  max_steps: 100
+  window_size: 10
+  observation_dim: 64
+  defense_costs:
+    monitor: 0.0
+    rate_limit: 0.1
+    block: 0.3
+    isolate: 0.5
+  impact_penalties:
+    recon: 0.1
+    access: 0.3
+    maneuver: 0.5
+    impact: 1.0
+
+# RL Algorithms
+rl:
+  algorithm: ppo  # dqn, ppo, a2c
+  total_timesteps: 100000
+  learning_rate: 0.0003
+  
+  dqn:
+    buffer_size: 100000
+    learning_starts: 1000
+    batch_size: 64
+    
+  ppo:
+    n_steps: 2048
+    batch_size: 64
+    n_epochs: 10
+    
+  a2c:
+    n_steps: 5
+    ent_coef: 0.01
+```
 
 ## Project Structure
 
 ```
 rl-iot-defense-system/
-.
-├── config.yml
-├── data
-├── docs
-│   ├── attack_prediction.md
-│   ├── ciciot2023_dataset.md
-│   ├── environment.md
-│   ├── evolution_roadmap.md
-│   ├── mathematical_foundations.md
-│   ├── overview.md
-│   ├── papers
-│   │   ├── A Survey for Deep Reinforcement Learning Based Network Intrusion Detection.pdf
-│   │   ├── CICIoT2023- A Real-Time Dataset and Benchmark for Large-Scale Attacks in IoT Environment.pdf
-│   │   ├── Deep Reinforcement Learning for Internet of Things- A Comprehensive Survey.pdf
-│   │   ├── Deep Reinforcement Learning for Intrusion Detection in IoT- A Survey.pdf
-│   │   ├── Enhancing IoT Intelligence- A Transformer-based Reinforcement Learning Methodology.pdf
-│   │   ├── HoneyIoT- Adaptive High-Interaction Honeypot for IoT Devices Through Reinforcement Learning.pdf
-│   │   ├── IoTWarden- A Deep Reinforcement Learning Based Real-time Defense System to Mitigate Trigger-action IoT Attacks.pdf
-│   │   ├── Reinforcement Learning for IoT Security- A Comprehensive Survey.pdf
-│   │   └── Wireless Communications and Mobile Computing - 2022 - Tharewal - Intrusion Detection System for Industrial Internet of.pdf
-│   ├── project_proposal.md
-│   ├── rl_defense_agents.md
-│   └── visual_architecture.md
-├── LICENSE
-├── main.py
-├── README.md
-├── requirements.txt
-└── src
-    ├── algorithms
-    │   ├── a2c_algorithm.py
-    │   ├── algorithm_factory.py
-    │   ├── base_algorithm.py
-    │   ├── dqn_algorithm.py
-    │   └── ppo_algorithm.py
-    ├── benchmarking
-    │   ├── benchmark_analyzer.py
-    │   ├── benchmark_runner.py
-    │   └── metrics_collector.py
-    ├── environment
-    │   └── environment.py
-    ├── predictor
-    │   ├── attack.py
-    │   └── interface.py
-    ├── scripts
-    │   └── exploratory_data_analysis.py
-    ├── training
-    │   ├── lstm_trainer.py
-    │   ├── rl_trainer.py
-    │   └── training_manager.py
-    └── utils
-        ├── config_loader.py
-        ├── dataset_loader.py
-        └── dataset_processor.py
-
-12 directories, 41 files
+├── main.py                          # Unified CLI entry point
+├── config.yml                       # Configuration file
+├── requirements.txt                 # Python dependencies
+│
+├── src/
+│   ├── algorithms/
+│   │   ├── __init__.py
+│   │   └── adversarial_algorithm.py # RL algorithm wrapper (DQN/PPO/A2C)
+│   │
+│   ├── environment/
+│   │   ├── __init__.py
+│   │   └── adversarial_env.py       # Gymnasium environment
+│   │
+│   ├── generator/
+│   │   ├── __init__.py
+│   │   ├── attack_sequence_generator.py  # LSTM Red Team model
+│   │   └── episode_generator.py          # Episode synthesis
+│   │
+│   ├── training/
+│   │   ├── __init__.py
+│   │   ├── generator_trainer.py     # Red Team training loop
+│   │   └── training_manager.py      # MLflow integration
+│   │
+│   └── utils/
+│       ├── __init__.py
+│       ├── config_loader.py         # Configuration loading
+│       ├── dataset_loader.py        # Data loading utilities
+│       ├── dataset_processor.py     # CICIoT2023 processing
+│       ├── label_mapper.py          # Attack → Kill Chain mapping
+│       └── realization_engine.py    # Feature vector sampling
+│
+├── tests/
+│   ├── test_adversarial_algorithm.py
+│   ├── test_adversarial_env.py
+│   ├── test_attack_sequence_generator.py
+│   ├── test_episode_generator.py
+│   ├── test_generator_trainer.py
+│   ├── test_label_mapper.py
+│   └── test_realization_engine.py
+│
+├── data/
+│   ├── raw/CICIoT2023/              # Raw dataset
+│   └── processed/ciciot2023/        # Processed data
+│
+├── artifacts/
+│   ├── generator/                   # Trained generator models
+│   └── rl/                          # Trained RL models
+│
+├── mlruns/                          # MLflow experiment tracking
+│
+├── results/
+│   ├── benchmark/                   # Benchmark results
+│   └── plots/                       # Training visualizations
+│
+└── docs/
+    ├── PRD.md                       # Product Requirements Document
+    ├── overview.md                  # System overview
+    └── *.md                         # Additional documentation
 ```
 
-## Requirements
+## Reward Function
 
-- **Python 3.12+**
-- **PyTorch** (for LSTM models)
-- **Stable Baselines3** (for RL algorithms)
-- **MLflow** (for experiment tracking)
-- **Gymnasium** (for RL environment)
-- **NumPy, Pandas, Scikit-learn** (for data processing)
-- **Matplotlib, Seaborn** (for visualization)
+The defense agent's reward is calculated as:
 
-## Installation
+$$R_t = R_{defense} - C_{action} - P_{impact}$$
 
-1. **Clone the Repository:**
-   ```bash
-   git clone <repository-url>
-   cd rl-iot-defense-system
-   ```
+Where:
+- $R_{defense}$: Reward for successful defense (blocking attack progression)
+- $C_{action}$: Cost of the defense action taken (force continuum)
+- $P_{impact}$: Penalty if attack reaches IMPACT stage
 
-2. **Create and Activate a Virtual Environment:**
-   ```bash
-   python3.12 -m venv .venv
-   source .venv/bin/activate  # On Windows: .venv\Scripts\activate
-   ```
+## Testing
 
-3. **Install Dependencies:**
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-4. **Download CICIoT2023 Dataset:**
-   ```bash
-   # Download from: https://www.unb.ca/cic/datasets/iotdataset-2023.html
-   # Extract to: data/raw/CICIoT2023/
-   ```
-
-## Usage
-
-### Command Reference Table
-
-The following table shows all available commands and options for `main.py`:
-
-| Command | Description | Example |
-|---------|-------------|---------|
-| **Basic Modes** | | |
-| `--mode process-data` | Process raw CICIoT2023 dataset | `python main.py --mode process-data` |
-| `--mode lstm` | Train only LSTM attack predictor | `python main.py --mode lstm` |
-| `--mode rl` | Train only RL agents (requires existing LSTM) | `python main.py --mode rl` |
-| `--mode both` | Train both LSTM and RL agents | `python main.py --mode both` |
-| `--mode benchmark` | Run algorithm comparison benchmark | `python main.py --mode benchmark` |
-| **Configuration** | | |
-| `--config PATH` | Use custom configuration file | `python main.py --config custom_config.yml` |
-| `--data-path PATH` | Specify processed dataset path | `python main.py --data-path data/custom_path` |
-| `--log-level LEVEL` | Set logging level (DEBUG/INFO/WARNING/ERROR) | `python main.py --log-level DEBUG` |
-| **LSTM Options** | | |
-| `--lstm-epochs N` | Override LSTM training epochs | `python main.py --mode lstm --lstm-epochs 30` |
-| `--lstm-batch-size N` | Override LSTM batch size | `python main.py --mode lstm --lstm-batch-size 32` |
-| `--force-retrain-lstm` | Retrain LSTM even if model exists | `python main.py --mode both --force-retrain-lstm` |
-| **RL Options** | | |
-| `--rl-algorithm ALGO` | Choose RL algorithm (dqn/ppo/a2c) | `python main.py --mode rl --rl-algorithm ppo` |
-| `--rl-timesteps N` | Override RL training timesteps | `python main.py --mode rl --rl-timesteps 50000` |
-| **Benchmark Options** | | |
-| `--benchmark-algorithms ALGOS` | Specify algorithms to benchmark | `python main.py --mode benchmark --benchmark-algorithms dqn ppo` |
-| `--benchmark-runs N` | Number of runs per algorithm | `python main.py --mode benchmark --benchmark-runs 5` |
-
-### Quick Start Examples
+Run the test suite:
 
 ```bash
-# 1. Process raw dataset (first time setup)
-python main.py --mode process-data
+# Run all tests
+pytest
 
-# 2. Complete training pipeline (recommended for first run)
-python main.py --mode both
+# Run with coverage
+pytest --cov=src
 
-# 3. Train specific RL algorithm with custom parameters
-python main.py --mode rl --rl-algorithm ppo --rl-timesteps 100000
+# Run specific test file
+pytest tests/test_adversarial_env.py -v
 
-# 4. Force retrain LSTM with custom epochs
-python main.py --mode both --force-retrain-lstm --lstm-epochs 50
-
-# 5. Run comprehensive benchmark
-python main.py --mode benchmark --benchmark-runs 3
-
-# 6. Custom configuration with debug logging
-python main.py --config custom_config.yml --mode both --log-level DEBUG
+# Run tests matching pattern
+pytest -k "test_generator" -v
 ```
 
-### Training Workflows
+## MLflow Tracking
 
-#### Complete First-Time Setup
-```bash
-# Step 1: Process raw dataset
-python main.py --mode process-data
+View experiment results:
 
-# Step 2: Train complete system
-python main.py --mode both --lstm-epochs 50 --rl-timesteps 100000
-```
-
-#### Development Workflow
-```bash
-# Quick LSTM experimentation
-python main.py --mode lstm --lstm-epochs 10 --lstm-batch-size 32
-
-# Quick RL testing
-python main.py --mode rl --rl-algorithm dqn --rl-timesteps 10000
-
-# Algorithm comparison
-python main.py --mode benchmark --benchmark-algorithms dqn ppo a2c
-```
-
-#### Production Training
-```bash
-# Full training with optimal parameters
-python main.py --mode both \
-  --lstm-epochs 100 \
-  --rl-algorithm ppo \
-  --rl-timesteps 200000 \
-  --log-level INFO
-```
-
-### Configuration
-
-The [`config.yml`](config.yml) file contains all system parameters.
-
-### Data Processing
-
-#### Exploratory Data Analysis
-Analyze the dataset:
-```bash
-python src/scripts/dataset_exploratory_analysis.py
-```
-
-## Algorithms Supported
-
-### 1. DQN (Deep Q-Network)
-- **Value-based** learning with experience replay
-- **Target network** for stable learning
-- **Best for**: Discrete action spaces with complex state representations
-
-### 2. PPO (Proximal Policy Optimization)
-- **Policy-based** learning with clipped surrogate objective
-- **Stable** and robust training
-- **Best for**: Consistent performance across different environments
-
-### 3. A2C (Advantage Actor-Critic)
-- **Actor-critic** architecture
-- **Faster** training compared to PPO
-- **Best for**: Quick baseline results
-
-
-## Experiment Tracking
-
-### MLflow Integration
-All experiments are tracked automatically:
 ```bash
 # Start MLflow UI
 mlflow ui
 
-# Access at: http://localhost:5000
+# Open in browser: http://localhost:5000
 ```
 
-### Key Metrics Tracked
-- **LSTM Performance**: Accuracy, F1-score, confusion matrix
-- **RL Performance**: Episode rewards, training time, convergence
-- **Model Artifacts**: Trained models, configuration, plots
+## Research Background
 
+This project is based on the CICIoT2023 dataset for IoT security research. The adversarial training paradigm allows RL agents to learn robust defense policies against realistic attack sequences.
 
-## Contributing
+### References
 
-1. **Follow Coding Standards**:
-   - Use **type hints** for all functions
-   - Follow **Google docstring** format
-   - Use **pathlib** for file paths
-   - Add comprehensive **error handling**
-
-2. **Testing Requirements**:
-   - Add tests for new features
-   - Ensure backward compatibility
-   - Test with all supported algorithms
-
-3. **Documentation**:
-   - Update README for new features
-   - Add docstrings to all functions
-   - Include usage examples
-
-## Citation
-
-If you use this work in your research, please cite:
-
-```bibtex
-@software{iot_defense_rl_2025,
-  title={IoT Defense System powered by Reinforcement Learning},
-  author={Felipe Santos},
-  year={2025},
-  note={Real CICIoT2023 dataset integration with LSTM attack prediction},
-  url={https://github.com/feli-santos/rl-iot-defense-system}
-}
-```
+- CICIoT2023 Dataset: Canadian Institute for Cybersecurity
+- Stable Baselines3: [https://stable-baselines3.readthedocs.io/](https://stable-baselines3.readthedocs.io/)
+- Gymnasium: [https://gymnasium.farama.org/](https://gymnasium.farama.org/)
 
 ## License
 
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+See [LICENSE](LICENSE) for details.
 
-## Acknowledgments
+## Contributing
 
-- **CICIoT2023 Dataset**: University of New Brunswick Cyber Security Research Group
-- **Stable Baselines3**: High-quality RL algorithm implementations
-- **PyTorch**: Deep learning framework for LSTM implementation
-
----
-
-**Keywords**: IoT Security, Reinforcement Learning, CICIoT2023, Deep Q-Network, PPO, A2C, Cybersecurity, Attack Prediction, Defense Systems, LSTM, Real Dataset
+1. Fork the repository
+2. Create a feature branch
+3. Add tests for new functionality
+4. Ensure all tests pass
+5. Submit a pull request

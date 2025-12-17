@@ -1,56 +1,137 @@
+#!/usr/bin/env python3
 """
-IoT Defense System - Main Entry Point
+IoT Defense System - Adversarial Training Pipeline
 
-Unified training pipeline for LSTM attack prediction and RL defense agents
-using real CICIoT2023 dataset.
+Main entry point for the adversarial RL defense system. This system uses:
+- Red Team: Attack Sequence Generator (LSTM) to produce attack sequences
+- Blue Team: RL agents (DQN/PPO/A2C) to learn defense policies
+
+Modes:
+- process-data: Prepare CICIoT2023 dataset for adversarial environment
+- train-generator: Train the Attack Sequence Generator (Red Team)
+- train-rl: Train single RL defense agent (Blue Team)
+- train-all-rl: Train all RL algorithms (DQN, PPO, A2C)
+- train-all: Run complete training pipeline
+- evaluate: Evaluate trained models (single or comparison)
 """
 
 import argparse
 import logging
-from pathlib import Path
-from typing import Optional
 import sys
+from pathlib import Path
+from typing import Optional, List
 
 # Add src to Python path
-sys.path.append(str(Path(__file__).parent / "src"))
+sys.path.insert(0, str(Path(__file__).parent / "src"))
 
-from utils.config_loader import ConfigLoader
-from training.lstm_trainer import LSTMTrainer
-from training.rl_trainer import RLTrainer
-from benchmarking.benchmark_runner import BenchmarkRunner
-from benchmarking.benchmark_analyzer import BenchmarkAnalyzer
-from utils.dataset_processor import CICIoTProcessor, DataProcessingConfig
 
-# Configure logging
-def setup_logging(log_level: str = "INFO") -> None:
-    """Setup logging configuration"""
-    log_dir = Path("results/logs")
+def setup_logging(log_level: str = "INFO", log_dir: Path = Path("results/logs")) -> None:
+    """Setup logging configuration."""
     log_dir.mkdir(parents=True, exist_ok=True)
     
     logging.basicConfig(
         level=getattr(logging, log_level.upper()),
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
         handlers=[
-            logging.FileHandler(log_dir / 'main.log'),
+            logging.FileHandler(log_dir / 'adversarial_training.log'),
             logging.StreamHandler()
         ]
     )
 
+
 logger = logging.getLogger(__name__)
 
 
+def get_generator_path(args: argparse.Namespace) -> Path:
+    """Resolve generator path with auto-detection of latest.
+    
+    Args:
+        args: Parsed command line arguments.
+    
+    Returns:
+        Path to generator directory containing attack_sequence_generator.pth
+    """
+    if args.generator_path:
+        path = Path(args.generator_path)
+        
+        # If it's a .pth file, return parent directory
+        if path.suffix == '.pth':
+            return path.parent
+        
+        # If it's a directory with the model, use it directly
+        if path.is_dir() and (path / "attack_sequence_generator.pth").exists():
+            return path
+        
+        # If it's a directory with timestamped subdirs, find latest
+        if path.is_dir():
+            timestamped_dirs = sorted(
+                [d for d in path.iterdir() if d.is_dir() and (d / "attack_sequence_generator.pth").exists()],
+                key=lambda x: x.stat().st_mtime,
+                reverse=True
+            )
+            if timestamped_dirs:
+                latest = timestamped_dirs[0]
+                logger.info(f"Auto-detected latest generator: {latest}")
+                return latest
+    
+    # Default path
+    default_path = Path("artifacts/generator")
+    
+    # Check if default has the model
+    if (default_path / "attack_sequence_generator.pth").exists():
+        return default_path
+    
+    # Check for timestamped subdirs in default
+    if default_path.exists():
+        timestamped_dirs = sorted(
+            [d for d in default_path.iterdir() if d.is_dir() and (d / "attack_sequence_generator.pth").exists()],
+            key=lambda x: x.stat().st_mtime,
+            reverse=True
+        )
+        if timestamped_dirs:
+            latest = timestamped_dirs[0]
+            logger.info(f"Auto-detected latest generator: {latest}")
+            return latest
+    
+    return default_path
+
+
 def parse_arguments() -> argparse.Namespace:
-    """Parse command line arguments"""
+    """Parse command line arguments."""
     parser = argparse.ArgumentParser(
-        description='IoT Defense System - Train LSTM and/or RL agents'
+        description='IoT Defense System - Adversarial Training Pipeline',
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  # Process raw CICIoT2023 dataset
+  python main.py --mode process-data
+  
+  # Train Attack Sequence Generator (Red Team)
+  python main.py --mode train-generator
+  
+  # Train single RL agent (Blue Team)
+  python main.py --mode train-rl --algorithm ppo
+  
+  # Train all RL algorithms
+  python main.py --mode train-all-rl
+  
+  # Full pipeline
+  python main.py --mode train-all
+  
+  # Evaluate single model (detailed metrics)
+  python main.py --mode evaluate --model-path artifacts/rl/ppo_*.zip
+  
+  # Compare algorithms (auto-discover models)
+  python main.py --mode evaluate --algorithms dqn ppo a2c
+        """
     )
     
-    # Training mode selection
+    # Mode selection
     parser.add_argument(
         '--mode',
-        choices=['lstm', 'rl', 'both', 'benchmark', 'process-data'],
-        default='both',
-        help='Training mode: lstm, rl, both, benchmark, or process-data'
+        choices=['process-data', 'train-generator', 'train-rl', 'train-all-rl', 'train-all', 'evaluate'],
+        default='train-all',
+        help='Training mode'
     )
     
     # Configuration
@@ -61,60 +142,7 @@ def parse_arguments() -> argparse.Namespace:
         help='Path to configuration file'
     )
     
-    # LSTM specific options
-    parser.add_argument(
-        '--lstm-epochs',
-        type=int,
-        default=None,
-        help='Number of LSTM training epochs (overrides config)'
-    )
-    
-    parser.add_argument(
-        '--lstm-batch-size',
-        type=int,
-        default=None,
-        help='LSTM batch size (overrides config)'
-    )
-    
-    # RL specific options
-    parser.add_argument(
-        '--rl-algorithm',
-        choices=['dqn', 'ppo', 'a2c'],
-        default=None,
-        help='RL algorithm to use (overrides config)'
-    )
-    
-    parser.add_argument(
-        '--rl-timesteps',
-        type=int,
-        default=None,
-        help='RL training timesteps (overrides config)'
-    )
-    
-    # Benchmark options
-    parser.add_argument(
-        '--benchmark-mode',
-        choices=['train', 'evaluate', 'mixed'],
-        default='mixed',
-        help='Benchmark mode: train (from scratch), evaluate (pre-trained), mixed (auto)'
-    )
-    
-    parser.add_argument(
-        '--benchmark-algorithms',
-        nargs='+',
-        choices=['dqn', 'ppo', 'a2c'],
-        default=['dqn', 'ppo', 'a2c'],
-        help='Algorithms to benchmark'
-    )
-    
-    parser.add_argument(
-        '--benchmark-runs',
-        type=int,
-        default=3,
-        help='Number of runs per algorithm'
-    )
-    
-    # Data options
+    # Paths
     parser.add_argument(
         '--data-path',
         type=str,
@@ -123,12 +151,79 @@ def parse_arguments() -> argparse.Namespace:
     )
     
     parser.add_argument(
-        '--force-retrain-lstm',
-        action='store_true',
-        help='Force retrain LSTM even if model exists'
+        '--generator-path',
+        type=str,
+        default=None,
+        help='Path to generator model directory or .pth file. Auto-detects latest if directory.'
     )
     
-    # Logging
+    parser.add_argument(
+        '--rl-path',
+        type=str,
+        default='artifacts/rl',
+        help='Path to RL model directory'
+    )
+    
+    # Evaluation options
+    parser.add_argument(
+        '--model-path',
+        type=str,
+        default=None,
+        help='Path to specific model file for single-model evaluation'
+    )
+    
+    parser.add_argument(
+        '--algorithms',
+        nargs='+',
+        choices=['dqn', 'ppo', 'a2c'],
+        default=None,
+        help='Algorithms to evaluate/compare (auto-discovers models)'
+    )
+    
+    parser.add_argument(
+        '--eval-episodes',
+        type=int,
+        default=20,
+        help='Number of evaluation episodes per model'
+    )
+    
+    # Generator training options
+    parser.add_argument(
+        '--generator-epochs',
+        type=int,
+        default=None,
+        help='Generator training epochs (overrides config)'
+    )
+    
+    parser.add_argument(
+        '--num-episodes',
+        type=int,
+        default=None,
+        help='Number of episodes to generate for training'
+    )
+    
+    # RL training options
+    parser.add_argument(
+        '--algorithm',
+        choices=['dqn', 'ppo', 'a2c'],
+        default='ppo',
+        help='RL algorithm to train (for train-rl mode)'
+    )
+    
+    parser.add_argument(
+        '--timesteps',
+        type=int,
+        default=None,
+        help='RL training timesteps (overrides config)'
+    )
+    
+    # General options
+    parser.add_argument(
+        '--force',
+        action='store_true',
+        help='Force retrain even if models exist'
+    )
+    
     parser.add_argument(
         '--log-level',
         choices=['DEBUG', 'INFO', 'WARNING', 'ERROR'],
@@ -136,16 +231,36 @@ def parse_arguments() -> argparse.Namespace:
         help='Logging level'
     )
     
+    parser.add_argument(
+        '--device',
+        choices=['cpu', 'cuda', 'mps'],
+        default='cpu',
+        help='Device for training'
+    )
+    
     return parser.parse_args()
 
 
-def process_dataset(config: dict, args: argparse.Namespace) -> None:
-    """Process raw CICIoT2023 dataset with configurable splits and EDA recommendations."""
-    print("📊 Starting Dataset Processing")
+def load_config(config_path: str) -> dict:
+    """Load configuration from YAML file."""
+    import yaml
+    
+    with open(config_path, 'r') as f:
+        config = yaml.safe_load(f)
+    
+    logger.info(f"Configuration loaded from {config_path}")
+    return config
+
+
+def process_data(config: dict, args: argparse.Namespace) -> bool:
+    """Process CICIoT2023 dataset for adversarial environment."""
+    print("\n📊 Processing Dataset for Adversarial Environment")
     print("=" * 60)
     
     try:
-        # Create processing config with EDA recommendations from config file
+        from src.utils.dataset_processor import CICIoTProcessor, DataProcessingConfig
+        
+        # Create processing config
         processing_config = DataProcessingConfig(
             dataset_path=Path(config['dataset']['raw_path']),
             output_path=Path(args.data_path),
@@ -154,211 +269,398 @@ def process_dataset(config: dict, args: argparse.Namespace) -> None:
             train_split=config['dataset']['train_split'],
             val_split=config['dataset']['val_split'],
             test_split=config['dataset']['test_split'],
-            # Add EDA recommendations
             feature_selection=config['dataset'].get('feature_selection', False),
+            variance_threshold=config['dataset'].get('variance_threshold', 0.01),
+            correlation_threshold=config['dataset'].get('correlation_threshold', 0.95),
             sampling_strategy=config['dataset'].get('sampling_strategy', None)
         )
         
         # Process dataset
         processor = CICIoTProcessor(processing_config)
-        results = processor.process_dataset()
+        
+        # Check if already processed
+        output_path = Path(args.data_path)
+        if (output_path / "features.npy").exists() and not args.force:
+            print("✅ Dataset already processed. Use --force to reprocess.")
+            return True
+        
+        # Process for adversarial environment
+        results = processor.process_for_adversarial_env()
         
         print("✅ Dataset processing completed!")
         print(f"   - Total samples: {results['total_samples']:,}")
-        print(f"   - Train samples: {results['train_samples']:,}")
-        print(f"   - Val samples: {results['val_samples']:,}")
-        print(f"   - Test samples: {results['test_samples']:,}")
-        print(f"   - Features: {results['feature_count']}")
-        print(f"   - Classes: {results['class_count']}")
-        print(f"   - Splits: {results['splits']}")
+        print(f"   - Features: {results['num_features']}")
+        print(f"   - Stage distribution: {results['stage_distribution']}")
+        print(f"   - Output path: {args.data_path}")
         
-        if config['dataset'].get('feature_selection', False):
-            print(f"   - ✅ Feature selection applied")
-        if config['dataset'].get('sampling_strategy') == 'balanced':
-            print(f"   - ✅ Class balancing applied")
+        return True
         
     except Exception as e:
         logger.error(f"Dataset processing failed: {e}")
-        raise
+        print(f"❌ Dataset processing failed: {e}")
+        return False
 
 
-def train_lstm(config: dict, args: argparse.Namespace) -> Optional[Path]:
-    """Train LSTM attack predictor."""
-    print("🧠 Starting LSTM Attack Predictor Training")
+def train_generator(config: dict, args: argparse.Namespace) -> bool:
+    """Train the Attack Sequence Generator (Red Team)."""
+    print("\n🔴 Training Attack Sequence Generator (Red Team)")
     print("=" * 60)
     
     try:
-        # Check if model already exists
-        model_path = Path(config['models']['lstm']['save_path'])
+        from src.generator.episode_generator import EpisodeGenerator, EpisodeGeneratorConfig
+        from src.generator.attack_sequence_generator import AttackSequenceGeneratorConfig
+        from src.training.generator_trainer import GeneratorTrainer, GeneratorTrainingConfig
         
-        if model_path.exists() and not args.force_retrain_lstm:
-            logger.info(f"LSTM model already exists at {model_path}")
-            print(f"✅ Using existing LSTM model: {model_path}")
-            return model_path
+        # Check if already trained
+        generator_path = Path(args.generator_path)
+        model_file = generator_path / "attack_sequence_generator.pth"
         
-        # Create LSTM trainer
-        trainer = LSTMTrainer(
-            config=config,
-            data_path=Path(args.data_path)
+        if model_file.exists() and not args.force:
+            print(f"✅ Generator already trained at {model_file}. Use --force to retrain.")
+            return True
+        
+        # Get config values
+        ep_config = config.get('episode_generation', {})
+        gen_config = config.get('attack_generator', {})
+        
+        # Create episode generator
+        episode_config = EpisodeGeneratorConfig(
+            num_episodes=args.num_episodes or ep_config.get('num_episodes', 10000),
+            min_length=ep_config.get('min_length', 5),
+            max_length=ep_config.get('max_length', 30),
+            benign_start_prob=ep_config.get('benign_start_prob', 0.8),
         )
         
-        # Override config with command line arguments
-        if args.lstm_epochs:
-            trainer.config['lstm']['training']['epochs'] = args.lstm_epochs
-        if args.lstm_batch_size:
-            trainer.config['lstm']['training']['batch_size'] = args.lstm_batch_size
+        print(f"   Generating {episode_config.num_episodes:,} training episodes...")
+        episode_generator = EpisodeGenerator(config=episode_config, seed=42)
+        episodes = episode_generator.generate_all()
         
-        # Train LSTM
-        training_results = trainer.train()
+        # Create model config
+        model_config_dict = gen_config.get('model', {})
+        model_config = AttackSequenceGeneratorConfig(
+            num_stages=model_config_dict.get('num_stages', 5),
+            embedding_dim=model_config_dict.get('embedding_dim', 32),
+            hidden_size=model_config_dict.get('hidden_size', 64),
+            num_layers=model_config_dict.get('num_layers', 2),
+            dropout=model_config_dict.get('dropout', 0.1),
+            temperature=model_config_dict.get('temperature', 1.0),
+        )
         
-        print(f"✅ LSTM training completed!")
-        print(f"   - Final accuracy: {training_results['test_accuracy']:.4f}")
-        print(f"   - Model saved to: {training_results['model_path']}")
+        # Create training config
+        training_config_dict = gen_config.get('training', {})
+        training_config = GeneratorTrainingConfig(
+            epochs=args.generator_epochs or training_config_dict.get('epochs', 50),
+            batch_size=training_config_dict.get('batch_size', 32),
+            learning_rate=training_config_dict.get('learning_rate', 0.001),
+            sequence_length=training_config_dict.get('sequence_length', 5),
+            val_split=training_config_dict.get('val_split', 0.2),
+            early_stopping_patience=training_config_dict.get('early_stopping_patience', 10),
+            output_dir=generator_path,
+            device=args.device,
+        )
         
-        return Path(training_results['model_path'])
+        # Train generator
+        trainer = GeneratorTrainer(config=training_config, model_config=model_config)
+        
+        print(f"   Training for {training_config.epochs} epochs...")
+        results = trainer.train(episodes)
+        
+        print("✅ Generator training completed!")
+        print(f"   - Best validation loss: {results['best_val_loss']:.4f}")
+        print(f"   - Epochs trained: {results['epochs_trained']}")
+        print(f"   - Model saved to: {generator_path}")
+        
+        return True
         
     except Exception as e:
-        logger.error(f"LSTM training failed: {e}")
-        print(f"❌ LSTM training failed: {e}")
-        return None
+        logger.error(f"Generator training failed: {e}")
+        print(f"❌ Generator training failed: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
 
 
-def train_rl_agents(config: dict, args: argparse.Namespace, 
-                   lstm_model_path: Optional[Path]) -> bool:
-    """Train RL defense agents."""
-    print("\n🤖 Starting RL Defense Agent Training")
+def train_rl(config: dict, args: argparse.Namespace) -> bool:
+    """Train RL defense agent (Blue Team)."""
+    print("\n🔵 Training RL Defense Agent (Blue Team)")
     print("=" * 60)
     
     try:
-        # Create RL trainer
-        trainer = RLTrainer(
-            config=config,
-            data_path=Path(args.data_path),
-            lstm_model_path=lstm_model_path
+        from src.environment.adversarial_env import AdversarialIoTEnv, AdversarialEnvConfig
+        from src.algorithms.adversarial_algorithm import AdversarialAlgorithm, AdversarialAlgorithmConfig
+        from datetime import datetime
+        import uuid
+        
+        # Check dependencies
+        generator_path = Path(args.generator_path)
+        if not (generator_path / "attack_sequence_generator.pth").exists():
+            print("❌ Generator not found. Train generator first.")
+            return False
+        
+        data_path = Path(args.data_path)
+        if not (data_path / "features.npy").exists():
+            print("❌ Processed data not found. Process data first.")
+            return False
+        
+        # Get config values
+        rl_config = config.get('rl', {})
+        env_config = config.get('adversarial_environment', {})
+        algo_config = rl_config.get('algorithms', {}).get(args.algorithm, {})
+        
+        # Create environment config
+        adversarial_env_config = AdversarialEnvConfig(
+            max_steps=env_config.get('max_steps', 500),
+            window_size=env_config.get('observation', {}).get('window_size', 5),
+            num_actions=env_config.get('actions', {}).get('num_actions', 5),
         )
         
-        # Override config with command line arguments
-        if args.rl_algorithm:
-            trainer.config['rl']['algorithm'] = args.rl_algorithm
-        if args.rl_timesteps:
-            trainer.config['rl']['training']['total_timesteps'] = args.rl_timesteps
+        # Create environment
+        print(f"   Creating environment...")
+        env = AdversarialIoTEnv(
+            generator_path=generator_path,
+            dataset_path=data_path,
+            config=adversarial_env_config,
+            device=args.device,
+        )
         
-        # Train RL agents
-        training_results = trainer.train()
+        # Get training timesteps
+        timesteps = args.timesteps or rl_config.get('training', {}).get('total_timesteps', 50000)
         
-        print(f"✅ RL training completed!")
-        print(f"   - Algorithm: {training_results['algorithm']}")
-        print(f"   - Final reward: {training_results['final_reward']:.2f}")
-        print(f"   - Model saved to: {training_results['model_path']}")
+        # Create algorithm config
+        algorithm_config = AdversarialAlgorithmConfig(
+            algorithm_type=args.algorithm,
+            total_timesteps=timesteps,
+            learning_rate=algo_config.get('learning_rate', 3e-4),
+            gamma=algo_config.get('gamma', 0.99),
+            verbose=1,
+        )
         
+        # Merge algorithm-specific params
+        if args.algorithm == 'dqn':
+            algorithm_config.buffer_size = algo_config.get('buffer_size', 50000)
+            algorithm_config.batch_size = algo_config.get('batch_size', 32)
+            algorithm_config.target_update_interval = algo_config.get('target_update_interval', 1000)
+        elif args.algorithm == 'ppo':
+            algorithm_config.n_steps = algo_config.get('n_steps', 2048)
+            algorithm_config.n_epochs = algo_config.get('n_epochs', 10)
+            algorithm_config.batch_size = algo_config.get('batch_size', 64)
+        elif args.algorithm == 'a2c':
+            algorithm_config.n_steps = algo_config.get('n_steps', 5)
+        
+        # Create algorithm
+        algorithm = AdversarialAlgorithm(config=algorithm_config)
+        
+        print(f"   Algorithm: {args.algorithm.upper()}")
+        print(f"   Training for {timesteps:,} timesteps...")
+        
+        # Create model and train
+        model = algorithm.create_model(env)
+        trained_model = algorithm.train(model, total_timesteps=timesteps)
+        
+        # Save model with timestamp
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        run_id = str(uuid.uuid4())[:6]
+        model_dir = Path(args.rl_path) / f"{args.algorithm}_{timestamp}_{run_id}"
+        model_dir.mkdir(parents=True, exist_ok=True)
+        
+        algorithm.save_model(trained_model, model_dir / f"{args.algorithm}_agent")
+        
+        # Quick evaluation
+        print("   Running quick evaluation...")
+        total_reward = 0.0
+        n_episodes = 10
+        
+        for _ in range(n_episodes):
+            obs, _ = env.reset()
+            done = False
+            while not done:
+                action, _ = trained_model.predict(obs, deterministic=True)
+                obs, reward, terminated, truncated, _ = env.step(action)
+                total_reward += reward
+                done = terminated or truncated
+        
+        avg_reward = total_reward / n_episodes
+        
+        print("✅ RL training completed!")
+        print(f"   - Algorithm: {args.algorithm.upper()}")
+        print(f"   - Average reward (10 episodes): {avg_reward:.2f}")
+        print(f"   - Model saved to: {model_dir}")
+        
+        env.close()
         return True
         
     except Exception as e:
         logger.error(f"RL training failed: {e}")
         print(f"❌ RL training failed: {e}")
+        import traceback
+        traceback.print_exc()
         return False
 
 
-def run_benchmark(config: dict, args: argparse.Namespace) -> None:
-    """Run algorithm benchmark comparison with flexible modes."""
-    print("🏆 Starting Algorithm Benchmark")
+def train_all_rl(config: dict, args: argparse.Namespace) -> bool:
+    """Train all RL algorithms (DQN, PPO, A2C)."""
+    print("\n🔵 Training All RL Algorithms (Blue Team)")
+    print("=" * 60)
+    
+    algorithms = ['dqn', 'ppo', 'a2c']
+    results = {}
+    
+    for algorithm in algorithms:
+        print(f"\n{'='*50}")
+        print(f"Training {algorithm.upper()}...")
+        print(f"{'='*50}")
+        
+        # Create a modified args for this algorithm
+        algo_args = argparse.Namespace(**vars(args))
+        algo_args.algorithm = algorithm
+        
+        success = train_rl(config, algo_args)
+        results[algorithm] = success
+        
+        if not success:
+            print(f"⚠️  {algorithm.upper()} training failed, continuing with next...")
+    
+    # Summary
+    print("\n" + "=" * 60)
+    print("Training Summary")
+    print("=" * 60)
+    for algo, success in results.items():
+        status = "✅" if success else "❌"
+        print(f"   {status} {algo.upper()}")
+    
+    all_success = all(results.values())
+    return all_success
+
+
+def run_evaluate(config: dict, args: argparse.Namespace) -> bool:
+    """Evaluate trained models (single or comparison mode).
+    
+    - Single model: Detailed PRD 7.2 metrics for one model
+    - Comparison: Summary metrics across multiple algorithms
+    """
+    print("\n📊 Evaluating Trained Models")
     print("=" * 60)
     
     try:
-        # Check for LSTM model
-        lstm_model_path = Path(config['models']['lstm']['save_path'])
-        if not lstm_model_path.exists():
-            print("❌ LSTM model not found. Train LSTM first or use --mode both")
-            return
+        from src.benchmarking.benchmark_runner import BenchmarkRunner, BenchmarkConfig
+        from src.benchmarking.benchmark_analyzer import BenchmarkAnalyzer
         
-        # Determine benchmark mode
-        benchmark_mode = getattr(args, 'benchmark_mode', 'mixed')
+        # Resolve generator path
+        generator_path = get_generator_path(args)
         
-        # Create benchmark runner
-        runner = BenchmarkRunner(
-            config=config,
-            lstm_model_path=lstm_model_path,
-            mode=benchmark_mode
+        if not (generator_path / "attack_sequence_generator.pth").exists():
+            print(f"❌ Generator not found at {generator_path}. Train generator first.")
+            return False
+        
+        data_path = Path(args.data_path)
+        if not (data_path / "features.npy").exists():
+            print("❌ Processed data not found. Process data first.")
+            return False
+        
+        # Create benchmark config
+        benchmark_config = BenchmarkConfig(
+            num_episodes=args.eval_episodes,
+            generator_path=generator_path,
+            dataset_path=data_path,
         )
         
-        # Run benchmark
-        metrics_collector = runner.run_benchmark(
-            algorithms=args.benchmark_algorithms,
-            num_runs=args.benchmark_runs
-        )
+        runner = BenchmarkRunner(config, benchmark_config)
         
-        # Analyze results
-        analyzer = BenchmarkAnalyzer(metrics_collector)
-        analyzer.generate_comparison_report()
+        # Determine mode: single model or comparison
+        if args.model_path:
+            # Single model evaluation
+            print(f"   Mode: Single Model Evaluation")
+            print(f"   Model: {args.model_path}")
+            
+            model_path = Path(args.model_path)
+            if not model_path.exists():
+                print(f"❌ Model not found: {model_path}")
+                return False
+            
+            results = runner.evaluate_model(model_path)
+            
+            # Use analyzer for detailed report
+            analyzer = BenchmarkAnalyzer(runner.metrics_collector)
+            algorithm = results.get('algorithm', 'unknown')
+            analyzer.generate_single_model_report(algorithm, run_id=0)
+            
+        else:
+            # Comparison mode
+            algorithms = args.algorithms or ['dqn', 'ppo', 'a2c']
+            print(f"   Mode: Algorithm Comparison")
+            print(f"   Algorithms: {', '.join(algorithms)}")
+            
+            runner.run_comparison(algorithms)
+            
+            # Generate comparison report with visualizations
+            analyzer = BenchmarkAnalyzer(runner.metrics_collector)
+            analyzer.generate_comparison_report()
         
-        print("🎉 Benchmark analysis completed!")
+        print("\n✅ Evaluation completed!")
+        return True
         
     except Exception as e:
-        logger.error(f"Benchmark failed: {e}")
-        print(f"❌ Benchmark failed: {e}")
-        raise
+        logger.error(f"Evaluation failed: {e}")
+        print(f"❌ Evaluation failed: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
 
 
 def main() -> None:
-    """Main function"""
+    """Main entry point."""
     args = parse_arguments()
     
     # Setup logging
     setup_logging(args.log_level)
     
-    print("🚀 IoT Defense System Training Pipeline")
+    # Resolve generator path early
+    resolved_generator_path = get_generator_path(args)
+    args.generator_path = resolved_generator_path
+    
+    print("\n" + "=" * 60)
+    print("🚀 IoT Defense System - Adversarial Training Pipeline")
     print("=" * 60)
-    print(f"Mode: {args.mode}")
-    print(f"Config: {args.config}")
-    print(f"Data path: {args.data_path}")
+    print(f"   Mode: {args.mode}")
+    if args.mode == 'train-rl':
+        print(f"   Algorithm: {args.algorithm}")
+    print(f"   Device: {args.device}")
+    print(f"   Generator: {args.generator_path}")
     print("=" * 60)
     
     try:
         # Load configuration
-        config_loader = ConfigLoader()
-        config = config_loader.load_config(Path(args.config))
-        
-        logger.info("Configuration loaded successfully")
+        config = load_config(args.config)
         
         if args.mode == 'process-data':
-            process_dataset(config, args)
+            process_data(config, args)
             
-        elif args.mode == 'lstm':
-            train_lstm(config, args)
+        elif args.mode == 'train-generator':
+            train_generator(config, args)
             
-        elif args.mode == 'rl':
-            # Check for existing LSTM model
-            lstm_model_path = Path(config['models']['lstm']['save_path'])
-            if not lstm_model_path.exists():
-                print("❌ No LSTM model found. Train LSTM first or use --mode both")
+        elif args.mode == 'train-rl':
+            train_rl(config, args)
+            
+        elif args.mode == 'train-all-rl':
+            train_all_rl(config, args)
+            
+        elif args.mode == 'train-all':
+            # Full pipeline
+            if not process_data(config, args):
+                return
+            if not train_generator(config, args):
+                return
+            if not train_rl(config, args):
                 return
             
-            train_rl_agents(config, args, lstm_model_path)
-            
-        elif args.mode == 'both':
-            # Train LSTM first
-            lstm_model_path = train_lstm(config, args)
-            
-            if lstm_model_path is None:
-                print("❌ Cannot proceed with RL training without LSTM model")
-                return
-            
-            # Then train RL agents
-            success = train_rl_agents(config, args, lstm_model_path)
-            
-            if not success:
-                print("❌ RL training failed")
-                return
-                
-        elif args.mode == 'benchmark':
-            run_benchmark(config, args)
+        elif args.mode == 'evaluate':
+            run_evaluate(config, args)
         
-        print("\n🎉 Training pipeline completed successfully!")
-        logger.info("Training pipeline completed successfully")
+        print("\n🎉 Pipeline completed successfully!")
         
     except Exception as e:
-        logger.error(f"Training pipeline failed: {e}")
-        print(f"❌ Training pipeline failed: {e}")
+        logger.error(f"Pipeline failed: {e}")
+        print(f"\n❌ Pipeline failed: {e}")
         raise
 
 

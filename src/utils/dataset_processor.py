@@ -1,20 +1,30 @@
 """
 CICIoT2023 Dataset Processor
 
-Processes raw CICIoT2023 dataset for LSTM training and RL environment integration.
-Enhanced with configurable train/validation/test splits and comprehensive preprocessing.
+Processes raw CICIoT2023 dataset for Attack Sequence Generator training
+and Adversarial Environment integration (PRD compliant).
+
+Key outputs:
+- features.npy: Normalized feature matrix for RealizationEngine
+- labels.npy: CICIoT2023 label strings for each sample
+- state_indices.json: Mapping from Kill Chain stages to dataset row indices
+- scaler.joblib: StandardScaler for feature normalization
+- metadata.json: Dataset metadata and configuration
 """
 
-import pandas as pd
-import numpy as np
-from pathlib import Path
-from typing import Dict, List, Tuple, Optional, Any
-from dataclasses import dataclass
-import logging
-from sklearn.preprocessing import StandardScaler, LabelEncoder
-from sklearn.model_selection import train_test_split
-import joblib
 import json
+import logging
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple
+
+import joblib
+import numpy as np
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import LabelEncoder, StandardScaler
+
+from src.utils.label_mapper import AbstractStateLabelMapper, KillChainStage
 
 logger = logging.getLogger(__name__)
 
@@ -31,8 +41,10 @@ class DataProcessingConfig:
     test_split: float = 0.15
     num_workers: int = 4
     random_state: int = 42
-    # Add EDA recommendations
+    # Feature engineering options
     feature_selection: bool = False
+    variance_threshold: float = 0.01  # Remove features with variance below this
+    correlation_threshold: float = 0.95  # Remove redundant features above this correlation
     sampling_strategy: Optional[str] = None
     
     def __post_init__(self) -> None:
@@ -179,7 +191,10 @@ class CICIoTProcessor:
         for col in categorical_columns:
             X[col] = X[col].astype('category').cat.codes
         
-        # Feature selection - remove zero/low variance features
+        # Clean inf/NaN values before scaling (critical for numerical stability)
+        X = self._clean_numerical_data(X)
+        
+        # Feature selection - remove zero/low variance features and correlations
         if hasattr(self.config, 'feature_selection') and self.config.feature_selection:
             X = self._apply_feature_selection(X)
             logger.info(f"After feature selection: {X.shape[1]} features")
@@ -209,26 +224,88 @@ class CICIoTProcessor:
         logger.info(f"Final preprocessing: {len(self.feature_columns)} features, {len(self.class_names)} classes")
         return processed_data
 
+    def _clean_numerical_data(self, X: pd.DataFrame) -> pd.DataFrame:
+        """Clean inf and NaN values from numerical data.
+        
+        Strategy:
+        - Replace inf with large finite values (preserves scale)
+        - Fill NaN with column median (robust to outliers)
+        """
+        # Replace inf with large finite values
+        X = X.replace([np.inf, -np.inf], [np.finfo(np.float32).max, np.finfo(np.float32).min])
+        
+        # Fill remaining NaN with median
+        for col in X.columns:
+            if X[col].isna().any():
+                median_val = X[col].median()
+                X[col].fillna(median_val, inplace=True)
+        
+        inf_count = np.isinf(X.values).sum()
+        nan_count = X.isna().sum().sum()
+        if inf_count > 0 or nan_count > 0:
+            logger.warning(f"Cleaned {inf_count} inf and {nan_count} NaN values")
+        
+        return X
+    
     def _apply_feature_selection(self, X: pd.DataFrame) -> pd.DataFrame:
-        """Remove zero and low variance features."""
+        """Remove zero/low variance and highly correlated features.
+        
+        Three-stage process:
+        1. Remove zero-variance features
+        2. Remove low-variance features (below threshold)
+        3. Remove redundant highly-correlated features
+        """
         from sklearn.feature_selection import VarianceThreshold
         
-        # Remove zero variance features
+        original_count = X.shape[1]
+        
+        # Stage 1: Remove zero variance features
         selector = VarianceThreshold(threshold=0)
         X_selected = selector.fit_transform(X)
         selected_features = X.columns[selector.get_support()].tolist()
+        X = pd.DataFrame(X_selected, columns=selected_features, index=X.index)
+        logger.info(f"Stage 1: Removed {original_count - len(selected_features)} zero-variance features")
         
-        # Remove low variance features (bottom 5%)
-        if len(selected_features) > 10:  # Keep at least 10 features
-            variances = pd.DataFrame(X_selected, columns=selected_features).var()
-            threshold = variances.quantile(0.05)
-            high_var_features = variances[variances > threshold].index.tolist()
-            X_final = X[high_var_features]
-        else:
-            X_final = pd.DataFrame(X_selected, columns=selected_features)
+        # Stage 2: Remove low variance features (below configured threshold)
+        variance_threshold = getattr(self.config, 'variance_threshold', 0.01)
+        if len(selected_features) > 10:  # Only if we have enough features
+            variances = X.var()
+            high_var_features = variances[variances >= variance_threshold].index.tolist()
+            removed_count = len(selected_features) - len(high_var_features)
+            X = X[high_var_features]
+            logger.info(f"Stage 2: Removed {removed_count} low-variance features (threshold={variance_threshold})")
         
-        logger.info(f"Feature selection: {X.shape[1]} -> {X_final.shape[1]} features")
-        return X_final
+        # Stage 3: Remove highly correlated features
+        correlation_threshold = getattr(self.config, 'correlation_threshold', 0.95)
+        X = self._remove_correlated_features(X, threshold=correlation_threshold)
+        
+        logger.info(f"Feature selection complete: {original_count} -> {X.shape[1]} features")
+        return X
+    
+    def _remove_correlated_features(self, X: pd.DataFrame, threshold: float = 0.95) -> pd.DataFrame:
+        """Remove highly correlated features to reduce redundancy.
+        
+        For each pair of features with correlation > threshold,
+        remove the one with lower variance (less informative).
+        """
+        corr_matrix = X.corr().abs()
+        upper_tri = corr_matrix.where(np.triu(np.ones(corr_matrix.shape), k=1).astype(bool))
+        
+        to_drop = set()
+        for column in upper_tri.columns:
+            # Find features correlated above threshold
+            correlated_features = upper_tri.index[upper_tri[column] > threshold].tolist()
+            if correlated_features:
+                # Keep the feature with higher variance, drop the others
+                variances = X[[column] + correlated_features].var()
+                features_to_drop = variances.nsmallest(len(correlated_features)).index.tolist()
+                to_drop.update(features_to_drop[:-1])  # Keep the highest variance one
+        
+        if to_drop:
+            logger.info(f"Stage 3: Removed {len(to_drop)} highly correlated features (threshold={threshold})")
+            X = X.drop(columns=list(to_drop))
+        
+        return X
 
     def _apply_class_balancing(self, X: pd.DataFrame, y: np.ndarray) -> Tuple[pd.DataFrame, np.ndarray]:
         """Apply class balancing for severe imbalance."""
@@ -338,6 +415,209 @@ class CICIoTProcessor:
             json.dump(metadata, f, indent=2)
         
         logger.info("Preprocessing artifacts saved")
+    
+    def process_for_adversarial_env(self) -> Dict[str, Any]:
+        """
+        Process dataset for the Adversarial IoT Environment (PRD compliant).
+        
+        Creates:
+        - features.npy: Normalized feature matrix (num_samples, num_features)
+        - labels.npy: Original CICIoT2023 labels (strings)
+        - state_indices.json: Kill Chain stage to row indices mapping
+        - scaler.joblib: Feature scaler
+        - metadata.json: Dataset metadata
+        
+        Returns:
+            Processing results dictionary
+        """
+        logger.info("Processing dataset for Adversarial Environment...")
+        
+        try:
+            # Load raw data
+            raw_data = self._load_raw_data()
+            logger.info(f"Loaded {len(raw_data):,} raw samples")
+            
+            # Sample data if needed
+            if self.config.sample_size < len(raw_data):
+                raw_data = raw_data.sample(
+                    n=self.config.sample_size,
+                    random_state=self.config.random_state
+                )
+                logger.info(f"Sampled to {len(raw_data):,} samples")
+            
+            # Extract features and labels
+            features, labels = self._extract_features_and_labels(raw_data)
+            
+            # Store raw features before processing
+            raw_features_copy = features.copy()
+            
+            # Convert to DataFrame for feature engineering
+            features_df = pd.DataFrame(features, columns=self.feature_columns)
+            
+            # Clean inf/NaN values
+            features_df = self._clean_numerical_data(features_df)
+            
+            # Apply feature selection if enabled
+            if hasattr(self.config, 'feature_selection') and self.config.feature_selection:
+                features_df = self._apply_feature_selection(features_df)
+                self.feature_columns = features_df.columns.tolist()
+                logger.info(f"After feature selection: {len(self.feature_columns)} features")
+            
+            # Convert back to numpy
+            features = features_df.values
+            
+            # Normalize features
+            self.scaler = StandardScaler()
+            normalized_features = self.scaler.fit_transform(features)
+            
+            # Build state indices using AbstractStateLabelMapper
+            state_indices = self._build_state_indices(labels)
+            
+            # Save artifacts
+            self._save_adversarial_artifacts(
+                normalized_features,
+                labels,
+                state_indices,
+                features,  # Save processed (but not scaled) features
+            )
+            
+            results = {
+                'total_samples': len(normalized_features),
+                'num_features': normalized_features.shape[1],
+                'num_stages': 5,
+                'stage_counts': {
+                    int(k): len(v) for k, v in state_indices.items()
+                },
+                'class_names': list(set(labels)),
+            }
+            
+            logger.info("Adversarial environment dataset processing completed")
+            return results
+            
+        except Exception as e:
+            logger.error(f"Adversarial env processing failed: {e}")
+            raise
+    
+    def _extract_features_and_labels(
+        self, data: pd.DataFrame
+    ) -> Tuple[np.ndarray, np.ndarray]:
+        """Extract feature matrix and label array from raw data."""
+        # Identify target column (usually last column named 'label' or similar)
+        target_column = data.columns[-1]
+        feature_columns = data.columns[:-1].tolist()
+        
+        # Drop rows with missing values
+        data = data.dropna()
+        
+        # Extract features
+        X = data[feature_columns].copy()
+        
+        # Handle categorical features (convert to numeric)
+        categorical_columns = X.select_dtypes(include=['object']).columns
+        for col in categorical_columns:
+            X[col] = X[col].astype('category').cat.codes
+        
+        # Convert to numpy
+        features = X.values.astype(np.float32)
+        labels = data[target_column].values.astype(str)
+        
+        self.feature_columns = feature_columns
+        
+        logger.info(f"Extracted {features.shape[1]} features, {len(set(labels))} unique labels")
+        return features, labels
+    
+    def _build_state_indices(self, labels: np.ndarray) -> Dict[int, List[int]]:
+        """Build mapping from Kill Chain stages to dataset row indices.
+        
+        Uses AbstractStateLabelMapper to convert CICIoT2023 labels to
+        abstract Kill Chain stages (0-4), then groups row indices by stage.
+        """
+        mapper = AbstractStateLabelMapper()
+        state_indices: Dict[int, List[int]] = {i: [] for i in range(5)}
+        
+        unknown_labels = set()
+        
+        for idx, label in enumerate(labels):
+            stage_id = mapper.get_stage_id_safe(label, default=-1)
+            
+            if stage_id == -1:
+                unknown_labels.add(label)
+                # Default unknown labels to BENIGN for safety
+                stage_id = 0
+            
+            state_indices[stage_id].append(idx)
+        
+        if unknown_labels:
+            logger.warning(
+                f"Found {len(unknown_labels)} unknown labels mapped to BENIGN: "
+                f"{list(unknown_labels)[:5]}..."
+            )
+        
+        # Log distribution
+        for stage_id, indices in state_indices.items():
+            stage_name = mapper.get_stage_name(stage_id)
+            logger.info(f"Stage {stage_id} ({stage_name}): {len(indices):,} samples")
+        
+        return state_indices
+    
+    def _save_adversarial_artifacts(
+        self,
+        normalized_features: np.ndarray,
+        labels: np.ndarray,
+        state_indices: Dict[int, List[int]],
+        raw_features: np.ndarray,
+    ) -> None:
+        """Save artifacts for RealizationEngine and Adversarial Environment."""
+        logger.info(f"Saving adversarial environment artifacts to {self.output_path}...")
+        
+        # Save normalized features
+        np.save(self.output_path / "features.npy", normalized_features.astype(np.float32))
+        
+        # Save raw features (for normalize=False option)
+        np.save(self.output_path / "features_raw.npy", raw_features.astype(np.float32))
+        
+        # Save labels (as strings)
+        np.save(self.output_path / "labels.npy", labels)
+        
+        # Save state indices
+        with open(self.output_path / "state_indices.json", "w") as f:
+            json.dump({str(k): v for k, v in state_indices.items()}, f)
+        
+        # Save scaler
+        if self.scaler:
+            joblib.dump(self.scaler, self.output_path / "scaler.joblib")
+        
+        # Compute stage distribution statistics
+        stage_counts = {int(k): len(v) for k, v in state_indices.items()}
+        total_samples = sum(stage_counts.values())
+        stage_percentages = {k: v / total_samples * 100 for k, v in stage_counts.items()}
+        
+        # Compute imbalance ratio
+        if stage_counts:
+            majority_count = max(stage_counts.values())
+            minority_count = min(stage_counts.values())
+            imbalance_ratio = majority_count / minority_count if minority_count > 0 else float('inf')
+        else:
+            imbalance_ratio = 1.0
+        
+        # Save metadata with enhanced statistics
+        metadata = {
+            'num_samples': len(normalized_features),
+            'num_features': normalized_features.shape[1],
+            'num_stages': 5,
+            'feature_columns': self.feature_columns,
+            'stage_counts': stage_counts,
+            'stage_percentages': stage_percentages,
+            'imbalance_ratio': imbalance_ratio,
+            'feature_selection_enabled': getattr(self.config, 'feature_selection', False),
+            'variance_threshold': getattr(self.config, 'variance_threshold', 0.01),
+            'correlation_threshold': getattr(self.config, 'correlation_threshold', 0.95),
+            'sampling_strategy': getattr(self.config, 'sampling_strategy', None),
+        }
+        with open(self.output_path / "metadata.json", "w") as f:
+            json.dump(metadata, f, indent=2)
+        
+        logger.info("Adversarial environment artifacts saved successfully")
     
     def load_artifacts(self) -> Dict[str, Any]:
         """Load preprocessing artifacts."""
