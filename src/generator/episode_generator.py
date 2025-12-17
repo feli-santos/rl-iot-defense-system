@@ -46,6 +46,10 @@ class EpisodeGeneratorConfig:
     progression_weight: float = 0.5
     persistence_weight: float = 0.3
     skip_weight: float = 0.2
+    
+    # Imbalance mitigation
+    distribution_temperature: float = 1.0  # <1 flattens, >1 sharpens
+    min_stage_coverage: Optional[Dict[int, float]] = None  # {stage: min_fraction}
 
 
 class EpisodeGenerator:
@@ -102,16 +106,19 @@ class EpisodeGenerator:
         self,
         distribution: Optional[Dict[int, int]],
     ) -> Dict[int, float]:
-        """Apply Laplace smoothing to stage distribution.
+        """Apply Laplace smoothing and temperature to stage distribution.
         
         Ensures all stages have non-zero probability, even if missing
-        from the dataset.
+        from the dataset. Applies temperature to flatten/sharpen the distribution:
+        - temperature < 1.0: flattens (reduces imbalance)
+        - temperature = 1.0: no change
+        - temperature > 1.0: sharpens (increases imbalance)
         
         Args:
             distribution: Raw stage counts from dataset.
         
         Returns:
-            Smoothed probability distribution over stages.
+            Smoothed and tempered probability distribution over stages.
         """
         smoothing_alpha = 1.0  # Laplace smoothing parameter
         
@@ -119,7 +126,7 @@ class EpisodeGenerator:
             # Uniform distribution if no dataset info
             return {i: 1.0 / self._config.num_stages for i in range(self._config.num_stages)}
         
-        # Add smoothing and normalize
+        # Add smoothing
         total = sum(distribution.values()) + smoothing_alpha * self._config.num_stages
         
         smoothed = {}
@@ -133,6 +140,20 @@ class EpisodeGenerator:
                     f"Stage {stage_id} has no samples in dataset, "
                     f"using Laplace smoothing"
                 )
+        
+        # Apply temperature to flatten/sharpen distribution
+        if self._config.distribution_temperature != 1.0:
+            temp_probs = {}
+            for stage_id, prob in smoothed.items():
+                temp_probs[stage_id] = prob ** self._config.distribution_temperature
+            
+            # Re-normalize
+            total_temp = sum(temp_probs.values())
+            smoothed = {k: v / total_temp for k, v in temp_probs.items()}
+            
+            logger.info(
+                f"Applied temperature {self._config.distribution_temperature} to stage distribution"
+            )
         
         return smoothed
     
@@ -260,7 +281,122 @@ class EpisodeGenerator:
         Returns:
             List of all episodes (config.num_episodes).
         """
-        return self.generate_batch(self._config.num_episodes)
+        episodes = self.generate_batch(self._config.num_episodes)
+        
+        # Enforce minimum stage coverage if configured
+        if self._config.min_stage_coverage is not None:
+            episodes = self._enforce_min_coverage(episodes)
+        
+        return episodes
+    
+    def _enforce_min_coverage(
+        self,
+        episodes: List[List[int]],
+    ) -> List[List[int]]:
+        """Ensure minimum stage coverage in episode set.
+        
+        Regenerates episodes that don't contain required minority stages
+        until the target coverage is met.
+        
+        Args:
+            episodes: Initial episode set.
+        
+        Returns:
+            Episode set with enforced minimum coverage.
+        """
+        if self._config.min_stage_coverage is None:
+            return episodes
+        
+        # Count stage occurrences across all episodes
+        stage_coverage = {i: 0 for i in range(self._config.num_stages)}
+        for episode in episodes:
+            for stage in set(episode):  # unique stages per episode
+                stage_coverage[stage] += 1
+        
+        # Check which stages need more coverage
+        total_episodes = len(episodes)
+        needs_more = {}
+        for stage_id, min_frac in self._config.min_stage_coverage.items():
+            current_frac = stage_coverage[stage_id] / total_episodes
+            if current_frac < min_frac:
+                needed = int(min_frac * total_episodes) - stage_coverage[stage_id]
+                needs_more[stage_id] = max(needed, 1)
+        
+        if not needs_more:
+            return episodes
+        
+        logger.info(f"Enforcing minimum stage coverage: {needs_more}")
+        
+        # Save original distribution and temporarily boost minority stages
+        original_dist = self._stage_distribution.copy()
+        
+        # Boost probabilities for stages that need more coverage
+        boosted_dist = original_dist.copy()
+        for stage_id in needs_more.keys():
+            # Increase minority stage probability by 10x
+            boosted_dist[stage_id] = original_dist[stage_id] * 10.0
+        
+        # Re-normalize
+        total = sum(boosted_dist.values())
+        boosted_dist = {k: v / total for k, v in boosted_dist.items()}
+        
+        # Temporarily replace distribution
+        self._stage_distribution = boosted_dist
+        
+        # Rebuild transition matrix with boosted distribution
+        self._transition_matrix = self._build_transition_matrix()
+        
+        # Generate additional episodes with boosted probabilities
+        max_attempts = total_episodes * 20
+        attempts = 0
+        
+        while needs_more and attempts < max_attempts:
+            # Generate a candidate episode
+            new_episode = self.generate_episode()
+            unique_stages = set(new_episode)
+            
+            # Check if it helps with coverage
+            helps_with = [s for s in needs_more.keys() if s in unique_stages]
+            
+            if helps_with:
+                # Replace a random episode that doesn't contain these stages
+                replaced = False
+                for idx in self._rng.permutation(len(episodes)):
+                    if not any(s in episodes[idx] for s in helps_with):
+                        episodes[idx] = new_episode
+                        
+                        # Update coverage tracking
+                        for stage in helps_with:
+                            stage_coverage[stage] += 1
+                            needs_more[stage] -= 1
+                            if needs_more[stage] <= 0:
+                                del needs_more[stage]
+                        
+                        replaced = True
+                        break
+                
+                if not replaced:
+                    # All episodes contain these stages, just append
+                    episodes.append(new_episode)
+                    for stage in helps_with:
+                        stage_coverage[stage] += 1
+                        needs_more[stage] -= 1
+                        if needs_more[stage] <= 0:
+                            del needs_more[stage]
+            
+            attempts += 1
+        
+        # Restore original distribution
+        self._stage_distribution = original_dist
+        self._transition_matrix = self._build_transition_matrix()
+        
+        if needs_more:
+            logger.warning(
+                f"Could not fully enforce minimum coverage after {attempts} attempts. "
+                f"Remaining: {needs_more}"
+            )
+        
+        return episodes
     
     # =========================================================================
     # Training Data Conversion

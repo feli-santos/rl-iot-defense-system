@@ -404,3 +404,184 @@ class TestEpisodeGeneratorForTraining:
         assert y[0] == 3
         assert list(X[1]) == [1, 2, 3]
         assert y[1] == 4
+
+
+class TestDistributionTemperature:
+    """Tests for temperature-based distribution flattening."""
+
+    def test_temperature_one_no_change(self) -> None:
+        """Temperature=1.0 should not alter distribution."""
+        imbalanced_dist = {0: 1000, 1: 100, 2: 10, 3: 500, 4: 5000}
+        
+        config = EpisodeGeneratorConfig(
+            distribution_temperature=1.0,
+        )
+        generator = EpisodeGenerator(
+            config=config,
+            stage_distribution=imbalanced_dist,
+            seed=42,
+        )
+        
+        # Access internal smoothed distribution
+        smoothed = generator._stage_distribution
+        
+        # With temperature=1.0, relative ordering should remain
+        # Stage 4 should still be most probable
+        assert smoothed[4] > smoothed[0]
+        assert smoothed[0] > smoothed[3]
+        assert smoothed[3] > smoothed[1]
+        assert smoothed[1] > smoothed[2]
+
+    def test_temperature_flattens_distribution(self) -> None:
+        """Temperature<1.0 should reduce imbalance."""
+        imbalanced_dist = {0: 1000, 1: 100, 2: 10, 3: 500, 4: 5000}
+        
+        # Temperature=1.0 (baseline)
+        config_baseline = EpisodeGeneratorConfig(
+            distribution_temperature=1.0,
+        )
+        gen_baseline = EpisodeGenerator(
+            config=config_baseline,
+            stage_distribution=imbalanced_dist,
+            seed=42,
+        )
+        baseline_dist = gen_baseline._stage_distribution
+        
+        # Temperature=0.4 (flattened)
+        config_flat = EpisodeGeneratorConfig(
+            distribution_temperature=0.4,
+        )
+        gen_flat = EpisodeGenerator(
+            config=config_flat,
+            stage_distribution=imbalanced_dist,
+            seed=42,
+        )
+        flat_dist = gen_flat._stage_distribution
+        
+        # Flattening should reduce gap between max and min
+        baseline_range = max(baseline_dist.values()) - min(baseline_dist.values())
+        flat_range = max(flat_dist.values()) - min(flat_dist.values())
+        
+        assert flat_range < baseline_range
+        
+        # Minority stage (2) should have higher probability after flattening
+        assert flat_dist[2] > baseline_dist[2]
+
+    def test_temperature_point_five_improves_minority_coverage(self) -> None:
+        """Temperature=0.5 should improve minority stage representation."""
+        imbalanced_dist = {0: 21268, 1: 3885, 2: 425, 3: 24042, 4: 450380}
+        
+        config = EpisodeGeneratorConfig(
+            num_episodes=100,
+            distribution_temperature=0.5,
+        )
+        generator = EpisodeGenerator(
+            config=config,
+            stage_distribution=imbalanced_dist,
+            seed=42,
+        )
+        
+        episodes = generator.generate_all()
+        
+        # Count stage occurrences across all episodes
+        stage_counts = {i: 0 for i in range(5)}
+        for episode in episodes:
+            for stage in episode:
+                stage_counts[stage] += 1
+        
+        # With temperature=0.5, minority stages (1,2) should appear
+        assert stage_counts[1] > 0, "Stage 1 should appear with temperature=0.5"
+        assert stage_counts[2] > 0, "Stage 2 should appear with temperature=0.5"
+
+
+class TestMinimumStageCoverage:
+    """Tests for minimum stage coverage enforcement."""
+
+    def test_min_coverage_enforced(self) -> None:
+        """Episodes should meet minimum stage coverage requirements."""
+        # Highly imbalanced distribution - use moderate flattening + coverage
+        imbalanced_dist = {0: 1000, 1: 10, 2: 5, 3: 500, 4: 10000}
+        
+        config = EpisodeGeneratorConfig(
+            num_episodes=100,
+            distribution_temperature=0.5,  # Moderate flattening to help coverage
+            min_stage_coverage={
+                1: 0.2,  # 20% of episodes must contain stage 1
+                2: 0.2,  # 20% of episodes must contain stage 2
+            },
+        )
+        generator = EpisodeGenerator(
+            config=config,
+            stage_distribution=imbalanced_dist,
+            seed=42,
+        )
+        
+        episodes = generator.generate_all()
+        
+        # Count how many episodes contain each stage
+        stage_episode_count = {i: 0 for i in range(5)}
+        for episode in episodes:
+            unique_stages = set(episode)
+            for stage in unique_stages:
+                stage_episode_count[stage] += 1
+        
+        total = len(episodes)
+        
+        # Check that minimum coverage is met
+        assert stage_episode_count[1] >= 0.2 * total, \
+            f"Stage 1 coverage: {stage_episode_count[1]/total:.2f} < 0.20"
+        assert stage_episode_count[2] >= 0.2 * total, \
+            f"Stage 2 coverage: {stage_episode_count[2]/total:.2f} < 0.20"
+
+    def test_min_coverage_none_does_nothing(self) -> None:
+        """If min_stage_coverage=None, no enforcement should occur."""
+        imbalanced_dist = {0: 1000, 1: 10, 2: 5, 3: 500, 4: 10000}
+        
+        config = EpisodeGeneratorConfig(
+            num_episodes=50,
+            min_stage_coverage=None,  # No enforcement
+        )
+        generator = EpisodeGenerator(
+            config=config,
+            stage_distribution=imbalanced_dist,
+            seed=42,
+        )
+        
+        episodes = generator.generate_all()
+        
+        # Should return exactly num_episodes
+        assert len(episodes) == 50
+
+    def test_combined_temperature_and_coverage(self) -> None:
+        """Temperature+coverage should work together to improve balance."""
+        imbalanced_dist = {0: 21268, 1: 3885, 2: 425, 3: 24042, 4: 450380}
+        
+        config = EpisodeGeneratorConfig(
+            num_episodes=100,
+            distribution_temperature=0.4,  # Aggressive flattening
+            min_stage_coverage={
+                1: 0.4,  # 40% of episodes must have stage 1
+                2: 0.4,  # 40% of episodes must have stage 2
+                3: 0.4,  # 40% of episodes must have stage 3
+            },
+        )
+        generator = EpisodeGenerator(
+            config=config,
+            stage_distribution=imbalanced_dist,
+            seed=42,
+        )
+        
+        episodes = generator.generate_all()
+        
+        # Count stage coverage
+        stage_episode_count = {i: 0 for i in range(5)}
+        for episode in episodes:
+            for stage in set(episode):
+                stage_episode_count[stage] += 1
+        
+        total = len(episodes)
+        
+        # All minority stages should meet 40% coverage
+        assert stage_episode_count[1] >= 0.4 * total
+        assert stage_episode_count[2] >= 0.4 * total
+        assert stage_episode_count[3] >= 0.4 * total

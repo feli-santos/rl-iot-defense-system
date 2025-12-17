@@ -38,6 +38,14 @@ episode_generation:
   persistence_weight: 0.3 # Weight for staying at same stage
   skip_weight: 0.2 # Weight for skipping stages
 
+  # Imbalance mitigation
+  distribution_temperature: 0.3 # <1 flattens, >1 sharpens (0.3 = aggressive)
+  min_stage_coverage: # Minimum % of episodes containing each stage
+    0: 0.4 # 40% of episodes must contain BENIGN
+    1: 0.4 # 40% of episodes must contain RECON
+    2: 0.4 # 40% of episodes must contain ACCESS
+    3: 0.4 # 40% of episodes must contain MANEUVER
+
 # Attack Sequence Generator (LSTM) Configuration
 attack_generator:
   model:
