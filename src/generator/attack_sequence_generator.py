@@ -23,6 +23,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+from src.generator.transition_mask import TransitionMask
+
 logger = logging.getLogger(__name__)
 
 
@@ -45,6 +47,7 @@ class AttackSequenceGeneratorConfig:
     num_layers: int = 2
     dropout: float = 0.1
     temperature: float = 1.0
+    use_transition_mask: bool = False
 
 
 class AttackSequenceGenerator(nn.Module):
@@ -101,6 +104,9 @@ class AttackSequenceGenerator(nn.Module):
         # Store default temperature
         self._default_temperature = self._config.temperature
         
+        # Transition mask (optional, set via set_transition_mask)
+        self._transition_mask: Optional[TransitionMask] = None
+        
         logger.info(
             f"AttackSequenceGenerator initialized: "
             f"embed={self._config.embedding_dim}, "
@@ -112,6 +118,18 @@ class AttackSequenceGenerator(nn.Module):
     def config(self) -> AttackSequenceGeneratorConfig:
         """Get model configuration."""
         return self._config
+    
+    def set_transition_mask(self, mask: Optional[TransitionMask]) -> None:
+        """Set transition mask for grammar-constrained generation.
+        
+        Args:
+            mask: TransitionMask instance or None to disable.
+        """
+        self._transition_mask = mask
+        if mask is not None:
+            logger.info("Transition mask enabled for constrained generation")
+        else:
+            logger.info("Transition mask disabled")
     
     # =========================================================================
     # Forward Pass
@@ -182,6 +200,7 @@ class AttackSequenceGenerator(nn.Module):
         
         Uses temperature-scaled softmax followed by categorical sampling
         to produce diverse attack patterns (PRD Section 4.2).
+        If a transition mask is set, only valid transitions are sampled.
         
         Args:
             history: List of previous stage IDs.
@@ -190,10 +209,27 @@ class AttackSequenceGenerator(nn.Module):
         Returns:
             Sampled stage ID (0-4).
         """
-        probs = self.predict_next(history, temperature)
+        temp = temperature if temperature is not None else self._default_temperature
+        
+        # Prepare input
+        x = torch.tensor([history], dtype=torch.long)
+        
+        # Forward pass
+        with torch.no_grad():
+            logits = self(x).squeeze(0)
+        
+        # Apply transition mask if enabled
+        if self._transition_mask is not None and len(history) > 0:
+            current_stage = history[-1]
+            logits = self._transition_mask.apply(logits, current_stage=current_stage)
+        
+        # Temperature-scaled softmax
+        scaled_logits = logits / temp
+        probs = F.softmax(scaled_logits, dim=-1)
         
         # Categorical sampling
-        next_stage = np.random.choice(self._config.num_stages, p=probs)
+        probs_np = probs.numpy()
+        next_stage = np.random.choice(self._config.num_stages, p=probs_np)
         
         return int(next_stage)
     

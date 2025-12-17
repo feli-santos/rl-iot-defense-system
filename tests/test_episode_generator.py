@@ -386,3 +386,21 @@ class TestEpisodeGeneratorForTraining:
         assert isinstance(y, np.ndarray)
         assert X.dtype == np.int64 or X.dtype == np.int32
         assert y.dtype == np.int64 or y.dtype == np.int32
+
+    def test_to_numpy_alignment_simple_episode(self) -> None:
+        """Verify exact alignment: y is next stage after X window."""
+        generator = EpisodeGenerator(seed=42)
+        episode = [0, 1, 2, 3, 4]
+        
+        X, y = generator.to_numpy([episode], sequence_length=3)
+        
+        # Episode [0,1,2,3,4] with seq_len=3 should produce:
+        # X[0]=[0,1,2], y[0]=3
+        # X[1]=[1,2,3], y[1]=4
+        assert X.shape == (2, 3)
+        assert y.shape == (2,)
+        
+        assert list(X[0]) == [0, 1, 2]
+        assert y[0] == 3
+        assert list(X[1]) == [1, 2, 3]
+        assert y[1] == 4
