@@ -278,11 +278,26 @@ class AdversarialIoTEnv(gym.Env):
         # Store previous attack stage for reward calculation
         previous_attack_stage = self._current_attack_stage
         
-        # Red Team: Advance attack sequence
-        self._advance_attack()
+        # 1) Check for successful defense (WIN condition)
+        is_active_attack = 0 < self._current_attack_stage < KillChainStage.IMPACT.value
+        is_strong_defense = action >= 3  # BLOCK or ISOLATE
         
-        # Calculate reward based on defense effectiveness
-        reward = self._calculate_reward(action, previous_attack_stage)
+        if is_active_attack and is_strong_defense:
+            # Do NOT advance the attack; defense neutralizes threat
+            reward = self._calculate_reward(action, previous_attack_stage)
+            reward += 10.0
+            terminated = True
+            outcome = "defended"
+        else:
+            # 2) Advance attack sequence
+            self._advance_attack()
+            
+            # Calculate reward based on defense effectiveness
+            reward = self._calculate_reward(action, previous_attack_stage)
+            
+            # 3) Check for failure (IMPACT reached)
+            terminated = self._check_terminated()
+            outcome = "failed" if terminated else "ongoing"
         
         # Update observation window
         current_stage = KillChainStage(self._current_attack_stage)
@@ -293,13 +308,13 @@ class AdversarialIoTEnv(gym.Env):
         # Store action
         self._last_action = action
         
-        # Check termination conditions
-        terminated = self._check_terminated()
+        # Check truncation
         truncated = self._step_count >= self._config.max_steps
         
         # Build observation and info
         observation = self._build_observation()
         info = self._build_info()
+        info["outcome"] = outcome
         
         return observation, reward, terminated, truncated, info
     
