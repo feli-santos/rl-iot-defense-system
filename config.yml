@@ -136,6 +136,8 @@ adversarial_environment:
 
     # Bonus for successfully defending (attack terminates at lower stage)
     defense_success_bonus: 2.0
+    # Penalty for blocking benign traffic
+    false_positive_penalty: 10.0
 
 # RL Training Configuration
 rl:

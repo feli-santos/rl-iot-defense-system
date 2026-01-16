@@ -102,6 +102,7 @@ class AdversarialEnvConfig:
     action_cost_scale: float = 1.0
     impact_penalty: float = 5.0
     defense_success_bonus: float = 2.0
+    false_positive_penalty: float = 10.0
     correct_escalation_reward: float = 1.0
     correct_de_escalation_reward: float = 0.5
     maintained_defense_reward: float = 0.2
@@ -382,6 +383,10 @@ class AdversarialIoTEnv(gym.Env):
         # C_action: Cost of defensive action
         action_cost = get_action_cost(action) * self._config.action_cost_scale
         reward -= action_cost
+
+        # False positive penalty: blocking benign traffic
+        if self._current_attack_stage == KillChainStage.BENIGN.value and action >= 3:
+            reward -= self._config.false_positive_penalty
         
         # P_impact: Penalty if attack reached IMPACT
         if self._current_attack_stage == KillChainStage.IMPACT.value:
