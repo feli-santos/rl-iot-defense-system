@@ -282,13 +282,18 @@ class AdversarialIoTEnv(gym.Env):
         # 1) Check for successful defense (WIN condition)
         is_active_attack = 0 < self._current_attack_stage < KillChainStage.IMPACT.value
         is_strong_defense = action >= 3  # BLOCK or ISOLATE
+        is_confirmed_threat = self._current_attack_stage >= KillChainStage.ACCESS.value
         
         if is_active_attack and is_strong_defense:
             # Do NOT advance the attack; defense neutralizes threat
             reward = self._calculate_reward(action, previous_attack_stage)
-            reward += self._config.defense_success_bonus
             terminated = True
-            outcome = "defended"
+            if is_confirmed_threat:
+                reward += self._config.defense_success_bonus
+                outcome = "defended_confirmed"
+            else:
+                reward += 1.0
+                outcome = "defended_early"
         else:
             # 2) Advance attack sequence
             self._advance_attack()
@@ -409,6 +414,12 @@ class AdversarialIoTEnv(gym.Env):
             # Attack persisted, maintained appropriate defense
             if self._is_appropriate_defense(action):
                 reward += self._config.maintained_defense_reward
+
+        # Patience reward for low-risk stages
+        is_low_risk = self._current_attack_stage <= KillChainStage.RECON.value
+        is_passive_action = action <= 1  # OBSERVE or LOG
+        if is_low_risk and is_passive_action:
+            reward += 0.5
         
         # Bonus for keeping attack from reaching IMPACT
         if previous_stage == KillChainStage.MANEUVER.value:
