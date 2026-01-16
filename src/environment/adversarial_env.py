@@ -417,9 +417,10 @@ class AdversarialIoTEnv(gym.Env):
     def _check_terminated(self) -> bool:
         """Check if episode should terminate.
         
-        Currently, episodes only terminate via truncation (max_steps).
-        Could add termination conditions like:
-        - Attack successfully defended (return to BENIGN)
-        - Catastrophic failure
+        Terminates if:
+        1. Attack reaches IMPACT stage (failure state) - immediate termination to prevent penalty accumulation.
         """
+        if self._current_attack_stage == KillChainStage.IMPACT.value:
+            return True
+        
         return False
