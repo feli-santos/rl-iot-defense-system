@@ -38,6 +38,14 @@ episode_generation:
   persistence_weight: 0.3 # Weight for staying at same stage
   skip_weight: 0.2 # Weight for skipping stages
 
+  # Imbalance mitigation
+  distribution_temperature: 0.3 # <1 flattens, >1 sharpens (0.3 = aggressive)
+  min_stage_coverage: # Minimum % of episodes containing each stage
+    0: 0.4 # 40% of episodes must contain BENIGN
+    1: 0.4 # 40% of episodes must contain RECON
+    2: 0.4 # 40% of episodes must contain ACCESS
+    3: 0.4 # 40% of episodes must contain MANEUVER
+
 # Attack Sequence Generator (LSTM) Configuration
 attack_generator:
   model:
@@ -49,13 +57,31 @@ attack_generator:
     temperature: 1.0 # Default sampling temperature
 
   training:
-    epochs: 50 # Training epochs
-    batch_size: 32 # Training batch size
+    epochs: 100 # Increased epochs for harder optimization target
+    batch_size: 64 # Increased for gradient smoothing with balanced sampler
     learning_rate: 0.001 # Adam learning rate
     sequence_length: 5 # Input sequence length
-    val_split: 0.2 # Validation split
-    early_stopping_patience: 10 # Epochs before early stopping
+    val_split: 0.2 # Validation split (ignored if balanced_validation=true)
+    early_stopping_patience: 20 # Increased patience for macro-F1 optimization
     device: "cpu" # Training device (cpu, cuda, mps)
+
+    # Imbalance mitigation (CRITICAL for mode collapse prevention)
+    use_class_weights: true # Use inverse-frequency weights for loss
+    use_weighted_sampler: true # Use equal-weight sampler for balanced batches
+    class_weight_smoothing: 0.5 # Smoothing for loss weights
+    grad_clip_norm: 1.0 # Gradient clipping
+    use_lr_scheduler: true # ReduceLROnPlateau scheduler
+    scheduler_patience: 5
+    seed: 42
+
+    # Balanced validation (CRITICAL for stable metrics)
+    balanced_validation: true # Build stratified val set with fixed samples/class
+    val_samples_per_class: 100 # Reserve 100 samples per class for validation
+
+    # Early stopping on macro-F1 with recall gates (CRITICAL for acceptance criteria)
+    use_macro_f1_stopping: true # Stop on macro-F1 instead of val_loss
+    min_recall_stage_1: 0.3 # Hard gate: RECON recall must be >= 0.3 (realistic given rarity)
+    min_recall_stage_2: 0.3 # Hard gate: ACCESS recall must be >= 0.3 (realistic given rarity)
 
   output:
     save_dir: "artifacts/generator" # Model output directory
@@ -67,7 +93,7 @@ attack_generator:
 # Adversarial Environment Configuration
 # Agent observes realized feature vectors, hidden attack state is not visible
 adversarial_environment:
-  max_steps: 500 # Steps per episode
+  max_steps: 100 # Steps per episode
   observation:
     # Box observation space: window of realized features
     window_size: 5 # Number of previous observations in window

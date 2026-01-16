@@ -323,16 +323,38 @@ def train_generator(config: dict, args: argparse.Namespace) -> bool:
         ep_config = config.get('episode_generation', {})
         gen_config = config.get('attack_generator', {})
         
+        # Load stage distribution from metadata
+        data_path = Path(args.data_path)
+        metadata_path = data_path / "metadata.json"
+        stage_distribution = None
+        
+        if metadata_path.exists():
+            import json
+            with open(metadata_path) as f:
+                metadata = json.load(f)
+            stage_distribution = metadata.get("stage_counts", metadata.get("stage_distribution", {}))
+            # Convert string keys to int
+            if stage_distribution:
+                stage_distribution = {int(k): v for k, v in stage_distribution.items()}
+                print(f"   Loaded stage distribution: {stage_distribution}")
+        
         # Create episode generator
         episode_config = EpisodeGeneratorConfig(
             num_episodes=args.num_episodes or ep_config.get('num_episodes', 10000),
             min_length=ep_config.get('min_length', 5),
             max_length=ep_config.get('max_length', 30),
             benign_start_prob=ep_config.get('benign_start_prob', 0.8),
+            distribution_temperature=ep_config.get('distribution_temperature', 1.0),
+            min_stage_coverage=ep_config.get('min_stage_coverage', None),
         )
         
         print(f"   Generating {episode_config.num_episodes:,} training episodes...")
-        episode_generator = EpisodeGenerator(config=episode_config, seed=42)
+        print(f"   Temperature={episode_config.distribution_temperature}, Coverage={episode_config.min_stage_coverage}")
+        episode_generator = EpisodeGenerator(
+            config=episode_config,
+            stage_distribution=stage_distribution,
+            seed=42,
+        )
         episodes = episode_generator.generate_all()
         
         # Create model config
@@ -357,6 +379,21 @@ def train_generator(config: dict, args: argparse.Namespace) -> bool:
             early_stopping_patience=training_config_dict.get('early_stopping_patience', 10),
             output_dir=generator_path,
             device=args.device,
+            # Imbalance mitigation
+            use_class_weights=training_config_dict.get('use_class_weights', True),
+            use_weighted_sampler=training_config_dict.get('use_weighted_sampler', True),
+            class_weight_smoothing=training_config_dict.get('class_weight_smoothing', 0.5),
+            grad_clip_norm=training_config_dict.get('grad_clip_norm', 1.0),
+            use_lr_scheduler=training_config_dict.get('use_lr_scheduler', True),
+            scheduler_patience=training_config_dict.get('scheduler_patience', 5),
+            seed=training_config_dict.get('seed', 42),
+            # Balanced validation
+            balanced_validation=training_config_dict.get('balanced_validation', False),
+            val_samples_per_class=training_config_dict.get('val_samples_per_class', 80),
+            # Macro-F1 early stopping with recall gates
+            use_macro_f1_stopping=training_config_dict.get('use_macro_f1_stopping', False),
+            min_recall_stage_1=training_config_dict.get('min_recall_stage_1', 0.5),
+            min_recall_stage_2=training_config_dict.get('min_recall_stage_2', 0.5),
         )
         
         # Train generator
@@ -366,6 +403,8 @@ def train_generator(config: dict, args: argparse.Namespace) -> bool:
         results = trainer.train(episodes)
         
         print("✅ Generator training completed!")
+        if training_config.use_macro_f1_stopping and results.get('best_macro_f1') is not None:
+            print(f"   - Best macro F1: {results['best_macro_f1']:.4f}")
         print(f"   - Best validation loss: {results['best_val_loss']:.4f}")
         print(f"   - Epochs trained: {results['epochs_trained']}")
         print(f"   - Model saved to: {generator_path}")

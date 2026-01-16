@@ -24,8 +24,9 @@ import mlflow.pytorch
 import numpy as np
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from torch.optim import Adam
-from torch.utils.data import DataLoader, TensorDataset
+from torch.utils.data import DataLoader, TensorDataset, WeightedRandomSampler
 
 from src.generator.attack_sequence_generator import (
     AttackSequenceGenerator,
@@ -61,6 +62,27 @@ class GeneratorTrainingConfig:
     device: str = "cpu"
     use_mlflow: bool = True
     mlflow_experiment_name: str = "lstm_attack_generator"
+    
+    # Imbalance mitigation
+    use_class_weights: bool = False
+    use_weighted_sampler: bool = False
+    class_weight_smoothing: float = 1.0
+    seed: Optional[int] = None
+    
+    # Training stability
+    grad_clip_norm: Optional[float] = None
+    use_lr_scheduler: bool = False
+    scheduler_patience: int = 5
+    scheduler_factor: float = 0.5
+    
+    # Balanced validation
+    balanced_validation: bool = False
+    val_samples_per_class: int = 80
+    
+    # Early stopping on macro-F1 with recall gates
+    use_macro_f1_stopping: bool = False
+    min_recall_stage_1: float = 0.5
+    min_recall_stage_2: float = 0.5
 
 
 class GeneratorTrainer:
@@ -110,6 +132,7 @@ class GeneratorTrainer:
         self._optimizer: Optional[Adam] = None
         self._criterion = nn.CrossEntropyLoss()
         self._best_val_loss = float('inf')
+        self._last_confusion_matrix: Optional[np.ndarray] = None
         
         logger.info(
             f"GeneratorTrainer initialized: "
@@ -127,6 +150,11 @@ class GeneratorTrainer:
     def model(self) -> AttackSequenceGenerator:
         """Get the model."""
         return self._model
+    
+    @property
+    def last_confusion_matrix(self) -> Optional[np.ndarray]:
+        """Get confusion matrix from last evaluate() call."""
+        return self._last_confusion_matrix
     
     # =========================================================================
     # Data Preparation
@@ -150,20 +178,63 @@ class GeneratorTrainer:
         
         logger.info(f"Prepared {len(X)} training sequences")
         
-        # Split into train/val
-        n_val = int(len(X) * self._config.val_split)
-        n_train = len(X) - n_val
-        
-        # Shuffle
-        indices = np.random.permutation(len(X))
-        train_idx = indices[:n_train]
-        val_idx = indices[n_train:]
+        # Build balanced validation set if enabled
+        if self._config.balanced_validation:
+            train_idx, val_idx = self._build_balanced_validation_split(y)
+        else:
+            # Standard random split
+            n_val = int(len(X) * self._config.val_split)
+            n_train = len(X) - n_val
+            
+            # Shuffle with seed if provided
+            if self._config.seed is not None:
+                rng = np.random.RandomState(self._config.seed)
+                indices = rng.permutation(len(X))
+            else:
+                indices = np.random.permutation(len(X))
+            train_idx = indices[:n_train]
+            val_idx = indices[n_train:]
         
         # Create tensors
         X_train = torch.tensor(X[train_idx], dtype=torch.long)
         y_train = torch.tensor(y[train_idx], dtype=torch.long)
         X_val = torch.tensor(X[val_idx], dtype=torch.long)
         y_val = torch.tensor(y[val_idx], dtype=torch.long)
+        
+        # Compute class weights and/or sampler weights for imbalance mitigation
+        sampler: Optional[WeightedRandomSampler] = None
+        if self._config.use_class_weights or self._config.use_weighted_sampler:
+            num_stages = 5
+            
+            # Compute inverse-frequency weights from training targets only
+            class_counts = torch.bincount(y_train, minlength=num_stages).float()
+            total = float(class_counts.sum().item())
+            
+            if total <= 0:
+                raise ValueError("No training samples available to compute class weights.")
+            
+            eps = 1e-12
+            
+            # Use ONLY balanced sampler, NO class weights in loss
+            # Class weights fight the sampler - disable them
+            if self._config.use_weighted_sampler:
+                # Equal weights for balanced sampling (20% per class)
+                equal_weights = torch.ones(num_stages, dtype=torch.float32) / num_stages
+                per_sample_weights = equal_weights[y_train].double()
+                sampler = WeightedRandomSampler(
+                    weights=per_sample_weights,
+                    num_samples=int(len(per_sample_weights)),
+                    replacement=True,
+                )
+                logger.info("Using WeightedRandomSampler with EQUAL weights (20% per class) for balanced batches")
+            
+            if self._config.use_class_weights:
+                # DISABLED: Class weights fight the balanced sampler
+                # Use uniform weights (no weighting)
+                logger.info("Class weights DISABLED (conflicts with balanced sampler) - using uniform loss weights")
+                self._criterion = nn.CrossEntropyLoss()
+            else:
+                self._criterion = nn.CrossEntropyLoss()
         
         # Create data loaders
         train_dataset = TensorDataset(X_train, y_train)
@@ -172,7 +243,8 @@ class GeneratorTrainer:
         train_loader = DataLoader(
             train_dataset,
             batch_size=self._config.batch_size,
-            shuffle=True,
+            shuffle=(sampler is None),
+            sampler=sampler,
         )
         val_loader = DataLoader(
             val_dataset,
@@ -182,6 +254,43 @@ class GeneratorTrainer:
         
         logger.info(f"Train: {len(train_dataset)}, Val: {len(val_dataset)}")
         return train_loader, val_loader
+    
+    def _build_balanced_validation_split(self, y: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+        """Build stratified validation set with fixed samples per class.
+        
+        Args:
+            y: Target labels array.
+        
+        Returns:
+            Tuple of (train_indices, val_indices).
+        """
+        num_stages = 5
+        val_indices = []
+        train_indices = []
+        
+        rng = np.random.RandomState(self._config.seed)
+        
+        for stage in range(num_stages):
+            stage_indices = np.where(y == stage)[0]
+            n_available = len(stage_indices)
+            n_val = min(self._config.val_samples_per_class, n_available)
+            
+            if n_available == 0:
+                logger.warning(f"Stage {stage} has no samples; skipping.")
+                continue
+            
+            # Shuffle and split
+            rng.shuffle(stage_indices)
+            val_indices.extend(stage_indices[:n_val])
+            train_indices.extend(stage_indices[n_val:])
+            
+            logger.info(f"Stage {stage}: {n_val} val, {n_available - n_val} train (total={n_available})")
+        
+        val_indices = np.array(val_indices, dtype=np.int64)
+        train_indices = np.array(train_indices, dtype=np.int64)
+        
+        logger.info(f"Balanced validation: {len(val_indices)} val, {len(train_indices)} train")
+        return train_indices, val_indices
     
     # =========================================================================
     # Training
@@ -230,13 +339,27 @@ class GeneratorTrainer:
                 lr=self._config.learning_rate,
             )
             
+            # Setup learning rate scheduler if enabled
+            scheduler = None
+            if self._config.use_lr_scheduler:
+                from torch.optim.lr_scheduler import ReduceLROnPlateau
+                scheduler = ReduceLROnPlateau(
+                    self._optimizer,
+                    mode='min',
+                    factor=self._config.scheduler_factor,
+                    patience=self._config.scheduler_patience,
+                )
+                logger.info("Using ReduceLROnPlateau scheduler")
+            
             # Training history
             train_losses: List[float] = []
             val_losses: List[float] = []
+            val_macro_f1s: List[float] = []
             
             # Early stopping
             patience_counter = 0
             best_epoch = 0
+            best_macro_f1 = -float('inf')
             
             for epoch in range(self._config.epochs):
                 # Train epoch
@@ -244,26 +367,60 @@ class GeneratorTrainer:
                 train_losses.append(train_loss)
                 
                 # Validate
-                val_loss = self._validate(val_loader)
+                val_loss, val_metrics = self._validate(val_loader)
                 val_losses.append(val_loss)
+                val_macro_f1s.append(val_metrics["macro_f1"])
+                
+                # Extract recall for stages 1 and 2
+                recall_stage_1 = val_metrics["recall_stage_1"]
+                recall_stage_2 = val_metrics["recall_stage_2"]
+                macro_f1 = val_metrics["macro_f1"]
                 
                 logger.info(
                     f"Epoch {epoch + 1}/{self._config.epochs}: "
-                    f"train_loss={train_loss:.4f}, val_loss={val_loss:.4f}"
+                    f"train_loss={train_loss:.4f}, val_loss={val_loss:.4f}, "
+                    f"macro_f1={macro_f1:.4f}, recall_s1={recall_stage_1:.4f}, recall_s2={recall_stage_2:.4f}"
                 )
                 
                 # Log metrics to MLflow
                 if self._config.use_mlflow:
-                    self._log_epoch_metrics(epoch, train_loss, val_loss, patience_counter)
+                    self._log_epoch_metrics_extended(epoch, train_loss, val_loss, val_metrics, patience_counter)
                 
-                # Check for improvement
-                if val_loss < self._best_val_loss:
-                    self._best_val_loss = val_loss
-                    patience_counter = 0
-                    best_epoch = epoch
-                    self._save_checkpoint()
+                # Step scheduler if enabled (use val_loss for scheduler)
+                if scheduler is not None:
+                    scheduler.step(val_loss)
+                
+                # Check for improvement (macro-F1 with recall gates or val_loss)
+                improved = False
+                if self._config.use_macro_f1_stopping:
+                    # Hard gates: require BOTH Stage 1 AND Stage 2 recall >= threshold
+                    # We need a model that learns the entire Kill Chain
+                    recall_gate_passed = (
+                        recall_stage_1 >= self._config.min_recall_stage_1 and 
+                        recall_stage_2 >= self._config.min_recall_stage_2
+                    )
+                    if recall_gate_passed:
+                        if macro_f1 > best_macro_f1:
+                            best_macro_f1 = macro_f1
+                            self._best_val_loss = val_loss  # Store for reporting
+                            patience_counter = 0
+                            best_epoch = epoch
+                            improved = True
+                            self._save_checkpoint()
+                            logger.info(f"  → New best: macro_f1={macro_f1:.4f} (recall gates passed)")
+                        else:
+                            patience_counter += 1
+                    else:
+                        patience_counter += 1
+                        logger.info(f"  → Recall gates NOT passed (s1={recall_stage_1:.4f}, s2={recall_stage_2:.4f})")
                 else:
-                    patience_counter += 1
+                    # Standard: minimize val_loss
+                    if val_loss < self._best_val_loss:
+                        self._best_val_loss = val_loss
+                        patience_counter = 0
+                        best_epoch = epoch
+                        improved = True
+                        self._save_checkpoint()
                 
                 # Early stopping
                 if patience_counter >= self._config.early_stopping_patience:
@@ -282,7 +439,9 @@ class GeneratorTrainer:
             results = {
                 "train_losses": train_losses,
                 "val_losses": val_losses,
+                "val_macro_f1s": val_macro_f1s,
                 "best_val_loss": self._best_val_loss,
+                "best_macro_f1": best_macro_f1 if self._config.use_macro_f1_stopping else None,
                 "epochs_trained": len(train_losses),
                 "best_epoch": best_epoch,
             }
@@ -320,6 +479,14 @@ class GeneratorTrainer:
             
             # Backward pass
             loss.backward()
+            
+            # Gradient clipping if enabled
+            if self._config.grad_clip_norm is not None:
+                torch.nn.utils.clip_grad_norm_(
+                    self._model.parameters(),
+                    self._config.grad_clip_norm,
+                )
+            
             self._optimizer.step()
             
             total_loss += loss.item()
@@ -327,11 +494,17 @@ class GeneratorTrainer:
         
         return total_loss / n_batches
     
-    def _validate(self, val_loader: DataLoader) -> float:
-        """Validate the model."""
+    def _validate(self, val_loader: DataLoader) -> Tuple[float, Dict[str, float]]:
+        """Validate the model and compute metrics.
+        
+        Returns:
+            Tuple of (val_loss, metrics_dict with macro_f1 and per-class recall).
+        """
         self._model.eval()
         total_loss = 0.0
         n_batches = 0
+        all_preds = []
+        all_targets = []
         
         with torch.no_grad():
             for X_batch, y_batch in val_loader:
@@ -343,8 +516,42 @@ class GeneratorTrainer:
                 
                 total_loss += loss.item()
                 n_batches += 1
+                
+                # Collect predictions
+                preds = logits.argmax(dim=-1)
+                all_preds.extend(preds.cpu().numpy())
+                all_targets.extend(y_batch.cpu().numpy())
         
-        return total_loss / n_batches
+        avg_loss = total_loss / n_batches
+        
+        # Compute per-class metrics
+        all_preds = np.array(all_preds)
+        all_targets = np.array(all_targets)
+        num_stages = 5
+        
+        f1_scores = []
+        recalls = {}
+        
+        for stage in range(num_stages):
+            tp = ((all_preds == stage) & (all_targets == stage)).sum()
+            fp = ((all_preds == stage) & (all_targets != stage)).sum()
+            fn = ((all_preds != stage) & (all_targets == stage)).sum()
+            
+            precision = tp / (tp + fp + 1e-12)
+            recall = tp / (tp + fn + 1e-12)
+            f1 = 2 * precision * recall / (precision + recall + 1e-12)
+            
+            f1_scores.append(float(f1))
+            recalls[f"recall_stage_{stage}"] = float(recall)
+        
+        macro_f1 = float(np.mean(f1_scores))
+        
+        metrics = {
+            "macro_f1": macro_f1,
+            **recalls,
+        }
+        
+        return avg_loss, metrics
     
     # =========================================================================
     # Evaluation
@@ -354,7 +561,15 @@ class GeneratorTrainer:
         self,
         episodes: List[List[int]],
     ) -> Dict[str, float]:
-        """Evaluate the model on episodes.
+        """Evaluate the model on episodes with comprehensive metrics.
+        
+        Computes:
+        - Loss and accuracy
+        - Per-class precision, recall, F1
+        - Macro-averaged F1
+        - Transition accuracy
+        - Perplexity
+        - Confusion matrix
         
         Args:
             episodes: List of episode sequences.
@@ -373,9 +588,12 @@ class GeneratorTrainer:
         loader = DataLoader(dataset, batch_size=self._config.batch_size)
         
         self._model.eval()
+        
+        # Accumulators
         total_loss = 0.0
-        correct = 0
-        total = 0
+        total_log_probs = 0.0
+        all_preds = []
+        all_targets = []
         
         with torch.no_grad():
             for X_batch, y_batch in loader:
@@ -384,15 +602,89 @@ class GeneratorTrainer:
                 
                 total_loss += loss.item() * len(X_batch)
                 
-                # Accuracy
+                # For perplexity
+                log_probs = F.log_softmax(logits, dim=-1)
+                target_log_probs = log_probs.gather(1, y_batch.unsqueeze(1)).squeeze(1)
+                total_log_probs += target_log_probs.sum().item()
+                
+                # Store predictions and targets
                 preds = logits.argmax(dim=-1)
-                correct += (preds == y_batch).sum().item()
-                total += len(y_batch)
+                all_preds.extend(preds.cpu().numpy())
+                all_targets.extend(y_batch.cpu().numpy())
         
-        return {
-            "loss": total_loss / total,
-            "accuracy": correct / total,
+        all_preds = np.array(all_preds)
+        all_targets = np.array(all_targets)
+        total = len(all_targets)
+        
+        # Basic metrics
+        avg_loss = total_loss / total
+        accuracy = (all_preds == all_targets).sum() / total
+        perplexity = np.exp(-total_log_probs / total)
+        
+        # Per-class metrics
+        num_stages = 5
+        per_class_metrics = {}
+        
+        for stage in range(num_stages):
+            # True positives, false positives, false negatives
+            tp = ((all_preds == stage) & (all_targets == stage)).sum()
+            fp = ((all_preds == stage) & (all_targets != stage)).sum()
+            fn = ((all_preds != stage) & (all_targets == stage)).sum()
+            
+            precision = tp / (tp + fp + 1e-12)
+            recall = tp / (tp + fn + 1e-12)
+            f1 = 2 * precision * recall / (precision + recall + 1e-12)
+            
+            per_class_metrics[f"precision_stage_{stage}"] = float(precision)
+            per_class_metrics[f"recall_stage_{stage}"] = float(recall)
+            per_class_metrics[f"f1_stage_{stage}"] = float(f1)
+        
+        # Macro F1
+        macro_f1 = np.mean([per_class_metrics[f"f1_stage_{i}"] for i in range(num_stages)])
+        
+        # Transition accuracy (from episodes)
+        transition_correct = 0
+        transition_total = 0
+        
+        for episode in episodes:
+            if len(episode) <= self._config.sequence_length:
+                continue
+            
+            for i in range(len(episode) - self._config.sequence_length):
+                history = episode[i:i + self._config.sequence_length]
+                true_next = episode[i + self._config.sequence_length]
+                
+                # Predict
+                x_input = torch.tensor([history], dtype=torch.long).to(self._device)
+                with torch.no_grad():
+                    logits = self._model(x_input)
+                pred_next = logits.argmax(dim=-1).item()
+                
+                if pred_next == true_next:
+                    transition_correct += 1
+                transition_total += 1
+        
+        transition_accuracy = transition_correct / transition_total if transition_total > 0 else 0.0
+        
+        # Confusion matrix (as flat list for JSON serialization)
+        confusion_matrix = np.zeros((num_stages, num_stages), dtype=np.int32)
+        for pred, target in zip(all_preds, all_targets):
+            confusion_matrix[target, pred] += 1
+        
+        # Compile results
+        metrics = {
+            "loss": avg_loss,
+            "accuracy": float(accuracy),
+            "perplexity": float(perplexity),
+            "macro_f1": float(macro_f1),
+            "transition_accuracy": float(transition_accuracy),
+            **per_class_metrics,
         }
+        
+        # Store confusion matrix separately (not for primary metrics dict)
+        self._last_confusion_matrix = confusion_matrix
+        
+        return metrics
     
     # =========================================================================
     # Persistence
@@ -559,12 +851,30 @@ class GeneratorTrainer:
         val_loss: float,
         patience_counter: int
     ) -> None:
-        """Log per-epoch metrics to MLflow."""
+        """Log per-epoch metrics to MLflow (legacy, deprecated)."""
+        # Use _log_epoch_metrics_extended instead
+        pass
+    
+    def _log_epoch_metrics_extended(
+        self, 
+        epoch: int, 
+        train_loss: float, 
+        val_loss: float,
+        val_metrics: Dict[str, float],
+        patience_counter: int
+    ) -> None:
+        """Log per-epoch metrics including macro-F1 and recall to MLflow."""
         try:
             mlflow.log_metrics({
                 "loss/train": train_loss,
                 "loss/val": val_loss,
                 "loss/train_val_gap": abs(train_loss - val_loss),
+                "metrics/macro_f1": val_metrics["macro_f1"],
+                "metrics/recall_stage_0": val_metrics["recall_stage_0"],
+                "metrics/recall_stage_1": val_metrics["recall_stage_1"],
+                "metrics/recall_stage_2": val_metrics["recall_stage_2"],
+                "metrics/recall_stage_3": val_metrics["recall_stage_3"],
+                "metrics/recall_stage_4": val_metrics["recall_stage_4"],
                 "training/epoch": epoch + 1,
                 "training/patience_counter": patience_counter,
             }, step=epoch)

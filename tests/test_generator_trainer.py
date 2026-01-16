@@ -112,6 +112,224 @@ class TestGeneratorTrainerDataPreparation:
         # y: (batch_size,)
         assert y_batch.ndim == 1
 
+    def test_training_input_is_stage_episodes(self, trainer: GeneratorTrainer) -> None:
+        """Training should work on stage ID episodes, not feature vectors."""
+        # Generate stage episodes (list of lists of integers)
+        episode_gen = EpisodeGenerator(seed=42)
+        episodes = episode_gen.generate_batch(n=20)
+        
+        # Verify episodes are stage IDs (0-4)
+        assert all(isinstance(ep, list) for ep in episodes)
+        assert all(all(0 <= s < 5 for s in ep) for ep in episodes)
+        
+        # Should successfully prepare data
+        train_loader, val_loader = trainer.prepare_data(episodes)
+        assert train_loader is not None
+        assert val_loader is not None
+
+    def test_target_is_next_stage_after_window(self, trainer: GeneratorTrainer) -> None:
+        """Target should be the next stage after the input window (next-token prediction)."""
+        # Create a known episode
+        episodes = [[0, 1, 1, 2, 3, 4, 4]]
+        
+        # Convert to training data with sequence_length=3
+        ep_gen = EpisodeGenerator()
+        X, y = ep_gen.to_numpy(episodes, sequence_length=3)
+        
+        # Expected pairs for [0,1,1,2,3,4,4]:
+        # X[0] = [0,1,1], y[0] = 2
+        # X[1] = [1,1,2], y[1] = 3
+        # X[2] = [1,2,3], y[2] = 4
+        # X[3] = [2,3,4], y[3] = 4
+        
+        assert X.shape == (4, 3), f"Expected (4, 3), got {X.shape}"
+        assert y.shape == (4,), f"Expected (4,), got {y.shape}"
+        
+        # Verify first pair
+        assert list(X[0]) == [0, 1, 1]
+        assert y[0] == 2
+        
+        # Verify second pair
+        assert list(X[1]) == [1, 1, 2]
+        assert y[1] == 3
+
+
+class TestGeneratorTrainerImbalanceMitigation:
+    """Tests for imbalance mitigation features."""
+
+    @pytest.fixture
+    def trainer_with_class_weights(self, temp_generator_dir: Path) -> GeneratorTrainer:
+        """Create trainer with class weights enabled."""
+        config = GeneratorTrainingConfig(
+            epochs=2,
+            batch_size=8,
+            sequence_length=5,
+            output_dir=temp_generator_dir,
+            use_class_weights=True,
+            seed=42,
+        )
+        return GeneratorTrainer(config=config)
+
+    @pytest.fixture
+    def trainer_with_sampler(self, temp_generator_dir: Path) -> GeneratorTrainer:
+        """Create trainer with weighted sampler enabled."""
+        config = GeneratorTrainingConfig(
+            epochs=2,
+            batch_size=8,
+            sequence_length=5,
+            output_dir=temp_generator_dir,
+            use_weighted_sampler=True,
+            seed=42,
+        )
+        return GeneratorTrainer(config=config)
+
+    def test_class_weights_applied(
+        self, trainer_with_class_weights: GeneratorTrainer
+    ) -> None:
+        """Should apply class weights to loss function."""
+        episode_gen = EpisodeGenerator(seed=42)
+        episodes = episode_gen.generate_batch(n=50)
+        
+        # Prepare data should configure weighted loss
+        train_loader, _ = trainer_with_class_weights.prepare_data(episodes)
+        
+        # Loss function should have weights
+        assert hasattr(trainer_with_class_weights._criterion, 'weight')
+        assert trainer_with_class_weights._criterion.weight is not None
+        assert trainer_with_class_weights._criterion.weight.shape == (5,)
+
+    def test_weighted_sampler_applied(
+        self, trainer_with_sampler: GeneratorTrainer
+    ) -> None:
+        """Should use weighted sampler for balanced batches."""
+        episode_gen = EpisodeGenerator(seed=42)
+        episodes = episode_gen.generate_batch(n=50)
+        
+        train_loader, _ = trainer_with_sampler.prepare_data(episodes)
+        
+        # Sampler should be WeightedRandomSampler
+        from torch.utils.data import WeightedRandomSampler
+        assert train_loader.sampler is not None
+        assert isinstance(train_loader.sampler, WeightedRandomSampler)
+
+    def test_seed_makes_split_deterministic(
+        self, temp_generator_dir: Path
+    ) -> None:
+        """Seed should make train/val split reproducible."""
+        config1 = GeneratorTrainingConfig(
+            epochs=2,
+            batch_size=8,
+            output_dir=temp_generator_dir,
+            seed=42,
+        )
+        config2 = GeneratorTrainingConfig(
+            epochs=2,
+            batch_size=8,
+            output_dir=temp_generator_dir,
+            seed=42,
+        )
+        
+        trainer1 = GeneratorTrainer(config=config1)
+        trainer2 = GeneratorTrainer(config=config2)
+        
+        episode_gen = EpisodeGenerator(seed=100)
+        episodes = episode_gen.generate_batch(n=50)
+        
+        train_loader1, val_loader1 = trainer1.prepare_data(episodes)
+        train_loader2, val_loader2 = trainer2.prepare_data(episodes)
+        
+        # Compare validation sets (they don't shuffle, so should be identical)
+        x1_val, y1_val = next(iter(val_loader1))
+        x2_val, y2_val = next(iter(val_loader2))
+        
+        # Should be identical
+        assert torch.equal(x1_val, x2_val)
+        assert torch.equal(y1_val, y2_val)
+
+
+class TestGeneratorTrainerEvaluation:
+    """Tests for model evaluation."""
+
+    @pytest.fixture
+    def trainer(self, temp_generator_dir: Path) -> GeneratorTrainer:
+        """Create and train a simple trainer for evaluation tests."""
+        config = GeneratorTrainingConfig(
+            epochs=2,
+            batch_size=16,
+            sequence_length=5,
+            output_dir=temp_generator_dir,
+            seed=42,
+        )
+        trainer = GeneratorTrainer(config=config)
+        
+        # Train briefly
+        ep_config = EpisodeGeneratorConfig(
+            num_episodes=50,
+            min_length=10,
+            max_length=20,
+        )
+        episode_gen = EpisodeGenerator(config=ep_config, seed=42)
+        episodes = episode_gen.generate_all()
+        trainer.train(episodes)
+        
+        return trainer
+
+    def test_evaluate_returns_comprehensive_metrics(
+        self, trainer: GeneratorTrainer
+    ) -> None:
+        """Evaluate should return comprehensive metrics."""
+        episode_gen = EpisodeGenerator(seed=100)
+        test_episodes = episode_gen.generate_batch(n=20)
+        
+        metrics = trainer.evaluate(test_episodes)
+        
+        # Check presence of key metrics
+        assert "loss" in metrics
+        assert "accuracy" in metrics
+        assert "perplexity" in metrics
+        assert "macro_f1" in metrics
+        assert "transition_accuracy" in metrics
+        
+        # Check per-class metrics for all stages
+        for stage in range(5):
+            assert f"precision_stage_{stage}" in metrics
+            assert f"recall_stage_{stage}" in metrics
+            assert f"f1_stage_{stage}" in metrics
+
+    def test_evaluate_metrics_in_valid_range(
+        self, trainer: GeneratorTrainer
+    ) -> None:
+        """Evaluation metrics should be in valid ranges."""
+        episode_gen = EpisodeGenerator(seed=100)
+        test_episodes = episode_gen.generate_batch(n=20)
+        
+        metrics = trainer.evaluate(test_episodes)
+        
+        # Accuracy, precision, recall, F1 should be in [0, 1]
+        assert 0.0 <= metrics["accuracy"] <= 1.0
+        assert 0.0 <= metrics["macro_f1"] <= 1.0
+        assert 0.0 <= metrics["transition_accuracy"] <= 1.0
+        
+        # Perplexity should be positive
+        assert metrics["perplexity"] > 0
+        
+        # Loss should be non-negative
+        assert metrics["loss"] >= 0
+
+    def test_evaluate_stores_confusion_matrix(
+        self, trainer: GeneratorTrainer
+    ) -> None:
+        """Evaluate should store confusion matrix."""
+        episode_gen = EpisodeGenerator(seed=100)
+        test_episodes = episode_gen.generate_batch(n=20)
+        
+        trainer.evaluate(test_episodes)
+        
+        cm = trainer.last_confusion_matrix
+        assert cm is not None
+        assert cm.shape == (5, 5)
+        assert cm.dtype == np.int32
+
 
 class TestGeneratorTrainerTraining:
     """Tests for model training."""
