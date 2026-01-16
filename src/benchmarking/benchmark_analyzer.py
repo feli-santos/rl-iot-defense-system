@@ -58,6 +58,7 @@ class BenchmarkAnalyzer:
         self._plot_prd_metrics_comparison()
         self._plot_attack_progression()
         self._plot_defense_heatmap()
+        self._plot_confusion_matrices()
         
         # Generate summary statistics
         self._generate_summary_table()
@@ -379,7 +380,7 @@ class BenchmarkAnalyzer:
         has_episode_data = False
         for alg, runs in self.metrics_collector.metrics.items():
             for run in runs:
-                episodes = getattr(run, "episodes", []) or []
+                episodes = getattr(run, "episode_metrics", []) or []
                 if episodes and episodes[0].attack_stages:
                     has_episode_data = True
                     break
@@ -400,7 +401,7 @@ class BenchmarkAnalyzer:
         
         for i, alg in enumerate(algorithms):
             for run in self.metrics_collector.metrics[alg]:
-                for ep in getattr(run, "episodes", []) or []:
+                for ep in getattr(run, "episode_metrics", []) or []:
                     for stage in ep.attack_stages:
                         if 0 <= stage < 5:
                             stage_counts[i, stage] += 1
@@ -428,7 +429,7 @@ class BenchmarkAnalyzer:
             total_episodes = 0
             impact_count = 0
             for run in self.metrics_collector.metrics[alg]:
-                for ep in getattr(run, "episodes", []) or []:
+                for ep in getattr(run, "episode_metrics", []) or []:
                     total_episodes += 1
                     if ep.reached_impact:
                         impact_count += 1
@@ -466,7 +467,7 @@ class BenchmarkAnalyzer:
         has_episode_data = False
         for alg, runs in self.metrics_collector.metrics.items():
             for run in runs:
-                episodes = getattr(run, "episodes", []) or []
+                episodes = getattr(run, "episode_metrics", []) or []
                 if episodes and episodes[0].actions:
                     has_episode_data = True
                     break
@@ -491,7 +492,7 @@ class BenchmarkAnalyzer:
             action_by_stage = np.zeros((5, 5))  # 5 stages x 5 actions
             
             for run in self.metrics_collector.metrics[alg]:
-                for ep in getattr(run, "episodes", []) or []:
+                for ep in getattr(run, "episode_metrics", []) or []:
                     # Match actions with attack stages
                     # Note: attack_stages has one more element than actions (initial state)
                     for i, action in enumerate(ep.actions):
@@ -521,6 +522,66 @@ class BenchmarkAnalyzer:
         plt.savefig(self.results_path / 'defense_heatmap.png', dpi=300, bbox_inches='tight')
         plt.close()
         print(f"Defense heatmap saved to: {self.results_path / 'defense_heatmap.png'}")
+
+    def _plot_confusion_matrices(self) -> None:
+        """Generate confusion matrices for attack stage vs defensive action.
+        
+        Confusion matrix rows = true attack stage, columns = action taken.
+        Saves both raw counts (CSV) and normalized heatmap (PNG).
+        """
+        if not self.metrics_collector.metrics:
+            return
+
+        algorithms = list(self.metrics_collector.metrics.keys())
+        for alg in algorithms:
+            action_by_stage = np.zeros((5, 5), dtype=np.int64)
+
+            for run in self.metrics_collector.metrics[alg]:
+                for ep in getattr(run, "episode_metrics", []) or []:
+                    for i, action in enumerate(ep.actions):
+                        if i < len(ep.attack_stages):
+                            stage = ep.attack_stages[i]
+                            if 0 <= stage < 5 and 0 <= action < 5:
+                                action_by_stage[stage, action] += 1
+
+            if action_by_stage.sum() == 0:
+                print(f"Warning: No episode data available for confusion matrix ({alg})")
+                continue
+
+            # Save raw counts
+            counts_df = pd.DataFrame(
+                action_by_stage,
+                index=KILL_CHAIN_STAGES,
+                columns=FORCE_CONTINUUM_ACTIONS,
+            )
+            counts_path = self.results_path / f"confusion_matrix_{alg}.csv"
+            counts_df.to_csv(counts_path)
+
+            # Normalize by row for heatmap
+            row_sums = action_by_stage.sum(axis=1, keepdims=True)
+            row_sums[row_sums == 0] = 1
+            normalized = action_by_stage / row_sums
+
+            plt.figure(figsize=(7, 5))
+            sns.heatmap(
+                normalized,
+                xticklabels=FORCE_CONTINUUM_ACTIONS,
+                yticklabels=KILL_CHAIN_STAGES,
+                annot=True,
+                fmt='.0%',
+                cmap='Blues',
+                vmin=0,
+                vmax=1,
+            )
+            plt.title(f"Confusion Matrix: Stage vs Action ({alg.upper()})")
+            plt.xlabel("Defensive Action")
+            plt.ylabel("Attack Stage")
+            plt.tight_layout()
+
+            fig_path = self.results_path / f"confusion_matrix_{alg}.png"
+            plt.savefig(fig_path, dpi=300, bbox_inches='tight')
+            plt.close()
+            print(f"Confusion matrix saved to: {fig_path}")
     
     def generate_single_model_report(self, algorithm_name: str, run_id: int = 0) -> None:
         """Generate detailed report for a single model evaluation.
@@ -553,10 +614,10 @@ class BenchmarkAnalyzer:
         print(f"\n📈 Performance Metrics:")
         print(f"   Average Reward:         {run.avg_reward:.3f}")
         print(f"   Std Reward:             {run.std_reward:.3f}")
-        print(f"   Episodes Evaluated:     {len(run.episodes)}")
-        
-        if run.episodes:
-            total_impact = sum(1 for ep in run.episodes if ep.reached_impact)
-            print(f"   Impact Reached:         {total_impact}/{len(run.episodes)} episodes")
+        print(f"   Episodes Evaluated:     {len(run.episode_metrics)}")
+
+        if run.episode_metrics:
+            total_impact = sum(1 for ep in run.episode_metrics if ep.reached_impact)
+            print(f"   Impact Reached:         {total_impact}/{len(run.episode_metrics)} episodes")
         
         print(f"{'='*60}\n")

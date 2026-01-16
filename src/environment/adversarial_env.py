@@ -286,7 +286,7 @@ class AdversarialIoTEnv(gym.Env):
         if is_active_attack and is_strong_defense:
             # Do NOT advance the attack; defense neutralizes threat
             reward = self._calculate_reward(action, previous_attack_stage)
-            reward += 10.0
+            reward += self._config.defense_success_bonus
             terminated = True
             outcome = "defended"
         else:

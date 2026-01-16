@@ -215,6 +215,17 @@ class BenchmarkRunner:
                 num_actions=adv_config.get("actions", {}).get("num_actions", 5),
                 action_cost_scale=adv_config.get("reward", {}).get("action_cost_scale", 1.0),
                 impact_penalty=adv_config.get("reward", {}).get("impact_penalty", 5.0),
+                defense_success_bonus=adv_config.get("reward", {}).get("defense_success_bonus", 2.0),
+                false_positive_penalty=adv_config.get("reward", {}).get("false_positive_penalty", 10.0),
+                correct_escalation_reward=adv_config.get("reward", {}).get("defense_reward", {}).get(
+                    "correct_escalation", 1.0
+                ),
+                correct_de_escalation_reward=adv_config.get("reward", {}).get("defense_reward", {}).get(
+                    "correct_de_escalation", 0.5
+                ),
+                maintained_defense_reward=adv_config.get("reward", {}).get("defense_reward", {}).get(
+                    "maintained_defense", 0.2
+                ),
             )
         
         env = AdversarialIoTEnv(
