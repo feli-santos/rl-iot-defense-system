@@ -28,6 +28,7 @@ class TestAdversarialEnvConfig:
         
         assert config.max_steps == 500
         assert config.window_size == 5
+        assert config.include_deltas is True
         assert config.num_actions == 5
     
     def test_custom_config(self) -> None:
@@ -140,9 +141,9 @@ class TestAdversarialEnvInitialization:
             config=config,
         )
         
-        # Shape should be (window_size, num_features)
-        # Flattened to (window_size * num_features,)
-        expected_shape = (5 * 46,)  # 46 features from mock dataset
+        # Shape should be (window_size, num_features * 2) when deltas enabled
+        # Flattened to (window_size * num_features * 2,)
+        expected_shape = (5 * 46 * 2,)  # 46 features + 46 deltas from mock dataset
         assert env.observation_space.shape == expected_shape
     
     def test_has_action_space(self, mock_generator, mock_dataset) -> None:

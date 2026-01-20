@@ -272,6 +272,7 @@ def process_data(config: dict, args: argparse.Namespace) -> bool:
             feature_selection=config['dataset'].get('feature_selection', False),
             variance_threshold=config['dataset'].get('variance_threshold', 0.01),
             correlation_threshold=config['dataset'].get('correlation_threshold', 0.95),
+            feature_keep_keywords=config['dataset'].get('feature_keep_keywords', None),
             sampling_strategy=config['dataset'].get('sampling_strategy', None)
         )
         
@@ -450,7 +451,9 @@ def train_rl(config: dict, args: argparse.Namespace) -> bool:
         adversarial_env_config = AdversarialEnvConfig(
             max_steps=env_config.get('max_steps', 500),
             window_size=env_config.get('observation', {}).get('window_size', 5),
+            include_deltas=env_config.get('observation', {}).get('include_deltas', True),
             num_actions=env_config.get('actions', {}).get('num_actions', 5),
+            patience_bonus=env_config.get('reward', {}).get('patience_bonus', 0.5),
         )
         
         # Create environment

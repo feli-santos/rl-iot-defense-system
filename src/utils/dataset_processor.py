@@ -45,6 +45,7 @@ class DataProcessingConfig:
     feature_selection: bool = False
     variance_threshold: float = 0.01  # Remove features with variance below this
     correlation_threshold: float = 0.95  # Remove redundant features above this correlation
+    feature_keep_keywords: Optional[List[str]] = None
     sampling_strategy: Optional[str] = None
     
     def __post_init__(self) -> None:
@@ -268,21 +269,33 @@ class CICIoTProcessor:
         
         # Stage 2: Remove low variance features (below configured threshold)
         variance_threshold = getattr(self.config, 'variance_threshold', 0.01)
+        keep_features = self._get_keep_features(X.columns)
         if len(selected_features) > 10:  # Only if we have enough features
             variances = X.var()
             high_var_features = variances[variances >= variance_threshold].index.tolist()
-            removed_count = len(selected_features) - len(high_var_features)
-            X = X[high_var_features]
+            kept_set = set(high_var_features).union(keep_features)
+            kept_ordered = [col for col in X.columns if col in kept_set]
+            removed_count = len(selected_features) - len(kept_ordered)
+            X = X[kept_ordered]
             logger.info(f"Stage 2: Removed {removed_count} low-variance features (threshold={variance_threshold})")
         
         # Stage 3: Remove highly correlated features
         correlation_threshold = getattr(self.config, 'correlation_threshold', 0.95)
-        X = self._remove_correlated_features(X, threshold=correlation_threshold)
+        X = self._remove_correlated_features(
+            X,
+            threshold=correlation_threshold,
+            keep_features=keep_features,
+        )
         
         logger.info(f"Feature selection complete: {original_count} -> {X.shape[1]} features")
         return X
     
-    def _remove_correlated_features(self, X: pd.DataFrame, threshold: float = 0.95) -> pd.DataFrame:
+    def _remove_correlated_features(
+        self,
+        X: pd.DataFrame,
+        threshold: float = 0.95,
+        keep_features: Optional[set[str]] = None,
+    ) -> pd.DataFrame:
         """Remove highly correlated features to reduce redundancy.
         
         For each pair of features with correlation > threshold,
@@ -292,6 +305,7 @@ class CICIoTProcessor:
         upper_tri = corr_matrix.where(np.triu(np.ones(corr_matrix.shape), k=1).astype(bool))
         
         to_drop = set()
+        keep_features = keep_features or set()
         for column in upper_tri.columns:
             # Find features correlated above threshold
             correlated_features = upper_tri.index[upper_tri[column] > threshold].tolist()
@@ -299,13 +313,42 @@ class CICIoTProcessor:
                 # Keep the feature with higher variance, drop the others
                 variances = X[[column] + correlated_features].var()
                 features_to_drop = variances.nsmallest(len(correlated_features)).index.tolist()
-                to_drop.update(features_to_drop[:-1])  # Keep the highest variance one
+            drop_candidates = features_to_drop[:-1]  # Keep the highest variance one
+            to_drop.update([feat for feat in drop_candidates if feat not in keep_features])
         
         if to_drop:
             logger.info(f"Stage 3: Removed {len(to_drop)} highly correlated features (threshold={threshold})")
             X = X.drop(columns=list(to_drop))
         
         return X
+
+    def _get_keep_features(self, columns: List[str]) -> set[str]:
+        """Determine features to keep regardless of selection thresholds.
+
+        Args:
+            columns: Available feature columns.
+
+        Returns:
+            Set of feature names to preserve.
+        """
+        keywords = getattr(self.config, 'feature_keep_keywords', None) or []
+        if not keywords:
+            return set()
+
+        lowered_keywords = [keyword.lower() for keyword in keywords]
+        keep_features = {
+            col for col in columns
+            if any(keyword in col.lower() for keyword in lowered_keywords)
+        }
+
+        if keep_features:
+            logger.info(
+                "Preserving %d features due to keyword matches: %s",
+                len(keep_features),
+                sorted(keep_features)[:10],
+            )
+
+        return keep_features
 
     def _apply_class_balancing(self, X: pd.DataFrame, y: np.ndarray) -> Tuple[pd.DataFrame, np.ndarray]:
         """Apply class balancing for severe imbalance."""
@@ -612,6 +655,7 @@ class CICIoTProcessor:
             'feature_selection_enabled': getattr(self.config, 'feature_selection', False),
             'variance_threshold': getattr(self.config, 'variance_threshold', 0.01),
             'correlation_threshold': getattr(self.config, 'correlation_threshold', 0.95),
+            'feature_keep_keywords': getattr(self.config, 'feature_keep_keywords', None),
             'sampling_strategy': getattr(self.config, 'sampling_strategy', None),
         }
         with open(self.output_path / "metadata.json", "w") as f:

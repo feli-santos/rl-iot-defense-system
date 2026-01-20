@@ -21,6 +21,13 @@ dataset:
   feature_selection: true # Remove low/zero variance features
   variance_threshold: 0.01 # Remove features with variance < 0.01
   correlation_threshold: 0.95 # Remove redundant features with corr > 0.95
+  feature_keep_keywords: # Preserve rate/frequency features during selection
+    - "rate"
+    - "per_second"
+    - "pps"
+    - "packets_per_second"
+    - "bytes_per_second"
+    - "frequency"
 
 # =============================================================================
 # ATTACK SEQUENCE GENERATOR (RED TEAM)
@@ -97,6 +104,7 @@ adversarial_environment:
   observation:
     # Box observation space: window of realized features
     window_size: 5 # Number of previous observations in window
+    include_deltas: true # Append delta (velocity) features
     # Feature dimension determined at runtime from dataset
 
   # Force Continuum Actions (5 discrete levels)
@@ -137,10 +145,12 @@ adversarial_environment:
     # Bonus for successfully defending (attack terminates at lower stage)
     defense_success_bonus: 10.0
     # Penalty for blocking benign traffic
-    false_positive_penalty: 25.0
+    false_positive_penalty: 30.0
     # Graduated sanctions for aggressive actions on low-threat stages
     penalty_block_benign: 100.0
     penalty_block_recon: 50.0
+    # Reward for patience/monitoring during low-threat stages
+    patience_bonus: 1.0
 
 # RL Training Configuration
 rl:

@@ -212,6 +212,7 @@ class BenchmarkRunner:
             env_config = AdversarialEnvConfig(
                 max_steps=adv_config.get("max_steps", 500),
                 window_size=adv_config.get("observation", {}).get("window_size", 5),
+                include_deltas=adv_config.get("observation", {}).get("include_deltas", True),
                 num_actions=adv_config.get("actions", {}).get("num_actions", 5),
                 action_cost_scale=adv_config.get("reward", {}).get("action_cost_scale", 1.0),
                 impact_penalty=adv_config.get("reward", {}).get("impact_penalty", 5.0),
@@ -219,6 +220,7 @@ class BenchmarkRunner:
                 false_positive_penalty=adv_config.get("reward", {}).get("false_positive_penalty", 10.0),
                 penalty_block_benign=adv_config.get("reward", {}).get("penalty_block_benign", 100.0),
                 penalty_block_recon=adv_config.get("reward", {}).get("penalty_block_recon", 50.0),
+                patience_bonus=adv_config.get("reward", {}).get("patience_bonus", 0.5),
                 correct_escalation_reward=adv_config.get("reward", {}).get("defense_reward", {}).get(
                     "correct_escalation", 1.0
                 ),

@@ -87,6 +87,7 @@ class AdversarialEnvConfig:
     Attributes:
         max_steps: Maximum steps per episode.
         window_size: Number of observations in sliding window.
+        include_deltas: Whether to append delta (velocity) features.
         num_actions: Number of discrete actions (force continuum levels).
         action_cost_scale: Multiplier for action costs.
         impact_penalty: Penalty when attack reaches IMPACT stage.
@@ -98,6 +99,7 @@ class AdversarialEnvConfig:
     
     max_steps: int = 500
     window_size: int = 5
+    include_deltas: bool = True
     num_actions: int = 5
     action_cost_scale: float = 1.0
     impact_penalty: float = 5.0
@@ -105,6 +107,7 @@ class AdversarialEnvConfig:
     false_positive_penalty: float = 10.0
     penalty_block_benign: float = 100.0
     penalty_block_recon: float = 50.0
+    patience_bonus: float = 0.5
     correct_escalation_reward: float = 1.0
     correct_de_escalation_reward: float = 0.5
     maintained_defense_reward: float = 0.2
@@ -131,7 +134,8 @@ class AdversarialIoTEnv(gym.Env):
         - Receives reward based on defense effectiveness
     
     Observation Space:
-        Box of shape (window_size * num_features,)
+        Box of shape (window_size * num_features,) or
+        (window_size * num_features * 2,) when delta features are enabled.
         
     Action Space:
         Discrete(5): OBSERVE, LOG, THROTTLE, BLOCK, ISOLATE
@@ -180,8 +184,9 @@ class AdversarialIoTEnv(gym.Env):
         # Get feature dimension from dataset
         self._num_features = self._realization_engine.num_features
         
-        # Define observation space: flattened window of features
-        obs_dim = self._config.window_size * self._num_features
+        # Define observation space: flattened window of features (optionally with deltas)
+        obs_multiplier = 2 if self._config.include_deltas else 1
+        obs_dim = self._config.window_size * self._num_features * obs_multiplier
         self.observation_space = spaces.Box(
             low=-np.inf,
             high=np.inf,
@@ -359,6 +364,10 @@ class AdversarialIoTEnv(gym.Env):
         """Build observation from feature window."""
         # Stack window and flatten
         window_array = np.stack(self._observation_window, axis=0)
+        if self._config.include_deltas:
+            deltas = np.zeros_like(window_array)
+            deltas[1:] = window_array[1:] - window_array[:-1]
+            window_array = np.concatenate([window_array, deltas], axis=1)
         observation = window_array.flatten().astype(np.float32)
         return observation
     
@@ -425,7 +434,7 @@ class AdversarialIoTEnv(gym.Env):
         is_low_risk = self._current_attack_stage <= KillChainStage.RECON.value
         is_passive_action = action <= 1  # OBSERVE or LOG
         if is_low_risk and is_passive_action:
-            reward += 0.5
+            reward += self._config.patience_bonus
         
         # Bonus for keeping attack from reaching IMPACT
         if previous_stage == KillChainStage.MANEUVER.value:
