@@ -217,6 +217,8 @@ class BenchmarkRunner:
                 impact_penalty=adv_config.get("reward", {}).get("impact_penalty", 5.0),
                 defense_success_bonus=adv_config.get("reward", {}).get("defense_success_bonus", 2.0),
                 false_positive_penalty=adv_config.get("reward", {}).get("false_positive_penalty", 10.0),
+                penalty_block_benign=adv_config.get("reward", {}).get("penalty_block_benign", 100.0),
+                penalty_block_recon=adv_config.get("reward", {}).get("penalty_block_recon", 50.0),
                 correct_escalation_reward=adv_config.get("reward", {}).get("defense_reward", {}).get(
                     "correct_escalation", 1.0
                 ),

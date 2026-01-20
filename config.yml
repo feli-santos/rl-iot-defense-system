@@ -138,13 +138,16 @@ adversarial_environment:
     defense_success_bonus: 10.0
     # Penalty for blocking benign traffic
     false_positive_penalty: 25.0
+    # Graduated sanctions for aggressive actions on low-threat stages
+    penalty_block_benign: 100.0
+    penalty_block_recon: 50.0
 
 # RL Training Configuration
 rl:
   algorithm: "dqn" # Options: dqn, ppo, a2c
 
   training:
-    total_timesteps: 50000 # Reduced for initial training
+    total_timesteps: 100000 # Increased for nuclear penalty adaptation
     eval_freq: 5000
     n_eval_episodes: 10
     save_freq: 12500
