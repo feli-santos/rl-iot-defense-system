@@ -291,7 +291,8 @@ def process_data(config: dict, args: argparse.Namespace) -> bool:
         print("✅ Dataset processing completed!")
         print(f"   - Total samples: {results['total_samples']:,}")
         print(f"   - Features: {results['num_features']}")
-        print(f"   - Stage distribution: {results['stage_distribution']}")
+        stage_distribution = results.get('stage_distribution', results.get('stage_counts', {}))
+        print(f"   - Stage distribution: {stage_distribution}")
         print(f"   - Output path: {args.data_path}")
         
         return True

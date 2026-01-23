@@ -313,8 +313,8 @@ class CICIoTProcessor:
                 # Keep the feature with higher variance, drop the others
                 variances = X[[column] + correlated_features].var()
                 features_to_drop = variances.nsmallest(len(correlated_features)).index.tolist()
-            drop_candidates = features_to_drop[:-1]  # Keep the highest variance one
-            to_drop.update([feat for feat in drop_candidates if feat not in keep_features])
+                drop_candidates = features_to_drop[:-1]  # Keep the highest variance one
+                to_drop.update([feat for feat in drop_candidates if feat not in keep_features])
         
         if to_drop:
             logger.info(f"Stage 3: Removed {len(to_drop)} highly correlated features (threshold={threshold})")
