@@ -56,7 +56,7 @@ A research project using **Adversarial Reinforcement Learning** for IoT network 
 
 ### Prerequisites
 
-- Python 3.12+
+- Python 3.9.6
 - Virtual environment recommended
 
 ### Setup
@@ -100,7 +100,7 @@ The system provides a unified CLI via `main.py`:
 python main.py --help
 
 # View command-specific help
-python main.py train-generator --help
+python main.py --mode train-generator --help
 ```
 
 ### Pipeline Modes
@@ -110,9 +110,9 @@ python main.py train-generator --help
 Convert raw CICIoT2023 CSV files to processed format with Kill Chain labels:
 
 ```bash
-python main.py process-data \
-    --input-dir data/raw/CICIoT2023 \
-    --output-dir data/processed/ciciot2023
+python main.py --mode process-data \
+  --config config.yml \
+  --data-path data/processed/ciciot2023
 ```
 
 #### 2. Train Attack Sequence Generator (Red Team)
@@ -120,12 +120,10 @@ python main.py process-data \
 Train the LSTM-based attack sequence generator:
 
 ```bash
-python main.py train-generator \
-    --data-dir data/processed/ciciot2023 \
-    --epochs 50 \
-    --batch-size 64 \
-    --seq-length 16 \
-    --hidden-dim 128
+python main.py --mode train-generator \
+  --data-path data/processed/ciciot2023 \
+  --generator-path artifacts/generator \
+  --generator-epochs 50
 ```
 
 #### 3. Train Defense Agent (Blue Team)
@@ -134,20 +132,20 @@ Train an RL defense agent against the attack generator:
 
 ```bash
 # Train with PPO (recommended)
-python main.py train-rl \
+python main.py --mode train-rl \
     --algorithm ppo \
-    --total-timesteps 100000 \
-    --generator-model artifacts/generator/attack_generator.pth
+  --timesteps 100000 \
+  --generator-path artifacts/generator
 
 # Train with DQN
-python main.py train-rl \
+python main.py --mode train-rl \
     --algorithm dqn \
-    --total-timesteps 100000
+  --timesteps 100000
 
 # Train with A2C
-python main.py train-rl \
+python main.py --mode train-rl \
     --algorithm a2c \
-    --total-timesteps 100000
+  --timesteps 100000
 ```
 
 #### 4. Full Training Pipeline
@@ -155,11 +153,10 @@ python main.py train-rl \
 Run the complete training pipeline (generator + RL):
 
 ```bash
-python main.py train-all \
-    --data-dir data/processed/ciciot2023 \
+python main.py --mode train-all \
     --algorithm ppo \
     --generator-epochs 50 \
-    --rl-timesteps 100000
+  --timesteps 100000
 ```
 
 #### 5. Evaluate Trained Agent
@@ -167,18 +164,18 @@ python main.py train-all \
 Evaluate a trained defense agent:
 
 ```bash
-python main.py evaluate \
-    --model-path artifacts/rl/ppo_model.zip \
-    --episodes 100
+python main.py --mode evaluate \
+  --model-path artifacts/rl/ppo_*/ppo_agent.zip \
+  --eval-episodes 100
 ```
 
-#### 6. Benchmark All Algorithms
+#### 6. Compare Algorithms
 
 Compare DQN, PPO, and A2C performance:
 
 ```bash
-python main.py benchmark \
-    --timesteps 50000 \
+python main.py --mode evaluate \
+  --algorithms dqn ppo a2c \
     --eval-episodes 100
 ```
 
