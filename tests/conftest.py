@@ -32,7 +32,7 @@ NUM_STAGES = len(KILL_CHAIN_STAGES)
 
 
 # =============================================================================
-# CICIoT2023 Label Mapping (PRD Section 3.1)
+# CICIoT2023 Label Mapping (Kill Chain Stage Taxonomy)
 # =============================================================================
 
 CICIOT_TO_STAGE_MAPPING = {
@@ -215,7 +215,7 @@ def environment_config() -> dict[str, Any]:
 def action_effectiveness() -> dict[int, int]:
     """Action effectiveness levels (action_id -> max stage it can counter).
     
-    Per PRD Section 5.2:
+    Per Force Continuum design:
     - MONITOR (0): Fails against any attack (effectiveness 0)
     - MITIGATE (1): Effective against RECON only (effectiveness 1)
     - BLOCK (2): Effective against ACCESS/MANEUVER (effectiveness 3)

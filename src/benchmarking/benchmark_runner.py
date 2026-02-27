@@ -144,7 +144,7 @@ class BenchmarkRunner:
     - Comparing multiple models with summary statistics
     - Discovering and auto-loading trained models
     
-    The runner uses the new metrics collector with PRD 7.2 metrics:
+    The runner uses the metrics collector with core security metrics:
     - Attack Mitigation Rate
     - False Positive Rate
     - Mean Time to Contain
@@ -256,7 +256,7 @@ class BenchmarkRunner:
             run_id: Run identifier for metrics collection.
         
         Returns:
-            Dictionary with evaluation results and PRD metrics.
+            Dictionary with evaluation results and security metrics.
         """
         model_path = Path(model_path)
         num_episodes = num_episodes or self.benchmark_config.num_episodes
@@ -312,7 +312,7 @@ class BenchmarkRunner:
                     print(f"  Episode {ep_idx + 1}/{num_episodes}: "
                           f"Reward={episode_data['reward']:.2f}")
             
-            # Finalize run to compute PRD metrics
+            # Finalize run to compute security metrics
             self.metrics_collector.finalize_run(algorithm_type, run_id)
             
             # Get results
@@ -327,7 +327,7 @@ class BenchmarkRunner:
                 "avg_length": float(np.mean(episode_lengths)),
                 "episode_rewards": episode_rewards,
                 "episode_lengths": episode_lengths,
-                # PRD 7.2 Metrics
+                # Security Metrics
                 "attack_mitigation_rate": run_metrics.attack_mitigation_rate,
                 "false_positive_rate": run_metrics.false_positive_rate,
                 "mean_time_to_contain": run_metrics.mean_time_to_contain,
@@ -397,7 +397,7 @@ class BenchmarkRunner:
         print(f"\n📈 Results for {results['algorithm'].upper()}")
         print(f"   Average Reward: {results['avg_reward']:.3f} ± {results['std_reward']:.3f}")
         print(f"   Average Length: {results['avg_length']:.1f} steps")
-        print(f"\n🎯 PRD 7.2 Metrics:")
+        print(f"\n🎯 Security Metrics:")
         print(f"   Attack Mitigation Rate: {results['attack_mitigation_rate']:.1%}")
         print(f"   False Positive Rate:    {results['false_positive_rate']:.1%}")
         print(f"   Mean Time to Contain:   {results['mean_time_to_contain']:.1f} steps")

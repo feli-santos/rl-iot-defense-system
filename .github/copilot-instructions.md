@@ -46,9 +46,9 @@ LSTM Attack Sequence Generator → adversarial env state transitions → sampled
 - Run with `--log-level DEBUG` for detailed traces; validate scaler loading in env.
 
 ## Critical Implementation Notes
-- Label mapping is PRD-compliant; unknown labels default to BENIGN with warning.
+- Label mapping follows the Kill Chain taxonomy; unknown labels default to BENIGN with warning.
 - Process-data now supports variance-based feature selection and safe inf/NaN handling.
 - `state_indices.json` powers stage → row sampling; keep scaler and features in sync.
 - Stage distribution exposed in processing results and metadata.
-- RL uses 5-action space per PRD Force Continuum; costs configured in `config.yml` adversarial_environment.actions.
+- RL uses 5-action space per Force Continuum; costs configured in `config.yml` adversarial_environment.actions.
 - Use CLI overrides for seeds/timesteps/device to generate comparison runs.

@@ -2,7 +2,7 @@
 Abstract State Label Mapper for CICIoT2023 Dataset.
 
 This module provides the mapping between CICIoT2023 attack labels and
-the 5 Kill Chain abstract states defined in the PRD (Section 3.1).
+the 5 Kill Chain abstract states used by this system.
 
 Kill Chain Stages:
     0 - BENIGN:   Baseline system operation
@@ -40,7 +40,7 @@ STAGE_NAMES: dict[int, str] = {
 }
 
 
-# CICIoT2023 label to Kill Chain stage mapping (PRD Section 3.1)
+# CICIoT2023 label to Kill Chain stage mapping
 _LABEL_TO_STAGE: dict[str, KillChainStage] = {
     # Stage 0: BENIGN - Baseline system operation
     "BenignTraffic": KillChainStage.BENIGN,

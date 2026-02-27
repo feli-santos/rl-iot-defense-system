@@ -3,7 +3,7 @@ Transition Mask for Kill Chain Grammar Constraints.
 
 This module provides functionality to enforce or regularize valid Kill Chain
 stage transitions by masking invalid transitions during inference and/or training.
-Per PRD Section 3.2, Kill Chain grammar follows:
+Kill Chain grammar follows:
 - Progression: can move forward (e.g., RECON -> ACCESS)
 - Persistence: can stay in same stage (e.g., ACCESS -> ACCESS)
 - No regression: cannot move backward (except IMPACT -> BENIGN via external intervention)

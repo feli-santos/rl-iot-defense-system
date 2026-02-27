@@ -2,7 +2,7 @@
 Benchmark Analyzer
 
 Analyzes and visualizes benchmark results across algorithms.
-Includes PRD 7.2 metrics visualization and attack progression analysis.
+Includes security metrics visualization and attack progression analysis.
 """
 
 import numpy as np
@@ -54,8 +54,8 @@ class BenchmarkAnalyzer:
         self._plot_convergence_analysis()
         self._plot_reward_distributions()
         
-        # PRD 7.2 visualizations
-        self._plot_prd_metrics_comparison()
+        # Security metrics visualizations
+        self._plot_security_metrics_comparison()
         self._plot_attack_progression()
         self._plot_defense_heatmap()
         self._plot_confusion_matrices()
@@ -263,11 +263,11 @@ class BenchmarkAnalyzer:
         print(f"Detailed report saved to: {self.results_path / 'summary_report.txt'}")
     
     # =========================================================================
-    # PRD 7.2 Metrics Visualization
+    # Security Metrics Visualization
     # =========================================================================
     
-    def _plot_prd_metrics_comparison(self) -> None:
-        """Plot PRD 7.2 metrics comparison across algorithms.
+    def _plot_security_metrics_comparison(self) -> None:
+        """Plot security metrics comparison across algorithms.
         
         Visualizes:
         - Attack Mitigation Rate
@@ -279,11 +279,11 @@ class BenchmarkAnalyzer:
             return
         
         fig, axes = plt.subplots(2, 2, figsize=(14, 10))
-        fig.suptitle("PRD 7.2 Security Metrics Comparison", fontsize=14, fontweight='bold')
+        fig.suptitle("Security Metrics Comparison", fontsize=14, fontweight='bold')
         
         algorithms = list(self.metrics_collector.metrics.keys())
         
-        # Collect PRD metrics for each algorithm
+        # Collect security metrics for each algorithm
         metrics_data = {
             'attack_mitigation_rate': [],
             'false_positive_rate': [],
@@ -363,9 +363,9 @@ class BenchmarkAnalyzer:
                     f'{val:.2f}', ha='center', va='bottom', fontsize=9)
         
         plt.tight_layout(rect=[0, 0, 1, 0.96])
-        plt.savefig(self.results_path / 'prd_metrics_comparison.png', dpi=300, bbox_inches='tight')
+        plt.savefig(self.results_path / 'security_metrics_comparison.png', dpi=300, bbox_inches='tight')
         plt.close()
-        print(f"PRD metrics comparison saved to: {self.results_path / 'prd_metrics_comparison.png'}")
+        print(f"Security metrics comparison saved to: {self.results_path / 'security_metrics_comparison.png'}")
     
     def _plot_attack_progression(self) -> None:
         """Plot attack progression analysis across episodes.
@@ -605,7 +605,7 @@ class BenchmarkAnalyzer:
         print(f"Detailed Report: {algorithm_name.upper()} (Run {run_id})")
         print(f"{'='*60}")
         
-        print(f"\n📊 PRD 7.2 Security Metrics:")
+        print(f"\n📊 Security Metrics:")
         print(f"   Attack Mitigation Rate: {run.attack_mitigation_rate:.1%}")
         print(f"   False Positive Rate:    {run.false_positive_rate:.1%}")
         print(f"   Mean Time to Contain:   {run.mean_time_to_contain:.1f} steps")

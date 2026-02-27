@@ -4,7 +4,7 @@ Metrics Collector
 Collects and organizes metrics from algorithm evaluation for the
 adversarial IoT defense system.
 
-PRD 7.2 Evaluation Metrics:
+Core Security Evaluation Metrics:
 1. Mean Cumulative Reward: Overall efficacy
 2. Attack Mitigation Rate: % attacks broken before reaching IMPACT
 3. False Positive Rate: % BENIGN steps met with active defense (action > 0)
@@ -77,7 +77,7 @@ class EpisodeMetrics:
 class RunMetrics:
     """Metrics for a single algorithm evaluation run.
     
-    Includes PRD 7.2 metrics:
+    Includes core security metrics:
     - Mean cumulative reward
     - Attack mitigation rate
     - False positive rate
@@ -98,7 +98,7 @@ class RunMetrics:
     episode_rewards: List[float] = field(default_factory=list)
     episode_lengths: List[int] = field(default_factory=list)
     
-    # PRD 7.2 Metrics
+    # Core Security Metrics
     attack_mitigation_rate: float = 0.0  # % attacks stopped before IMPACT
     false_positive_rate: float = 0.0  # % BENIGN met with active defense
     mean_time_to_contain: float = 0.0  # Steps to reset to BENIGN
@@ -297,7 +297,7 @@ class MetricsCollector:
         algorithm_name: str,
         run_id: int,
     ) -> None:
-        """Finalize run and compute PRD 7.2 aggregate metrics.
+        """Finalize run and compute aggregate security metrics.
         
         Args:
             algorithm_name: Algorithm name.
@@ -316,21 +316,21 @@ class MetricsCollector:
         if run_metrics.episode_rewards:
             run_metrics.final_reward = run_metrics.episode_rewards[-1]
         
-        # PRD 7.2 Metric 1: Mean Cumulative Reward (already computed above)
+        # Security Metric 1: Mean Cumulative Reward (already computed above)
         
-        # PRD 7.2 Metric 2: Attack Mitigation Rate
+        # Security Metric 2: Attack Mitigation Rate
         # % of episodes where attack didn't reach IMPACT
         impact_count = sum(1 for ep in episodes if ep.reached_impact)
         run_metrics.attack_mitigation_rate = 1.0 - (impact_count / len(episodes))
         
-        # PRD 7.2 Metric 3: False Positive Rate
+        # Security Metric 3: False Positive Rate
         # % of BENIGN steps met with active defense (action > 0)
         total_benign_steps = sum(ep.benign_steps for ep in episodes)
         total_false_positives = sum(ep.false_positive_count for ep in episodes)
         if total_benign_steps > 0:
             run_metrics.false_positive_rate = total_false_positives / total_benign_steps
         
-        # PRD 7.2 Metric 4: Mean Time to Contain
+        # Security Metric 4: Mean Time to Contain
         # Average steps to reset attack to BENIGN
         all_containment_steps = []
         for ep in episodes:
@@ -338,7 +338,7 @@ class MetricsCollector:
         if all_containment_steps:
             run_metrics.mean_time_to_contain = float(np.mean(all_containment_steps))
         
-        # PRD 7.2 Metric 5: Availability Score
+        # Security Metric 5: Availability Score
         # Inverse of sum of action costs: 1 / (1 + total_cost)
         total_action_cost = sum(ep.total_action_cost for ep in episodes)
         run_metrics.availability_score = 1.0 / (1.0 + total_action_cost)
@@ -402,7 +402,7 @@ class MetricsCollector:
             run_metrics.episode_lengths = evaluation_results.get('episode_lengths', [])
             run_metrics.evaluation_metrics = evaluation_results.get('evaluation_metrics', {})
             
-            # Update PRD metrics if provided
+            # Update security metrics if provided
             run_metrics.attack_mitigation_rate = evaluation_results.get(
                 'attack_mitigation_rate', 0.0
             )
@@ -469,7 +469,7 @@ class MetricsCollector:
             "avg_reward_max": float(np.max(avg_rewards)),
             "training_time_mean": float(np.mean(training_times)),
             "training_time_std": float(np.std(training_times)),
-            # PRD 7.2 metrics
+            # Security metrics
             "attack_mitigation_rate_mean": float(np.mean(mitigation_rates)),
             "attack_mitigation_rate_std": float(np.std(mitigation_rates)),
             "false_positive_rate_mean": float(np.mean(fpr_rates)),

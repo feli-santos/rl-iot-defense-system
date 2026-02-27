@@ -294,7 +294,6 @@ rl-iot-defense-system/
 │   └── plots/                       # Training visualizations
 │
 └── docs/
-    ├── PRD.md                       # Product Requirements Document
     ├── overview.md                  # System overview
     └── *.md                         # Additional documentation
 ```

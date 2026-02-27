@@ -2,7 +2,7 @@
 CICIoT2023 Dataset Processor
 
 Processes raw CICIoT2023 dataset for Attack Sequence Generator training
-and Adversarial Environment integration (PRD compliant).
+and Adversarial Environment integration.
 
 Key outputs:
 - features.npy: Normalized feature matrix for RealizationEngine
@@ -461,7 +461,7 @@ class CICIoTProcessor:
     
     def process_for_adversarial_env(self) -> Dict[str, Any]:
         """
-        Process dataset for the Adversarial IoT Environment (PRD compliant).
+        Process dataset for the Adversarial IoT Environment.
         
         Creates:
         - features.npy: Normalized feature matrix (num_samples, num_features)

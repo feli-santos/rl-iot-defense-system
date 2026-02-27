@@ -3,7 +3,7 @@ Realization Engine for Adversarial IoT Environment.
 
 This module provides the RealizationEngine class that samples feature
 vectors from the CICIoT2023 dataset based on abstract Kill Chain states.
-Per PRD Section 5.1, this translates abstract states into concrete
+This translates abstract Kill Chain states into concrete
 numerical observations for the Blue Team.
 
 The engine:

@@ -3,7 +3,7 @@ Tests for EpisodeGenerator.
 
 This module tests the episode generation functionality that creates
 synthetic attack sequences following Kill Chain grammar rules.
-Per PRD Section 3.2, episodes must follow:
+Episodes must follow:
 1. Progression: P(S_{t+1} > S_t) > 0 (attacks escalate)
 2. Persistence: P(S_{t+1} = S_t) > 0 (attacks may sustain)
 3. Reset: S_{t+1} = 0 only via external intervention
@@ -133,7 +133,7 @@ class TestEpisodeGeneratorSingleEpisode:
     ) -> None:
         """Episodes should not spontaneously reset to BENIGN.
         
-        Per PRD: Reset to 0 only via external intervention.
+        Per Kill Chain grammar: reset to 0 only via external intervention.
         Once attacking, should not return to BENIGN within episode.
         """
         for _ in range(50):

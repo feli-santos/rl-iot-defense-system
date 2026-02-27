@@ -3,7 +3,7 @@ Tests for AttackSequenceGenerator.
 
 This module tests the LSTM-based attack sequence generator that
 predicts the next Kill Chain stage given a history of stages.
-Per PRD Section 4, this is a next-token predictor with:
+This is a next-token predictor with:
 - Embedding layer -> Stacked LSTM -> Dense output head
 - Temperature-scaled softmax for stochastic generation
 """

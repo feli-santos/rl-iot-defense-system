@@ -1,4 +1,4 @@
-"""Tests for the PRD 7.2 metrics collector."""
+"""Tests for the security metrics collector."""
 
 import json
 import tempfile
@@ -224,7 +224,7 @@ class TestMetricsCollector:
         assert episode.containment_steps[0] == 3
     
     def test_finalize_run(self, collector):
-        """Test run finalization with PRD 7.2 metrics."""
+        """Test run finalization with aggregate security metrics."""
         collector.start_run("ppo", 0, {})
         
         # Add multiple episodes
@@ -382,7 +382,7 @@ class TestActionCosts:
     """Tests for action costs constant."""
     
     def test_action_costs_values(self):
-        """Test that action costs match PRD specification."""
+        """Test that action costs match Force Continuum specification."""
         assert ACTION_COSTS[0] == 0.0   # OBSERVE
         assert ACTION_COSTS[1] == 0.1   # LOG
         assert ACTION_COSTS[2] == 0.3   # THROTTLE

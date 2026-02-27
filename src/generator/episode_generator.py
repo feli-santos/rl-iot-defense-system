@@ -2,7 +2,7 @@
 Episode Generator for Attack Sequence Training.
 
 This module generates synthetic attack episodes following Kill Chain
-grammar rules (PRD Section 3.2). Episodes are integer sequences
+grammar rules. Episodes are integer sequences
 representing attack progression through Kill Chain stages.
 
 Grammar Rules:

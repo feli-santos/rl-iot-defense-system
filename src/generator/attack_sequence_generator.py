@@ -3,7 +3,7 @@ Attack Sequence Generator (Red Team Model).
 
 This module implements the LSTM-based attack sequence generator that
 predicts the next Kill Chain stage given a history of stages.
-Per PRD Section 4, this is a next-token predictor:
+This is a next-token predictor:
 - Architecture: Embedding -> Stacked LSTM -> Dense output head
 - Training: Cross-entropy loss on next-token prediction
 - Inference: Temperature-scaled softmax + categorical sampling
@@ -199,7 +199,7 @@ class AttackSequenceGenerator(nn.Module):
         """Sample next stage from predicted distribution.
         
         Uses temperature-scaled softmax followed by categorical sampling
-        to produce diverse attack patterns (PRD Section 4.2).
+        to produce diverse attack patterns.
         If a transition mask is set, only valid transitions are sampled.
         
         Args:
