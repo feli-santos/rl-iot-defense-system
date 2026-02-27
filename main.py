@@ -449,12 +449,23 @@ def train_rl(config: dict, args: argparse.Namespace) -> bool:
         algo_config = rl_config.get('algorithms', {}).get(args.algorithm, {})
         
         # Create environment config
+        reward_config = env_config.get('reward', {})
+        defense_reward_config = reward_config.get('defense_reward', {})
         adversarial_env_config = AdversarialEnvConfig(
             max_steps=env_config.get('max_steps', 500),
             window_size=env_config.get('observation', {}).get('window_size', 5),
             include_deltas=env_config.get('observation', {}).get('include_deltas', True),
             num_actions=env_config.get('actions', {}).get('num_actions', 5),
-            patience_bonus=env_config.get('reward', {}).get('patience_bonus', 0.5),
+            action_cost_scale=reward_config.get('action_cost_scale', 1.0),
+            impact_penalty=reward_config.get('impact_penalty', 200.0),
+            defense_success_bonus=reward_config.get('defense_success_bonus', 10.0),
+            false_positive_penalty=reward_config.get('false_positive_penalty', 30.0),
+            penalty_block_benign=reward_config.get('penalty_block_benign', 100.0),
+            penalty_block_recon=reward_config.get('penalty_block_recon', 50.0),
+            patience_bonus=reward_config.get('patience_bonus', 1.0),
+            correct_escalation_reward=defense_reward_config.get('correct_escalation', 5.0),
+            correct_de_escalation_reward=defense_reward_config.get('correct_de_escalation', 0.5),
+            maintained_defense_reward=defense_reward_config.get('maintained_defense', 0.2),
         )
         
         # Create environment
@@ -578,7 +589,7 @@ def train_all_rl(config: dict, args: argparse.Namespace) -> bool:
 def run_evaluate(config: dict, args: argparse.Namespace) -> bool:
     """Evaluate trained models (single or comparison mode).
     
-    - Single model: Detailed PRD 7.2 metrics for one model
+    - Single model: Detailed security metrics for one model
     - Comparison: Summary metrics across multiple algorithms
     """
     print("\n📊 Evaluating Trained Models")

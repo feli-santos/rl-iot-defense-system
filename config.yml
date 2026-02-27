@@ -1,7 +1,7 @@
 # IoT Defense System Configuration
 # Main configuration for Adversarial RL Defense System
 #
-# System Overview (PRD):
+# System Overview:
 # - Red Team: Attack Sequence Generator (LSTM) produces attack sequences
 # - Blue Team: RL agents (DQN/PPO/A2C) learn defense policies
 # - Kill Chain Stages: BENIGN(0), RECON(1), ACCESS(2), MANEUVER(3), IMPACT(4)
@@ -132,15 +132,17 @@ adversarial_environment:
   reward:
     # R_defense: positive reward for correct defense actions
     defense_reward:
-      correct_escalation: 1.0 # Escalate when attack escalates
+      correct_escalation: 5.0 # Escalate when attack escalates (increased to incentivize BLOCK/ISOLATE at ACCESS/MANEUVER)
       correct_de_escalation: 0.5 # De-escalate when threat reduces
       maintained_defense: 0.2 # Hold appropriate level
 
     # C_action: cost of defensive actions (from actions.levels.cost)
     action_cost_scale: 1.0
 
-    # P_impact: penalty when attack reaches IMPACT stage
-    impact_penalty: 5.0
+    # P_impact: penalty applied during the agent's final action at the IMPACT stage.
+    # Must vastly exceed penalty_block_benign (100.0) so a system breach is always
+    # the worst possible outcome and agents are incentivised to BLOCK/ISOLATE earlier.
+    impact_penalty: 200.0
 
     # Bonus for successfully defending (attack terminates at lower stage)
     defense_success_bonus: 10.0
