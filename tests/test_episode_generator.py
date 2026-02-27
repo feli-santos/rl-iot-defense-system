@@ -585,3 +585,27 @@ class TestMinimumStageCoverage:
         assert stage_episode_count[1] >= 0.4 * total
         assert stage_episode_count[2] >= 0.4 * total
         assert stage_episode_count[3] >= 0.4 * total
+
+    def test_min_coverage_does_not_create_stale_transition_attr(self) -> None:
+        """Coverage enforcement should update active transition probabilities only."""
+        imbalanced_dist = {0: 1000, 1: 10, 2: 5, 3: 500, 4: 10000}
+
+        config = EpisodeGeneratorConfig(
+            num_episodes=80,
+            distribution_temperature=0.6,
+            min_stage_coverage={1: 0.4, 2: 0.4},
+        )
+        generator = EpisodeGenerator(
+            config=config,
+            stage_distribution=imbalanced_dist,
+            seed=42,
+        )
+
+        original_probs = generator._transition_probs.copy()
+        episodes = generator.generate_all()
+
+        assert len(episodes) >= 80
+        assert generator._transition_probs.shape == (5, 5)
+        assert np.allclose(generator._transition_probs, original_probs)
+        # Regression: buggy implementation created this unused attribute
+        assert not hasattr(generator, "_transition_matrix")

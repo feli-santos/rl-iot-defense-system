@@ -15,6 +15,7 @@ as a next-token predictor.
 """
 
 import logging
+import math
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Tuple
 
@@ -315,12 +316,17 @@ class EpisodeGenerator:
         
         # Check which stages need more coverage
         total_episodes = len(episodes)
-        needs_more = {}
-        for stage_id, min_frac in self._config.min_stage_coverage.items():
-            current_frac = stage_coverage[stage_id] / total_episodes
-            if current_frac < min_frac:
-                needed = int(min_frac * total_episodes) - stage_coverage[stage_id]
-                needs_more[stage_id] = max(needed, 1)
+
+        def _compute_needs_more() -> Dict[int, int]:
+            needs: Dict[int, int] = {}
+            for stage_id, min_frac in self._config.min_stage_coverage.items():
+                current_frac = stage_coverage[stage_id] / total_episodes
+                if current_frac < min_frac:
+                    needed = math.ceil(min_frac * total_episodes) - stage_coverage[stage_id]
+                    needs[stage_id] = max(needed, 1)
+            return needs
+
+        needs_more = _compute_needs_more()
         
         if not needs_more:
             return episodes
@@ -344,10 +350,10 @@ class EpisodeGenerator:
         self._stage_distribution = boosted_dist
         
         # Rebuild transition matrix with boosted distribution
-        self._transition_matrix = self._build_transition_matrix()
+        self._transition_probs = self._build_transition_matrix()
         
         # Generate additional episodes with boosted probabilities
-        max_attempts = total_episodes * 20
+        max_attempts = total_episodes * 200
         attempts = 0
         
         while needs_more and attempts < max_attempts:
@@ -359,36 +365,44 @@ class EpisodeGenerator:
             helps_with = [s for s in needs_more.keys() if s in unique_stages]
             
             if helps_with:
-                # Replace a random episode that doesn't contain these stages
+                # Replace an episode missing the most-needed stage first
                 replaced = False
+
+                most_needed_stage = max(helps_with, key=lambda s: needs_more.get(s, 0))
+
+                # Prefer replacing episodes that do not contain the most-needed stage
                 for idx in self._rng.permutation(len(episodes)):
-                    if not any(s in episodes[idx] for s in helps_with):
+                    if most_needed_stage not in episodes[idx]:
+                        old_unique = set(episodes[idx])
+                        new_unique = set(new_episode)
                         episodes[idx] = new_episode
-                        
-                        # Update coverage tracking
-                        for stage in helps_with:
+                        # Update stage coverage with true replacement deltas
+                        for stage in old_unique:
+                            stage_coverage[stage] -= 1
+                        for stage in new_unique:
                             stage_coverage[stage] += 1
-                            needs_more[stage] -= 1
-                            if needs_more[stage] <= 0:
-                                del needs_more[stage]
+                        needs_more = _compute_needs_more()
                         
                         replaced = True
                         break
                 
                 if not replaced:
-                    # All episodes contain these stages, just append
-                    episodes.append(new_episode)
-                    for stage in helps_with:
+                    # Fallback: replace a random episode to keep cardinality stable
+                    idx = int(self._rng.integers(0, len(episodes)))
+                    old_unique = set(episodes[idx])
+                    new_unique = set(new_episode)
+                    episodes[idx] = new_episode
+                    for stage in old_unique:
+                        stage_coverage[stage] -= 1
+                    for stage in new_unique:
                         stage_coverage[stage] += 1
-                        needs_more[stage] -= 1
-                        if needs_more[stage] <= 0:
-                            del needs_more[stage]
+                    needs_more = _compute_needs_more()
             
             attempts += 1
         
         # Restore original distribution
         self._stage_distribution = original_dist
-        self._transition_matrix = self._build_transition_matrix()
+        self._transition_probs = self._build_transition_matrix()
         
         if needs_more:
             logger.warning(
