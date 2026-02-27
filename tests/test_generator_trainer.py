@@ -509,3 +509,64 @@ class TestGeneratorTrainerPersistence:
             loaded_out = loaded.model(test_input)
         
         assert torch.allclose(orig_out, loaded_out)
+
+
+class TestGeneratorTrainerRegression:
+    """Regression tests for known trainer edge cases."""
+
+    def test_weighted_sampler_weights_are_non_uniform(self, temp_generator_dir: Path) -> None:
+        """Weighted sampler should use inverse-frequency (non-uniform) sample weights."""
+        config = GeneratorTrainingConfig(
+            epochs=1,
+            batch_size=16,
+            sequence_length=5,
+            output_dir=temp_generator_dir,
+            use_weighted_sampler=True,
+            use_class_weights=False,
+            seed=42,
+            use_mlflow=False,
+        )
+        trainer = GeneratorTrainer(config=config)
+
+        # Build imbalanced episodes where training targets are mostly stage 0 and few stage 1
+        majority_episode = [0, 0, 0, 0, 0, 0, 0]
+        minority_episode = [0, 0, 0, 0, 0, 1, 1]
+        episodes = [majority_episode] * 200 + [minority_episode] * 20
+
+        train_loader, _ = trainer.prepare_data(episodes)
+
+        assert isinstance(train_loader.sampler, torch.utils.data.WeightedRandomSampler)
+        sample_weights = train_loader.sampler.weights.cpu().numpy()
+        assert np.unique(np.round(sample_weights, 10)).size > 1
+
+    def test_macro_f1_mode_reports_finite_metrics_when_gates_never_pass(
+        self,
+        temp_generator_dir: Path,
+    ) -> None:
+        """Best metrics should remain finite even when hard recall gates never pass."""
+        config = GeneratorTrainingConfig(
+            epochs=3,
+            batch_size=16,
+            sequence_length=5,
+            output_dir=temp_generator_dir,
+            use_mlflow=False,
+            use_macro_f1_stopping=True,
+            min_recall_stage_1=1.1,
+            min_recall_stage_2=1.1,
+            balanced_validation=True,
+            val_samples_per_class=10,
+            seed=42,
+        )
+        trainer = GeneratorTrainer(config=config)
+
+        episode_gen = EpisodeGenerator(
+            config=EpisodeGeneratorConfig(num_episodes=80, min_length=8, max_length=12),
+            seed=42,
+        )
+        episodes = episode_gen.generate_all()
+        results = trainer.train(episodes)
+
+        assert np.isfinite(results["best_val_loss"])
+        assert np.isfinite(results["best_macro_f1"])
+        assert results["recall_gate_passed_any"] is False
+        assert results["recall_gate_pass_count"] == 0

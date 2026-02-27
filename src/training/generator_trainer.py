@@ -203,6 +203,7 @@ class GeneratorTrainer:
         
         # Compute class weights and/or sampler weights for imbalance mitigation
         sampler: Optional[WeightedRandomSampler] = None
+        self._criterion = nn.CrossEntropyLoss()
         if self._config.use_class_weights or self._config.use_weighted_sampler:
             num_stages = 5
             
@@ -214,25 +215,29 @@ class GeneratorTrainer:
                 raise ValueError("No training samples available to compute class weights.")
             
             eps = 1e-12
-            
-            # Use ONLY balanced sampler, NO class weights in loss
-            # Class weights fight the sampler - disable them
+            smoothing = max(self._config.class_weight_smoothing, eps)
+            inv_freq = 1.0 / (class_counts + smoothing)
+            # Normalize to keep average weight near 1.0
+            class_weights = inv_freq / inv_freq.mean()
+
             if self._config.use_weighted_sampler:
-                # Equal weights for balanced sampling (20% per class)
-                equal_weights = torch.ones(num_stages, dtype=torch.float32) / num_stages
-                per_sample_weights = equal_weights[y_train].double()
+                # Balanced sampling with inverse-frequency sample weights
+                per_sample_weights = class_weights[y_train].double()
                 sampler = WeightedRandomSampler(
                     weights=per_sample_weights,
                     num_samples=int(len(per_sample_weights)),
                     replacement=True,
                 )
-                logger.info("Using WeightedRandomSampler with EQUAL weights (20% per class) for balanced batches")
+                logger.info("Using WeightedRandomSampler with inverse-frequency sample weights")
             
-            if self._config.use_class_weights:
-                # DISABLED: Class weights fight the balanced sampler
-                # Use uniform weights (no weighting)
-                logger.info("Class weights DISABLED (conflicts with balanced sampler) - using uniform loss weights")
+            if self._config.use_class_weights and sampler is None:
+                self._criterion = nn.CrossEntropyLoss(weight=class_weights.to(self._device))
+                logger.info("Using class-weighted CrossEntropyLoss (sampler disabled)")
+            elif self._config.use_class_weights and sampler is not None:
                 self._criterion = nn.CrossEntropyLoss()
+                logger.info(
+                    "Class weights disabled because weighted sampler is enabled; using unweighted CE loss"
+                )
             else:
                 self._criterion = nn.CrossEntropyLoss()
         
@@ -360,6 +365,10 @@ class GeneratorTrainer:
             patience_counter = 0
             best_epoch = 0
             best_macro_f1 = -float('inf')
+            best_observed_val_loss = float('inf')
+            best_observed_macro_f1 = -float('inf')
+            recall_gate_pass_count = 0
+            recall_gate_pass_epochs: List[int] = []
             
             for epoch in range(self._config.epochs):
                 # Train epoch
@@ -375,6 +384,12 @@ class GeneratorTrainer:
                 recall_stage_1 = val_metrics["recall_stage_1"]
                 recall_stage_2 = val_metrics["recall_stage_2"]
                 macro_f1 = val_metrics["macro_f1"]
+
+                # Always track observed bests, independent of gate pass
+                if val_loss < best_observed_val_loss:
+                    best_observed_val_loss = val_loss
+                if macro_f1 > best_observed_macro_f1:
+                    best_observed_macro_f1 = macro_f1
                 
                 logger.info(
                     f"Epoch {epoch + 1}/{self._config.epochs}: "
@@ -400,14 +415,27 @@ class GeneratorTrainer:
                         recall_stage_2 >= self._config.min_recall_stage_2
                     )
                     if recall_gate_passed:
-                        if macro_f1 > best_macro_f1:
+                        recall_gate_pass_count += 1
+                        recall_gate_pass_epochs.append(epoch + 1)
+                        is_better_macro = macro_f1 > (best_macro_f1 + 1e-12)
+                        is_macro_tie = np.isclose(macro_f1, best_macro_f1, atol=1e-12)
+                        is_better_val_on_tie = is_macro_tie and (val_loss < self._best_val_loss)
+
+                        if is_better_macro or is_better_val_on_tie:
                             best_macro_f1 = macro_f1
                             self._best_val_loss = val_loss  # Store for reporting
                             patience_counter = 0
                             best_epoch = epoch
                             improved = True
                             self._save_checkpoint()
-                            logger.info(f"  → New best: macro_f1={macro_f1:.4f} (recall gates passed)")
+                            if is_better_macro:
+                                logger.info(
+                                    f"  → New best: macro_f1={macro_f1:.4f} (recall gates passed)"
+                                )
+                            else:
+                                logger.info(
+                                    f"  → Tie-break best: macro_f1={macro_f1:.4f}, val_loss={val_loss:.4f}"
+                                )
                         else:
                             patience_counter += 1
                     else:
@@ -429,28 +457,47 @@ class GeneratorTrainer:
                         mlflow.log_metric("training/early_stopped", 1.0)
                         mlflow.log_metric("training/early_stop_epoch", epoch + 1)
                     break
+
+            # Ensure a checkpoint exists even when recall gates never pass
+            checkpoint_path = self._config.output_dir / "checkpoint.pth"
+            if not checkpoint_path.exists():
+                self._save_checkpoint()
             
             # Load best model
             self._load_best_checkpoint()
             
             # Save final model and config
             self._save_final()
+
+            # Reporting fallback: keep values finite even if gates never passed
+            reported_best_val_loss = self._best_val_loss
+            if not np.isfinite(reported_best_val_loss):
+                reported_best_val_loss = best_observed_val_loss
+
+            reported_best_macro_f1: Optional[float] = None
+            if self._config.use_macro_f1_stopping:
+                reported_best_macro_f1 = best_macro_f1
+                if not np.isfinite(reported_best_macro_f1):
+                    reported_best_macro_f1 = best_observed_macro_f1
             
             results = {
                 "train_losses": train_losses,
                 "val_losses": val_losses,
                 "val_macro_f1s": val_macro_f1s,
-                "best_val_loss": self._best_val_loss,
-                "best_macro_f1": best_macro_f1 if self._config.use_macro_f1_stopping else None,
+                "best_val_loss": float(reported_best_val_loss),
+                "best_macro_f1": float(reported_best_macro_f1) if reported_best_macro_f1 is not None else None,
                 "epochs_trained": len(train_losses),
                 "best_epoch": best_epoch,
+                "recall_gate_passed_any": bool(recall_gate_pass_count > 0),
+                "recall_gate_pass_count": int(recall_gate_pass_count),
+                "recall_gate_pass_epochs": recall_gate_pass_epochs,
             }
             
             # Log final metrics and artifacts to MLflow
             if self._config.use_mlflow:
                 self._log_final_results(results, train_losses, val_losses)
             
-            logger.info(f"Training complete. Best val_loss: {self._best_val_loss:.4f}")
+            logger.info(f"Training complete. Best val_loss: {results['best_val_loss']:.4f}")
             return results
             
         finally:
