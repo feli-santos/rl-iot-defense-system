@@ -66,6 +66,7 @@ _LABEL_TO_STAGE: dict[str, KillChainStage] = {
     "DNS_Spoofing": KillChainStage.MANEUVER,
     "Mirai-greeth_flood": KillChainStage.MANEUVER,
     "Mirai-greip_flood": KillChainStage.MANEUVER,
+    "Mirai-udpplain": KillChainStage.MANEUVER,
     
     # Stage 4: IMPACT - Service degradation/Denial (DDoS variants)
     "DDoS-ICMP_Flood": KillChainStage.IMPACT,

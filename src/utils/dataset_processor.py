@@ -47,6 +47,7 @@ class DataProcessingConfig:
     correlation_threshold: float = 0.95  # Remove redundant features above this correlation
     feature_keep_keywords: Optional[List[str]] = None
     sampling_strategy: Optional[str] = None
+    min_samples_per_stage: int = 2000  # Floor for each Kill Chain stage in env dataset
     
     def __post_init__(self) -> None:
         """Validate split ratios sum to 1.0."""
@@ -310,10 +311,11 @@ class CICIoTProcessor:
             # Find features correlated above threshold
             correlated_features = upper_tri.index[upper_tri[column] > threshold].tolist()
             if correlated_features:
-                # Keep the feature with higher variance, drop the others
+                # Out of the correlated group, keep the highest-variance feature and
+                # drop the rest.  nsmallest(n) from a group of n+1 returns the n
+                # lowest-variance members — exactly the drop candidates.
                 variances = X[[column] + correlated_features].var()
-                features_to_drop = variances.nsmallest(len(correlated_features)).index.tolist()
-                drop_candidates = features_to_drop[:-1]  # Keep the highest variance one
+                drop_candidates = variances.nsmallest(len(correlated_features)).index.tolist()
                 to_drop.update([feat for feat in drop_candidates if feat not in keep_features])
         
         if to_drop:
@@ -459,6 +461,50 @@ class CICIoTProcessor:
         
         logger.info("Preprocessing artifacts saved")
     
+    def _stratified_sample_for_env(self, raw_data: pd.DataFrame) -> pd.DataFrame:
+        """Sample with per-stage floors to prevent minority stage starvation.
+
+        Takes at least ``min_samples_per_stage`` rows from each Kill Chain stage
+        before filling the remaining budget proportionally from the rest of the
+        dataset.  This guarantees the RL RealizationEngine has a meaningful pool
+        of rows for every stage, including ACCESS which is otherwise ~0.08 %.
+        """
+        label_col = raw_data.columns[-1]
+        mapper = AbstractStateLabelMapper()
+        min_floor = getattr(self.config, 'min_samples_per_stage', 2000)
+        target_n = self.config.sample_size
+        rng_state = self.config.random_state
+
+        stage_ids = raw_data[label_col].astype(str).map(
+            lambda lbl: mapper.get_stage_id_safe(lbl, default=0)
+        )
+
+        sampled_parts: List[pd.DataFrame] = []
+        used_indices: set = set()
+
+        # Floor pass: guarantee min_floor rows per stage
+        for sid in range(5):
+            group = raw_data[stage_ids == sid]
+            n_take = min(min_floor, len(group))
+            taken = group.sample(n=n_take, random_state=rng_state)
+            sampled_parts.append(taken)
+            used_indices.update(taken.index)
+
+        current_n = sum(len(p) for p in sampled_parts)
+        remaining = target_n - current_n
+
+        # Fill remaining budget from rows not yet selected
+        if remaining > 0:
+            residual = raw_data.drop(index=list(used_indices))
+            n_extra = min(remaining, len(residual))
+            if n_extra > 0:
+                sampled_parts.append(
+                    residual.sample(n=n_extra, random_state=rng_state)
+                )
+
+        result = pd.concat(sampled_parts)
+        return result.sample(frac=1, random_state=rng_state).reset_index(drop=True)
+
     def process_for_adversarial_env(self) -> Dict[str, Any]:
         """
         Process dataset for the Adversarial IoT Environment.
@@ -480,13 +526,11 @@ class CICIoTProcessor:
             raw_data = self._load_raw_data()
             logger.info(f"Loaded {len(raw_data):,} raw samples")
             
-            # Sample data if needed
+            # Stratified sample: guarantee a floor of rows per Kill Chain stage
+            # so the RealizationEngine never has a dangerously small pool for any stage.
             if self.config.sample_size < len(raw_data):
-                raw_data = raw_data.sample(
-                    n=self.config.sample_size,
-                    random_state=self.config.random_state
-                )
-                logger.info(f"Sampled to {len(raw_data):,} samples")
+                raw_data = self._stratified_sample_for_env(raw_data)
+                logger.info(f"Stratified-sampled to {len(raw_data):,} samples")
             
             # Extract features and labels
             features, labels = self._extract_features_and_labels(raw_data)

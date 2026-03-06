@@ -40,6 +40,7 @@ class EpisodeMetrics:
         total_action_cost: Sum of action costs incurred.
         benign_steps: Number of steps in BENIGN state.
         attack_steps: Number of steps in non-BENIGN state.
+        stage_actions: Per-stage list of actions taken (stage_id -> [action, ...]).
     """
     
     episode_id: int = 0
@@ -54,6 +55,9 @@ class EpisodeMetrics:
     total_action_cost: float = 0.0
     benign_steps: int = 0
     attack_steps: int = 0
+    stage_actions: Dict[int, List[int]] = field(
+        default_factory=lambda: {i: [] for i in range(5)}
+    )
     
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for serialization."""
@@ -70,6 +74,7 @@ class EpisodeMetrics:
             "total_action_cost": self.total_action_cost,
             "benign_steps": self.benign_steps,
             "attack_steps": self.attack_steps,
+            "stage_actions": {str(k): v for k, v in self.stage_actions.items()},
         }
 
 
@@ -104,6 +109,15 @@ class RunMetrics:
     mean_time_to_contain: float = 0.0  # Steps to reset to BENIGN
     availability_score: float = 0.0  # 1 / (1 + total_action_cost)
     
+    # Per-stage metrics: keyed by stage_id (0-4)
+    # per_stage_steps: total env steps observed in each stage
+    # per_stage_avg_action: mean action level taken while in that stage
+    # per_stage_appropriate_rate: fraction of steps with an appropriate response
+    #   BENIGN -> action==0, RECON -> action>=1, ACCESS -> action>=2, MANEUVER/IMPACT -> action>=3
+    per_stage_steps: Dict[int, int] = field(default_factory=dict)
+    per_stage_avg_action: Dict[int, float] = field(default_factory=dict)
+    per_stage_appropriate_rate: Dict[int, float] = field(default_factory=dict)
+    
     # Detailed episode data
     episode_metrics: List[EpisodeMetrics] = field(default_factory=list)
     
@@ -127,6 +141,9 @@ class RunMetrics:
             "false_positive_rate": self.false_positive_rate,
             "mean_time_to_contain": self.mean_time_to_contain,
             "availability_score": self.availability_score,
+            "per_stage_steps": self.per_stage_steps,
+            "per_stage_avg_action": self.per_stage_avg_action,
+            "per_stage_appropriate_rate": self.per_stage_appropriate_rate,
             "episode_metrics": [ep.to_dict() for ep in self.episode_metrics],
             "evaluation_metrics": self.evaluation_metrics,
         }
@@ -289,6 +306,9 @@ class MetricsCollector:
             # Accumulate action cost
             if action < len(ACTION_COSTS):
                 episode.total_action_cost += ACTION_COSTS[action]
+            
+            # Per-stage action tracking
+            episode.stage_actions[stage].append(action)
         
         return episode
     
@@ -343,6 +363,34 @@ class MetricsCollector:
         total_action_cost = sum(ep.total_action_cost for ep in episodes)
         run_metrics.availability_score = 1.0 / (1.0 + total_action_cost)
         
+        # Security Metric 6: Per-stage metrics
+        # Minimum appropriate action thresholds per stage
+        _APPROPRIATE_THRESHOLD = {0: 0, 1: 1, 2: 2, 3: 3, 4: 3}
+        
+        all_stage_actions: Dict[int, List[int]] = {i: [] for i in range(5)}
+        for ep in episodes:
+            for sid, acts in ep.stage_actions.items():
+                all_stage_actions[sid].extend(acts)
+        
+        run_metrics.per_stage_steps = {
+            sid: len(acts) for sid, acts in all_stage_actions.items()
+        }
+        run_metrics.per_stage_avg_action = {
+            sid: float(np.mean(acts)) if acts else 0.0
+            for sid, acts in all_stage_actions.items()
+        }
+        run_metrics.per_stage_appropriate_rate = {}
+        for sid, acts in all_stage_actions.items():
+            if not acts:
+                run_metrics.per_stage_appropriate_rate[sid] = 0.0
+            else:
+                threshold = _APPROPRIATE_THRESHOLD[sid]
+                if sid == 0:  # BENIGN: correct = no intervention
+                    count = sum(1 for a in acts if a == 0)
+                else:         # Attack stages: correct = escalate to threshold+
+                    count = sum(1 for a in acts if a >= threshold)
+                run_metrics.per_stage_appropriate_rate[sid] = count / len(acts)
+        
         # Store in evaluation_metrics for compatibility
         run_metrics.evaluation_metrics = {
             "avg_reward": run_metrics.avg_reward,
@@ -351,6 +399,9 @@ class MetricsCollector:
             "mean_time_to_contain": run_metrics.mean_time_to_contain,
             "availability_score": run_metrics.availability_score,
             "total_episodes": len(episodes),
+            "per_stage_steps": run_metrics.per_stage_steps,
+            "per_stage_avg_action": run_metrics.per_stage_avg_action,
+            "per_stage_appropriate_rate": run_metrics.per_stage_appropriate_rate,
         }
         
         logger.info(

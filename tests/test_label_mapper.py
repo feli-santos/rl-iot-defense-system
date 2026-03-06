@@ -226,6 +226,25 @@ class TestAbstractStateLabelMapper:
         assert "XSS" in labels
         assert len(labels) == 7
 
+    def test_mirai_udpplain_mapping(
+        self, mapper: AbstractStateLabelMapper
+    ) -> None:
+        """Mirai-udpplain should map to MANEUVER (stage 3)."""
+        assert mapper.get_stage("Mirai-udpplain") == KillChainStage.MANEUVER
+        assert mapper.get_stage_id("Mirai-udpplain") == 3
+
+    def test_get_labels_for_maneuver(
+        self, mapper: AbstractStateLabelMapper
+    ) -> None:
+        """MANEUVER stage should include all 5 labels."""
+        labels = mapper.get_labels_for_stage_id(3)  # MANEUVER
+        assert "MITM-ArpSpoofing" in labels
+        assert "DNS_Spoofing" in labels
+        assert "Mirai-greeth_flood" in labels
+        assert "Mirai-greip_flood" in labels
+        assert "Mirai-udpplain" in labels
+        assert len(labels) == 5
+
     # =========================================================================
     # Utility Methods Tests
     # =========================================================================
@@ -234,9 +253,10 @@ class TestAbstractStateLabelMapper:
         """all_labels should return list of all known labels."""
         all_labels = mapper.all_labels
         assert isinstance(all_labels, list)
-        assert len(all_labels) == 33  # Total CICIoT2023 attack classes mapped
+        assert len(all_labels) == 34  # Total CICIoT2023 attack classes mapped
         assert "BenignTraffic" in all_labels
         assert "DDoS-ICMP_Flood" in all_labels
+        assert "Mirai-udpplain" in all_labels
 
     def test_is_attack(self, mapper: AbstractStateLabelMapper) -> None:
         """is_attack should correctly identify attack vs benign."""
@@ -279,8 +299,8 @@ class TestAbstractStateLabelMapper:
         assert distribution[0] == 1   # BENIGN: 1 label
         assert distribution[1] == 5   # RECON: 5 labels
         assert distribution[2] == 7   # ACCESS: 7 labels
-        assert distribution[3] == 4   # MANEUVER: 4 labels
+        assert distribution[3] == 5   # MANEUVER: 5 labels (including Mirai-udpplain)
         assert distribution[4] == 16  # IMPACT: 16 labels (DDoS + DoS)
         
         # Total should match all labels
-        assert sum(distribution.values()) == 33
+        assert sum(distribution.values()) == 34

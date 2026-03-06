@@ -18,6 +18,7 @@ dataset:
   test_split: 0.2
   # Data quality and feature engineering
   sampling_strategy: "balanced" # For severe imbalance (1059:1 ratio)
+  min_samples_per_stage: 2000 # Floor per Kill Chain stage in env dataset (prevents ACCESS pool starvation)
   feature_selection: true # Remove low/zero variance features
   variance_threshold: 0.01 # Remove features with variance < 0.01
   correlation_threshold: 0.95 # Remove redundant features with corr > 0.95
