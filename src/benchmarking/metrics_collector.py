@@ -270,14 +270,26 @@ class MetricsCollector:
             actions=actions.copy(),
             rewards=rewards.copy(),
             total_reward=sum(rewards),
-            episode_length=len(attack_stages),
+            episode_length=len(actions),
         )
+
+        if len(attack_stages) < len(actions):
+            raise ValueError(
+                "attack_stages must have at least as many entries as actions"
+            )
+
+        # Actions are aligned to the stage observed before each action is taken.
+        # In benchmark evaluation, ``attack_stages`` may contain one trailing
+        # terminal state (the post-step state after the final action). Keep that
+        # final state for reached_impact detection, but do not incorrectly pair
+        # it with a non-existent action.
+        action_aligned_stages = attack_stages[:len(actions)]
         
         # Track containment and false positives
         in_attack = False
         attack_start_step = 0
         
-        for step, (stage, action) in enumerate(zip(attack_stages, actions)):
+        for step, (stage, action) in enumerate(zip(action_aligned_stages, actions)):
             # Count BENIGN vs attack steps
             if stage == 0:
                 episode.benign_steps += 1
@@ -309,6 +321,11 @@ class MetricsCollector:
             
             # Per-stage action tracking
             episode.stage_actions[stage].append(action)
+
+        # Preserve terminal IMPACT detection even when the final stage is a
+        # trailing post-action state with no corresponding action.
+        if any(stage == 4 for stage in attack_stages):
+            episode.reached_impact = True
         
         return episode
     
@@ -593,9 +610,15 @@ class MetricsCollector:
             for run_data in runs_data:
                 # Handle episode_metrics conversion
                 episode_metrics_data = run_data.pop('episode_metrics', [])
-                episode_metrics = [
-                    EpisodeMetrics(**ep) for ep in episode_metrics_data
-                ]
+                episode_metrics = []
+                for ep in episode_metrics_data:
+                    stage_actions = ep.get('stage_actions', {})
+                    if stage_actions:
+                        ep['stage_actions'] = {
+                            int(stage_id): actions
+                            for stage_id, actions in stage_actions.items()
+                        }
+                    episode_metrics.append(EpisodeMetrics(**ep))
                 
                 run_metrics = RunMetrics(**run_data)
                 run_metrics.episode_metrics = episode_metrics

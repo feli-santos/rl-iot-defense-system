@@ -346,6 +346,27 @@ class TestMetricsCollector:
         assert len(new_collector.metrics["ppo"]) == 1
         assert new_collector.metrics["ppo"][0].algorithm_name == "ppo"
         assert new_collector.metrics["ppo"][0].attack_mitigation_rate > 0
+        assert all(
+            isinstance(stage_id, int)
+            for stage_id in new_collector.metrics["ppo"][0].episode_metrics[0].stage_actions
+        )
+
+    def test_trailing_terminal_impact_is_counted(self, collector):
+        """A trailing post-action IMPACT state should still count as reached."""
+        collector.start_run("ppo", 0, {})
+
+        collector.add_episode(
+            "ppo", 0,
+            attack_stages=[0, 1, 2, 3, 4],
+            actions=[0, 1, 2, 2],
+            rewards=[0.0, 0.3, 0.5, -5.0],
+        )
+
+        episode = collector.metrics["ppo"][0].episode_metrics[0]
+
+        assert episode.episode_length == 4
+        assert episode.reached_impact is True
+        assert episode.stage_actions[4] == []
     
     def test_update_training_metrics(self, collector):
         """Test updating training metrics."""

@@ -453,6 +453,48 @@ class BenchmarkAnalyzer:
         plt.savefig(self.results_path / 'attack_progression.png', dpi=300, bbox_inches='tight')
         plt.close()
         print(f"Attack progression analysis saved to: {self.results_path / 'attack_progression.png'}")
+
+    def _build_stage_action_counts(self, algorithm_name: str) -> np.ndarray:
+        """Build raw stage-action counts for an algorithm.
+
+        Prefer ``episode.stage_actions`` because it is already aligned and avoids
+        ambiguity when ``attack_stages`` includes a trailing terminal state.
+        Fall back to the older action/stage zip logic for backward compatibility.
+        """
+        action_by_stage = np.zeros((5, 5), dtype=np.int64)
+
+        for run in self.metrics_collector.metrics[algorithm_name]:
+            for ep in getattr(run, "episode_metrics", []) or []:
+                stage_actions = getattr(ep, "stage_actions", {}) or {}
+                if stage_actions:
+                    for raw_stage, actions in stage_actions.items():
+                        stage = int(raw_stage)
+                        if not 0 <= stage < 5:
+                            continue
+                        for action in actions:
+                            if 0 <= action < 5:
+                                action_by_stage[stage, action] += 1
+                    continue
+
+                for i, action in enumerate(ep.actions):
+                    if i < len(ep.attack_stages):
+                        stage = ep.attack_stages[i]
+                        if 0 <= stage < 5 and 0 <= action < 5:
+                            action_by_stage[stage, action] += 1
+
+        return action_by_stage
+
+    @staticmethod
+    def _normalize_stage_action_counts(action_by_stage: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+        """Normalize raw counts row-wise and mark unsupported rows as NaN."""
+        row_sums = action_by_stage.sum(axis=1)
+        normalized = np.full(action_by_stage.shape, np.nan, dtype=float)
+
+        for row_idx, row_sum in enumerate(row_sums):
+            if row_sum > 0:
+                normalized[row_idx] = action_by_stage[row_idx] / row_sum
+
+        return normalized, row_sums
     
     def _plot_defense_heatmap(self) -> None:
         """Plot defense action heatmap showing action selection by attack stage.
@@ -488,35 +530,32 @@ class BenchmarkAnalyzer:
         fig.suptitle("Defense Policy Heatmaps: Action by Attack Stage", fontsize=14, fontweight='bold')
         
         for ax, alg in zip(axes, algorithms):
-            # Create stage-action matrix
-            action_by_stage = np.zeros((5, 5))  # 5 stages x 5 actions
-            
-            for run in self.metrics_collector.metrics[alg]:
-                for ep in getattr(run, "episode_metrics", []) or []:
-                    # Match actions with attack stages
-                    # Note: attack_stages has one more element than actions (initial state)
-                    for i, action in enumerate(ep.actions):
-                        if i < len(ep.attack_stages):
-                            stage = ep.attack_stages[i]
-                            if 0 <= stage < 5 and 0 <= action < 5:
-                                action_by_stage[stage, action] += 1
-            
-            # Normalize by row (per stage)
-            row_sums = action_by_stage.sum(axis=1, keepdims=True)
-            row_sums[row_sums == 0] = 1  # Avoid division by zero
-            action_dist = action_by_stage / row_sums
-            
+            action_by_stage = self._build_stage_action_counts(alg)
+            action_dist, row_sums = self._normalize_stage_action_counts(action_by_stage)
+
             sns.heatmap(action_dist,
                        xticklabels=FORCE_CONTINUUM_ACTIONS,
-                       yticklabels=KILL_CHAIN_STAGES,
+                       yticklabels=[f"{stage} (n={int(count)})" for stage, count in zip(KILL_CHAIN_STAGES, row_sums)],
                        annot=True,
                        fmt='.0%',
                        cmap='YlOrRd',
                        ax=ax,
-                       vmin=0, vmax=1)
+                       vmin=0,
+                       vmax=1,
+                       mask=np.isnan(action_dist))
             ax.set_title(f"{alg.upper()}")
             ax.set_xlabel("Defensive Action")
             ax.set_ylabel("Attack Stage")
+            if np.any(row_sums == 0):
+                ax.text(
+                    0.5,
+                    -0.18,
+                    "Rows with n=0 were never visited during evaluation.",
+                    transform=ax.transAxes,
+                    ha='center',
+                    va='top',
+                    fontsize=9,
+                )
         
         plt.tight_layout(rect=[0, 0, 1, 0.95])
         plt.savefig(self.results_path / 'defense_heatmap.png', dpi=300, bbox_inches='tight')
@@ -534,15 +573,7 @@ class BenchmarkAnalyzer:
 
         algorithms = list(self.metrics_collector.metrics.keys())
         for alg in algorithms:
-            action_by_stage = np.zeros((5, 5), dtype=np.int64)
-
-            for run in self.metrics_collector.metrics[alg]:
-                for ep in getattr(run, "episode_metrics", []) or []:
-                    for i, action in enumerate(ep.actions):
-                        if i < len(ep.attack_stages):
-                            stage = ep.attack_stages[i]
-                            if 0 <= stage < 5 and 0 <= action < 5:
-                                action_by_stage[stage, action] += 1
+            action_by_stage = self._build_stage_action_counts(alg)
 
             if action_by_stage.sum() == 0:
                 print(f"Warning: No episode data available for confusion matrix ({alg})")
@@ -557,21 +588,19 @@ class BenchmarkAnalyzer:
             counts_path = self.results_path / f"confusion_matrix_{alg}.csv"
             counts_df.to_csv(counts_path)
 
-            # Normalize by row for heatmap
-            row_sums = action_by_stage.sum(axis=1, keepdims=True)
-            row_sums[row_sums == 0] = 1
-            normalized = action_by_stage / row_sums
+            normalized, row_sums = self._normalize_stage_action_counts(action_by_stage)
 
             plt.figure(figsize=(7, 5))
             sns.heatmap(
                 normalized,
                 xticklabels=FORCE_CONTINUUM_ACTIONS,
-                yticklabels=KILL_CHAIN_STAGES,
+                yticklabels=[f"{stage} (n={int(count)})" for stage, count in zip(KILL_CHAIN_STAGES, row_sums)],
                 annot=True,
                 fmt='.0%',
                 cmap='Blues',
                 vmin=0,
                 vmax=1,
+                mask=np.isnan(normalized),
             )
             plt.title(f"Confusion Matrix: Stage vs Action ({alg.upper()})")
             plt.xlabel("Defensive Action")
