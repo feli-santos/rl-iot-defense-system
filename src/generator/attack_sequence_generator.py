@@ -118,6 +118,10 @@ class AttackSequenceGenerator(nn.Module):
     def config(self) -> AttackSequenceGeneratorConfig:
         """Get model configuration."""
         return self._config
+
+    def _model_device(self) -> torch.device:
+        """Get the device where model parameters are currently allocated."""
+        return next(self.parameters()).device
     
     def set_transition_mask(self, mask: Optional[TransitionMask]) -> None:
         """Set transition mask for grammar-constrained generation.
@@ -179,7 +183,7 @@ class AttackSequenceGenerator(nn.Module):
         temp = temperature if temperature is not None else self._default_temperature
         
         # Prepare input
-        x = torch.tensor([history], dtype=torch.long)
+        x = torch.tensor([history], dtype=torch.long, device=self._model_device())
         
         # Forward pass
         with torch.no_grad():
@@ -189,7 +193,7 @@ class AttackSequenceGenerator(nn.Module):
         scaled_logits = logits / temp
         probs = F.softmax(scaled_logits, dim=-1)
         
-        return probs.squeeze(0).numpy()
+        return probs.squeeze(0).detach().cpu().numpy()
     
     def sample_next(
         self,
@@ -212,7 +216,7 @@ class AttackSequenceGenerator(nn.Module):
         temp = temperature if temperature is not None else self._default_temperature
         
         # Prepare input
-        x = torch.tensor([history], dtype=torch.long)
+        x = torch.tensor([history], dtype=torch.long, device=self._model_device())
         
         # Forward pass
         with torch.no_grad():
@@ -228,7 +232,7 @@ class AttackSequenceGenerator(nn.Module):
         probs = F.softmax(scaled_logits, dim=-1)
         
         # Categorical sampling
-        probs_np = probs.numpy()
+        probs_np = probs.detach().cpu().numpy()
         next_stage = np.random.choice(self._config.num_stages, p=probs_np)
         
         return int(next_stage)
