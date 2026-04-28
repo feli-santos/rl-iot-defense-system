@@ -78,6 +78,11 @@ plot-dataset:  ## Phase 1: regenerate dataset overview figures (F0).
 .PHONY: phase-1
 phase-1: build-split-indices plot-dataset  ## Run all Phase-1 deliverables.
 
+.PHONY: phase-2
+phase-2:  ## Phase 2: train LSTM Red Team and emit F1+F2 (~80 s on CPU).
+	$(PYTHON) -m scripts.red_team.train_lstm \
+	    --processed-dir $(DATA) --seed $(SEED)
+
 .PHONY: train-generator
 train-generator:  ## Train the LSTM Red Team generator.
 	$(PYTHON) main.py --mode train-generator --config $(CONFIG) \
