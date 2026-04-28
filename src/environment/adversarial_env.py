@@ -108,8 +108,11 @@ class AdversarialEnvConfig:
     impact_penalty: float = 200.0
     defense_success_bonus: float = 10.0
     false_positive_penalty: float = 10.0
+    penalty_overreact_benign: float = 50.0
     penalty_block_benign: float = 100.0
     penalty_block_recon: float = 50.0
+    penalty_missed_impact: float = 150.0
+    reward_benign_passive: float = 10.0
     patience_bonus: float = 0.5
     correct_escalation_reward: float = 5.0
     correct_de_escalation_reward: float = 0.5
@@ -172,7 +175,20 @@ class AdversarialIoTEnv(gym.Env):
         
         self._config = config or AdversarialEnvConfig()
         self._render_mode = render_mode
-        self._device = torch.device(device)
+        requested_device = torch.device(device)
+
+        # NOTE: AttackSequenceGenerator relies on nn.Embedding, which can raise
+        # intermittent runtime errors on some PyTorch + Apple MPS combinations
+        # during inference. Keep environment-side generator inference on CPU for
+        # robustness while allowing RL policy training to proceed.
+        if requested_device.type == "mps":
+            logger.warning(
+                "MPS requested for environment generator inference; "
+                "falling back to CPU for AttackSequenceGenerator stability."
+            )
+            self._device = torch.device("cpu")
+        else:
+            self._device = requested_device
         
         # Load Attack Sequence Generator (Red Team)
         generator_path = Path(generator_path)
@@ -300,6 +316,9 @@ class AdversarialIoTEnv(gym.Env):
             if action >= 3:  # BLOCK or ISOLATE — partial mitigation bonus
                 reward += self._config.defense_success_bonus
                 outcome = "impact_mitigated"
+            elif action <= 1:  # OBSERVE or LOG — severe miss at IMPACT
+                reward -= self._config.penalty_missed_impact
+                outcome = "impact_missed"
             else:
                 outcome = "impact_unmitigated"
             # Update observation window so the returned observation is valid
@@ -426,13 +445,25 @@ class AdversarialIoTEnv(gym.Env):
         action_cost = get_action_cost(action) * self._config.action_cost_scale
         reward -= action_cost
 
-        # Graduated sanctions for aggressive action on low-threat stages
-        is_aggressive = action >= 3  # BLOCK or ISOLATE
-        if is_aggressive:
-            if self._current_attack_stage == KillChainStage.BENIGN.value:
+        # Evaluate action against the true stage at decision time
+        decision_stage = previous_stage
+
+        # Severe penalty for overreacting on BENIGN traffic
+        if decision_stage == KillChainStage.BENIGN.value and action >= 2:
+            reward -= self._config.penalty_overreact_benign
+            if action >= 3:
                 reward -= self._config.penalty_block_benign
-            elif self._current_attack_stage == KillChainStage.RECON.value:
-                reward -= self._config.penalty_block_recon
+        # Graduated sanction for strong action during RECON
+        elif decision_stage == KillChainStage.RECON.value and action >= 3:
+            reward -= self._config.penalty_block_recon
+
+        # Severe penalty for under-reacting at IMPACT
+        if decision_stage == KillChainStage.IMPACT.value and action <= 1:
+            reward -= self._config.penalty_missed_impact
+
+        # Explicit positive reward for allowing benign traffic with passive actions
+        if decision_stage == KillChainStage.BENIGN.value and action <= 1:
+            reward += self._config.reward_benign_passive
         
         # R_defense: Reward for appropriate defense
         attack_escalated = self._current_attack_stage > previous_stage
@@ -455,7 +486,11 @@ class AdversarialIoTEnv(gym.Env):
         # Patience reward for low-risk stages
         is_low_risk = self._current_attack_stage <= KillChainStage.RECON.value
         is_passive_action = action <= 1  # OBSERVE or LOG
-        if is_low_risk and is_passive_action:
+        if (
+            is_low_risk
+            and is_passive_action
+            and decision_stage != KillChainStage.BENIGN.value
+        ):
             reward += self._config.patience_bonus
         
         # Bonus for keeping attack from reaching IMPACT

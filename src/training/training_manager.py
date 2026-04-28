@@ -18,7 +18,7 @@ import mlflow.pytorch
 import numpy as np
 from stable_baselines3.common.base_class import BaseAlgorithm
 from stable_baselines3.common.evaluation import evaluate_policy
-from stable_baselines3.common.callbacks import EvalCallback, CheckpointCallback, BaseCallback
+from stable_baselines3.common.callbacks import EvalCallback, BaseCallback
 
 logger = logging.getLogger(__name__)
 
@@ -44,6 +44,8 @@ class MLflowCallback(BaseCallback):
         # Reward analysis
         self.reward_buffer: List[float] = []
         self.cumulative_rewards: List[float] = []
+        self.logged_reward_timesteps: List[int] = []
+        self.logged_recent_mean_rewards: List[float] = []
         
         # Training metrics
         self.loss_values: List[float] = []
@@ -281,6 +283,9 @@ class MLflowCallback(BaseCallback):
                 # Success rate (positive rewards)
                 positive_rewards = [r for r in recent_rewards if r > 0]
                 metrics['rewards/success_rate'] = float(len(positive_rewards) / len(recent_rewards))
+
+                self.logged_reward_timesteps.append(self.num_timesteps)
+                self.logged_recent_mean_rewards.append(float(np.mean(recent_rewards)))
             
             # === EPISODE LENGTH METRICS ===
             if self.episode_lengths:
@@ -668,6 +673,33 @@ class TrainingManager:
             # Save final model
             final_model_path = self.models_path / "final_model"
             algorithm.save(str(final_model_path))
+            final_model_zip_path = Path(f"{final_model_path}.zip")
+
+            curve_timesteps = list(mlflow_callback.logged_reward_timesteps)
+            curve_rewards = list(mlflow_callback.logged_recent_mean_rewards)
+
+            # Fallback: derive reward points from SB3 episode info buffer.
+            if not curve_timesteps or not curve_rewards:
+                ep_info_buffer = getattr(algorithm, "ep_info_buffer", None)
+                if ep_info_buffer:
+                    fallback_rewards = [
+                        float(ep.get("r", 0.0)) for ep in ep_info_buffer if isinstance(ep, dict)
+                    ]
+                    if fallback_rewards:
+                        count = len(fallback_rewards)
+                        curve_timesteps = np.linspace(
+                            max(1, total_timesteps // max(count, 1)),
+                            total_timesteps,
+                            num=count,
+                            dtype=int,
+                        ).tolist()
+                        curve_rewards = fallback_rewards
+
+            # Save reward curve from callback metrics
+            training_curve_path = self._save_rl_training_curve(
+                timesteps=curve_timesteps,
+                recent_mean_rewards=curve_rewards,
+            )
             
             # Final evaluation
             final_eval = self.evaluate_algorithm(algorithm, n_episodes=n_eval_episodes)
@@ -676,11 +708,12 @@ class TrainingManager:
             results = {
                 'total_timesteps': total_timesteps,
                 'training_time': training_time,
-                'final_model_path': str(final_model_path),
+                'final_model_path': str(final_model_zip_path),
                 'final_evaluation': final_eval,
                 'success': True,
                 'total_episodes': mlflow_callback.episode_count,
-                'metrics_logged': len(mlflow_callback.episode_rewards)
+                'metrics_logged': len(mlflow_callback.episode_rewards),
+                'training_curve_path': str(training_curve_path) if training_curve_path else None,
             }
             
             # Add best model info if available
@@ -710,6 +743,8 @@ class TrainingManager:
             print(f"   • Episodes trained: {mlflow_callback.episode_count}")
             print(f"   • Episodes with rewards logged: {len(mlflow_callback.episode_rewards)}")
             print(f"   • Training time: {training_time:.1f}s")
+            if training_curve_path:
+                print(f"   • Reward curve saved to: {training_curve_path}")
             if mlflow_callback.episode_rewards:
                 print(f"   • Final reward: {np.mean(mlflow_callback.episode_rewards[-10:]):.3f}")
                 print(f"   • Best episode: {np.max(mlflow_callback.episode_rewards):.3f}")
@@ -734,6 +769,47 @@ class TrainingManager:
                 'error': str(e),
                 'training_time': training_time
             }
+
+    def _save_rl_training_curve(
+        self,
+        timesteps: List[int],
+        recent_mean_rewards: List[float],
+    ) -> Optional[Path]:
+        """Save RL training reward curve from callback snapshots.
+
+        Args:
+            timesteps: Logged training timesteps.
+            recent_mean_rewards: Mean reward over recent episodes at each timestep.
+
+        Returns:
+            Path to saved curve image, or None when data is unavailable.
+        """
+        if not timesteps or not recent_mean_rewards:
+            logger.warning("Insufficient callback metrics to save RL training curve")
+            return None
+
+        fig, ax = plt.subplots(figsize=(10, 6))
+        ax.plot(timesteps, recent_mean_rewards, label="Mean Reward (recent episodes)", linewidth=2)
+        ax.set_title("Blue Team PPO Training Reward Curve")
+        ax.set_xlabel("Timesteps")
+        ax.set_ylabel("Episode Reward")
+        ax.grid(True, alpha=0.3)
+        ax.legend()
+
+        run_curve_path = self.plots_path / "rl_training_curve.png"
+        fig.savefig(run_curve_path, dpi=300, bbox_inches='tight')
+
+        root_curve_path = Path.cwd() / "rl_training_curve.png"
+        fig.savefig(root_curve_path, dpi=300, bbox_inches='tight')
+        plt.close(fig)
+
+        if self.current_run:
+            try:
+                mlflow.log_artifact(str(run_curve_path))
+            except Exception as exc:
+                logger.warning(f"Failed to log reward curve artifact to MLflow: {exc}")
+
+        return root_curve_path
 
     def evaluate_algorithm(self, 
                           algorithm: BaseAlgorithm,
@@ -781,41 +857,37 @@ class TrainingManager:
             for episode_idx in range(min(3, n_episodes)):
                 try:
                     if hasattr(eval_env, 'envs'):
-                        obs = eval_env.reset()
                         single_env = eval_env.envs[0]
+                        obs, _ = single_env.reset()
                     else:
-                        obs, _ = eval_env.reset()
                         single_env = eval_env
+                        obs, _ = single_env.reset()
                     
                     episode_reward = 0
                     episode_length = 0
                     terminated = False
                     truncated = False
+                    done = False
                     
                     max_steps = 50  # Limit steps to avoid long episodes
                     
-                    while not (terminated or truncated) and episode_length < max_steps:
+                    while not done and episode_length < max_steps:
                         # Get action from algorithm
                         action, _ = algorithm.predict(obs, deterministic=deterministic)
                         
-                        # Ensure action is valid (0, 1, 2, or 3)
+                        # Ensure action is valid (0-4 force continuum)
                         if hasattr(action, 'item'):
                             action = action.item()
                         action = int(action)
                         
                         # Validate action
-                        if action not in [0, 1, 2, 3]:
+                        if action not in [0, 1, 2, 3, 4]:
                             logger.warning(f"Invalid action {action}, using 0")
                             action = 0
                         
                         # Step environment
-                        if hasattr(eval_env, 'envs'):
-                            obs, reward, terminated, truncated, info = eval_env.step([action])
-                            reward = reward[0]
-                            terminated = terminated[0]
-                            truncated = truncated[0]
-                        else:
-                            obs, reward, terminated, truncated, info = eval_env.step(action)
+                        obs, reward, terminated, truncated, info = single_env.step(action)
+                        done = bool(terminated or truncated)
                         
                         episode_reward += reward
                         episode_length += 1
