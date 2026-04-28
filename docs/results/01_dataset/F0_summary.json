@@ -1,0 +1,65 @@
+{
+  "class_counts": {
+    "Backdoor_Malware": 3218,
+    "BenignTraffic": 100000,
+    "BrowserHijacking": 5859,
+    "CommandInjection": 5409,
+    "DDoS-ACK_Fragmentation": 12121,
+    "DDoS-HTTP_Flood": 12121,
+    "DDoS-ICMP_Flood": 12121,
+    "DDoS-ICMP_Fragmentation": 12121,
+    "DDoS-PSHACK_Flood": 12121,
+    "DDoS-RSTFINFlood": 12121,
+    "DDoS-SYN_Flood": 12121,
+    "DDoS-SlowLoris": 12121,
+    "DDoS-SynonymousIP_Flood": 12121,
+    "DDoS-TCP_Flood": 12121,
+    "DDoS-UDP_Flood": 12121,
+    "DDoS-UDP_Fragmentation": 12121,
+    "DNS_Spoofing": 12121,
+    "DictionaryBruteForce": 12121,
+    "DoS-HTTP_Flood": 12121,
+    "DoS-SYN_Flood": 12121,
+    "DoS-TCP_Flood": 12121,
+    "DoS-UDP_Flood": 12121,
+    "MITM-ArpSpoofing": 12121,
+    "Mirai-greeth_flood": 12121,
+    "Mirai-greip_flood": 12121,
+    "Mirai-udpplain": 12121,
+    "Recon-HostDiscovery": 12121,
+    "Recon-OSScan": 12121,
+    "Recon-PingSweep": 2262,
+    "Recon-PortScan": 12121,
+    "SqlInjection": 5245,
+    "Uploading_Attack": 1252,
+    "VulnerabilityScan": 12121,
+    "XSS": 3846
+  },
+  "figure_id": "F0",
+  "n_classes": 34,
+  "n_stages": 5,
+  "n_total": 442237,
+  "stage_per_split": {
+    "test": [
+      20000,
+      10149,
+      7390,
+      12121,
+      38787
+    ],
+    "train": [
+      70000,
+      35522,
+      25865,
+      42424,
+      135755
+    ],
+    "val": [
+      10000,
+      5075,
+      3695,
+      6060,
+      19394
+    ]
+  }
+}

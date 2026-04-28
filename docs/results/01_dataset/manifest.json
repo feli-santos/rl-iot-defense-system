@@ -1,0 +1,18 @@
+{
+  "figure_id": "F0",
+  "git_sha": "3200694f29217e520e0df92afc706c5c85134858",
+  "inputs": {
+    "data/processed/ciciot2023/labels.npy": "fb6bbbdc3b5a35ba201e6d087fc135ac94325c4867ec5d40383d8f82ebb3f743",
+    "data/processed/ciciot2023/splits/manifest.json": "d728bdc504ae2b00e36bdbf87fb8961f3d5e5916af2a41e4c91c76bd78a6d93f"
+  },
+  "mlflow_run_ids": [],
+  "outputs": {
+    "F0_class_distribution.png": "c9e9b3a079e50367242876b1364894bbae86e96c80abe69fccd215df7dc5436e",
+    "F0_stage_distribution.png": "16d4b2de769e33a469aa7a2262b3a89ed1111f1be66fd79168dc74b44f46d333",
+    "F0_summary.json": "43d9168d56410cdc09d96fbc75a8ba6f84eb48818bc0a82f91675c36d97aa311"
+  },
+  "phase": 1,
+  "produced_by": "scripts/data/plot_dataset_overview.py",
+  "tier": "context",
+  "title": "Phase-1 dataset overview (CICIoT2023, post-rebalance)"
+}
