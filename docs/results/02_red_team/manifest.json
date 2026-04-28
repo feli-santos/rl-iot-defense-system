@@ -1,0 +1,17 @@
+{
+  "all_gates_passed": true,
+  "figure_id": "F1+F2",
+  "git_sha": "283ca29e3ff9b10f117141c509736598c55f8222",
+  "inputs": {
+    "data/processed/ciciot2023/splits/manifest.json": "82aa12149d2e0ee5a2424a7da44719df885ac18495590344e6d393e22d72b5c5"
+  },
+  "outputs": {
+    "F1_learning_curves.png": "6064e50ae70d1819346dcc7b4cd1dff5b683e725cf0766e29b5900e71397f9c7",
+    "F1_summary.json": "1c7d26eabdbb9d463c94f8253bcacafaae1a13751dd52adc8b4b77ad5ac77445",
+    "F2_transition_matrix_comparison.png": "404127c45d2b3b886483dc71d50daf0717fbc73c738e9fc394cedeba8e4b2edc"
+  },
+  "phase": 2,
+  "produced_by": "scripts/red_team/train_lstm.py",
+  "tier": "must-have",
+  "title": "Phase-2 Red Team v2 (LSTM episode generator)"
+}
