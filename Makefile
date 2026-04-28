@@ -65,6 +65,19 @@ test-cov:  ## Run pytest with coverage.
 process-data:  ## Process raw CICIoT2023 -> data/processed/ciciot2023/.
 	$(PYTHON) main.py --mode process-data --config $(CONFIG) --data-path $(DATA)
 
+.PHONY: build-split-indices
+build-split-indices:  ## Phase 1: build immutable train/val/test/OOD indices + hash manifest.
+	$(PYTHON) -m scripts.data.build_split_indices \
+	    --processed-dir $(DATA) --seed $(SEED)
+
+.PHONY: plot-dataset
+plot-dataset:  ## Phase 1: regenerate dataset overview figures (F0).
+	$(PYTHON) -m scripts.data.plot_dataset_overview \
+	    --processed-dir $(DATA) --out-dir docs/results/01_dataset
+
+.PHONY: phase-1
+phase-1: build-split-indices plot-dataset  ## Run all Phase-1 deliverables.
+
 .PHONY: train-generator
 train-generator:  ## Train the LSTM Red Team generator.
 	$(PYTHON) main.py --mode train-generator --config $(CONFIG) \
