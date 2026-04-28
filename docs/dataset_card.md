@@ -19,7 +19,7 @@
 | Master split seed            | **42**                                                         |
 | Train / val / test ratios    | **0.7 / 0.1 / 0.2** (stratified by stage)                      |
 | Balanced eval splits         | val 200/stage (1 000 rows), test 1 000/stage (5 000 rows)      |
-| OOD-attack splits (held-out) | 4 classes, 12 121 rows each, spanning all 4 attack stages      |
+| OOD-attack splits (held-out) | 4 classes (3 × 12 121 + XSS 3 846 = 40 209 rows), one per attack stage |
 
 The processed snapshot is the result of `main.py --mode process-data`
 (commit `pre-mentor-restart`) applied to the **full 169-file CICIoT2023
@@ -148,12 +148,18 @@ Four CICIoT2023 classes are reserved as OOD held-outs — the model never
 sees these labels during *any* training phase, but they are evaluated in
 Phase 7 to test generalization:
 
-| Class                 | Stage    | Rows   |
-|-----------------------|----------|-------:|
-| `VulnerabilityScan`   | RECON    | 12 121 |
-| `DictionaryBruteForce`| ACCESS   | 12 121 |
-| `Mirai-udpplain`      | MANEUVER | 12 121 |
-| `DDoS-HTTP_Flood`     | IMPACT   | 12 121 |
+| Class                 | Stage    | Rows   | % of stage |
+|-----------------------|----------|-------:|-----------:|
+| `VulnerabilityScan`   | RECON    | 12 121 |    23.9 %  |
+| `XSS`                 | ACCESS   |  3 846 |    10.4 %  |
+| `Mirai-udpplain`      | MANEUVER | 12 121 |    20.0 %  |
+| `DDoS-HTTP_Flood`     | IMPACT   | 12 121 |     6.3 %  |
+
+> The ACCESS choice is deliberately small. `DictionaryBruteForce` (12 121,
+> 32.8 % of ACCESS rows) was rejected because removing it would starve the
+> ACCESS classifier of training data; `XSS` is large enough (3 846 rows
+> ≈ Mirai-class size) for a meaningful held-out experiment yet costs only
+> ~10 % of stage data.
 
 > **Important.** OOD indices are computed from the **string label array**,
 > so they overlap with `train`/`val`/`test` by construction. Phase-2/4

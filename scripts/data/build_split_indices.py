@@ -65,13 +65,16 @@ NUM_STAGES = 5
 DEFAULT_RATIOS = (0.7, 0.1, 0.2)  # train, val, test (stratified)
 DEFAULT_VAL_BALANCED_PER_STAGE = 200
 DEFAULT_TEST_BALANCED_PER_STAGE = 1000
-# Held-out CICIoT2023 classes for OOD evaluation. Chosen to span all attack
-# stages while preserving a reasonable amount of data in train.
+# Held-out CICIoT2023 classes for OOD evaluation. Chosen to span all four
+# attack stages while preserving the per-stage training distribution. We
+# deliberately pick a *small* class for ACCESS (XSS, ~10 % of stage rows)
+# rather than the largest (DictionaryBruteForce, ~33 %) to avoid starving
+# the LSTM of ACCESS training data.
 DEFAULT_OOD_CLASSES = (
-    "DDoS-HTTP_Flood",   # IMPACT
-    "Mirai-udpplain",    # MANEUVER
-    "DictionaryBruteForce",  # ACCESS
-    "VulnerabilityScan", # RECON
+    "DDoS-HTTP_Flood",   # IMPACT  (~6 % of IMPACT rows)
+    "Mirai-udpplain",    # MANEUVER (~20 % of MANEUVER rows)
+    "XSS",               # ACCESS   (~10 % of ACCESS rows)
+    "VulnerabilityScan", # RECON   (~24 % of RECON rows)
 )
 
 

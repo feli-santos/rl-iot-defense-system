@@ -1,9 +1,9 @@
 {
   "figure_id": "F0",
-  "git_sha": "3200694f29217e520e0df92afc706c5c85134858",
+  "git_sha": "a69846f7ee70b8b1de70f4d5da8c7194aac5c196",
   "inputs": {
     "data/processed/ciciot2023/labels.npy": "fb6bbbdc3b5a35ba201e6d087fc135ac94325c4867ec5d40383d8f82ebb3f743",
-    "data/processed/ciciot2023/splits/manifest.json": "d728bdc504ae2b00e36bdbf87fb8961f3d5e5916af2a41e4c91c76bd78a6d93f"
+    "data/processed/ciciot2023/splits/manifest.json": "82aa12149d2e0ee5a2424a7da44719df885ac18495590344e6d393e22d72b5c5"
   },
   "mlflow_run_ids": [],
   "outputs": {
