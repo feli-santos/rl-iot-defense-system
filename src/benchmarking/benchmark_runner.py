@@ -12,6 +12,7 @@ Usage:
 
 import logging
 import time
+import json
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
@@ -63,6 +64,14 @@ ALGORITHM_CLASSES = {
     "dqn": DQN,
     "ppo": PPO,
     "a2c": A2C,
+}
+
+STAGE_NAMES = {
+    0: "BENIGN",
+    1: "RECON",
+    2: "ACCESS",
+    3: "MANEUVER",
+    4: "IMPACT",
 }
 
 
@@ -196,8 +205,12 @@ class BenchmarkRunner:
         if self.benchmark_config.dataset_path:
             self.dataset_path = self.benchmark_config.dataset_path
         else:
+            benchmark_cfg = self.config.get("benchmark", {})
+            holdout_dataset_path = benchmark_cfg.get("holdout_dataset_path")
             ds_config = self.config.get("dataset", {})
-            self.dataset_path = Path(ds_config.get("processed_path", "data/processed/ciciot2023"))
+            self.dataset_path = Path(
+                holdout_dataset_path or ds_config.get("processed_path", "data/processed/ciciot2023")
+            )
     
     def _create_env(self) -> AdversarialIoTEnv:
         """Create an evaluation environment.
@@ -218,8 +231,11 @@ class BenchmarkRunner:
                 impact_penalty=adv_config.get("reward", {}).get("impact_penalty", 5.0),
                 defense_success_bonus=adv_config.get("reward", {}).get("defense_success_bonus", 2.0),
                 false_positive_penalty=adv_config.get("reward", {}).get("false_positive_penalty", 10.0),
+                penalty_overreact_benign=adv_config.get("reward", {}).get("penalty_overreact_benign", 50.0),
                 penalty_block_benign=adv_config.get("reward", {}).get("penalty_block_benign", 100.0),
                 penalty_block_recon=adv_config.get("reward", {}).get("penalty_block_recon", 50.0),
+                penalty_missed_impact=adv_config.get("reward", {}).get("penalty_missed_impact", 150.0),
+                reward_benign_passive=adv_config.get("reward", {}).get("reward_benign_passive", 10.0),
                 patience_bonus=adv_config.get("reward", {}).get("patience_bonus", 0.5),
                 correct_escalation_reward=adv_config.get("reward", {}).get("defense_reward", {}).get(
                     "correct_escalation", 1.0
@@ -292,12 +308,16 @@ class BenchmarkRunner:
             # Run evaluation episodes
             episode_rewards = []
             episode_lengths = []
+            y_true_stages: List[int] = []
+            y_pred_stages: List[int] = []
             
             for ep_idx in range(num_episodes):
                 episode_data = self._run_episode(model, env)
                 
                 episode_rewards.append(episode_data["reward"])
                 episode_lengths.append(episode_data["length"])
+                y_true_stages.extend(episode_data["aligned_stages"])
+                y_pred_stages.extend(self._actions_to_stage_predictions(episode_data["actions"]))
                 
                 # Add episode to metrics collector
                 self.metrics_collector.add_episode(
@@ -317,6 +337,10 @@ class BenchmarkRunner:
             
             # Get results
             run_metrics = self.metrics_collector.metrics[algorithm_type][run_id]
+            stage_detection_metrics = self._compute_stage_detection_metrics(
+                y_true=y_true_stages,
+                y_pred=y_pred_stages,
+            )
             
             results = {
                 "algorithm": algorithm_type,
@@ -332,6 +356,9 @@ class BenchmarkRunner:
                 "false_positive_rate": run_metrics.false_positive_rate,
                 "mean_time_to_contain": run_metrics.mean_time_to_contain,
                 "availability_score": run_metrics.availability_score,
+                "detection_recall_by_stage": stage_detection_metrics["recall_by_stage"],
+                "benign_fpr": stage_detection_metrics["benign_fpr"],
+                "macro_f1": stage_detection_metrics["macro_f1"],
             }
             
             self._print_results(results)
@@ -388,8 +415,67 @@ class BenchmarkRunner:
             "reward": total_reward,
             "length": step_count,
             "attack_stages": attack_stages,
+            "aligned_stages": attack_stages[:len(actions)],
             "actions": actions,
             "step_rewards": step_rewards,
+        }
+
+    def _actions_to_stage_predictions(self, actions: List[int]) -> List[int]:
+        """Map force-continuum actions to stage-level predictions.
+
+        This projection enables comparable stage recall/F1 metrics across RL
+        policies and optional supervised baselines.
+        """
+        action_to_stage = {
+            0: 0,  # OBSERVE -> BENIGN
+            1: 1,  # LOG -> RECON
+            2: 2,  # THROTTLE -> ACCESS
+            3: 3,  # BLOCK -> MANEUVER
+            4: 4,  # ISOLATE -> IMPACT
+        }
+        return [action_to_stage.get(int(a), 0) for a in actions]
+
+    def _compute_stage_detection_metrics(
+        self,
+        y_true: List[int],
+        y_pred: List[int],
+    ) -> Dict[str, Any]:
+        """Compute stage-level recall, benign FPR, and macro-F1."""
+        if not y_true or not y_pred:
+            empty_recall = {str(stage_id): 0.0 for stage_id in range(5)}
+            return {
+                "recall_by_stage": empty_recall,
+                "benign_fpr": 0.0,
+                "macro_f1": 0.0,
+            }
+
+        eps = 1e-12
+        recalls: Dict[str, float] = {}
+        f1_scores: List[float] = []
+
+        for stage_id in range(5):
+            tp = sum(1 for yt, yp in zip(y_true, y_pred) if yt == stage_id and yp == stage_id)
+            fn = sum(1 for yt, yp in zip(y_true, y_pred) if yt == stage_id and yp != stage_id)
+            fp = sum(1 for yt, yp in zip(y_true, y_pred) if yt != stage_id and yp == stage_id)
+
+            recall = tp / (tp + fn + eps)
+            precision = tp / (tp + fp + eps)
+            f1 = (2.0 * precision * recall) / (precision + recall + eps)
+
+            recalls[str(stage_id)] = float(recall)
+            f1_scores.append(float(f1))
+
+        benign_total = sum(1 for stage in y_true if stage == 0)
+        benign_fp = sum(
+            1 for yt, yp in zip(y_true, y_pred)
+            if yt == 0 and yp != 0
+        )
+        benign_fpr = benign_fp / (benign_total + eps)
+
+        return {
+            "recall_by_stage": recalls,
+            "benign_fpr": float(benign_fpr),
+            "macro_f1": float(np.mean(f1_scores) if f1_scores else 0.0),
         }
     
     def _print_results(self, results: Dict[str, Any]) -> None:
@@ -402,6 +488,14 @@ class BenchmarkRunner:
         print(f"   False Positive Rate:    {results['false_positive_rate']:.1%}")
         print(f"   Mean Time to Contain:   {results['mean_time_to_contain']:.1f} steps")
         print(f"   Availability Score:     {results['availability_score']:.3f}")
+        print(f"\n🧠 Detection Metrics:")
+        recall_by_stage = results.get("detection_recall_by_stage", {})
+        for stage_id in range(5):
+            stage_name = STAGE_NAMES[stage_id]
+            recall = recall_by_stage.get(str(stage_id), 0.0)
+            print(f"   Recall {stage_name:<8}: {recall:.1%}")
+        print(f"   Benign FPR:             {results.get('benign_fpr', 0.0):.1%}")
+        print(f"   Macro-F1:               {results.get('macro_f1', 0.0):.3f}")
     
     def run_comparison(
         self,
@@ -452,11 +546,64 @@ class BenchmarkRunner:
         
         # Save results
         self.metrics_collector.save_results("comparison.json")
+
+        report = {
+            "rl_comparison_summary": self.metrics_collector.get_comparison_data(),
+            "supervised_baselines": self._load_configured_supervised_baselines(),
+        }
+        report_path = self.results_path / "benchmark_evaluation_report.json"
+        with open(report_path, "w") as f:
+            json.dump(report, f, indent=2)
+        print(f"📄 Benchmark evaluation report: {report_path}")
         
         print(f"\n🎉 Comparison completed!")
         print(f"📁 Results saved to: {self.results_path}")
         
         return self.metrics_collector
+
+    def _load_configured_supervised_baselines(self) -> List[Dict[str, Any]]:
+        """Load optional supervised baseline metrics when configured.
+
+        Expected config schema:
+            benchmark.supervised_baselines.enabled: bool
+            benchmark.supervised_baselines.entries: List[{name, metrics_file}]
+        """
+        benchmark_cfg = self.config.get("benchmark", {})
+        baselines_cfg = benchmark_cfg.get("supervised_baselines", {})
+        if not baselines_cfg.get("enabled", False):
+            return []
+
+        loaded: List[Dict[str, Any]] = []
+        for entry in baselines_cfg.get("entries", []):
+            name = entry.get("name", "baseline")
+            metrics_file = entry.get("metrics_file")
+            if not metrics_file:
+                logger.warning(f"Skipping baseline '{name}' with missing metrics_file")
+                continue
+
+            metrics_path = Path(metrics_file)
+            if not metrics_path.is_absolute():
+                metrics_path = Path.cwd() / metrics_path
+
+            if not metrics_path.exists():
+                logger.warning(f"Baseline metrics file not found for '{name}': {metrics_path}")
+                continue
+
+            try:
+                with open(metrics_path, "r") as f:
+                    payload = json.load(f)
+
+                loaded.append({
+                    "name": name,
+                    "metrics_file": str(metrics_path),
+                    "detection_recall_by_stage": payload.get("detection_recall_by_stage", {}),
+                    "benign_fpr": payload.get("benign_fpr", 0.0),
+                    "macro_f1": payload.get("macro_f1", 0.0),
+                })
+            except Exception as exc:
+                logger.warning(f"Failed loading baseline '{name}' from {metrics_path}: {exc}")
+
+        return loaded
     
     def _discover_models(
         self,
