@@ -12,6 +12,9 @@ dataset:
   raw_path: "data/raw/CICIoT2023"
   processed_path: "data/processed/ciciot2023"
   sample_size: 500_000 # Start with 500K samples for manageable training
+  sampling_mode: "smart_balanced" # Smart class-aware sampling with benign quota + derived attack cap
+  benign_target_count: 100_000 # Keep ~20% benign to preserve normal behavior signal
+  max_samples_per_attack_class: null # null -> derive cap from remaining budget / attack classes
   sequence_length: 5 # EDA recommendation
   train_split: 0.7
   val_split: 0.1
@@ -147,20 +150,26 @@ adversarial_environment:
 
     # Bonus for successfully defending (attack terminates at lower stage)
     defense_success_bonus: 10.0
-    # Penalty for blocking benign traffic
+    # Legacy penalty for benign interventions (kept for compatibility)
     false_positive_penalty: 30.0
-    # Graduated sanctions for aggressive actions on low-threat stages
-    penalty_block_benign: 100.0
+    # Strong penalty for THROTTLE/BLOCK/ISOLATE during BENIGN traffic
+    penalty_overreact_benign: 50.0
+    # Additional surcharge for BLOCK/ISOLATE on BENIGN
+    penalty_block_benign: 50.0
     penalty_block_recon: 50.0
+    # Strong penalty for OBSERVE/LOG when stage is IMPACT
+    penalty_missed_impact: 150.0
+    # Positive reward for allowing BENIGN traffic with OBSERVE/LOG
+    reward_benign_passive: 10.0
     # Reward for patience/monitoring during low-threat stages
     patience_bonus: 1.0
 
 # RL Training Configuration
 rl:
-  algorithm: "dqn" # Options: dqn, ppo, a2c
+  algorithm: "ppo" # Options: dqn, ppo, a2c
 
   training:
-    total_timesteps: 100000 # Increased for nuclear penalty adaptation
+    total_timesteps: 500000 # Full training run target for PPO convergence
     eval_freq: 5000
     n_eval_episodes: 10
     save_freq: 12500
@@ -236,3 +245,14 @@ logging:
 results:
   plots_dir: "results/plots"
   reports_dir: "results/reports"
+
+# Benchmark configuration
+benchmark:
+  # Optional: point to a processed holdout split path if maintained separately.
+  # Falls back to dataset.processed_path when null.
+  holdout_dataset_path: null
+  supervised_baselines:
+    enabled: false
+    # Each entry should point to a JSON file with at least:
+    # {"name": "RandomForest", "detection_recall_by_stage": {"0":..,"1":..,"2":..,"3":..,"4":..}, "benign_fpr": .., "macro_f1": ..}
+    entries: []

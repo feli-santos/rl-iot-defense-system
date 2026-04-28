@@ -273,7 +273,10 @@ def process_data(config: dict, args: argparse.Namespace) -> bool:
             variance_threshold=config['dataset'].get('variance_threshold', 0.01),
             correlation_threshold=config['dataset'].get('correlation_threshold', 0.95),
             feature_keep_keywords=config['dataset'].get('feature_keep_keywords', None),
-            sampling_strategy=config['dataset'].get('sampling_strategy', None)
+            sampling_strategy=config['dataset'].get('sampling_strategy', None),
+            sampling_mode=config['dataset'].get('sampling_mode', 'default'),
+            benign_target_count=config['dataset'].get('benign_target_count', None),
+            max_samples_per_attack_class=config['dataset'].get('max_samples_per_attack_class', None),
         )
         
         # Process dataset
@@ -429,7 +432,9 @@ def train_rl(config: dict, args: argparse.Namespace) -> bool:
     try:
         from src.environment.adversarial_env import AdversarialIoTEnv, AdversarialEnvConfig
         from src.algorithms.adversarial_algorithm import AdversarialAlgorithm, AdversarialAlgorithmConfig
+        from src.training.training_manager import TrainingManager
         from datetime import datetime
+        import shutil
         import uuid
         
         # Check dependencies
@@ -460,8 +465,11 @@ def train_rl(config: dict, args: argparse.Namespace) -> bool:
             impact_penalty=reward_config.get('impact_penalty', 200.0),
             defense_success_bonus=reward_config.get('defense_success_bonus', 10.0),
             false_positive_penalty=reward_config.get('false_positive_penalty', 30.0),
+            penalty_overreact_benign=reward_config.get('penalty_overreact_benign', 50.0),
             penalty_block_benign=reward_config.get('penalty_block_benign', 100.0),
             penalty_block_recon=reward_config.get('penalty_block_recon', 50.0),
+            penalty_missed_impact=reward_config.get('penalty_missed_impact', 150.0),
+            reward_benign_passive=reward_config.get('reward_benign_passive', 10.0),
             patience_bonus=reward_config.get('patience_bonus', 1.0),
             correct_escalation_reward=defense_reward_config.get('correct_escalation', 5.0),
             correct_de_escalation_reward=defense_reward_config.get('correct_de_escalation', 0.5),
@@ -476,6 +484,30 @@ def train_rl(config: dict, args: argparse.Namespace) -> bool:
             config=adversarial_env_config,
             device=args.device,
         )
+
+        print(f"   Observation space: {env.observation_space}")
+        print(f"   Observation shape: {env.observation_space.shape}")
+        print(f"   Action space: {env.action_space}")
+        if hasattr(env.action_space, 'n'):
+            print(f"   Action count: {env.action_space.n}")
+        if hasattr(env, '_num_features'):
+            print(f"   Base feature dimension (from dataset): {env._num_features}")
+
+        # Integration smoke check: verify Gymnasium API tuple contract and transition flow
+        smoke_obs, smoke_info = env.reset(seed=42)
+        smoke_action = int(env.action_space.sample())
+        smoke_next_obs, smoke_reward, smoke_terminated, smoke_truncated, smoke_step_info = env.step(smoke_action)
+        print(
+            "   Smoke check: "
+            f"reset_obs_shape={smoke_obs.shape}, "
+            f"step_obs_shape={smoke_next_obs.shape}, "
+            f"reward={smoke_reward:.3f}, "
+            f"terminated={smoke_terminated}, truncated={smoke_truncated}, "
+            f"stage={smoke_step_info.get('attack_stage_name')}"
+        )
+
+        # Reset cleanly before training starts
+        env.reset(seed=43)
         
         # Get training timesteps
         timesteps = args.timesteps or rl_config.get('training', {}).get('total_timesteps', 50000)
@@ -507,9 +539,30 @@ def train_rl(config: dict, args: argparse.Namespace) -> bool:
         print(f"   Algorithm: {args.algorithm.upper()}")
         print(f"   Training for {timesteps:,} timesteps...")
         
-        # Create model and train
+        # Create model and train with experiment tracking
         model = algorithm.create_model(env)
-        trained_model = algorithm.train(model, total_timesteps=timesteps)
+        experiment_name = config.get('mlflow', {}).get('experiment_name', 'iot_defense_system')
+        manager = TrainingManager(
+            algorithm=model,
+            experiment_name=experiment_name,
+            save_path=Path(args.rl_path),
+        )
+        manager.start_run(run_name=f"{args.algorithm}_train")
+        training_results = manager.train_algorithm(
+            algorithm=model,
+            total_timesteps=timesteps,
+            eval_freq=rl_config.get('training', {}).get('eval_freq', 5000),
+            n_eval_episodes=rl_config.get('training', {}).get('n_eval_episodes', 10),
+            save_freq=rl_config.get('training', {}).get('save_freq', 12500),
+        )
+        manager.end_run()
+
+        if not training_results.get('success', False):
+            print(f"❌ RL training failed: {training_results.get('error', 'unknown error')}")
+            env.close()
+            return False
+
+        trained_model = model
         
         # Save model with timestamp
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -518,27 +571,42 @@ def train_rl(config: dict, args: argparse.Namespace) -> bool:
         model_dir.mkdir(parents=True, exist_ok=True)
         
         algorithm.save_model(trained_model, model_dir / f"{args.algorithm}_agent")
+
+        # Save canonical final deliverable model path for reporting
+        canonical_model_dir = Path("artifacts/rl_agent")
+        canonical_model_dir.mkdir(parents=True, exist_ok=True)
+        canonical_model_path = canonical_model_dir / f"blue_team_{args.algorithm}_final.zip"
+        source_model_path = Path(f"{model_dir / f'{args.algorithm}_agent'}.zip")
+        shutil.copy2(source_model_path, canonical_model_path)
         
         # Quick evaluation
         print("   Running quick evaluation...")
         total_reward = 0.0
         n_episodes = 10
+        episode_rewards = []
         
         for _ in range(n_episodes):
             obs, _ = env.reset()
             done = False
+            episode_reward = 0.0
             while not done:
                 action, _ = trained_model.predict(obs, deterministic=True)
                 obs, reward, terminated, truncated, _ = env.step(action)
                 total_reward += reward
+                episode_reward += reward
                 done = terminated or truncated
+            episode_rewards.append(float(episode_reward))
         
         avg_reward = total_reward / n_episodes
         
         print("✅ RL training completed!")
         print(f"   - Algorithm: {args.algorithm.upper()}")
         print(f"   - Average reward (10 episodes): {avg_reward:.2f}")
+        print(f"   - Episode rewards (first 5): {episode_rewards[:5]}")
         print(f"   - Model saved to: {model_dir}")
+        print(f"   - Canonical final model: {canonical_model_path}")
+        if training_results.get('training_curve_path'):
+            print(f"   - Training reward curve: {training_results['training_curve_path']}")
         
         env.close()
         return True
