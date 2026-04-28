@@ -1,0 +1,55 @@
+cff-version: 1.2.0
+title: "RL IoT Defense System: Adversarial Reinforcement Learning for
+  Kill-Chain-Aware IoT Defense"
+message: >-
+  If you use this software, please cite it using the metadata below.
+type: software
+authors:
+  - given-names: Felipe
+    family-names: Santos
+    affiliation: "MSc Thesis"
+abstract: >-
+  An adversarial reinforcement learning framework for IoT network defense over
+  the CICIoT2023 dataset. The system pairs an LSTM-based attack sequence
+  generator (Red Team) with RL defense agents (Blue Team) that learn graduated
+  force-continuum policies. Inspired by IoTWarden (Alam et al., 2024), this
+  project extends the original work with realistic feature observations, a
+  five-level force continuum, and a kill-chain abstraction grounded in real
+  CICIoT2023 traffic.
+keywords:
+  - reinforcement-learning
+  - intrusion-detection
+  - iot-security
+  - kill-chain
+  - adversarial-rl
+  - lstm
+  - ciciot2023
+license: MIT
+repository-code: "https://github.com/feli-santos/rl-iot-defense-system"
+preferred-citation:
+  type: thesis
+  title: "Adversarial Reinforcement Learning for Kill-Chain-Aware IoT Defense"
+  authors:
+    - given-names: Felipe
+      family-names: Santos
+  thesis-type: "MSc Thesis"
+  year: 2026
+references:
+  - type: article
+    title: "IoTWarden: A Deep Reinforcement Learning Based Real-time Defense System
+      to Mitigate Trigger-action IoT Attacks"
+    authors:
+      - given-names: "Md Morshed"
+        family-names: Alam
+      - given-names: Israt
+        family-names: Jahan
+      - given-names: Weichao
+        family-names: Wang
+    year: 2024
+    journal: "arXiv preprint arXiv:2401.08141"
+  - type: article
+    title: "CICIoT2023: A Real-Time Dataset and Benchmark for Large-Scale Attacks in
+      IoT Environment"
+    authors:
+      - name: "Canadian Institute for Cybersecurity"
+    year: 2023

@@ -55,25 +55,29 @@ coverage.xml
 *.pt
 *.ckpt
 
-# MLflow Experiment Tracking
-mlruns/
-mlartifacts/
+# MLflow Experiment Tracking (top-level only)
+/mlruns/
+/mlartifacts/
 
-# Training Artifacts
-models/
-artifacts/
-checkpoints/
+# Training Artifacts (top-level only — do NOT match docs/results, etc.)
+/artifacts/
+/runs/
+/checkpoints/
+/models/
 
-# Results and Logs
-results/
-logs/
+# Results and Logs (top-level only — do NOT match docs/results)
+/results/
+/logs/
 *.log
-tensorboard/
+/tensorboard/
 
-# Dataset Files
-data/raw/
-data/processed/
-data/temp/
+# Local archive bundles (intentional, never committed)
+/.archive/
+
+# Dataset Files (top-level only)
+/data/raw/
+/data/processed/
+/data/temp/
 *.csv
 *.parquet
 *.h5

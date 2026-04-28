@@ -148,7 +148,17 @@ python main.py --mode train-rl \
   --timesteps 100000
 ```
 
-#### 4. Full Training Pipeline
+#### 4. Train Every RL Algorithm Sequentially
+
+Train DQN, PPO, and A2C with a single seed each (no generator retraining):
+
+```bash
+python main.py --mode train-all-rl \
+  --timesteps 100000 \
+  --generator-path artifacts/generator
+```
+
+#### 5. Full Training Pipeline
 
 Run the complete training pipeline (generator + RL):
 
@@ -159,7 +169,11 @@ python main.py --mode train-all \
   --timesteps 100000
 ```
 
-#### 5. Evaluate Trained Agent
+> **Tip.** All commands above are also exposed via the `Makefile` for
+> convenience: `make help` prints the full target list, and
+> `make reproduce-thesis` runs the entire pipeline end-to-end.
+
+#### 6. Evaluate Trained Agent
 
 Evaluate a trained defense agent:
 
@@ -169,7 +183,7 @@ python main.py --mode evaluate \
   --eval-episodes 100
 ```
 
-#### 6. Compare Algorithms
+#### 7. Compare Algorithms
 
 Compare DQN, PPO, and A2C performance:
 
