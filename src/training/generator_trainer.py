@@ -32,7 +32,7 @@ from src.generator.attack_sequence_generator import (
     AttackSequenceGenerator,
     AttackSequenceGeneratorConfig,
 )
-from src.generator.episode_generator import EpisodeGenerator
+from src.generator.episode_generator import EpisodeGenerator, episodes_to_numpy
 
 logger = logging.getLogger(__name__)
 
@@ -172,10 +172,11 @@ class GeneratorTrainer:
         Returns:
             Tuple of (train_loader, val_loader).
         """
-        # Convert episodes to training sequences
-        ep_gen = EpisodeGenerator()  # Use just for conversion
-        X, y = ep_gen.to_numpy(episodes, self._config.sequence_length)
-        
+        # Convert episodes to training sequences using the stateless helper
+        # (avoids constructing an EpisodeGenerator with default config that
+        # would silently override user-supplied priors).
+        X, y = episodes_to_numpy(episodes, self._config.sequence_length)
+
         logger.info(f"Prepared {len(X)} training sequences")
         
         # Build balanced validation set if enabled
@@ -624,9 +625,8 @@ class GeneratorTrainer:
         Returns:
             Dictionary with evaluation metrics.
         """
-        # Prepare data (no split needed)
-        ep_gen = EpisodeGenerator()
-        X, y = ep_gen.to_numpy(episodes, self._config.sequence_length)
+        # Prepare data (no split needed) — stateless helper, no class instance.
+        X, y = episodes_to_numpy(episodes, self._config.sequence_length)
         
         X_tensor = torch.tensor(X, dtype=torch.long).to(self._device)
         y_tensor = torch.tensor(y, dtype=torch.long).to(self._device)

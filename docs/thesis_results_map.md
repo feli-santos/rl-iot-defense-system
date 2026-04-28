@@ -12,8 +12,8 @@ reproducible from the corresponding `produced_by` script.
 
 | ID  | Title                                              | Phase | Produced by                                | Aligned with                |
 |-----|----------------------------------------------------|-------|--------------------------------------------|-----------------------------|
-| F1  | LSTM train/val loss + macro-F1 curves              | 2     | `scripts/red_team/plot_training_curves.py` | IoTWarden Fig. 3(a)+(b)     |
-| F2  | LSTM confusion matrix on balanced held-out set     | 2     | `scripts/red_team/plot_confusion_matrix.py`| extension                    |
+| F1  | LSTM Red Team learning curves (loss + token-acc) on synthetic episodes | 2 | `scripts/red_team/train_lstm.py` | IoTWarden Fig. 3(a)         |
+| F2  | LSTM empirical 5×5 transition matrix vs ground truth | 2  | `scripts/red_team/train_lstm.py` | our contribution             |
 | F3  | RL episodic reward curves (DQN/PPO/A2C × 5 seeds)  | 5     | `scripts/blue_team/plot_learning_curves.py`| IoTWarden Fig. 4(a)         |
 | F4  | Action-distribution evolution over training        | 5     | `scripts/blue_team/plot_action_dist.py`    | IoTWarden Fig. 5            |
 | F5  | Final security metrics table                       | 7     | `scripts/benchmark/build_summary_table.py` | extension                    |

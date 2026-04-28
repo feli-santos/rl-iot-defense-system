@@ -14,14 +14,79 @@ Episodes are used to train the Attack Sequence Generator (LSTM)
 as a next-token predictor.
 """
 
+import json
 import logging
 import math
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 
 logger = logging.getLogger(__name__)
+
+
+# -----------------------------------------------------------------------------
+# Public, stateless helpers (no class instance required)
+# -----------------------------------------------------------------------------
+
+
+def episodes_to_training_sequences(
+    episodes: List[List[int]], sequence_length: int
+) -> Tuple[List[List[int]], List[int]]:
+    """Sliding-window decomposition of episodes into (input, next-token) pairs.
+
+    Stateless utility — does not require an :class:`EpisodeGenerator`
+    instance. Episodes shorter than or equal to ``sequence_length`` are
+    skipped silently.
+    """
+    sequences: List[List[int]] = []
+    targets: List[int] = []
+    for episode in episodes:
+        if len(episode) <= sequence_length:
+            continue
+        for i in range(len(episode) - sequence_length):
+            sequences.append(episode[i : i + sequence_length])
+            targets.append(episode[i + sequence_length])
+    return sequences, targets
+
+
+def episodes_to_numpy(
+    episodes: List[List[int]], sequence_length: int
+) -> Tuple[np.ndarray, np.ndarray]:
+    """Same as :func:`episodes_to_training_sequences` but returns numpy arrays."""
+    sequences, targets = episodes_to_training_sequences(episodes, sequence_length)
+    if not sequences:
+        return (
+            np.zeros((0, sequence_length), dtype=np.int64),
+            np.zeros((0,), dtype=np.int64),
+        )
+    return (
+        np.asarray(sequences, dtype=np.int64),
+        np.asarray(targets, dtype=np.int64),
+    )
+
+
+def stage_distribution_from_split_manifest(
+    splits_manifest_path: Path, split_name: str = "train"
+) -> Dict[int, int]:
+    """Load the per-stage row counts for *split_name* from the splits manifest.
+
+    The Phase-1 manifest at ``data/processed/ciciot2023/splits/manifest.json``
+    records stage counts for every split (``all``, ``train``, ``val``, etc.).
+    Loading the prior from there means the Red Team is *guaranteed* to be
+    trained on a stage distribution that matches the train split exactly,
+    with no leakage from val / test / OOD.
+    """
+    with Path(splits_manifest_path).open("r") as fp:
+        manifest = json.load(fp)
+    if "stage_counts" not in manifest or split_name not in manifest["stage_counts"]:
+        raise KeyError(
+            f"split '{split_name}' not found in stage_counts of "
+            f"{splits_manifest_path}"
+        )
+    raw = manifest["stage_counts"][split_name]
+    return {int(k): int(v) for k, v in raw.items()}
 
 
 @dataclass
