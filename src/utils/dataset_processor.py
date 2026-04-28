@@ -48,6 +48,9 @@ class DataProcessingConfig:
     feature_keep_keywords: Optional[List[str]] = None
     sampling_strategy: Optional[str] = None
     min_samples_per_stage: int = 2000  # Floor for each Kill Chain stage in env dataset
+    sampling_mode: str = "default"  # default | smart_balanced
+    benign_target_count: Optional[int] = None
+    max_samples_per_attack_class: Optional[int] = None
     
     def __post_init__(self) -> None:
         """Validate split ratios sum to 1.0."""
@@ -77,6 +80,17 @@ class CICIoTProcessor:
         self.label_encoder: Optional[LabelEncoder] = None
         self.feature_columns: List[str] = []
         self.class_names: List[str] = []
+        self.sampling_info: Dict[str, Any] = {}
+        self.feature_selection_info: Dict[str, Any] = {
+            'enabled': bool(getattr(config, 'feature_selection', False)),
+            'original_feature_count': 0,
+            'final_feature_count': 0,
+            'dropped_zero_variance': [],
+            'dropped_low_variance': [],
+            'dropped_high_correlation': [],
+            'dropped_total': [],
+        }
+        self.split_info: Dict[str, Any] = {}
         
         logger.info(f"Initialized CICIoT processor with splits: "
                    f"train={config.train_split}, val={config.val_split}, test={config.test_split}")
@@ -96,16 +110,28 @@ class CICIoTProcessor:
             logger.info(f"Loaded {len(raw_data):,} raw samples")
             
             # Sample data if needed
-            if self.config.sample_size < len(raw_data):
-                raw_data = raw_data.sample(n=self.config.sample_size, random_state=self.config.random_state)
-                logger.info(f"Sampled to {len(raw_data):,} samples")
-            
-            # Clean and preprocess data
-            processed_data = self._preprocess_data(raw_data)
-            logger.info(f"Preprocessed data shape: {processed_data.shape}")
-            
-            # Split data with configurable ratios
-            train_data, val_data, test_data = self._split_data(processed_data)
+            raw_data = self._sample_raw_data(raw_data)
+            logger.info(f"Sampled to {len(raw_data):,} samples")
+
+            # Split BEFORE feature selection / scaling to prevent leakage
+            target_column = raw_data.columns[-1]
+            train_raw, val_raw, test_raw = self._split_by_target(raw_data, target_column)
+
+            # Build shared label encoder from sampled data labels for robust transforms
+            self.label_encoder = LabelEncoder()
+            self.label_encoder.fit(raw_data[target_column].astype(str))
+            self.class_names = self.label_encoder.classes_.tolist()
+
+            train_data = self._preprocess_split(train_raw, target_column, fit_transformers=True)
+            val_data = self._preprocess_split(val_raw, target_column, fit_transformers=False)
+            test_data = self._preprocess_split(test_raw, target_column, fit_transformers=False)
+
+            logger.info(
+                "Preprocessed split shapes - Train: %s, Val: %s, Test: %s",
+                train_data.shape,
+                val_data.shape,
+                test_data.shape,
+            )
             
             # Generate sequences for LSTM
             train_sequences = self._generate_sequences(train_data)
@@ -130,7 +156,8 @@ class CICIoTProcessor:
                     'train': self.config.train_split,
                     'val': self.config.val_split,
                     'test': self.config.test_split
-                }
+                },
+                'sampling': self.sampling_info,
             }
             
             logger.info("Dataset processing completed successfully")
@@ -226,6 +253,56 @@ class CICIoTProcessor:
         logger.info(f"Final preprocessing: {len(self.feature_columns)} features, {len(self.class_names)} classes")
         return processed_data
 
+    def _preprocess_split(
+        self,
+        split_data: pd.DataFrame,
+        target_column: str,
+        fit_transformers: bool,
+    ) -> pd.DataFrame:
+        """Preprocess a split with train-only-fitted transformers.
+
+        Args:
+            split_data: DataFrame containing features + target column.
+            target_column: Target column name.
+            fit_transformers: Whether to fit feature selection/scaler on this split.
+
+        Returns:
+            Processed DataFrame with scaled features and encoded target.
+        """
+        split_data = split_data.dropna().copy()
+        feature_columns = [col for col in split_data.columns if col != target_column]
+
+        X = split_data[feature_columns].copy()
+        y = split_data[target_column].astype(str).copy()
+
+        categorical_columns = X.select_dtypes(include=['object']).columns
+        for col in categorical_columns:
+            X[col] = X[col].astype('category').cat.codes
+
+        X = self._clean_numerical_data(X)
+
+        if fit_transformers:
+            if self.config.feature_selection:
+                X = self._apply_feature_selection(X)
+            self.feature_columns = X.columns.tolist()
+            self.scaler = StandardScaler()
+            X_scaled = self.scaler.fit_transform(X)
+        else:
+            if not self.feature_columns:
+                raise ValueError("Feature columns not initialized from training split")
+            if self.scaler is None:
+                raise ValueError("Scaler not initialized from training split")
+            X = X[self.feature_columns]
+            X_scaled = self.scaler.transform(X)
+
+        if self.label_encoder is None:
+            raise ValueError("Label encoder not initialized")
+        y_encoded = self.label_encoder.transform(y)
+
+        processed_data = pd.DataFrame(X_scaled, columns=self.feature_columns, index=split_data.index)
+        processed_data['target'] = y_encoded
+        return processed_data
+
     def _clean_numerical_data(self, X: pd.DataFrame) -> pd.DataFrame:
         """Clean inf and NaN values from numerical data.
         
@@ -260,22 +337,26 @@ class CICIoTProcessor:
         from sklearn.feature_selection import VarianceThreshold
         
         original_count = X.shape[1]
+        original_features = X.columns.tolist()
         
         # Stage 1: Remove zero variance features
         selector = VarianceThreshold(threshold=0)
         X_selected = selector.fit_transform(X)
         selected_features = X.columns[selector.get_support()].tolist()
+        zero_var_dropped = [col for col in original_features if col not in selected_features]
         X = pd.DataFrame(X_selected, columns=selected_features, index=X.index)
         logger.info(f"Stage 1: Removed {original_count - len(selected_features)} zero-variance features")
         
         # Stage 2: Remove low variance features (below configured threshold)
         variance_threshold = getattr(self.config, 'variance_threshold', 0.01)
         keep_features = self._get_keep_features(X.columns)
+        low_var_dropped: List[str] = []
         if len(selected_features) > 10:  # Only if we have enough features
             variances = X.var()
             high_var_features = variances[variances >= variance_threshold].index.tolist()
             kept_set = set(high_var_features).union(keep_features)
             kept_ordered = [col for col in X.columns if col in kept_set]
+            low_var_dropped = [col for col in X.columns if col not in kept_ordered]
             removed_count = len(selected_features) - len(kept_ordered)
             X = X[kept_ordered]
             logger.info(f"Stage 2: Removed {removed_count} low-variance features (threshold={variance_threshold})")
@@ -287,6 +368,19 @@ class CICIoTProcessor:
             threshold=correlation_threshold,
             keep_features=keep_features,
         )
+
+        corr_dropped = sorted(getattr(self, '_last_correlated_drops', []))
+        final_features = X.columns.tolist()
+        dropped_total = [col for col in original_features if col not in final_features]
+        self.feature_selection_info = {
+            'enabled': True,
+            'original_feature_count': len(original_features),
+            'final_feature_count': len(final_features),
+            'dropped_zero_variance': sorted(zero_var_dropped),
+            'dropped_low_variance': sorted(low_var_dropped),
+            'dropped_high_correlation': corr_dropped,
+            'dropped_total': sorted(dropped_total),
+        }
         
         logger.info(f"Feature selection complete: {original_count} -> {X.shape[1]} features")
         return X
@@ -303,25 +397,68 @@ class CICIoTProcessor:
         remove the one with lower variance (less informative).
         """
         corr_matrix = X.corr().abs()
-        upper_tri = corr_matrix.where(np.triu(np.ones(corr_matrix.shape), k=1).astype(bool))
-        
-        to_drop = set()
+        variances = X.var()
         keep_features = keep_features or set()
-        for column in upper_tri.columns:
-            # Find features correlated above threshold
-            correlated_features = upper_tri.index[upper_tri[column] > threshold].tolist()
-            if correlated_features:
-                # Out of the correlated group, keep the highest-variance feature and
-                # drop the rest.  nsmallest(n) from a group of n+1 returns the n
-                # lowest-variance members — exactly the drop candidates.
-                variances = X[[column] + correlated_features].var()
-                drop_candidates = variances.nsmallest(len(correlated_features)).index.tolist()
-                to_drop.update([feat for feat in drop_candidates if feat not in keep_features])
-        
+        to_drop: set[str] = set()
+
+        cols = list(corr_matrix.columns)
+        for i in range(len(cols)):
+            for j in range(i + 1, len(cols)):
+                feat_i = cols[i]
+                feat_j = cols[j]
+
+                if feat_i in to_drop or feat_j in to_drop:
+                    continue
+
+                corr_val = corr_matrix.iloc[i, j]
+                if not np.isfinite(corr_val) or corr_val <= threshold:
+                    continue
+
+                var_i = float(variances[feat_i])
+                var_j = float(variances[feat_j])
+                i_protected = feat_i in keep_features
+                j_protected = feat_j in keep_features
+
+                if i_protected and j_protected:
+                    # Do not allow both protected features to bypass threshold.
+                    if var_i < var_j:
+                        drop_feat = feat_i
+                    elif var_j < var_i:
+                        drop_feat = feat_j
+                    else:
+                        drop_feat = max(feat_i, feat_j)
+                elif i_protected:
+                    drop_feat = feat_j
+                elif j_protected:
+                    drop_feat = feat_i
+                else:
+                    if var_i < var_j:
+                        drop_feat = feat_i
+                    elif var_j < var_i:
+                        drop_feat = feat_j
+                    else:
+                        drop_feat = max(feat_i, feat_j)
+
+                to_drop.add(drop_feat)
+
         if to_drop:
-            logger.info(f"Stage 3: Removed {len(to_drop)} highly correlated features (threshold={threshold})")
-            X = X.drop(columns=list(to_drop))
-        
+            logger.info(
+                "Stage 3: Removed %d highly correlated features (threshold=%s)",
+                len(to_drop),
+                threshold,
+            )
+            X = X.drop(columns=sorted(to_drop))
+
+        self._last_correlated_drops = sorted(to_drop)
+
+        if X.shape[1] > 1:
+            remaining_corr = X.corr().abs()
+            upper_vals = remaining_corr.where(
+                np.triu(np.ones(remaining_corr.shape), k=1).astype(bool)
+            ).stack()
+            if not upper_vals.empty:
+                logger.info("Stage 3 post-check max |corr|: %.4f", float(upper_vals.max()))
+
         return X
 
     def _get_keep_features(self, columns: List[str]) -> set[str]:
@@ -394,6 +531,171 @@ class CICIoTProcessor:
                    f"Val: {len(val_data):,}, Test: {len(test_data):,}")
         
         return train_data, val_data, test_data
+
+    def _split_by_target(
+        self,
+        data: pd.DataFrame,
+        target_column: str,
+    ) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+        """Split data by raw target labels, with robust fallback for singleton classes."""
+        logger.info(
+            "Splitting raw data by target: train=%s, val=%s, test=%s",
+            self.config.train_split,
+            self.config.val_split,
+            self.config.test_split,
+        )
+
+        try:
+            temp_data, test_data = train_test_split(
+                data,
+                test_size=self.config.test_split,
+                random_state=self.config.random_state,
+                stratify=data[target_column],
+            )
+            val_size_adjusted = self.config.val_split / (self.config.train_split + self.config.val_split)
+            train_data, val_data = train_test_split(
+                temp_data,
+                test_size=val_size_adjusted,
+                random_state=self.config.random_state,
+                stratify=temp_data[target_column],
+            )
+        except ValueError as exc:
+            logger.warning(
+                "Stratified split failed (%s). Falling back to non-stratified split.",
+                exc,
+            )
+            temp_data, test_data = train_test_split(
+                data,
+                test_size=self.config.test_split,
+                random_state=self.config.random_state,
+                stratify=None,
+            )
+            val_size_adjusted = self.config.val_split / (self.config.train_split + self.config.val_split)
+            train_data, val_data = train_test_split(
+                temp_data,
+                test_size=val_size_adjusted,
+                random_state=self.config.random_state,
+                stratify=None,
+            )
+
+        logger.info(
+            "Raw split sizes - Train: %s, Val: %s, Test: %s",
+            len(train_data),
+            len(val_data),
+            len(test_data),
+        )
+        return train_data, val_data, test_data
+
+    def _sample_raw_data(self, raw_data: pd.DataFrame) -> pd.DataFrame:
+        """Sample raw data based on configured strategy."""
+        if self.config.sample_size >= len(raw_data):
+            self.sampling_info = {
+                'mode': 'none',
+                'original_rows': len(raw_data),
+                'sampled_rows': len(raw_data),
+            }
+            return raw_data
+
+        mode = getattr(self.config, 'sampling_mode', 'default')
+        strategy = (self.config.sampling_strategy or '').lower()
+
+        if mode == 'smart_balanced' or strategy == 'balanced':
+            sampled = self._smart_balanced_sample(raw_data)
+            logger.info("Smart-balanced sampled to %s rows", len(sampled))
+            return sampled
+
+        sampled = raw_data.sample(n=self.config.sample_size, random_state=self.config.random_state)
+        self.sampling_info = {
+            'mode': 'random',
+            'original_rows': len(raw_data),
+            'sampled_rows': len(sampled),
+        }
+        return sampled
+
+    def _smart_balanced_sample(self, raw_data: pd.DataFrame) -> pd.DataFrame:
+        """Create a balanced subset with custom benign quota and attack cap.
+
+        Policy:
+        - Reserve a Benign quota first.
+        - Allocate remaining budget to attack classes with a derived cap.
+        - Keep all minority classes below cap.
+        """
+        label_col = raw_data.columns[-1]
+        target_n = min(self.config.sample_size, len(raw_data))
+        rng_state = self.config.random_state
+
+        labels = raw_data[label_col].astype(str)
+        benign_mask = labels.str.lower() == 'benigntraffic'
+
+        benign_df = raw_data[benign_mask]
+        attack_df = raw_data[~benign_mask]
+
+        default_benign_quota = int(target_n * 0.20)
+        benign_quota = self.config.benign_target_count if self.config.benign_target_count is not None else default_benign_quota
+        benign_take = min(max(0, benign_quota), len(benign_df), target_n)
+
+        sampled_parts: List[pd.DataFrame] = []
+        if benign_take > 0:
+            sampled_parts.append(benign_df.sample(n=benign_take, random_state=rng_state))
+
+        attack_budget = max(0, target_n - benign_take)
+        sampled_attack_counts: Dict[str, int] = {}
+
+        if attack_budget > 0 and not attack_df.empty:
+            attack_counts = attack_df[label_col].value_counts()
+            num_attack_classes = len(attack_counts)
+            derived_cap = max(1, attack_budget // max(1, num_attack_classes))
+            class_cap = self.config.max_samples_per_attack_class or derived_cap
+
+            for class_name in attack_counts.index:
+                class_rows = attack_df[attack_df[label_col] == class_name]
+                take_n = min(len(class_rows), class_cap)
+                if take_n > 0:
+                    sampled_cls = class_rows.sample(n=take_n, random_state=rng_state)
+                    sampled_parts.append(sampled_cls)
+                    sampled_attack_counts[str(class_name)] = int(take_n)
+
+            sampled_attack_total = sum(sampled_attack_counts.values())
+            if sampled_attack_total > attack_budget:
+                # In edge cases, enforce budget exactly.
+                attack_concat = pd.concat(
+                    [part for part in sampled_parts if not ((part[label_col].astype(str).str.lower() == 'benigntraffic').all())],
+                    ignore_index=False,
+                )
+                attack_trimmed = attack_concat.sample(n=attack_budget, random_state=rng_state)
+                sampled_parts = [part for part in sampled_parts if (part[label_col].astype(str).str.lower() == 'benigntraffic').all()]
+                sampled_parts.append(attack_trimmed)
+                sampled_attack_total = attack_budget
+
+            final_attack_cap = class_cap
+        else:
+            sampled_attack_total = 0
+            final_attack_cap = 0
+            derived_cap = 0
+
+        if not sampled_parts:
+            sampled = raw_data.sample(n=target_n, random_state=rng_state)
+        else:
+            sampled = pd.concat(sampled_parts, ignore_index=False)
+            if len(sampled) > target_n:
+                sampled = sampled.sample(n=target_n, random_state=rng_state)
+
+        sampled = sampled.sample(frac=1, random_state=rng_state).reset_index(drop=True)
+
+        sampled_counts = sampled[label_col].astype(str).value_counts().to_dict()
+        self.sampling_info = {
+            'mode': 'smart_balanced',
+            'original_rows': len(raw_data),
+            'sampled_rows': len(sampled),
+            'target_rows': target_n,
+            'benign_target_count': benign_quota,
+            'benign_taken': int(sampled_counts.get('BenignTraffic', 0)),
+            'attack_budget': attack_budget,
+            'derived_attack_cap': int(derived_cap),
+            'effective_attack_cap': int(final_attack_cap),
+            'sampled_label_counts': sampled_counts,
+        }
+        return sampled
     
     def _generate_sequences(self, data: pd.DataFrame) -> Tuple[np.ndarray, np.ndarray]:
         """Generate sequences for LSTM training."""
@@ -526,36 +828,60 @@ class CICIoTProcessor:
             raw_data = self._load_raw_data()
             logger.info(f"Loaded {len(raw_data):,} raw samples")
             
-            # Stratified sample: guarantee a floor of rows per Kill Chain stage
-            # so the RealizationEngine never has a dangerously small pool for any stage.
-            if self.config.sample_size < len(raw_data):
-                raw_data = self._stratified_sample_for_env(raw_data)
-                logger.info(f"Stratified-sampled to {len(raw_data):,} samples")
-            
-            # Extract features and labels
-            features, labels = self._extract_features_and_labels(raw_data)
-            
-            # Store raw features before processing
-            raw_features_copy = features.copy()
-            
-            # Convert to DataFrame for feature engineering
-            features_df = pd.DataFrame(features, columns=self.feature_columns)
-            
-            # Clean inf/NaN values
-            features_df = self._clean_numerical_data(features_df)
-            
-            # Apply feature selection if enabled
-            if hasattr(self.config, 'feature_selection') and self.config.feature_selection:
-                features_df = self._apply_feature_selection(features_df)
-                self.feature_columns = features_df.columns.tolist()
-                logger.info(f"After feature selection: {len(self.feature_columns)} features")
-            
-            # Convert back to numpy
-            features = features_df.values
-            
-            # Normalize features
+            # Sample with configured strategy
+            raw_data = self._sample_raw_data(raw_data)
+
+            target_column = raw_data.columns[-1]
+            train_raw, val_raw, test_raw = self._split_by_target(raw_data, target_column)
+            self.split_info = {
+                'train_samples': int(len(train_raw)),
+                'val_samples': int(len(val_raw)),
+                'test_samples': int(len(test_raw)),
+                'train_ratio': float(self.config.train_split),
+                'val_ratio': float(self.config.val_split),
+                'test_ratio': float(self.config.test_split),
+            }
+
+            # Build shared feature matrix by split
+            train_features, train_labels = self._extract_features_and_labels(train_raw)
+            val_features, val_labels = self._extract_features_and_labels(val_raw)
+            test_features, test_labels = self._extract_features_and_labels(test_raw)
+
+            train_df = pd.DataFrame(train_features, columns=self.feature_columns)
+            val_df = pd.DataFrame(val_features, columns=self.feature_columns)
+            test_df = pd.DataFrame(test_features, columns=self.feature_columns)
+
+            train_df = self._clean_numerical_data(train_df)
+            val_df = self._clean_numerical_data(val_df)
+            test_df = self._clean_numerical_data(test_df)
+
+            if self.config.feature_selection:
+                train_df = self._apply_feature_selection(train_df)
+                self.feature_columns = train_df.columns.tolist()
+                val_df = val_df[self.feature_columns]
+                test_df = test_df[self.feature_columns]
+                logger.info("After feature selection: %d features", len(self.feature_columns))
+            else:
+                self.feature_columns = train_df.columns.tolist()
+                self.feature_selection_info = {
+                    'enabled': False,
+                    'original_feature_count': len(self.feature_columns),
+                    'final_feature_count': len(self.feature_columns),
+                    'dropped_zero_variance': [],
+                    'dropped_low_variance': [],
+                    'dropped_high_correlation': [],
+                    'dropped_total': [],
+                }
+
+            # Fit scaler only on training set
             self.scaler = StandardScaler()
-            normalized_features = self.scaler.fit_transform(features)
+            train_scaled = self.scaler.fit_transform(train_df)
+            val_scaled = self.scaler.transform(val_df)
+            test_scaled = self.scaler.transform(test_df)
+
+            normalized_features = np.vstack([train_scaled, val_scaled, test_scaled])
+            labels = np.concatenate([train_labels, val_labels, test_labels])
+            raw_features = np.vstack([train_df.values, val_df.values, test_df.values])
             
             # Build state indices using AbstractStateLabelMapper
             state_indices = self._build_state_indices(labels)
@@ -565,17 +891,20 @@ class CICIoTProcessor:
                 normalized_features,
                 labels,
                 state_indices,
-                features,  # Save processed (but not scaled) features
+                raw_features,  # Save processed (but not scaled) features
             )
             
             results = {
                 'total_samples': len(normalized_features),
                 'num_features': normalized_features.shape[1],
                 'num_stages': 5,
+                'split_info': self.split_info,
                 'stage_counts': {
                     int(k): len(v) for k, v in state_indices.items()
                 },
                 'class_names': list(set(labels)),
+                'sampling': self.sampling_info,
+                'feature_selection_info': self.feature_selection_info,
             }
             
             logger.info("Adversarial environment dataset processing completed")
@@ -693,6 +1022,7 @@ class CICIoTProcessor:
             'num_features': normalized_features.shape[1],
             'num_stages': 5,
             'feature_columns': self.feature_columns,
+            'split_info': self.split_info,
             'stage_counts': stage_counts,
             'stage_percentages': stage_percentages,
             'imbalance_ratio': imbalance_ratio,
@@ -700,7 +1030,10 @@ class CICIoTProcessor:
             'variance_threshold': getattr(self.config, 'variance_threshold', 0.01),
             'correlation_threshold': getattr(self.config, 'correlation_threshold', 0.95),
             'feature_keep_keywords': getattr(self.config, 'feature_keep_keywords', None),
+            'feature_selection_info': self.feature_selection_info,
             'sampling_strategy': getattr(self.config, 'sampling_strategy', None),
+            'sampling_mode': getattr(self.config, 'sampling_mode', 'default'),
+            'sampling_info': self.sampling_info,
         }
         with open(self.output_path / "metadata.json", "w") as f:
             json.dump(metadata, f, indent=2)

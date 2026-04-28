@@ -258,3 +258,175 @@ class TestDataProcessorWithLabelMapper:
         
         for stage_id in range(5):
             assert stage_counts[stage_id] > 0, f"Stage {stage_id} has no samples"
+
+
+class TestDataProcessorRegressionFixes:
+    """Regression tests for leakage, sampling, and correlation fixes."""
+
+    def test_smart_sampling_respects_benign_quota_and_attack_cap(self, tmp_path: Path) -> None:
+        """Smart sampler should reserve benign quota and cap majority attack classes."""
+        data_dir = tmp_path / "raw" / "CICIoT2023"
+        out_dir = tmp_path / "processed"
+        data_dir.mkdir(parents=True, exist_ok=True)
+        out_dir.mkdir(parents=True, exist_ok=True)
+
+        rng = np.random.default_rng(42)
+        n_benign = 150
+        n_attack_a = 220
+        n_attack_b = 30
+        total = n_benign + n_attack_a + n_attack_b
+
+        df = pd.DataFrame({
+            "feature_0": rng.normal(size=total),
+            "feature_1": rng.normal(size=total),
+            "label": (
+                ["BenignTraffic"] * n_benign
+                + ["DDoS-UDP_Flood"] * n_attack_a
+                + ["Recon-PortScan"] * n_attack_b
+            ),
+        })
+        df.to_csv(data_dir / "smart_sample.csv", index=False)
+
+        config = DataProcessingConfig(
+            dataset_path=data_dir,
+            output_path=out_dir,
+            sample_size=180,
+            sequence_length=5,
+            sampling_mode="smart_balanced",
+            benign_target_count=60,
+            sampling_strategy="balanced",
+        )
+        processor = CICIoTProcessor(config)
+        raw = processor._load_raw_data()
+        sampled = processor._sample_raw_data(raw)
+
+        counts = sampled["label"].value_counts().to_dict()
+        assert counts.get("BenignTraffic", 0) == 60
+        # Attack budget = 120, 2 attack classes => derived cap = 60
+        assert counts.get("DDoS-UDP_Flood", 0) <= 60
+        assert counts.get("Recon-PortScan", 0) <= 60
+
+    def test_correlation_filter_drops_redundant_protected_pair(self, tmp_path: Path) -> None:
+        """Even when both correlated features match keep keywords, one must be dropped."""
+        config = DataProcessingConfig(
+            dataset_path=tmp_path,
+            output_path=tmp_path,
+            sample_size=100,
+            sequence_length=5,
+            feature_selection=True,
+            correlation_threshold=0.95,
+            feature_keep_keywords=["rate"],
+        )
+        processor = CICIoTProcessor(config)
+
+        n = 500
+        rate = np.linspace(0.0, 100.0, n)
+        srate = rate.copy()  # perfect correlation with Rate
+        df = pd.DataFrame(
+            {
+                "Rate": rate,
+                "Srate": srate,
+                "Other": np.random.default_rng(123).normal(size=n),
+            }
+        )
+
+        filtered = processor._remove_correlated_features(
+            df,
+            threshold=0.95,
+            keep_features={"Rate", "Srate"},
+        )
+
+        surviving = set(filtered.columns)
+        assert not ({"Rate", "Srate"} <= surviving)
+
+    def test_scaler_is_fit_on_train_split_only(self, tmp_path: Path) -> None:
+        """First train block in saved features should be near standard-normal after fit."""
+        data_dir = tmp_path / "raw" / "CICIoT2023"
+        out_dir = tmp_path / "processed"
+        data_dir.mkdir(parents=True, exist_ok=True)
+        out_dir.mkdir(parents=True, exist_ok=True)
+
+        rng = np.random.default_rng(7)
+        n = 240
+        df = pd.DataFrame(
+            {
+                "feature_0": rng.normal(loc=0.0, scale=1.0, size=n),
+                "feature_1": rng.normal(loc=10.0, scale=5.0, size=n),
+                "label": np.where(np.arange(n) % 2 == 0, "BenignTraffic", "DDoS-TCP_Flood"),
+            }
+        )
+        df.to_csv(data_dir / "leakage_case.csv", index=False)
+
+        config = DataProcessingConfig(
+            dataset_path=data_dir,
+            output_path=out_dir,
+            sample_size=n,
+            sequence_length=5,
+            feature_selection=False,
+        )
+        processor = CICIoTProcessor(config)
+
+        raw = processor._load_raw_data()
+        sampled = processor._sample_raw_data(raw)
+        train_raw, _, _ = processor._split_by_target(sampled, target_column="label")
+        expected_train_n = len(train_raw.dropna())
+
+        processor.process_for_adversarial_env()
+        features = np.load(out_dir / "features.npy")
+        train_block = features[:expected_train_n]
+
+        train_mean = np.mean(train_block, axis=0)
+        train_std = np.std(train_block, axis=0)
+
+        assert np.abs(train_mean).mean() < 0.1
+        assert 0.8 < train_std.mean() < 1.2
+
+    def test_metadata_includes_split_and_feature_selection_info(self, tmp_path: Path) -> None:
+        """Metadata should expose split counts and dropped feature diagnostics."""
+        data_dir = tmp_path / "raw" / "CICIoT2023"
+        out_dir = tmp_path / "processed"
+        data_dir.mkdir(parents=True, exist_ok=True)
+        out_dir.mkdir(parents=True, exist_ok=True)
+
+        rng = np.random.default_rng(123)
+        n = 300
+        rate = rng.normal(loc=50.0, scale=10.0, size=n)
+        srate = rate.copy()  # Perfect correlation with Rate
+        label = np.where(np.arange(n) % 3 == 0, "BenignTraffic", "DDoS-TCP_Flood")
+
+        df = pd.DataFrame(
+            {
+                "Rate": rate,
+                "Srate": srate,
+                "Feature_1": rng.normal(size=n),
+                "label": label,
+            }
+        )
+        df.to_csv(data_dir / "metadata_case.csv", index=False)
+
+        config = DataProcessingConfig(
+            dataset_path=data_dir,
+            output_path=out_dir,
+            sample_size=n,
+            sequence_length=5,
+            feature_selection=True,
+            correlation_threshold=0.95,
+            feature_keep_keywords=["rate"],
+        )
+        processor = CICIoTProcessor(config)
+        processor.process_for_adversarial_env()
+
+        with open(out_dir / "metadata.json", "r") as f:
+            metadata = json.load(f)
+
+        split_info = metadata.get("split_info", {})
+        assert split_info.get("train_samples", 0) > 0
+        assert split_info.get("val_samples", 0) > 0
+        assert split_info.get("test_samples", 0) > 0
+
+        fs_info = metadata.get("feature_selection_info", {})
+        assert fs_info.get("enabled") is True
+        dropped_corr = fs_info.get("dropped_high_correlation", [])
+        assert isinstance(dropped_corr, list)
+        assert len(dropped_corr) >= 1
+        assert set(dropped_corr).intersection({"Rate", "Srate"})
