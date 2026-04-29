@@ -10,12 +10,20 @@ The engine:
 1. Loads pre-processed dataset with state indices
 2. Samples feature vectors matching the current Kill Chain stage
 3. Returns normalized feature vectors as environment observations
+
+Phase-3 split-aware sampling
+----------------------------
+The engine supports an optional ``allowed_indices`` argument and a
+:meth:`RealizationEngine.from_split_manifest` factory. When restricted to
+the *train* split (and excluding OOD attack classes), the engine guarantees
+that no row used during RL training is ever evaluated in Phase 7. See
+``docs/results/03_env/PLAN.md`` §B4 for the rationale.
 """
 
 import json
 import logging
 from pathlib import Path
-from typing import Optional, Union
+from typing import Iterable, List, Optional, Set, Union
 
 import joblib
 import numpy as np
@@ -53,27 +61,145 @@ class RealizationEngine:
         self,
         data_path: Path,
         seed: Optional[int] = None,
+        allowed_indices: Optional[Iterable[int]] = None,
     ) -> None:
         """Initialize the realization engine.
-        
+
         Args:
             data_path: Path to processed dataset directory containing
                 features.npy, state_indices.json, and scaler.joblib.
             seed: Random seed for reproducibility (optional).
-        
+            allowed_indices: If given, restrict sampling to this subset of
+                row indices. Per-stage indices are intersected with this
+                set; any stage whose intersection is empty raises
+                ``ValueError`` at sample time. The default ``None`` means
+                "all rows", reproducing the pre-Phase-3 behaviour.
+
         Raises:
             FileNotFoundError: If required files are missing.
+            ValueError: If ``allowed_indices`` is empty.
         """
         self._data_path = Path(data_path)
         self._rng = np.random.default_rng(seed)
-        
+
         self._validate_data_path()
         self._load_artifacts()
-        
+
+        if allowed_indices is not None:
+            self._restrict_to(allowed_indices)
+
         logger.info(
-            f"RealizationEngine initialized with {self.num_samples} samples, "
-            f"{self.num_features} features"
+            "RealizationEngine initialized with %d samples (of %d total), %d features%s",
+            sum(self._stage_counts.values()),
+            self._features.shape[0],
+            self.num_features,
+            " — restricted by allowed_indices" if allowed_indices is not None else "",
         )
+
+    # =========================================================================
+    # Phase-3 split-aware factories
+    # =========================================================================
+
+    @classmethod
+    def from_split_manifest(
+        cls,
+        data_path: Union[str, Path],
+        splits_manifest: Union[str, Path],
+        split_name: str = "train",
+        *,
+        exclude_ood: bool = True,
+        seed: Optional[int] = None,
+    ) -> "RealizationEngine":
+        """Construct an engine restricted to a named split.
+
+        Args:
+            data_path: Path to processed dataset directory.
+            splits_manifest: Path to ``data/processed/.../splits/manifest.json``
+                produced by ``scripts/data/build_split_indices.py``.
+            split_name: Which split to use. Common values: ``"train"``,
+                ``"val"``, ``"test"``, ``"test_balanced"``,
+                ``"val_balanced"``. **Never** use ``"ood"`` for training.
+            exclude_ood: If True (default), additionally remove any indices
+                that appear in the ``ood`` split. Belt-and-braces against
+                accidentally including held-out attack classes during
+                training.
+            seed: Random seed for reproducibility.
+
+        Returns:
+            A :class:`RealizationEngine` whose sampling is restricted to
+            ``split_name`` rows minus the OOD rows.
+
+        Raises:
+            FileNotFoundError: If ``splits_manifest`` does not exist.
+            KeyError: If ``split_name`` is not present in the manifest.
+        """
+        manifest_path = Path(splits_manifest)
+        if not manifest_path.exists():
+            raise FileNotFoundError(
+                f"splits manifest not found at {manifest_path}. "
+                "Run `make build-split-indices` first."
+            )
+        manifest = json.loads(manifest_path.read_text())
+
+        # Schema (build_split_indices.py): manifest["outputs"] is a flat
+        # {relpath -> sha256} dict; the indices live at
+        # ``<manifest_dir>/<relpath>``. Standard splits are
+        # ``splits/<name>.idx.npy``; OOD-attack splits are
+        # ``splits/ood_attack/<class>.idx.npy``.
+        manifest_dir = manifest_path.parent.parent  # one level above ``splits/``
+        rel_path = f"splits/{split_name}.idx.npy"
+        if rel_path not in manifest.get("outputs", {}):
+            available = sorted(
+                p.split("/", 1)[1].rsplit(".idx.npy", 1)[0]
+                for p in manifest.get("outputs", {})
+                if p.startswith("splits/") and not p.startswith("splits/ood_attack/")
+            )
+            raise KeyError(
+                f"split '{split_name}' not present in {manifest_path}. "
+                f"Available: {available}"
+            )
+
+        split_indices = np.load(manifest_dir / rel_path)
+        allowed: Set[int] = set(int(i) for i in split_indices.tolist())
+
+        if exclude_ood:
+            for relp in manifest.get("outputs", {}):
+                if relp.startswith("splits/ood_attack/"):
+                    ood_indices = np.load(manifest_dir / relp)
+                    allowed.difference_update(int(i) for i in ood_indices.tolist())
+
+        return cls(data_path=Path(data_path), seed=seed, allowed_indices=allowed)
+
+    # ------------------------------------------------------------------ private
+
+    def _restrict_to(self, allowed_indices: Iterable[int]) -> None:
+        """Intersect every per-stage index list with ``allowed_indices``.
+
+        Empty intersections are dropped and a warning is logged; sampling
+        from a missing stage raises ``ValueError`` at runtime.
+        """
+        allowed_set: Set[int] = (
+            allowed_indices if isinstance(allowed_indices, set)
+            else set(int(i) for i in allowed_indices)
+        )
+        if not allowed_set:
+            raise ValueError("allowed_indices must be non-empty")
+
+        new_state_indices: dict[int, list[int]] = {}
+        for stage_id, idx_list in self._state_indices.items():
+            kept = [int(i) for i in idx_list if i in allowed_set]
+            if kept:
+                new_state_indices[stage_id] = kept
+            else:
+                logger.warning(
+                    "Stage %s (id=%d) has zero rows after restriction — sampling from "
+                    "it will raise ValueError.",
+                    KillChainStage(stage_id).name if stage_id < len(KillChainStage) else stage_id,
+                    stage_id,
+                )
+        self._state_indices = new_state_indices
+        self._stage_counts = {k: len(v) for k, v in new_state_indices.items()}
+        self._total_samples = sum(self._stage_counts.values())
     
     def _validate_data_path(self) -> None:
         """Validate that required files exist."""
