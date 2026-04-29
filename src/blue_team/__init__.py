@@ -17,14 +17,20 @@ Public API:
 See ``docs/results/05_blue_team/PLAN.md`` §3.1 for the contract.
 """
 
-from src.blue_team.callbacks import EpisodeJSONLCallback, EpisodeRecord
+from src.blue_team.callbacks import (
+    EpisodeJSONLCallback,
+    EpisodeRecord,
+    EvalToJSONLCallback,
+)
 from src.blue_team.env_factory import make_eval_env, make_train_env
-from src.blue_team.run_config import BlueTeamRunConfig
+from src.blue_team.run_config import BlueTeamRunConfig, EnvConfigSerializable
 
 __all__ = [
     "BlueTeamRunConfig",
+    "EnvConfigSerializable",
     "EpisodeJSONLCallback",
     "EpisodeRecord",
+    "EvalToJSONLCallback",
     "make_eval_env",
     "make_train_env",
 ]

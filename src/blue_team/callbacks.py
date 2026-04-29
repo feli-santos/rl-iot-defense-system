@@ -346,4 +346,162 @@ class EpisodeJSONLCallback(BaseCallback):
             self._unflushed = 0
 
 
-__all__ = ["EpisodeJSONLCallback", "EpisodeRecord"]
+class EvalToJSONLCallback(BaseCallback):
+    """Periodic eval rollouts on a held-out env, written to ``eval.jsonl``.
+
+    On every ``eval_freq``-th SB3 callback step, runs ``n_eval_episodes``
+    deterministic rollouts on the supplied ``eval_env`` and writes one
+    JSONL line per episode in the same v1.0 schema as
+    :class:`EpisodeJSONLCallback`. Distinguishing fields:
+
+    - ``run_id``: ``"<algo>_seed_<seed>_eval"``
+    - ``num_timesteps`` set to the model's training-time global step at
+      eval time (so all eval episodes for one eval-block share an x-axis
+      value).
+
+    Why a custom class and not SB3's :class:`EvalCallback`? We need
+    Phase-3 telemetry (mttc_steps, compromised, defender_deescalations,
+    per-stage action counts) on the eval side too, and SB3's eval log
+    only stores reward + length + success-rate. Writing our own keeps
+    aggregation symmetric.
+
+    Args:
+        eval_env: VecEnv (single-env DummyVecEnv) to roll out on.
+        out_path: Where to write ``eval.jsonl``.
+        run_id: Stable identifier (suffixed ``_eval`` by convention).
+        algo, seed: Echoed in every record.
+        eval_freq: Run an eval block every ``eval_freq`` callback ticks.
+        n_eval_episodes: Episodes per eval block.
+        deterministic: Pass through to ``model.predict``.
+    """
+
+    def __init__(
+        self,
+        eval_env: Any,
+        out_path: Union[str, Path],
+        run_id: str,
+        algo: str,
+        seed: int,
+        eval_freq: int = 25_000,
+        n_eval_episodes: int = 30,
+        deterministic: bool = True,
+        verbose: int = 0,
+    ) -> None:
+        super().__init__(verbose=verbose)
+        self._eval_env = eval_env
+        self._out_path = Path(out_path)
+        self._run_id = str(run_id)
+        self._algo = str(algo)
+        self._seed = int(seed)
+        self._eval_freq = int(eval_freq)
+        self._n_eval_episodes = int(n_eval_episodes)
+        self._deterministic = bool(deterministic)
+
+        self._fh: Optional[Any] = None
+        self._t_start: float = 0.0
+        self._eval_block_idx: int = 0
+        self._n_evals: int = 0  # cumulative eval episodes written
+
+    def _on_training_start(self) -> None:
+        self._out_path.parent.mkdir(parents=True, exist_ok=True)
+        self._fh = self._out_path.open("w", encoding="utf-8")
+        self._t_start = time.time()
+        self._eval_block_idx = 0
+        self._n_evals = 0
+
+    def _on_step(self) -> bool:  # noqa: D401 — SB3 API
+        if self._eval_freq <= 0:
+            return True
+        if self.n_calls % self._eval_freq != 0:
+            return True
+        self._run_eval_block()
+        self._eval_block_idx += 1
+        return True
+
+    def _on_training_end(self) -> None:
+        # One last eval block at the end of training so the last 10 %
+        # gate window has fresh post-convergence data.
+        if self._fh is not None:
+            try:
+                self._run_eval_block(final=True)
+            finally:
+                self._fh.flush()
+                self._fh.close()
+                self._fh = None
+
+    def _run_eval_block(self, *, final: bool = False) -> None:
+        """Roll ``n_eval_episodes`` complete episodes deterministically.
+
+        Each episode is bookkept by a fresh accumulator so we can
+        reuse the same per-stage histogram logic as
+        :class:`EpisodeJSONLCallback`.
+        """
+        env = self._eval_env
+        model = self.model
+        for ep in range(self._n_eval_episodes):
+            acc = _EpisodeAccumulator()
+            decision_stage = 0  # BENIGN at reset, see env.reset()
+            obs = env.reset()
+            done = False
+            while not done:
+                action_arr, _ = model.predict(obs, deterministic=self._deterministic)
+                obs, reward, dones, infos = env.step(action_arr)
+                a = int(action_arr[0]) if hasattr(action_arr, "__len__") else int(action_arr)
+                r = float(reward[0]) if hasattr(reward, "__len__") else float(reward)
+                acc.update(a, r, decision_stage)
+                done = bool(dones[0]) if hasattr(dones, "__len__") else bool(dones)
+                # info["attack_stage"] may be the post-reset stage on
+                # auto-reset; guard against that with terminal_info.
+                info = infos[0] if isinstance(infos, (list, tuple)) else infos
+                if not done:
+                    decision_stage = int(info.get("attack_stage", 0))
+                else:
+                    # Terminal record: pull telemetry from
+                    # info["terminal_info"] when SB3 packs it, otherwise
+                    # from the live info before reset.
+                    self._emit_eval_record(ep, acc, info)
+
+    def _emit_eval_record(
+        self, ep: int, acc: _EpisodeAccumulator, info: Dict[str, Any]
+    ) -> None:
+        terminal_info = info.get("terminal_info") if isinstance(info, dict) else None
+        if isinstance(terminal_info, dict):
+            src = terminal_info
+        else:
+            src = info if isinstance(info, dict) else {}
+
+        final_stage = int(src.get("attack_stage", 0))
+        mttc_steps = src.get("mttc_steps")
+        compromised = bool(src.get("compromised", False))
+        defender_deescalations = int(src.get("defender_deescalations", 0))
+        outcome = str(src.get("outcome", "unknown"))
+
+        record = EpisodeRecord(
+            schema_version=_SCHEMA_VERSION,
+            run_id=f"{self._run_id}_eval",
+            algo=self._algo,
+            seed=self._seed,
+            episode_idx=self._n_evals,
+            num_timesteps=int(self.num_timesteps),
+            wallclock_seconds=time.time() - self._t_start,
+            episode_reward=float(acc.cumulative_reward),
+            episode_length=int(acc.length),
+            compromised=compromised,
+            mttc_steps=int(mttc_steps) if mttc_steps is not None else None,
+            defender_deescalations=defender_deescalations,
+            final_stage=final_stage,
+            final_stage_name=KillChainStage(final_stage).name,
+            end_outcome=outcome,
+            action_counts=list(acc.action_counts),
+            action_counts_by_stage={
+                str(s): list(c) for s, c in acc.action_counts_by_stage.items()
+            },
+        )
+        assert self._fh is not None
+        self._fh.write(record.to_jsonl())
+        self._fh.write("\n")
+        self._fh.flush()  # eval blocks are sparse, flush eagerly
+        self._n_evals += 1
+
+
+__all__ = ["EpisodeJSONLCallback", "EpisodeRecord", "EvalToJSONLCallback"]
