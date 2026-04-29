@@ -340,15 +340,32 @@ def summarise_last_window(
     """Compute the headline gate metrics over the last ``fraction`` of
     training timesteps.
 
-    Returns a dict with ``mean_reward``, ``mean_mttc``,
-    ``compromise_rate``, ``n_episodes``, ``last_window_start``.
+    Returns a dict with:
+
+    - ``mean_reward``: arithmetic mean of ``episode_reward``.
+    - ``mean_mttc``: arithmetic mean of ``mttc_steps`` over episodes
+      where it is not ``None``. ``NaN`` if every episode is
+      uncompromised.
+    - ``compromise_rate``: fraction of episodes with ``compromised=True``.
+    - ``mitigated_impact_rate``: fraction of episodes with
+      ``end_outcome == "impact_mitigated"``. Per PLAN §8 D5.4.1 this
+      is the gated quantity (G5.4); ``compromise_rate`` is reported
+      for completeness but no longer gated.
+    - ``mitigated_among_compromised``: fraction of *compromised*
+      episodes that ended in ``impact_mitigated``. Useful when
+      compromise rate is near 1 (typical with the upper-triangular
+      LSTM) — answers "given that IMPACT happened, how often did the
+      agent block it?".
+    - ``n_episodes``, ``last_window_start``: bookkeeping.
+
     Empty if ``records`` is empty.
     """
     if not records:
         return {
             "mean_reward": math.nan, "mean_mttc": math.nan,
-            "compromise_rate": math.nan, "n_episodes": 0,
-            "last_window_start": 0,
+            "compromise_rate": math.nan, "mitigated_impact_rate": math.nan,
+            "mitigated_among_compromised": math.nan,
+            "n_episodes": 0, "last_window_start": 0,
         }
     if not (0.0 < fraction <= 1.0):
         raise ValueError(f"fraction must be in (0, 1], got {fraction}")
@@ -358,16 +375,37 @@ def summarise_last_window(
     if not sel:
         return {
             "mean_reward": math.nan, "mean_mttc": math.nan,
-            "compromise_rate": math.nan, "n_episodes": 0,
-            "last_window_start": cutoff,
+            "compromise_rate": math.nan, "mitigated_impact_rate": math.nan,
+            "mitigated_among_compromised": math.nan,
+            "n_episodes": 0, "last_window_start": cutoff,
         }
     rewards = [r["episode_reward"] for r in sel]
     mttc_vals = [r["mttc_steps"] for r in sel if r.get("mttc_steps") is not None]
     compromised = [1.0 if r.get("compromised") else 0.0 for r in sel]
+    mitigated = [
+        1.0 if r.get("end_outcome") == "impact_mitigated" else 0.0
+        for r in sel
+    ]
+    n_compromised = int(sum(compromised))
+    if n_compromised > 0:
+        mit_among_comp = float(
+            sum(
+                1.0
+                for r in sel
+                if r.get("compromised")
+                and r.get("end_outcome") == "impact_mitigated"
+            )
+            / n_compromised
+        )
+    else:
+        mit_among_comp = math.nan
+
     return {
         "mean_reward": float(np.mean(rewards)),
         "mean_mttc": float(np.mean(mttc_vals)) if mttc_vals else math.nan,
         "compromise_rate": float(np.mean(compromised)),
+        "mitigated_impact_rate": float(np.mean(mitigated)),
+        "mitigated_among_compromised": mit_among_comp,
         "n_episodes": len(sel),
         "last_window_start": cutoff,
     }

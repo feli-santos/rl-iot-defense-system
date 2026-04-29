@@ -277,6 +277,26 @@ class TestSummariseLastWindow:
         assert s["compromise_rate"] == pytest.approx(1.0)
         assert s["mean_mttc"] == pytest.approx(20.0)
 
+    def test_mitigated_impact_metrics(self) -> None:
+        # 4 records all in the last-10% window; 3 compromised, 2 of them
+        # mitigated. Expected: compromise_rate=0.75, mit_rate=0.50,
+        # mit_among_compromised=2/3.
+        records = []
+        for t, comp, outcome in [
+            (90, True, "impact_mitigated"),
+            (95, True, "impact_missed"),
+            (97, True, "impact_mitigated"),
+            (100, False, "ongoing"),
+        ]:
+            r = _make_record(num_timesteps=t, compromised=comp,
+                             mttc_steps=20 if comp else None)
+            r["end_outcome"] = outcome
+            records.append(r)
+        s = agg.summarise_last_window(records, fraction=0.20)
+        assert s["compromise_rate"] == pytest.approx(0.75)
+        assert s["mitigated_impact_rate"] == pytest.approx(0.5)
+        assert s["mitigated_among_compromised"] == pytest.approx(2.0 / 3.0)
+
     def test_empty_records(self) -> None:
         s = agg.summarise_last_window([])
         assert s["n_episodes"] == 0

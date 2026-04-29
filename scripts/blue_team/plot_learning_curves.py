@@ -112,7 +112,16 @@ def render(
     centers = bucket_centers(edges)
 
     # Collate per-algo per-seed curves.
-    metric_keys = ("episode_reward", "mttc_steps", "compromised")
+    # Per D5.10.1 the third panel is "mitigated-impact rate" (a derived
+    # boolean from end_outcome), not unconditional compromise rate.
+    # We pre-compute the derived field on the records before binning.
+    for recs in list(train_runs.values()) + list(eval_runs.values()):
+        for r in recs:
+            r.setdefault(
+                "impact_mitigated",
+                r.get("end_outcome") == "impact_mitigated",
+            )
+    metric_keys = ("episode_reward", "mttc_steps", "impact_mitigated")
     aggregators = ("mean", "mean", "rate")
     panels: Dict[str, Dict[str, Dict[str, np.ndarray]]] = {
         k: {} for k in metric_keys  # algo -> {low, mean, high}
@@ -180,16 +189,18 @@ def render(
             return {"mean": float(np.mean(vals)),
                     "values": [float(v) for v in vals]}
 
+        _summary_keys = (
+            "mean_reward", "mean_mttc", "compromise_rate",
+            "mitigated_impact_rate", "mitigated_among_compromised",
+        )
         summary["algos"][algo] = {
             "n_seeds_train": len(seeds_train),
             "n_seeds_eval": len(seeds_eval),
             "train_last_window": {
-                k: _agg_lw(last_window_seeds, k)
-                for k in ("mean_reward", "mean_mttc", "compromise_rate")
+                k: _agg_lw(last_window_seeds, k) for k in _summary_keys
             },
             "eval_last_window": {
-                k: _agg_lw(last_window_seeds_eval, k)
-                for k in ("mean_reward", "mean_mttc", "compromise_rate")
+                k: _agg_lw(last_window_seeds_eval, k) for k in _summary_keys
             },
         }
 
@@ -198,7 +209,7 @@ def render(
     metric_titles = {
         "episode_reward": ("Mean episodic reward", "reward"),
         "mttc_steps": ("Mean Time-To-Compromise (MTTC)", "steps"),
-        "compromised": ("Compromise rate (per episode)", "fraction"),
+        "impact_mitigated": ("Mitigated-impact rate (per episode)", "fraction"),
     }
     for ax, k in zip(axes, metric_keys):
         for algo, agg in panels[k].items():
