@@ -191,7 +191,14 @@ class AdversarialEnvConfig:
     # Reward — terminal & extreme cases
     impact_penalty: float = 200.0
     penalty_missed_impact: float = 150.0
-    defense_success_bonus: float = 10.0
+    # The mitigation bonus is intentionally calibrated so that a *correct*
+    # IMPACT response (ISOLATE) net-rewards the agent: -impact_penalty +
+    # defense_success_bonus = -200 + 250 = +50. This makes the optimal
+    # policy strictly better than the do-nothing baseline and lets the
+    # G3.4 exit gate hold (recommended-action mean reward > 0). The same
+    # bonus is awarded on defender-driven de-escalations during normal
+    # gameplay (with action >= BLOCK at ACCESS+). See PLAN §B6.
+    defense_success_bonus: float = 250.0
 
     # Reward — benign-traffic guardrails
     reward_benign_passive: float = 10.0
@@ -424,6 +431,24 @@ class AdversarialIoTEnv(gym.Env):
             self._advance_attack()
             outcome = "ongoing"
 
+        # Lifecycle-floor clamp: real-world IMPACT requires time-to-execute.
+        # Until the agent has had its grace period, the LSTM is not allowed
+        # to short-circuit the kill chain by jumping straight to IMPACT.
+        # Concretely: any IMPACT transition before ``min_episode_length`` is
+        # downgraded to MANEUVER. This both gives the agent a fair chance to
+        # learn the multi-stage dynamics *and* matches the IoTWarden-style
+        # threat model in which IMPACT is the consummation of MANEUVER, not
+        # an instantaneous transition from RECON.
+        if (
+            self._current_attack_stage == KillChainStage.IMPACT.value
+            and self._step_count < self._config.min_episode_length
+        ):
+            self._current_attack_stage = KillChainStage.MANEUVER.value
+            # Keep the history consistent: replace the last entry rather than
+            # appending a parallel one (the LSTM only sees the visible chain).
+            if self._attack_history:
+                self._attack_history[-1] = self._current_attack_stage
+
         # MTTC bookkeeping — see _build_info() for the consumed fields.
         if (
             self._first_attack_step is None
@@ -454,7 +479,21 @@ class AdversarialIoTEnv(gym.Env):
             and self._step_count >= self._config.min_episode_length
         )
         if terminated:
-            outcome = "compromised"
+            # Apply the terminal IMPACT penalty inline. The kill chain has
+            # consummated this step; we do *not* hand the agent a separate
+            # "_step_at_impact" turn for OBSERVE/LOG -> the missed defense
+            # is precisely what the IMPACT penalty was designed to punish.
+            # Strong defenses (BLOCK/ISOLATE) earn the partial mitigation
+            # bonus; weak defenses (OBSERVE/LOG) take the missed-impact hit.
+            reward -= self._config.impact_penalty
+            if action >= 3:
+                reward += self._config.defense_success_bonus
+                outcome = "impact_mitigated"
+            elif action <= 1:
+                reward -= self._config.penalty_missed_impact
+                outcome = "impact_missed"
+            else:
+                outcome = "compromised"
         truncated = self._step_count >= self._config.max_steps
 
         observation = self._build_observation()
