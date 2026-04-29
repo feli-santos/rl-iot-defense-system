@@ -1,0 +1,601 @@
+{
+  "version": "1.0",
+  "git_sha": "3cd2fb90ac7a",
+  "seed": 0,
+  "n_train": 281420,
+  "n_val_balanced": 1000,
+  "n_test_balanced": 5000,
+  "n_test": 80406,
+  "num_features": 29,
+  "models": {
+    "StageDetector": {
+      "config": {
+        "num_features": 29,
+        "num_classes": 5,
+        "hidden_sizes": [
+          64,
+          32
+        ],
+        "dropout": 0.2,
+        "learning_rate": 0.001,
+        "weight_decay": 0.0001,
+        "batch_size": 512,
+        "max_epochs": 20,
+        "patience": 3,
+        "grad_clip_norm": 1.0,
+        "use_class_weights": true,
+        "inference_batch_size": 4096
+      },
+      "run_info": {
+        "best_epoch": 5,
+        "best_val_macro_f1": 0.7708924095913208,
+        "train_time_seconds": 6.371389917,
+        "train_loss_history": [
+          0.879402480759301,
+          0.6616946119691474,
+          0.6199132085363288,
+          0.5995071422663183,
+          0.5868963770525482,
+          0.5783428944408509,
+          0.5709773112331217,
+          0.5682420112601934
+        ],
+        "val_loss_history": [
+          0.7602629065513611,
+          0.7066594362258911,
+          0.7037020921707153,
+          0.6881212592124939,
+          0.68056321144104,
+          0.6841040849685669,
+          0.6704590320587158,
+          0.6663516163825989
+        ],
+        "val_macro_f1_history": [
+          0.7292971186256728,
+          0.7488645007775295,
+          0.7581360688241421,
+          0.7668382066424734,
+          0.7708924095913208,
+          0.7670143285857718,
+          0.7684110672905143,
+          0.7700140761181984
+        ]
+      },
+      "test_balanced": {
+        "model_name": "StageDetector",
+        "split_name": "test_balanced",
+        "macro_f1": 0.785462,
+        "per_class_f1": {
+          "BENIGN": 0.776671,
+          "RECON": 0.623843,
+          "ACCESS": 0.685494,
+          "MANEUVER": 0.844298,
+          "IMPACT": 0.997003
+        },
+        "per_stage_recall": {
+          "BENIGN": 0.819,
+          "RECON": 0.539,
+          "ACCESS": 0.801,
+          "MANEUVER": 0.77,
+          "IMPACT": 0.998
+        },
+        "confusion_matrix": [
+          [
+            819,
+            54,
+            100,
+            27,
+            0
+          ],
+          [
+            142,
+            539,
+            314,
+            5,
+            0
+          ],
+          [
+            64,
+            113,
+            801,
+            22,
+            0
+          ],
+          [
+            83,
+            22,
+            121,
+            770,
+            4
+          ],
+          [
+            1,
+            0,
+            1,
+            0,
+            998
+          ]
+        ],
+        "n_samples": 5000
+      },
+      "test": {
+        "model_name": "StageDetector",
+        "split_name": "test",
+        "macro_f1": 0.769474,
+        "per_class_f1": {
+          "BENIGN": 0.842587,
+          "RECON": 0.596961,
+          "ACCESS": 0.584955,
+          "MANEUVER": 0.823842,
+          "IMPACT": 0.999024
+        },
+        "per_stage_recall": {
+          "BENIGN": 0.81455,
+          "RECON": 0.53657,
+          "ACCESS": 0.787494,
+          "MANEUVER": 0.751882,
+          "IMPACT": 0.999065
+        },
+        "confusion_matrix": [
+          [
+            16291,
+            1044,
+            2168,
+            497,
+            0
+          ],
+          [
+            1081,
+            4145,
+            2429,
+            70,
+            0
+          ],
+          [
+            473,
+            796,
+            5214,
+            138,
+            0
+          ],
+          [
+            817,
+            170,
+            1382,
+            7291,
+            37
+          ],
+          [
+            7,
+            7,
+            13,
+            7,
+            36329
+          ]
+        ],
+        "n_samples": 80406
+      }
+    },
+    "RandomForest": {
+      "config": {
+        "n_estimators": 100,
+        "class_weight": "balanced",
+        "n_jobs": -1
+      },
+      "run_info": {
+        "train_time_seconds": 6.9652583329999995,
+        "feature_importances": [
+          0.06199524129532643,
+          0.08574968656554971,
+          0.056767054048856964,
+          0.03065998023663964,
+          0.04261708355542325,
+          0.0,
+          0.0003659200235991994,
+          0.003088603933185844,
+          0.0020880381605789026,
+          0.0018990403427731554,
+          0.005894415742879325,
+          0.009318715149045833,
+          0.03501336990765022,
+          0.016521027864174746,
+          0.061473297499389686,
+          0.07113116149620702,
+          0.006592745768588793,
+          0.009982980818083695,
+          0.007681562416521349,
+          0.0036723634115482136,
+          0.002137306471831371,
+          0.04063065989097709,
+          0.036901814356772776,
+          0.053140307247264686,
+          0.05422427586910058,
+          0.06148500043994528,
+          0.1692357369046505,
+          0.03181108191078405,
+          0.0379215286726515
+        ]
+      },
+      "test_balanced": {
+        "model_name": "RandomForest",
+        "split_name": "test_balanced",
+        "macro_f1": 0.904536,
+        "per_class_f1": {
+          "BENIGN": 0.885937,
+          "RECON": 0.84454,
+          "ACCESS": 0.86286,
+          "MANEUVER": 0.929843,
+          "IMPACT": 0.9995
+        },
+        "per_stage_recall": {
+          "BENIGN": 0.967,
+          "RECON": 0.785,
+          "ACCESS": 0.884,
+          "MANEUVER": 0.888,
+          "IMPACT": 0.999
+        },
+        "confusion_matrix": [
+          [
+            967,
+            10,
+            21,
+            2,
+            0
+          ],
+          [
+            112,
+            785,
+            96,
+            7,
+            0
+          ],
+          [
+            50,
+            53,
+            884,
+            13,
+            0
+          ],
+          [
+            53,
+            11,
+            48,
+            888,
+            0
+          ],
+          [
+            1,
+            0,
+            0,
+            0,
+            999
+          ]
+        ],
+        "n_samples": 5000
+      },
+      "test": {
+        "model_name": "RandomForest",
+        "split_name": "test",
+        "macro_f1": 0.906351,
+        "per_class_f1": {
+          "BENIGN": 0.941322,
+          "RECON": 0.842596,
+          "ACCESS": 0.826161,
+          "MANEUVER": 0.922145,
+          "IMPACT": 0.999533
+        },
+        "per_stage_recall": {
+          "BENIGN": 0.96735,
+          "RECON": 0.794822,
+          "ACCESS": 0.878568,
+          "MANEUVER": 0.870888,
+          "IMPACT": 0.999642
+        },
+        "confusion_matrix": [
+          [
+            19347,
+            211,
+            386,
+            56,
+            0
+          ],
+          [
+            814,
+            6140,
+            718,
+            53,
+            0
+          ],
+          [
+            390,
+            356,
+            5817,
+            58,
+            0
+          ],
+          [
+            551,
+            141,
+            539,
+            8445,
+            21
+          ],
+          [
+            4,
+            1,
+            1,
+            7,
+            36350
+          ]
+        ],
+        "n_samples": 80406
+      }
+    },
+    "CNN1D": {
+      "config": {
+        "num_features": 29,
+        "num_classes": 5,
+        "in_channels": 1,
+        "out_channels_1": 16,
+        "out_channels_2": 32,
+        "kernel_size": 3,
+        "learning_rate": 0.001,
+        "weight_decay": 0.0001,
+        "batch_size": 512,
+        "max_epochs": 20,
+        "patience": 3,
+        "grad_clip_norm": 1.0,
+        "use_class_weights": true,
+        "inference_batch_size": 4096
+      },
+      "run_info": {
+        "best_epoch": 7,
+        "best_val_macro_f1": 0.7321875488273101,
+        "train_time_seconds": 131.007341292,
+        "train_loss_history": [
+          1.3031564350957072,
+          0.9311715799619644,
+          0.8013222275864009,
+          0.7536609076350561,
+          0.729162244411786,
+          0.7122149783854511,
+          0.7003301293634249,
+          0.6916842852012578,
+          0.6850398343946793,
+          0.6789857478845298
+        ],
+        "val_loss_history": [
+          1.121698260307312,
+          0.9277327656745911,
+          0.8694137334823608,
+          0.8528344631195068,
+          0.8478711843490601,
+          0.8457885980606079,
+          0.8165856003761292,
+          0.8278090357780457,
+          0.8149324655532837,
+          0.8020963072776794
+        ],
+        "val_macro_f1_history": [
+          0.6161972600518014,
+          0.7031809005686578,
+          0.6996164057195461,
+          0.7143091041575242,
+          0.7094445545865617,
+          0.7251540665906863,
+          0.7321875488273101,
+          0.7254410849405113,
+          0.7276773616893993,
+          0.7187422855501351
+        ]
+      },
+      "test_balanced": {
+        "model_name": "CNN1D",
+        "split_name": "test_balanced",
+        "macro_f1": 0.723249,
+        "per_class_f1": {
+          "BENIGN": 0.674734,
+          "RECON": 0.562535,
+          "ACCESS": 0.600677,
+          "MANEUVER": 0.785794,
+          "IMPACT": 0.992504
+        },
+        "per_stage_recall": {
+          "BENIGN": 0.697,
+          "RECON": 0.497,
+          "ACCESS": 0.71,
+          "MANEUVER": 0.708,
+          "IMPACT": 0.993
+        },
+        "confusion_matrix": [
+          [
+            697,
+            87,
+            180,
+            36,
+            0
+          ],
+          [
+            140,
+            497,
+            344,
+            16,
+            3
+          ],
+          [
+            90,
+            161,
+            710,
+            39,
+            0
+          ],
+          [
+            135,
+            22,
+            130,
+            708,
+            5
+          ],
+          [
+            4,
+            0,
+            0,
+            3,
+            993
+          ]
+        ],
+        "n_samples": 5000
+      },
+      "test": {
+        "model_name": "CNN1D",
+        "split_name": "test",
+        "macro_f1": 0.703523,
+        "per_class_f1": {
+          "BENIGN": 0.7386,
+          "RECON": 0.536195,
+          "ACCESS": 0.482568,
+          "MANEUVER": 0.766856,
+          "IMPACT": 0.993396
+        },
+        "per_stage_recall": {
+          "BENIGN": 0.6799,
+          "RECON": 0.515858,
+          "ACCESS": 0.69929,
+          "MANEUVER": 0.694338,
+          "IMPACT": 0.988642
+        },
+        "confusion_matrix": [
+          [
+            13598,
+            1776,
+            3864,
+            749,
+            13
+          ],
+          [
+            1020,
+            3985,
+            2592,
+            117,
+            11
+          ],
+          [
+            666,
+            1089,
+            4630,
+            230,
+            6
+          ],
+          [
+            1284,
+            262,
+            1383,
+            6733,
+            35
+          ],
+          [
+            253,
+            27,
+            99,
+            34,
+            35950
+          ]
+        ],
+        "n_samples": 80406
+      }
+    }
+  },
+  "ood_evaluation": {
+    "DDoS-HTTP_Flood": {
+      "attack_class": "DDoS-HTTP_Flood",
+      "expected_stage": "IMPACT",
+      "n_samples": 12121,
+      "recall": 0.998597,
+      "predicted_stage_distribution": {
+        "BENIGN": 0,
+        "RECON": 1,
+        "ACCESS": 15,
+        "MANEUVER": 1,
+        "IMPACT": 12104
+      }
+    },
+    "Mirai-udpplain": {
+      "attack_class": "Mirai-udpplain",
+      "expected_stage": "IMPACT",
+      "n_samples": 12121,
+      "recall": 0.786074,
+      "predicted_stage_distribution": {
+        "BENIGN": 1,
+        "RECON": 0,
+        "ACCESS": 1,
+        "MANEUVER": 2591,
+        "IMPACT": 9528
+      }
+    },
+    "VulnerabilityScan": {
+      "attack_class": "VulnerabilityScan",
+      "expected_stage": "RECON",
+      "n_samples": 12121,
+      "recall": 0.000825,
+      "predicted_stage_distribution": {
+        "BENIGN": 500,
+        "RECON": 10,
+        "ACCESS": 591,
+        "MANEUVER": 384,
+        "IMPACT": 10636
+      }
+    },
+    "XSS": {
+      "attack_class": "XSS",
+      "expected_stage": "ACCESS",
+      "n_samples": 3846,
+      "recall": 0.919917,
+      "predicted_stage_distribution": {
+        "BENIGN": 86,
+        "RECON": 200,
+        "ACCESS": 3538,
+        "MANEUVER": 22,
+        "IMPACT": 0
+      }
+    }
+  },
+  "inference_latency_ms_per_sample": 0.0392,
+  "gates": {
+    "G4.2": {
+      "name": "Detector head macro-F1 on test_balanced >= 0.75",
+      "threshold": 0.75,
+      "observed": 0.785462,
+      "status": "PASS"
+    },
+    "G4.3": {
+      "name": "Detector head per-stage recall >= 0.50 on every stage",
+      "threshold": 0.5,
+      "observed_worst": 0.539,
+      "observed_worst_at": "StageDetector/RECON",
+      "diagnostic_cross_baseline_worst": 0.497,
+      "diagnostic_cross_baseline_worst_at": "CNN1D/RECON",
+      "status": "PASS"
+    },
+    "G4.4": {
+      "name": "At least one held-out OOD class fails to generalise (recall <= 0.30)",
+      "threshold_min_recall": 0.3,
+      "observed_min": 0.000825,
+      "observed_max": 0.998597,
+      "observed_gap": 0.997772,
+      "per_class": {
+        "DDoS-HTTP_Flood": 0.998597,
+        "Mirai-udpplain": 0.786074,
+        "VulnerabilityScan": 0.000825,
+        "XSS": 0.919917
+      },
+      "status": "PASS-with-finding",
+      "note": "Asymmetric OOD generalisation observed (max=0.999, min=0.001, gap=0.998). At least one held-out class falls within the ambitious threshold; the detector has a genuine blind spot for the RL agent to compensate for. Recorded as a thesis finding (PLAN \u00a78.D2 revised step 4.5)."
+    },
+    "G4.5": {
+      "name": "StageDetector per-sample inference <= 1 ms",
+      "threshold_ms": 1.0,
+      "observed_ms": 0.0392,
+      "status": "PASS"
+    }
+  }
+}

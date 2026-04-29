@@ -87,6 +87,11 @@ phase-2:  ## Phase 2: train LSTM Red Team and emit F1+F2 (~80 s on CPU).
 	$(PYTHON) -m scripts.red_team.train_lstm \
 	    --processed-dir $(DATA) --seed $(SEED)
 
+.PHONY: phase-4
+phase-4: derive-stages  ## Phase 4: train detector + RF + CNN1D, emit F11 (~3-5 min).
+	$(PYTHON) -m scripts.detector.train_detector \
+	    --processed-dir $(DATA) --seed $(SEED)
+
 .PHONY: train-generator
 train-generator:  ## Train the LSTM Red Team generator.
 	$(PYTHON) main.py --mode train-generator --config $(CONFIG) \
