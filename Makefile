@@ -128,8 +128,14 @@ phase-5-figures:  ## Phase 5: render F3, F4, T1 from runs/phase5/.
 	    --runs-root $(PHASE5_RUNS_ROOT) \
 	    --out-dir docs/results/05_blue_team
 
+.PHONY: phase-5-gates
+phase-5-gates:  ## Phase 5: evaluate G5.2-G5.7 against runs/phase5/.
+	$(PYTHON) -m scripts.blue_team.evaluate_gates \
+	    --runs-root $(PHASE5_RUNS_ROOT) \
+	    --out-dir docs/results/05_blue_team
+
 .PHONY: phase-5
-phase-5: phase-5-sweep phase-5-figures  ## Phase 5: full sweep + figures.
+phase-5: phase-5-sweep phase-5-figures phase-5-gates  ## Phase 5: full sweep + figures + gate scoreboard.
 
 .PHONY: train-generator
 train-generator:  ## Train the LSTM Red Team generator.
