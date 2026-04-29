@@ -92,6 +92,45 @@ phase-4: derive-stages  ## Phase 4: train detector + RF + CNN1D, emit F11 (~3-5 
 	$(PYTHON) -m scripts.detector.train_detector \
 	    --processed-dir $(DATA) --seed $(SEED)
 
+# -----------------------------------------------------------------------------
+# Phase 5: RL Blue Team — DQN/PPO/A2C × 5 seeds + F3/F4/T1
+# -----------------------------------------------------------------------------
+PHASE5_RUNS_ROOT ?= runs/phase5
+PHASE5_TIMESTEPS ?= 250000
+PHASE5_SEEDS ?= 0 1 2 3 4
+PHASE5_ALGOS ?= dqn ppo a2c
+PHASE5_PARALLEL ?= 1
+
+.PHONY: phase-5-smoke
+phase-5-smoke:  ## Phase 5 smoke: PPO seed 0 only, 5K timesteps (~20 s).
+	$(PYTHON) -m scripts.blue_team.train_agent \
+	    --algo ppo --seed 0 --smoke \
+	    --out-dir runs/smoke/ppo_seed_0
+
+.PHONY: phase-5-sweep
+phase-5-sweep:  ## Phase 5: train DQN/PPO/A2C × 5 seeds (~3-7 h CPU).
+	$(PYTHON) -m scripts.blue_team.run_phase5 \
+	    --algos $(PHASE5_ALGOS) --seeds $(PHASE5_SEEDS) \
+	    --total-timesteps $(PHASE5_TIMESTEPS) \
+	    --out-root $(PHASE5_RUNS_ROOT) \
+	    --parallel $(PHASE5_PARALLEL) \
+	    --continue-on-failure
+
+.PHONY: phase-5-figures
+phase-5-figures:  ## Phase 5: render F3, F4, T1 from runs/phase5/.
+	$(PYTHON) -m scripts.blue_team.plot_learning_curves \
+	    --runs-root $(PHASE5_RUNS_ROOT) \
+	    --out-dir docs/results/05_blue_team
+	$(PYTHON) -m scripts.blue_team.plot_action_dist \
+	    --runs-root $(PHASE5_RUNS_ROOT) \
+	    --out-dir docs/results/05_blue_team
+	$(PYTHON) -m scripts.blue_team.dump_hparams \
+	    --runs-root $(PHASE5_RUNS_ROOT) \
+	    --out-dir docs/results/05_blue_team
+
+.PHONY: phase-5
+phase-5: phase-5-sweep phase-5-figures  ## Phase 5: full sweep + figures.
+
 .PHONY: train-generator
 train-generator:  ## Train the LSTM Red Team generator.
 	$(PYTHON) main.py --mode train-generator --config $(CONFIG) \
