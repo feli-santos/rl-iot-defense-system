@@ -1,0 +1,260 @@
+{
+  "version": "1.0",
+  "runs_root": "runs/phase5",
+  "fraction": 0.1,
+  "best_algo": "ppo",
+  "per_algo_summary": {
+    "a2c": {
+      "mean_reward": 1325.5955450873903,
+      "mean_mttc": 19.264444444444443,
+      "compromise_rate": 1.0,
+      "mitigated_impact_rate": 0.2422222222222222,
+      "mitigated_among_compromised": 0.2422222222222222,
+      "n_seeds": 5,
+      "per_seed": [
+        {
+          "mean_reward": 1274.686648103926,
+          "mean_mttc": 19.233333333333334,
+          "compromise_rate": 1.0,
+          "mitigated_impact_rate": 0.2,
+          "mitigated_among_compromised": 0.2,
+          "n_episodes": 90,
+          "last_window_start": 225000,
+          "seed": 0
+        },
+        {
+          "mean_reward": 1271.9699999862246,
+          "mean_mttc": 19.27777777777778,
+          "compromise_rate": 1.0,
+          "mitigated_impact_rate": 0.24444444444444444,
+          "mitigated_among_compromised": 0.24444444444444444,
+          "n_episodes": 90,
+          "last_window_start": 225000,
+          "seed": 1
+        },
+        {
+          "mean_reward": 1341.218861023585,
+          "mean_mttc": 19.233333333333334,
+          "compromise_rate": 1.0,
+          "mitigated_impact_rate": 0.24444444444444444,
+          "mitigated_among_compromised": 0.24444444444444444,
+          "n_episodes": 90,
+          "last_window_start": 225000,
+          "seed": 2
+        },
+        {
+          "mean_reward": 1320.5677744865418,
+          "mean_mttc": 19.18888888888889,
+          "compromise_rate": 1.0,
+          "mitigated_impact_rate": 0.25555555555555554,
+          "mitigated_among_compromised": 0.25555555555555554,
+          "n_episodes": 90,
+          "last_window_start": 225000,
+          "seed": 3
+        },
+        {
+          "mean_reward": 1419.5344418366751,
+          "mean_mttc": 19.38888888888889,
+          "compromise_rate": 1.0,
+          "mitigated_impact_rate": 0.26666666666666666,
+          "mitigated_among_compromised": 0.26666666666666666,
+          "n_episodes": 90,
+          "last_window_start": 225000,
+          "seed": 4
+        }
+      ]
+    },
+    "dqn": {
+      "mean_reward": 1300.1122055954402,
+      "mean_mttc": 19.24888888888889,
+      "compromise_rate": 1.0,
+      "mitigated_impact_rate": 0.23555555555555557,
+      "mitigated_among_compromised": 0.23555555555555557,
+      "n_seeds": 5,
+      "per_seed": [
+        {
+          "mean_reward": 1384.709985367457,
+          "mean_mttc": 19.288888888888888,
+          "compromise_rate": 1.0,
+          "mitigated_impact_rate": 0.25555555555555554,
+          "mitigated_among_compromised": 0.25555555555555554,
+          "n_episodes": 90,
+          "last_window_start": 225000,
+          "seed": 0
+        },
+        {
+          "mean_reward": 1326.584421380361,
+          "mean_mttc": 19.07777777777778,
+          "compromise_rate": 1.0,
+          "mitigated_impact_rate": 0.3,
+          "mitigated_among_compromised": 0.3,
+          "n_episodes": 90,
+          "last_window_start": 225000,
+          "seed": 1
+        },
+        {
+          "mean_reward": 1370.8255326482986,
+          "mean_mttc": 19.41111111111111,
+          "compromise_rate": 1.0,
+          "mitigated_impact_rate": 0.16666666666666666,
+          "mitigated_among_compromised": 0.16666666666666666,
+          "n_episodes": 90,
+          "last_window_start": 225000,
+          "seed": 2
+        },
+        {
+          "mean_reward": 998.6533198833465,
+          "mean_mttc": 19.255555555555556,
+          "compromise_rate": 1.0,
+          "mitigated_impact_rate": 0.2,
+          "mitigated_among_compromised": 0.2,
+          "n_episodes": 90,
+          "last_window_start": 225000,
+          "seed": 3
+        },
+        {
+          "mean_reward": 1419.7877686977386,
+          "mean_mttc": 19.211111111111112,
+          "compromise_rate": 1.0,
+          "mitigated_impact_rate": 0.25555555555555554,
+          "mitigated_among_compromised": 0.25555555555555554,
+          "n_episodes": 90,
+          "last_window_start": 225000,
+          "seed": 4
+        }
+      ]
+    },
+    "ppo": {
+      "mean_reward": 1350.6819862508773,
+      "mean_mttc": 19.23666666666667,
+      "compromise_rate": 1.0,
+      "mitigated_impact_rate": 0.2633333333333333,
+      "mitigated_among_compromised": 0.2633333333333333,
+      "n_seeds": 5,
+      "per_seed": [
+        {
+          "mean_reward": 1328.1283161481222,
+          "mean_mttc": 19.316666666666666,
+          "compromise_rate": 1.0,
+          "mitigated_impact_rate": 0.3,
+          "mitigated_among_compromised": 0.3,
+          "n_episodes": 60,
+          "last_window_start": 226713,
+          "seed": 0
+        },
+        {
+          "mean_reward": 1301.0733239253361,
+          "mean_mttc": 18.933333333333334,
+          "compromise_rate": 1.0,
+          "mitigated_impact_rate": 0.25,
+          "mitigated_among_compromised": 0.25,
+          "n_episodes": 60,
+          "last_window_start": 226713,
+          "seed": 1
+        },
+        {
+          "mean_reward": 1370.5849803129831,
+          "mean_mttc": 19.166666666666668,
+          "compromise_rate": 1.0,
+          "mitigated_impact_rate": 0.23333333333333334,
+          "mitigated_among_compromised": 0.23333333333333334,
+          "n_episodes": 60,
+          "last_window_start": 226713,
+          "seed": 2
+        },
+        {
+          "mean_reward": 1368.7399855693182,
+          "mean_mttc": 19.35,
+          "compromise_rate": 1.0,
+          "mitigated_impact_rate": 0.3333333333333333,
+          "mitigated_among_compromised": 0.3333333333333333,
+          "n_episodes": 60,
+          "last_window_start": 226713,
+          "seed": 3
+        },
+        {
+          "mean_reward": 1384.8833252986271,
+          "mean_mttc": 19.416666666666668,
+          "compromise_rate": 1.0,
+          "mitigated_impact_rate": 0.2,
+          "mitigated_among_compromised": 0.2,
+          "n_episodes": 60,
+          "last_window_start": 226713,
+          "seed": 4
+        }
+      ]
+    }
+  },
+  "gates": {
+    "G5.1": {
+      "description": "full pytest suite green",
+      "evaluated": false,
+      "note": "evaluated separately by `pytest -q`"
+    },
+    "G5.2": {
+      "description": "at least one algo eval reward > 0 over last 10% \u00d7 5 seeds",
+      "threshold": 0.0,
+      "observed": 1350.6819862508773,
+      "passes": true
+    },
+    "G5.3": {
+      "description": "best algo mean MTTC >= 19 (D5.4.1)",
+      "threshold": 19,
+      "observed": 19.23666666666667,
+      "best_algo": "ppo",
+      "passes": true
+    },
+    "G5.4": {
+      "description": "best algo mitigated-impact rate >= 0.5 (D5.4.1)",
+      "threshold": 0.5,
+      "observed": 0.2633333333333333,
+      "best_algo": "ppo",
+      "passes": false
+    },
+    "G5.5": {
+      "description": "no per-stage action share > 70% at late checkpoint",
+      "threshold": 0.7,
+      "passes": true,
+      "per_stage": {
+        "BENIGN": {
+          "max_share": 0.45130345960829593,
+          "argmax_action": 1,
+          "argmax_action_name": "LOG",
+          "passes": true
+        },
+        "RECON": {
+          "max_share": 0.3395709721588316,
+          "argmax_action": 1,
+          "argmax_action_name": "LOG",
+          "passes": true
+        },
+        "ACCESS": {
+          "max_share": 0.3013653013653014,
+          "argmax_action": 1,
+          "argmax_action_name": "LOG",
+          "passes": true
+        },
+        "MANEUVER": {
+          "max_share": 0.3983466053907003,
+          "argmax_action": 3,
+          "argmax_action_name": "BLOCK",
+          "passes": true
+        },
+        "IMPACT": {
+          "max_share": null,
+          "passes": null,
+          "note": "no decisions in late window"
+        }
+      }
+    },
+    "G5.6": {
+      "description": "no regression on Phase-3 frozen tests",
+      "evaluated": false,
+      "note": "evaluated separately by `pytest -q tests/test_phase3_env_gates.py tests/test_adversarial_env.py`"
+    },
+    "G5.7": {
+      "description": "F3/F4/T1 manifests exist & hash-pin inputs",
+      "passes": true
+    }
+  }
+}

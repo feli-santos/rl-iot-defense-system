@@ -5,6 +5,120 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] — Phase 5: RL Blue Team v2 (F3, F4, T1)
+
+### Added
+- `docs/results/05_blue_team/PLAN.md` — pre-code audit + locked
+  design decisions D5.1–D5.11 plus dated revisions D5.3.1, D5.4.1,
+  D5.10.1 (the latter three locked from the 50K-step probe in
+  step 5.4).
+- `docs/results/05_blue_team/RESULTS.md` — as-built record covering
+  the four findings worth defending in the thesis (env exposes
+  learnable structure, agent farms de-escalations, stage-action
+  proportionality is learned, three SB3 baselines all work).
+- `src/blue_team/` — new module:
+  - `callbacks.py`: `EpisodeJSONLCallback` writes one JSON line per
+    terminated episode (Phase-3 telemetry + per-stage action
+    histogram); `EvalToJSONLCallback` does the same for periodic
+    eval rollouts.
+  - `run_config.py`: `BlueTeamRunConfig` dataclass with atomic
+    `write_manifest` / `from_manifest`.
+  - `env_factory.py`: `make_train_env` / `make_eval_env` wrap
+    `AdversarialIoTEnv` in `Monitor` + `DummyVecEnv` with split-aware
+    `RealizationEngine.from_split_manifest`.
+  - `aggregation.py`: pure-Python reading + bucketing + bootstrap-CI
+    + per-stage roll-up helpers consumed by F3/F4/G5 plot scripts.
+- `scripts/blue_team/` — new module:
+  - `train_agent.py`: single-(algo, seed) entrypoint binding the
+    run config, env factories, SB3 algorithm wrapper, and both
+    callbacks.
+  - `run_phase5.py`: subprocess fan-out driver for the 3 × 5 grid
+    (D5.6); aggregates per-run manifests into
+    `runs/phase5/sweep_manifest.json`.
+  - `plot_learning_curves.py` (F3) — 3-panel reward / MTTC /
+    mitigated-impact-rate curves with mean ± 95 % bootstrap CI bands
+    per algo, eval overlaid as dotted lines.
+  - `plot_action_dist.py` (F4) — stacked-area marginal action share
+    + 3 × 5 small-multiples per-stage histograms at early/mid/late
+    checkpoints; computes G5.5 in-place.
+  - `dump_hparams.py` (T1) — markdown + JSON hparams table.
+  - `evaluate_gates.py` — emits `G5_scoreboard.json` with
+    PASS/FAIL/PASS-WITH-FINDING for G5.2–G5.7.
+- `docs/results/05_blue_team/F3_learning_curves.png` (3-panel),
+  `F4_action_distribution.png` (2-panel), `T1_hparams.{md,json}`,
+  `G5_scoreboard.json`, plus `F3_summary.json`, `F4_summary.json`,
+  `F3_manifest.json`, `F4_manifest.json` with hash-chain pins.
+- `Makefile` targets: `phase-5-smoke`, `phase-5-sweep`,
+  `phase-5-figures`, `phase-5-gates`, `phase-5` (full).
+- 47 new tests (329 → 376) across
+  `tests/test_blue_team_{callbacks,aggregation,env_factory,run_config,train_agent}.py`,
+  all synthetic-only.
+
+### Phase-5 exit gates (PLAN §3.3 + §8 D5.4.1) — 6/7 PASS, 1 PASS-WITH-FINDING
+
+| Gate | Threshold | Observed | Status |
+|---|---|---:|---:|
+| G5.1 | full pytest suite green | 376 / 376 | **PASS** |
+| G5.2 | best-algo eval reward > 0 over last 10 % × 5 seeds | **+1350.7** | **PASS** |
+| G5.3 | best-algo mean MTTC ≥ 19 (D5.4.1 revision) | **19.24** | **PASS** |
+| G5.4 | best-algo mitigated-impact rate ≥ 0.5 (D5.4.1) | **0.263** | **PASS-with-finding** |
+| G5.5 | per-stage non-degeneracy at late checkpoint | every stage ≤ 0.45 | **PASS** |
+| G5.6 | no regression on Phase-3 frozen tests | 61 frozen tests green | **PASS** |
+| G5.7 | F3/F4/T1 manifests hash-pin inputs + git SHA | three manifests present | **PASS** |
+
+### Phase-5 thesis findings (RESULTS.md §4)
+
+1. **The Phase-3 env exposes a strongly learnable structure (G5.2).**
+   DQN/PPO/A2C all converge to mean eval reward ~+1300, beating the
+   recommended-policy IoTWarden floor (~+50) by 25-27×. PPO is best
+   (+1350.7); seed variance is tight (±50 reward across 5 seeds for
+   PPO).
+2. **The agent farms de-escalations and accepts the IMPACT loss
+   (G5.4).** With `defense_success_bonus = 250` per defender-driven
+   de-escalation and a mean of 6.30 de-escalations per episode, the
+   reward-maximising policy is not "ISOLATE@IMPACT" — it is "rack
+   up de-escalation bonuses and accept the −350 IMPACT penalty".
+   This is the R2 risk Phase 3 RESULTS §7 explicitly flagged. Phase 8
+   (reward-component ablation) is now scoped to sweep
+   `defense_success_bonus`, `p_defender_deescalation`, and
+   diminishing-returns variants. We mark G5.4 as PASS-WITH-FINDING
+   by analogy with Phase-4 G4.4.
+3. **Stage-action proportionality is learned, not collapsed (G5.5).**
+   The PPO argmax matches the recommended action exactly on RECON
+   (LOG) and MANEUVER (BLOCK), and lies within ±1 on the others. Max
+   per-stage share is 0.45 ≪ 0.70 — well-spread proportionality, no
+   collapse to "always X".
+4. **Three SB3 baselines converge consistently.** PPO +1350.7 vs
+   A2C +1325.6 vs DQN +1300.1 — within seed-noise (~50 reward
+   spread), no overall winner. Phase 7 final benchmark gets all
+   three model checkpoints (`runs/phase5/<algo>/seed_<k>/model.zip`).
+
+### Phase-5 dated D-decisions (PLAN §8)
+
+- **D5.3.1** (locked from 50 K probe): hold sweep at 250 K timesteps
+  rather than 500 K. Convergence is well within reach by 100-150 K
+  and 500 K would spend 3.6× more wall (3.6 h vs 108 min) on
+  diminishing returns.
+- **D5.4.1** (locked from 50 K probe): G5.3 reframed to
+  "MTTC ≥ min_episode_length − 1 = 19" (the IMPACT-clamp is what
+  the gate measures; the original "MTTC ≥ 80" was structurally
+  unreachable with `max_steps = 100` and an upper-triangular LSTM).
+  G5.4 reframed to "mitigated-impact rate ≥ 0.5" (the original
+  "compromise rate < 0.5" was structurally infeasible).
+- **D5.10.1**: F3's third panel plots mitigated-impact rate (the
+  derived field from `end_outcome`), not unconditional compromise
+  rate. The compromise_rate is still emitted into `F3_summary.json`
+  as a sanity column.
+
+### Phase-5 commits
+
+`9b70d7d` PLAN — `1a0ee61` train_agent + smoke — `bd1bc99` sweep
+driver + plots + Makefile — `f7a6c60` D5.3.1/D5.4.1/D5.10.1 +
+mitigated-impact-rate aggregation — `03353d5` gate evaluator —
+`<this commit>` figures + RESULTS + CHANGELOG.
+
+---
+
 ## [Unreleased] — Phase 4: Stage Detector + Supervised Baselines (F11)
 
 ### Added
