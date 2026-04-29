@@ -75,6 +75,10 @@ plot-dataset:  ## Phase 1: regenerate dataset overview figures (F0).
 	$(PYTHON) -m scripts.data.plot_dataset_overview \
 	    --processed-dir $(DATA) --out-dir docs/results/01_dataset
 
+.PHONY: derive-stages
+derive-stages:  ## Phase 4 prep: build stages.npy + manifest from state_indices.json.
+	$(PYTHON) -m scripts.data.derive_stage_labels --data-path $(DATA)
+
 .PHONY: phase-1
 phase-1: build-split-indices plot-dataset  ## Run all Phase-1 deliverables.
 
