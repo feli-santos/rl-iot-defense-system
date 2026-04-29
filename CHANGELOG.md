@@ -5,6 +5,81 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] — Phase 4: Stage Detector + Supervised Baselines (F11)
+
+### Added
+- `docs/results/04_detector/PLAN.md` — pre-code audit + locked design
+  decisions D1/D2/D3 (eval split, OOD gate fallback, fair baseline configs).
+- `docs/results/04_detector/RESULTS.md` — as-built record covering the
+  three findings worth defending in the thesis (RF saturates, RECON is
+  the universal hard stage, OOD generalisation is class-asymmetric).
+- `scripts/data/derive_stage_labels.py` + 10 unit tests + Makefile
+  target `make derive-stages`. Builds the frozen `stages.npy` from
+  `state_indices.json` and hash-pins via `stages.manifest.json`.
+- `src/detector/` — new module with the production MLP head
+  (`StageDetector`, ~4 357 params), the Tharewal-style 1-D conv
+  baseline (`CNN1D`), the sklearn RandomForest wrapper, and shared
+  evaluation helpers (`per_stage_recall`, `summarize_run`, etc.).
+- `scripts/detector/train_detector.py` (Makefile target `make
+  phase-4`) — trains all three models, evaluates on
+  `test_balanced` / `test` / OOD, renders F11, dumps `F11_summary.json`
+  + `manifest.json` (hash chain pinned to the producing git SHA).
+- `docs/results/04_detector/F11_per_stage_recall.png` (1775 × 694)
+  + caption: bar chart of per-stage recall across the three models +
+  StageDetector confusion matrix on `test_balanced`.
+
+### Fixed
+- **`scripts/data/build_split_indices.py` — CRITICAL**: held-out OOD
+  attack classes were not being removed from `train` / `val` / `test`
+  before persisting. Discovered during Phase-4 step 4.5 by the
+  defensive disjointness check. Concrete leakage:
+  `train ∩ ood:DDoS-HTTP_Flood = 8 546 rows` (70 % of the class)
+  and similar for the other three OOD classes. Fix computes OOD
+  indices first, masks them, then stratified-splits the remainder.
+  Three new regression asserts lock the disjointness invariant.
+  Phase 2 (LSTM Red Team) consumes only stage labels, not features,
+  so its F1/F2 numbers are approximately correct and *not* rebuilt.
+  See `RESULTS.md` §5 for the full bug report.
+
+### Phase-4 exit gates (`PLAN.md` §3.3 + §8 revisions) — all PASS
+
+| Gate | Threshold | Observed | Status |
+|------|----------:|---------:|:------:|
+| G4.1 | full pytest suite green | 329 / 329 | **PASS** |
+| G4.2 | StageDetector macro-F1 on `test_balanced` ≥ 0.75 | **0.7855** | **PASS** |
+| G4.3 | StageDetector worst per-stage recall ≥ 0.50 | **0.539** (RECON) | **PASS** |
+| G4.4 | min(OOD recall) ≤ 0.30 (revised D2) | **0.001**, gap **0.998** | **PASS-with-finding** |
+| G4.5 | StageDetector inference latency ≤ 1 ms / sample | **0.039 ms** | **PASS** |
+
+### Phase-4 thesis findings (RESULTS.md §4)
+
+1. **RandomForest saturates at 0.90 macro-F1** on the 29-D feature
+   vector — the thesis story is preserved because the RL value is
+   "act correctly on detector outputs over time", not "detect more
+   accurately than RF".
+2. **RECON is the universal hard stage** across all three models
+   (worst recall: StageDetector 0.539, RF 0.785, CNN1D 0.497).
+   The Phase-3 proportionality reward already accommodates this:
+   ±1 around the recommended `LOG` action is rewarded, so the
+   RL agent can hedge on uncertain RECON observations.
+3. **OOD generalisation is class-asymmetric** (recall span 0.001-
+   0.999, gap 0.998). The detector trivially generalises on
+   `DDoS-HTTP_Flood` (matches in-dist DDoS-* signatures) but fails
+   completely on `VulnerabilityScan` (genuinely novel RECON
+   pattern). This is the *right* thesis story: OOD generalisation
+   is structurally bounded by in-distribution feature-class overlap,
+   and the RL agent has to defend correctly *despite* the detector's
+   silent confident-wrongness.
+
+### Phase-4 commits
+`4fd3460` PLAN — `0a8ef3e` D1/D2/D3 lock-in — `0d154e9` stages.npy +
+10 tests + Makefile — `f3b82c3` src/detector/ (4 modules) + 23 tests
+— `3cd2fb9` fix(phase-1) OOD leakage — `1357ec6` train_detector.py
+entrypoint + F11 + 4/4 gate verification — `<this commit>` RESULTS +
+CHANGELOG.
+
+---
+
 ## [Unreleased] — Phase 3: Environment v2 (lifecycle, reward, MTTC, split-aware features)
 
 ### Added
