@@ -255,18 +255,55 @@ def build_splits(cfg: BuilderConfig) -> dict:
         {s: stage_dist.get(s, 0) for s in range(NUM_STAGES)},
     )
 
-    # Deterministic stratified split (on stage IDs).
-    rng_main = np.random.default_rng(cfg.seed)
-    train_idx, val_idx, test_idx = _stratified_split(
-        labels=stage_ids, ratios=cfg.train_val_test_ratios, rng=rng_main
+    # ---- OOD-attack indices: computed FIRST so we can exclude them from
+    # train/val/test before splitting. The held-out attack classes must
+    # never appear in any in-distribution split — otherwise the detector
+    # silently trains on them and Phase-7 OOD evaluation is meaningless.
+    # (Bug discovered in Phase 4 step 4.5 by the train_detector.py
+    # leakage check; documented in `docs/results/04_detector/RESULTS.md`.)
+    ood_indices = _ood_attack_indices(
+        string_labels=string_labels, ood_classes=cfg.ood_attack_classes
     )
+    ood_mask = np.zeros(n_total, dtype=bool)
+    for cls, idx in ood_indices.items():
+        ood_mask[idx] = True
+    LOG.info(
+        "OOD held-out: %d rows across %d classes %s",
+        int(ood_mask.sum()),
+        len(ood_indices),
+        list(ood_indices.keys()),
+    )
+
+    # In-distribution stage labels: -1 sentinel for OOD rows so the
+    # stratified splitter ignores them. We then materialise an index
+    # array of *only* the in-distribution rows.
+    in_dist_idx = np.flatnonzero(~ood_mask).astype(np.int64)
+    in_dist_stage_ids = stage_ids[in_dist_idx]
+    LOG.info(
+        "In-distribution rows for splitting: %d (was %d before OOD removal)",
+        in_dist_idx.size,
+        n_total,
+    )
+
+    # Deterministic stratified split on the in-distribution rows only.
+    rng_main = np.random.default_rng(cfg.seed)
+    rel_train, rel_val, rel_test = _stratified_split(
+        labels=in_dist_stage_ids,
+        ratios=cfg.train_val_test_ratios,
+        rng=rng_main,
+    )
+    # Map the relative indices back into absolute row indices.
+    train_idx = in_dist_idx[rel_train]
+    val_idx = in_dist_idx[rel_val]
+    test_idx = in_dist_idx[rel_test]
     LOG.info(
         "Stratified split: train=%d, val=%d, test=%d (sum=%d)",
         train_idx.size, val_idx.size, test_idx.size,
         train_idx.size + val_idx.size + test_idx.size,
     )
 
-    # Balanced subsets drawn from the (already disjoint) val / test pools.
+    # Balanced subsets drawn from the (already disjoint and OOD-free)
+    # val / test pools.
     rng_bal = np.random.default_rng(cfg.seed + 1)
     val_balanced = _balanced_subset(
         labels=stage_ids,
@@ -279,11 +316,6 @@ def build_splits(cfg: BuilderConfig) -> dict:
         pool_indices=test_idx,
         per_stage=cfg.test_balanced_per_stage,
         rng=rng_bal,
-    )
-
-    # OOD-attack indices (full original-class spans, NOT a subset of test).
-    ood_indices = _ood_attack_indices(
-        string_labels=string_labels, ood_classes=cfg.ood_attack_classes
     )
 
     # -------------------------------------------------------------------------
