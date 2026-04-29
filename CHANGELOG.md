@@ -5,7 +5,95 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] — Phase 2: Red Team v2 (LSTM episode generator)
+## [Unreleased] — Phase 3: Environment v2 (lifecycle, reward, MTTC, split-aware features)
+
+### Added
+- `docs/results/03_env/PLAN.md` — pre-code audit naming six bugs (B1-B6)
+  in the v1 environment + `src/utils/realization_engine.py`.
+- `docs/results/03_env/RESULTS.md` — as-built record covering the three
+  iterations needed to satisfy every gate, the lifecycle/reward formulae,
+  and the constants used as Phase-5 defaults.
+- `RealizationEngine(allowed_indices=...)` constructor argument and
+  `RealizationEngine.from_split_manifest(...)` factory. The factory
+  loads a Phase-1 splits manifest, restricts per-stage sampling to the
+  named split, and (by default) excludes the OOD-attack rows. Verified
+  on the real CICIoT manifest: train pool ∩ val.idx = ∅.
+- `tests/test_realization_engine_split_aware.py` — 9 unit tests on
+  synthetic data covering empty/partial coverage and OOD overlap removal.
+- `tests/test_phase3_env_gates.py` — 13 regression tests mapping 1:1 to
+  the exit gates in `PLAN.md` §3.2.
+
+### Changed
+- `src/environment/adversarial_env.py` rewritten:
+  - **Lifecycle (B1).** Dropped the `BLOCK = instant win` early
+    termination. Episodes now run for at least `min_episode_length=20`
+    steps. An IMPACT-clamp downgrades any pre-floor IMPACT transition to
+    MANEUVER, matching the IoTWarden threat model in which IMPACT is the
+    consummation of MANEUVER, not an instantaneous transition from RECON.
+    The terminal IMPACT penalty (and missed-impact / mitigation bonus) is
+    now applied **inline** when the env terminates due to IMPACT — the
+    `_step_at_impact` codepath is preserved for explicit IMPACT-stage
+    rollouts only.
+  - **Reward (B2).** Replaced the action-vs-previous-action heuristic
+    with stage-action proportionality against the IoTWarden recommended-
+    action mapping (`_recommended_action`). Reward depends only on
+    `decision_stage` and `action`. The four old action-change-based
+    fields (`patience_bonus`, `correct_escalation_reward`,
+    `correct_de_escalation_reward`, `maintained_defense_reward`,
+    `false_positive_penalty`) are removed.
+  - **De-escalation (B3).** Added `_maybe_defender_deescalation`: at any
+    step where the agent picks BLOCK or ISOLATE on an ACCESS+ stage, the
+    env resets the attack to BENIGN with probability
+    `p_defender_deescalation=0.6`. The agent earns
+    `+defense_success_bonus`. This makes the dead-code de-escalation
+    branch reachable on the LSTM's upper-triangular transition matrix.
+  - **MTTC (B5).** `info` now exposes `compromised`, `mttc_steps`,
+    `first_attack_step`, `compromise_step`, `defender_deescalations`,
+    `recommended_action`. Tracked across episode lifecycle.
+  - **Calibration (B6).** `defense_success_bonus` raised from 10.0 to
+    250.0 so the *correct* IMPACT response (ISOLATE) nets +49 instead
+    of -190.8. Asymmetry preserved: OBSERVE@IMPACT still loses -350.
+    This is what allows G3.4 (recommended-policy mean reward > 0) to
+    hold.
+
+### Phase-3 exit gates (`PLAN.md` §3.2) — all PASS
+
+| Gate | Threshold | Status |
+|------|-----------|:------:|
+| G3.1 (8 mechanical regression tests) | individual asserts | **PASS** |
+| G3.2 median random-action episode length | ≥ 15 | **PASS** |
+| G3.3 median always-BLOCK episode length | ≥ 10 | **PASS** |
+| G3.4 recommended-policy mean reward | > 0 | **PASS** |
+| G3.5 always-OBSERVE mean reward | < 0 | **PASS** |
+| G3.6 always-ISOLATE mean reward | < 0 | **PASS** |
+| G3.7 full test suite | green | **296 / 296** |
+
+### Notes & lessons learned
+
+- The first cut of the env failed three of the six empirical gates
+  (G3.2, G3.3, G3.4 in iter-1; G3.5 in iter-2; G3.4 again in iter-3).
+  Each failure pointed to a real design hole, not a flaky test:
+  (a) the lifecycle floor needed an IMPACT-clamp because
+  `min_episode_length` alone could not stop a uniform-LSTM
+  one-shot to IMPACT; (b) the IMPACT terminal accounting was unreachable
+  via the rollout loop and had to be inlined; (c) the
+  `defense_success_bonus` had to be large enough that even the optimal
+  policy stayed net-positive when an unavoidable IMPACT consummated.
+  Documenting these in `RESULTS.md` §5 so the design is reproducible.
+- Phase 3 is **infrastructure** — it produces no thesis figure. The
+  first figures consuming the new env appear in Phase 4 (detector head,
+  F11) and Phase 5 (RL Blue Team, F3-F4).
+- All 283 pre-Phase-3 tests still pass; the env API changes are
+  backwards-compatible at the `gym.Env` boundary (`reset` and `step`
+  signatures unchanged, `info` only gains keys, never loses them).
+
+### Phase-3 commits
+`482299e` PLAN — `3a6b13a` split-aware engine — `2a526af` env rewrite —
+`36fec22` gates + calibration.
+
+---
+
+## Phase 2: Red Team v2 (LSTM episode generator)
 
 ### Added
 - `scripts/red_team/train_lstm.py` — Phase-2 entrypoint that loads the
