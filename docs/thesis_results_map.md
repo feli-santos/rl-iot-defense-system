@@ -16,26 +16,26 @@ reproducible from the corresponding `produced_by` script.
 | F2  | LSTM empirical 5×5 transition matrix vs ground truth | 2  | `scripts/red_team/train_lstm.py` | our contribution             |
 | F3  | RL episodic reward curves (DQN/PPO/A2C × 5 seeds)  | 5     | `scripts/blue_team/plot_learning_curves.py`| IoTWarden Fig. 4(a)         |
 | F4  | Action-distribution evolution over training        | 5     | `scripts/blue_team/plot_action_dist.py`    | IoTWarden Fig. 5            |
-| F5  | Final security metrics table                       | 7     | `scripts/benchmark/build_summary_table.py` | extension                    |
-| F6  | Stage × Action confusion matrices per algorithm    | 7     | `scripts/benchmark/plot_stage_action_cm.py`| our contribution             |
-| F7  | Computation overhead (latency CDF + training time) | 7     | `scripts/benchmark/plot_overhead.py`       | IoTWarden Fig. 4(b)         |
+| F5  | Final security metrics table                       | 6     | `scripts/benchmark/build_summary_table.py` | extension                    |
+| F6  | Stage × Action confusion matrices per algorithm    | 6     | `scripts/benchmark/plot_stage_action_cm.py`| our contribution             |
+| F7  | Computation overhead (latency CDF + training time) | 6     | `scripts/benchmark/plot_overhead.py`       | IoTWarden Fig. 4(b)         |
 
 ## Tier 2 — Strongly recommended
 
 | ID  | Title                                              | Phase | Produced by                                | Aligned with                |
 |-----|----------------------------------------------------|-------|--------------------------------------------|-----------------------------|
-| F8  | RL vs random / always-OBSERVE / always-BLOCK / RF  | 4 + 7 | `scripts/benchmark/plot_baselines.py`      | extension                    |
-| F9  | Reward-component ablation                          | 8     | `scripts/ablation/plot_reward_ablation.py` | our contribution             |
-| F10 | Sensitivity to attack aggressiveness               | 8     | `scripts/ablation/plot_aggressiveness.py`  | IoTWarden Fig. 6            |
+| F8  | RL vs random / always-OBSERVE / always-BLOCK / RF / recommended-action | 6 | `scripts/benchmark/plot_baselines.py`      | extension                    |
+| F9  | Reward-component ablation                          | 7     | `scripts/ablation/plot_reward_ablation.py` | our contribution             |
+| F10 | Sensitivity to attack aggressiveness               | 7     | `scripts/ablation/plot_aggressiveness.py`  | IoTWarden Fig. 6            |
 | F11 | Per-stage detection recall (detector + RF + 1D-CNN)| 4     | `scripts/detector/plot_per_stage_recall.py`| Tharewal et al.             |
-| F12 | Pareto: security gain vs availability cost         | 8     | `scripts/ablation/plot_pareto.py`          | our contribution             |
+| F12 | Pareto: security gain vs availability cost         | 7     | `scripts/ablation/plot_pareto.py`          | our contribution             |
 
 ## Tier 3 — Nice-to-have
 
 | ID  | Title                                              | Phase | Produced by                                | Aligned with                |
 |-----|----------------------------------------------------|-------|--------------------------------------------|-----------------------------|
-| F13 | Robustness to observation noise / drift            | 9     | `scripts/robustness/plot_drift.py`         | extension                    |
-| F14 | Generalization to held-out attack class            | 9     | `scripts/robustness/plot_oo_attack.py`     | extension                    |
+| F13 | Robustness to observation noise / drift            | 8     | `scripts/robustness/plot_drift.py`         | extension                    |
+| F14 | Generalization to held-out attack class            | 8     | `scripts/robustness/plot_oo_attack.py`     | extension                    |
 | T1  | Hyperparameters per algorithm                      | 5     | `scripts/blue_team/dump_hparams.py`        | IoTWarden Tab. I            |
 
 ## Per-figure manifest

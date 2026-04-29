@@ -15,10 +15,9 @@ docs/results/
 ├── 03_environment/           # Phase 3 — env sanity checks, reward shape
 ├── 04_detector/              # Phase 4 — supervised detector + RF / 1D-CNN
 ├── 05_blue_team/             # Phase 5 — DQN/PPO/A2C learning curves
-├── 06_iotwarden_baseline/    # Phase 6 — IoTWarden head-to-head
-├── 07_benchmark/             # Phase 7 — final security metrics
-├── 08_ablation/              # Phase 8 — sensitivity and ablation
-├── 09_robustness/            # Phase 9 — perturbation / drift studies
+├── 06_benchmark/             # Phase 6 — RL algorithm benchmark (F5/F6/F7/F8)
+├── 07_ablation/              # Phase 7 — sensitivity and ablation (F9/F10/F12)
+├── 08_robustness/            # Phase 8 — perturbation / drift studies (F13/F14)
 └── thesis_figures.md         # Index: figure id ↔ filename ↔ caption
 ```
 
