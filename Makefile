@@ -181,6 +181,42 @@ phase-6-figures:  ## Phase 6: render F5, F6, F7, F8 from runs/phase6/.
 .PHONY: phase-6
 phase-6: phase-6-eval phase-6-figures  ## Phase 6: full eval sweep + F5/F6/F7/F8 figures.
 
+##@ Phase 7 — Ablations + OOD-class robustness (PLAN: docs/results/07_ablation/PLAN.md)
+PHASE7_OUT_DIR        ?= docs/results/07_ablation
+PHASE7_OOD_RUNS_ROOT  ?= runs/phase7/ood
+PHASE7_OOD_CLASSES    ?= DDoS-HTTP_Flood Mirai-udpplain VulnerabilityScan XSS
+PHASE7_OOD_POLICIES   ?= recommended_action rf_acting dqn ppo a2c random always_observe always_block
+PHASE7_OOD_N_EPISODES ?= 30
+PHASE7_OOD_N_DET_EPISODES ?= 150
+
+.PHONY: phase-7-ood-smoke
+phase-7-ood-smoke:  ## Phase 7 F15 smoke: 1 OOD class × 2 policies × 1 seed × 2 ep (~10 s).
+	$(PYTHON) -m scripts.ablation.run_ood_eval \
+	    --smoke --out-root $(PHASE7_OOD_RUNS_ROOT)
+
+.PHONY: phase-7-ood-eval
+phase-7-ood-eval:  ## Phase 7 F15 (audit-AF1): 4 OOD classes × 8 policies eval (~1 h CPU).
+	$(PYTHON) -m scripts.ablation.run_ood_eval \
+	    --ood-classes $(PHASE7_OOD_CLASSES) \
+	    --policies $(PHASE7_OOD_POLICIES) \
+	    --seeds $(PHASE5_SEEDS) \
+	    --n-episodes $(PHASE7_OOD_N_EPISODES) \
+	    --n-deterministic-episodes $(PHASE7_OOD_N_DET_EPISODES) \
+	    --phase5-runs $(PHASE5_RUNS_ROOT) \
+	    --out-root $(PHASE7_OOD_RUNS_ROOT) \
+	    --rf-path $(PHASE6_RF_PATH)
+
+.PHONY: phase-7-ood-figure
+phase-7-ood-figure:  ## Phase 7: render F15 from runs/phase7/ood/.
+	$(PYTHON) -m scripts.ablation.plot_ood_robustness \
+	    --runs-root $(PHASE7_OOD_RUNS_ROOT) \
+	    --out-dir $(PHASE7_OUT_DIR) \
+	    --ood-classes $(PHASE7_OOD_CLASSES) \
+	    --policies $(PHASE7_OOD_POLICIES)
+
+.PHONY: phase-7-ood
+phase-7-ood: phase-7-ood-eval phase-7-ood-figure  ## Phase 7 F15: full OOD eval + figure.
+
 .PHONY: train-generator
 train-generator:  ## Train the LSTM Red Team generator.
 	$(PYTHON) main.py --mode train-generator --config $(CONFIG) \
