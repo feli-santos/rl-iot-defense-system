@@ -246,6 +246,47 @@ phase-7-reward-figure:  ## Phase 7: render F9 from runs/phase7/reward_sweep/.
 .PHONY: phase-7-reward
 phase-7-reward: phase-7-reward-sweep phase-7-reward-figure  ## Phase 7 F9: full sweep + figure.
 
+# F10 — Attack-aggressiveness sweep (PPO + oracle rule × 6 p values × 5 seeds)
+PHASE7_AGGR_RUNS_ROOT ?= runs/phase7/aggressiveness
+
+.PHONY: phase-7-aggressiveness-smoke
+phase-7-aggressiveness-smoke:  ## Phase 7 F10 smoke: 2 p values × 1 seed × 5K (~30 s).
+	$(PYTHON) -m scripts.ablation.run_aggressiveness_sweep \
+	    --smoke --out-root $(PHASE7_AGGR_RUNS_ROOT)
+
+.PHONY: phase-7-aggressiveness-sweep
+phase-7-aggressiveness-sweep:  ## Phase 7 F10: PPO × 6 p values × 5 seeds + oracle rule (~1.5 h CPU).
+	$(PYTHON) -m scripts.ablation.run_aggressiveness_sweep \
+	    --seeds $(PHASE5_SEEDS) \
+	    --total-timesteps $(PHASE7_REWARD_TIMESTEPS) \
+	    --out-root $(PHASE7_AGGR_RUNS_ROOT) \
+	    --continue-on-failure
+
+.PHONY: phase-7-aggressiveness-figure
+phase-7-aggressiveness-figure:  ## Phase 7: render F10 from runs/phase7/aggressiveness/.
+	$(PYTHON) -m scripts.ablation.plot_aggressiveness \
+	    --runs-root $(PHASE7_AGGR_RUNS_ROOT) \
+	    --out-dir $(PHASE7_OUT_DIR)
+
+.PHONY: phase-7-aggressiveness
+phase-7-aggressiveness: phase-7-aggressiveness-sweep phase-7-aggressiveness-figure  ## Phase 7 F10: full sweep + figure.
+
+# F12 — Security-vs-availability Pareto (plotter-only; reads F9 + F10 + Phase-6)
+.PHONY: phase-7-pareto
+phase-7-pareto:  ## Phase 7 F12: render Pareto plot from F9 + F10 + Phase-6 outputs.
+	$(PYTHON) -m scripts.ablation.plot_pareto \
+	    --phase6-runs $(PHASE6_RUNS_ROOT) \
+	    --phase7-f9-runs $(PHASE7_REWARD_RUNS_ROOT) \
+	    --phase7-f10-runs $(PHASE7_AGGR_RUNS_ROOT) \
+	    --out-dir $(PHASE7_OUT_DIR)
+
+# Top-level phase-7 chains
+.PHONY: phase-7-figures
+phase-7-figures: phase-7-ood-figure phase-7-reward-figure phase-7-aggressiveness-figure phase-7-pareto  ## Phase 7: render F9/F10/F12/F15 from existing runs/phase7/.
+
+.PHONY: phase-7
+phase-7: phase-7-ood phase-7-reward phase-7-aggressiveness phase-7-pareto  ## Phase 7: full F9 + F10 + F12 + F15 (~7.5 h CPU walk-away).
+
 .PHONY: train-generator
 train-generator:  ## Train the LSTM Red Team generator.
 	$(PYTHON) main.py --mode train-generator --config $(CONFIG) \
