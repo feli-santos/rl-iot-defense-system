@@ -41,15 +41,35 @@ logger = logging.getLogger(__name__)
 def _build_env_config(spec: EnvConfigSerializable) -> AdversarialEnvConfig:
     """Translate a serialisable env spec into an :class:`AdversarialEnvConfig`.
 
-    Reward-shaping fields keep their Phase-3 frozen defaults; only the
-    Phase-5-tweakable fields are forwarded.
+    Phase-5 forwarded only the lifecycle + sampling fields; reward
+    coefficients kept their Phase-3 frozen defaults. Phase-7 (PLAN
+    §3.1.2 / D7.3) forwards the **full** field set so the F9
+    reward-component sweep can override individual coefficients
+    per-cell. ``EnvConfigSerializable`` defaults match
+    :class:`AdversarialEnvConfig` defaults, so when nothing is
+    overridden the resulting env config is byte-for-byte identical
+    to the Phase-5 baseline.
     """
     return AdversarialEnvConfig(
+        # Lifecycle + sampling (Phase-5 fields)
         max_steps=spec.max_steps,
         min_episode_length=spec.min_episode_length,
         p_defender_deescalation=spec.p_defender_deescalation,
         window_size=spec.window_size,
         include_deltas=spec.include_deltas,
+        # Phase-7 D7.3
+        impact_is_terminal=spec.impact_is_terminal,
+        # Reward shaping (Phase-7 F9 axes)
+        action_cost_scale=spec.action_cost_scale,
+        reward_proportional=spec.reward_proportional,
+        penalty_disproportionate=spec.penalty_disproportionate,
+        impact_penalty=spec.impact_penalty,
+        penalty_missed_impact=spec.penalty_missed_impact,
+        defense_success_bonus=spec.defense_success_bonus,
+        reward_benign_passive=spec.reward_benign_passive,
+        penalty_overreact_benign=spec.penalty_overreact_benign,
+        penalty_block_benign=spec.penalty_block_benign,
+        penalty_block_recon=spec.penalty_block_recon,
     )
 
 

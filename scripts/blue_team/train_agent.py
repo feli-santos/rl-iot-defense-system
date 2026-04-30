@@ -29,6 +29,7 @@ Outputs (per run):
 from __future__ import annotations
 
 import argparse
+import dataclasses
 import json
 import logging
 import os
@@ -131,6 +132,43 @@ def _seed_everything(seed: int) -> None:
     torch.set_num_threads(1)
 
 
+def _apply_env_overrides(
+    spec: EnvConfigSerializable,
+    *,
+    reward_overrides: Optional[Dict[str, Any]] = None,
+    p_defender_deescalation: Optional[float] = None,
+    impact_is_terminal: Optional[bool] = None,
+) -> EnvConfigSerializable:
+    """Return a copy of ``spec`` with per-field overrides applied.
+
+    Phase-7 §3.1.2 / D7.3. Validates that every key in
+    ``reward_overrides`` is a valid :class:`EnvConfigSerializable`
+    field name; raises ``ValueError`` with the bad key otherwise.
+
+    Precedence (highest first): explicit kwargs (``p_defender_deescalation``,
+    ``impact_is_terminal``) > ``reward_overrides`` JSON > ``spec`` defaults.
+    """
+    valid_fields = {f.name for f in dataclasses.fields(EnvConfigSerializable)}
+    merged: Dict[str, Any] = dataclasses.asdict(spec)
+
+    if reward_overrides:
+        bad = sorted(set(reward_overrides) - valid_fields)
+        if bad:
+            raise ValueError(
+                f"--reward-overrides contains unknown field(s): {bad!r}. "
+                f"Valid fields: {sorted(valid_fields)!r}"
+            )
+        merged.update(reward_overrides)
+
+    if p_defender_deescalation is not None:
+        merged["p_defender_deescalation"] = float(p_defender_deescalation)
+
+    if impact_is_terminal is not None:
+        merged["impact_is_terminal"] = bool(impact_is_terminal)
+
+    return EnvConfigSerializable(**merged)
+
+
 def build_run_config(args: argparse.Namespace) -> BlueTeamRunConfig:
     """Translate CLI args into a :class:`BlueTeamRunConfig`."""
     if args.algo not in DEFAULT_HPARAMS:
@@ -164,6 +202,32 @@ def build_run_config(args: argparse.Namespace) -> BlueTeamRunConfig:
             min_episode_length=20, max_steps=100,
             window_size=5, include_deltas=True,
         )
+
+    # Phase-7 §3.1.2 / D7.3: apply per-field overrides from
+    # --reward-overrides / --p-defender-deescalation / --impact-is-terminal.
+    # Defaults preserve byte-for-byte Phase-5 behaviour.
+    reward_overrides_obj: Optional[Dict[str, Any]] = None
+    if getattr(args, "reward_overrides", None):
+        reward_overrides_obj = json.loads(args.reward_overrides)
+        if not isinstance(reward_overrides_obj, dict):
+            raise ValueError(
+                f"--reward-overrides must be a JSON object; got "
+                f"{type(reward_overrides_obj).__name__}"
+            )
+    p_dee = getattr(args, "p_defender_deescalation", None)
+    impact_term = getattr(args, "impact_is_terminal", None)
+    env_spec = _apply_env_overrides(
+        env_spec,
+        reward_overrides=reward_overrides_obj,
+        p_defender_deescalation=p_dee,
+        impact_is_terminal=impact_term,
+    )
+    eval_spec = _apply_env_overrides(
+        eval_spec,
+        reward_overrides=reward_overrides_obj,
+        p_defender_deescalation=p_dee,
+        impact_is_terminal=impact_term,
+    )
 
     out_dir = args.out_dir or f"runs/{args.algo}/seed_{args.seed}"
 
@@ -346,6 +410,36 @@ def _build_argparser() -> argparse.ArgumentParser:
     p.add_argument(
         "--verbose", type=int, default=0, choices=(0, 1, 2),
         help="SB3 verbosity (0/1/2).",
+    )
+    # ----- Phase-7 §3.1.2 / D7.3 overrides (default off; preserve Phase-5) -----
+    p.add_argument(
+        "--reward-overrides", type=str, default=None,
+        help=(
+            "JSON object overriding individual EnvConfigSerializable fields "
+            "(reward coefficients, lifecycle, impact_is_terminal). Example: "
+            "'{\"defense_success_bonus\": 500}'. Applied to BOTH training "
+            "and eval env specs. Default None preserves Phase-5 behaviour."
+        ),
+    )
+    p.add_argument(
+        "--p-defender-deescalation", type=float, default=None,
+        help=(
+            "Override AdversarialEnvConfig.p_defender_deescalation. "
+            "Convenience knob for the F10 attack-aggressiveness sweep "
+            "(takes precedence over the same field in --reward-overrides "
+            "if both are supplied). Default None preserves Phase-5 0.6."
+        ),
+    )
+    p.add_argument(
+        "--impact-is-terminal", type=lambda x: x.lower() in ("true", "1", "yes"),
+        default=None,
+        help=(
+            "Override AdversarialEnvConfig.impact_is_terminal "
+            "(true/false). Default None preserves Phase-3/4/5/6 "
+            "frozen contract (True). When False, the agent gets an "
+            "explicit IMPACT-row decision step before termination "
+            "(F9 binary axis, D7.3)."
+        ),
     )
     return p
 

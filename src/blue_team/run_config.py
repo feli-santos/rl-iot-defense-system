@@ -49,11 +49,22 @@ _SCHEMA_VERSION = "1.0"
 class EnvConfigSerializable:
     """Subset of :class:`AdversarialEnvConfig` that we serialise.
 
-    We do not serialise the entire env config because most fields are
-    reward-shaping constants that belong to the *env contract* (Phase 3)
-    and are not Phase-5 levers. The fields below are the ones a
-    Phase-5 user might legitimately tweak for an ablation."""
+    Phase-5 originally serialised only the lifecycle + sampling levers
+    (``min_episode_length``, ``max_steps``, ``window_size``,
+    ``include_deltas``, ``p_defender_deescalation``) because the
+    reward-shaping coefficients were *frozen* by the Phase-3 contract
+    and not Phase-5 levers.
 
+    Phase-7 (audit AF1 / D7.3 / PLAN §3.1.2) extends this to the full
+    set of :class:`AdversarialEnvConfig` reward fields so that the F9
+    reward-component sweep can override individual coefficients
+    per-cell via ``train_agent.py --reward-overrides``. Every new field
+    has a default that matches Phase-3's frozen value, so existing
+    Phase-5 manifests deserialise unchanged and the default training
+    behaviour is byte-for-byte identical to Phase 5.
+    """
+
+    # Lifecycle + sampling (original Phase-5 fields)
     split: str = "train"
     exclude_ood: bool = True
     min_episode_length: int = 20
@@ -61,6 +72,21 @@ class EnvConfigSerializable:
     window_size: int = 5
     include_deltas: bool = True
     p_defender_deescalation: float = 0.6
+    # Phase-7 D7.3: explicit IMPACT-row decision step toggle. Default
+    # ``True`` preserves the Phase-3/4/5/6 frozen contract.
+    impact_is_terminal: bool = True
+
+    # Reward shaping — Phase-7 F9 axes (defaults from Phase-3 RESULTS §3)
+    action_cost_scale: float = 1.0
+    reward_proportional: float = 5.0
+    penalty_disproportionate: float = 5.0
+    impact_penalty: float = 200.0
+    penalty_missed_impact: float = 150.0
+    defense_success_bonus: float = 250.0
+    reward_benign_passive: float = 10.0
+    penalty_overreact_benign: float = 50.0
+    penalty_block_benign: float = 100.0
+    penalty_block_recon: float = 50.0
 
 
 @dataclass
