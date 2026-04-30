@@ -283,12 +283,26 @@ def _eval_on_test_split(
     Loads PPO/DQN/A2C from out_dir/model.zip, builds an eval env on
     test_balanced with the cell's reward overrides applied, runs
     n_eval_episodes deterministic episodes, writes the JSONL.
+
+    To stay robust against ``--smoke`` (which shrinks window_size /
+    max_steps in train_agent's build_run_config), we read the actual
+    ``run_manifest.json`` produced by the just-finished train run and
+    rebuild the spec from its ``eval_env`` field. This guarantees the
+    trained model's observation space matches the eval env's.
     """
-    spec = EnvConfigSerializable(split="test_balanced", exclude_ood=True)
-    # Apply cell overrides to the eval spec (same protocol train_agent uses).
-    for k, v in cell["reward_overrides"].items():
-        setattr(spec, k, v)
-    spec.impact_is_terminal = cell["impact_is_terminal"]
+    run_manifest_path = out_dir / "run_manifest.json"
+    if run_manifest_path.exists():
+        manifest = json.loads(run_manifest_path.read_text())
+        spec = EnvConfigSerializable(**manifest["eval_env"])
+        # The training-time eval_env used val_balanced; we now switch
+        # to test_balanced (Phase-6 D6.2) but keep every other field.
+        spec.split = "test_balanced"
+    else:
+        spec = EnvConfigSerializable(split="test_balanced", exclude_ood=True)
+        # Apply cell overrides to the eval spec (same protocol train_agent uses).
+        for k, v in cell["reward_overrides"].items():
+            setattr(spec, k, v)
+        spec.impact_is_terminal = cell["impact_is_terminal"]
 
     env = make_eval_env(
         spec=spec,

@@ -150,7 +150,7 @@ def _summarise_cell(
         input_paths.append(jsonl)
         sha = _sha256(jsonl)
         if sha is not None:
-            sha_collector[str(jsonl.relative_to(_ROOT))] = sha
+            sha_collector[str(jsonl.resolve().relative_to(_ROOT))] = sha
 
     if not all_records:
         return {
@@ -355,9 +355,15 @@ def _render(
 
         ax.set_title(ood_class, fontsize=10)
         ax.grid(True, axis="x", linestyle=":", alpha=0.4)
-        if means:
-            xmin = min(m - lo for m, lo in zip(means, lo_err))
-            xmax = max(m + hi for m, hi in zip(means, hi_err))
+        # Guard against partial / smoke output where some cells are NaN.
+        finite_xs = [
+            (m - lo, m + hi)
+            for m, lo, hi in zip(means, lo_err, hi_err)
+            if math.isfinite(m) and math.isfinite(lo) and math.isfinite(hi)
+        ]
+        if finite_xs:
+            xmin = min(p[0] for p in finite_xs)
+            xmax = max(p[1] for p in finite_xs)
             ax.set_xlim(xmin - 80, xmax + 250)
 
     # Hide any unused subplot.

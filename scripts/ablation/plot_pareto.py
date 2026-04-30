@@ -119,7 +119,7 @@ def _summarise_seed_dirs(
         all_records.extend(read_episodes_jsonl(jsonl))
         sha = _sha256(jsonl)
         if sha is not None:
-            sha_collector[str(jsonl.relative_to(_ROOT))] = sha
+            sha_collector[str(jsonl.resolve().relative_to(_ROOT))] = sha
     return _summarise_records(all_records)
 
 

@@ -69,12 +69,29 @@ from src.benchmark.baseline_policies import (
     recommended_action_policy,
 )
 from src.benchmark.eval_runner import run_policy
-from src.blue_team.env_factory import make_eval_env
+from src.blue_team.env_factory import _build_env, make_eval_env
 from src.blue_team.run_config import EnvConfigSerializable
+from src.environment.adversarial_env import AdversarialIoTEnv
+from src.utils.realization_engine import RealizationEngine
+from stable_baselines3.common.monitor import Monitor
+from stable_baselines3.common.vec_env import DummyVecEnv
 
 logger = logging.getLogger("scripts.ablation.run_ood_eval")
 
 _ROOT = Path(__file__).resolve().parents[2]
+
+
+# Each OOD class lives at exactly one stage in the CICIoT2023 label
+# taxonomy (verified empirically). Pre-cached so we don't re-scan
+# state_indices on every cell. If the OOD splits are ever rebuilt to
+# include other stages, ``_resolve_ood_stage`` falls back to a runtime
+# scan of state_indices.json.
+_OOD_STAGE_BY_CLASS: Dict[str, int] = {
+    "DDoS-HTTP_Flood":   4,  # IMPACT
+    "Mirai-udpplain":    3,  # MANEUVER
+    "VulnerabilityScan": 1,  # RECON  ← Phase-4 F11 0.001-recall blind spot
+    "XSS":               2,  # ACCESS
+}
 
 
 # --------------------------------------------------------------------- helpers
@@ -115,17 +132,54 @@ def _load_sb3_model(algo: str, model_path: Path, env: Any) -> Any:
 
 
 def _ood_eval_env_spec() -> EnvConfigSerializable:
-    """Phase-3-frozen reward config (D7.4); only the split changes per outer loop.
+    """Phase-3-frozen reward config (D7.4) on the *train* split.
 
-    OOD eval keeps every reward coefficient at the Phase-3 default so
-    that F15 isolates the *generalisation* axis from the *reward-shaping*
-    axis (the latter is F9's job).
+    Why train (not test_balanced)? F15's hybrid realiser pattern
+    (see _build_ood_env) keeps the *non-OOD-stage* feature pool from
+    the training-distribution rows, so the agent sees normal-looking
+    features at every non-attack-stage step and OOD-class features
+    only at the attack-arrival step. Using train as the base pool is
+    the most generous setup for trained RL: any failure to react is
+    truly an OOD-feature failure, not a distribution-shift on
+    benign / non-attack features.
     """
     return EnvConfigSerializable(
-        # split is overridden per outer loop in _build_ood_env()
-        split="train",  # placeholder; not used (we override below)
-        exclude_ood=False,  # we WANT OOD rows for F15
+        split="train",
+        exclude_ood=True,  # base pool is in-distribution; OOD overlay is added below
     )
+
+
+def _resolve_ood_stage(
+    dataset_path: Path,
+    ood_indices: np.ndarray,
+) -> int:
+    """Return the unique stage id where every OOD-class row lives.
+
+    Reads ``state_indices.json`` and intersects with ``ood_indices``;
+    raises if rows span multiple stages or no stages.
+    """
+    state_indices_path = dataset_path / "state_indices.json"
+    raw = json.loads(state_indices_path.read_text())
+    state_indices = {int(k): set(int(i) for i in v) for k, v in raw.items()}
+    ood_set = set(int(i) for i in ood_indices.tolist())
+    found_stages = [s for s, idx_set in state_indices.items() if ood_set & idx_set]
+    if not found_stages:
+        raise ValueError(
+            f"OOD-class rows have no overlap with any stage in state_indices.json"
+        )
+    if len(found_stages) > 1:
+        # Pick the stage with the most overlap; warn the user.
+        overlaps = {
+            s: len(ood_set & state_indices[s]) for s in found_stages
+        }
+        chosen = max(overlaps, key=overlaps.get)
+        logger.warning(
+            "OOD-class rows span multiple stages %s (counts %s); "
+            "using stage %d (largest overlap) as the F15 attack stage.",
+            found_stages, overlaps, chosen,
+        )
+        return chosen
+    return found_stages[0]
 
 
 def _build_ood_env(
@@ -133,23 +187,76 @@ def _build_ood_env(
     ood_class: str,
     seed: Optional[int] = None,
 ) -> Any:
-    """Build a fresh eval env restricted to one OOD attack class.
+    """Build a fresh eval env with a *hybrid* OOD realiser.
 
-    The env's ``RealizationEngine`` is built via
-    ``RealizationEngine.from_split_manifest(split_name=f"ood_attack/{ood_class}",
-    exclude_ood=False)``, which loads
-    ``data/processed/.../splits/ood_attack/<ood_class>.idx.npy`` and
-    keeps those indices ALIVE (we want them — that's the test).
+    F15 design (revised after smoke surfaced empty-non-OOD-stage bug):
+    each OOD class lives at exactly one stage (e.g.,
+    ``VulnerabilityScan`` is RECON-only, ``DDoS-HTTP_Flood`` is
+    IMPACT-only — verified empirically against
+    ``state_indices.json``). The realiser is therefore built as a
+    hybrid:
+
+      * stages other than the OOD class's stage  → train-split rows
+        (normal in-distribution features)
+      * the OOD class's stage                    → OOD-class rows
+        (the held-out distribution-shift)
+
+    The agent sees normal-looking features at every step UNTIL the
+    env transitions to the OOD class's stage, at which point the
+    realiser samples from the held-out attack class. This is the
+    semantically-correct F15 eval: it isolates the agent's response
+    to OOD features at the attack-arrival moment.
+
+    The base RealizationEngine is built on the train split with
+    ``exclude_ood=True`` (so it has the full 5-stage in-distribution
+    pool), then the OOD class's stage gets its ``_state_indices``
+    entry surgically replaced with the OOD-class rows.
     """
     spec = _ood_eval_env_spec()
-    spec.split = f"ood_attack/{ood_class}"
-    return make_eval_env(
+
+    # 1. Build the env on the train pool (all 5 stages populated).
+    env = _build_env(
         spec=spec,
         generator_path=args.generator_path,
         dataset_path=args.dataset_path,
         splits_manifest=args.splits_manifest,
         seed=seed,
     )
+
+    # 2. Surgically replace the OOD-stage's row pool with OOD-class rows.
+    splits_manifest_path = Path(args.splits_manifest)
+    manifest_dir = splits_manifest_path.parent.parent
+    ood_idx_path = manifest_dir / "splits" / "ood_attack" / f"{ood_class}.idx.npy"
+    if not ood_idx_path.exists():
+        raise FileNotFoundError(f"OOD index file not found: {ood_idx_path}")
+    ood_indices = np.load(ood_idx_path)
+
+    # Resolve which stage this OOD class belongs to. Use the cached
+    # mapping when available; otherwise scan state_indices.json.
+    if ood_class in _OOD_STAGE_BY_CLASS:
+        ood_stage = _OOD_STAGE_BY_CLASS[ood_class]
+    else:
+        ood_stage = _resolve_ood_stage(Path(args.dataset_path), ood_indices)
+
+    # Replace the OOD stage's index pool. We mutate the engine's
+    # internal _state_indices directly (the public surface doesn't
+    # expose a setter; this is a deliberate F15-only intervention).
+    new_indices = [int(i) for i in ood_indices.tolist()]
+    env._realization_engine._state_indices[ood_stage] = new_indices  # type: ignore[attr-defined]
+    env._realization_engine._stage_counts[ood_stage] = len(new_indices)  # type: ignore[attr-defined]
+    env._realization_engine._total_samples = sum(
+        env._realization_engine._stage_counts.values()  # type: ignore[attr-defined]
+    )
+    logger.debug(
+        "F15 hybrid realiser: ood_class=%s ood_stage=%d (replaced %d train-pool rows "
+        "with %d OOD-class rows; other stages keep train-pool rows)",
+        ood_class, ood_stage,
+        len(new_indices),
+        len(new_indices),
+    )
+
+    # 3. Wrap in Monitor + DummyVecEnv (mirror env_factory.make_eval_env).
+    return DummyVecEnv([lambda: Monitor(env, filename=None)])
 
 
 # ---------------------------------------------------------------- argparse

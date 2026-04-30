@@ -93,7 +93,7 @@ def _summarise(
             )
         sha = _sha256(jsonl)
         if sha is not None:
-            sha_collector[str(jsonl.relative_to(_ROOT))] = sha
+            sha_collector[str(jsonl.resolve().relative_to(_ROOT))] = sha
 
     if not all_records:
         return {

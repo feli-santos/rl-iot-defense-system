@@ -161,11 +161,24 @@ def _eval_ppo_on_test(
     args: argparse.Namespace, p: float, seed: int,
     out_dir: Path, eval_jsonl_path: Path,
 ) -> None:
-    """Roll the trained PPO at this p on test_balanced (same p)."""
-    spec = EnvConfigSerializable(
-        split="test_balanced", exclude_ood=True,
-        p_defender_deescalation=p,
-    )
+    """Roll the trained PPO at this p on test_balanced (same p).
+
+    Reads the just-finished run's ``run_manifest.json`` to mirror the
+    training-time env shape (window_size, max_steps, etc.) so the
+    trained model's observation space matches the eval env's. This
+    is the same robustness fix as F9's _eval_on_test_split.
+    """
+    run_manifest_path = out_dir / "run_manifest.json"
+    if run_manifest_path.exists():
+        manifest = json.loads(run_manifest_path.read_text())
+        spec = EnvConfigSerializable(**manifest["eval_env"])
+        spec.split = "test_balanced"
+        spec.p_defender_deescalation = p  # F10's eval matches train p
+    else:
+        spec = EnvConfigSerializable(
+            split="test_balanced", exclude_ood=True,
+            p_defender_deescalation=p,
+        )
     env = make_eval_env(
         spec=spec,
         generator_path=args.generator_path,
@@ -202,16 +215,31 @@ def _roll_rule_baseline(
     The rule's behaviour doesn't depend on p — but the realiser's
     attacker success rate does, so the rule's *mean reward* shifts
     with p. F10 wants both curves on the same axes.
+
+    Smoke note: the rule baseline doesn't load a trained model, so
+    the env shape is decoupled from training; we use Phase-3 frozen
+    defaults (window_size=5, max_steps=100) for non-smoke and shrink
+    them to match the smoke train spec when --smoke is passed.
     """
     out_dir = Path(args.out_root) / f"rule_p{_p_slug(p)}" / "seed_0"
     out_dir.mkdir(parents=True, exist_ok=True)
     eval_jsonl = out_dir / "eval_test.jsonl"
     run_id = f"f10_rule_p{_p_slug(p)}_seed_0"
 
-    spec = EnvConfigSerializable(
-        split="test_balanced", exclude_ood=True,
-        p_defender_deescalation=p,
-    )
+    if args.smoke:
+        # Match the smoke env shape used by train_agent.py --smoke
+        # (window_size=4, max_steps=20). Same realiser pool either
+        # way (rule doesn't load a model).
+        spec = EnvConfigSerializable(
+            split="test_balanced", exclude_ood=True,
+            p_defender_deescalation=p,
+            window_size=4, max_steps=20, min_episode_length=5,
+        )
+    else:
+        spec = EnvConfigSerializable(
+            split="test_balanced", exclude_ood=True,
+            p_defender_deescalation=p,
+        )
     env = make_eval_env(
         spec=spec,
         generator_path=args.generator_path,
