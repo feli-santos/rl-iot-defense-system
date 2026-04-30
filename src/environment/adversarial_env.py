@@ -173,6 +173,21 @@ class AdversarialEnvConfig:
         Earned (a) on the IMPACT step when the agent picks BLOCK/ISOLATE,
         and (b) when the env de-escalates from MANEUVER/IMPACT to BENIGN
         because of an agent-driven defense action.
+    impact_is_terminal:
+        If ``True`` (default, Phase-3 frozen contract), the episode
+        terminates the same step the env transitions to IMPACT, and the
+        terminal reward is applied inline against whatever action the
+        agent took *that same step* (which was chosen at the previous,
+        non-IMPACT stage).
+
+        If ``False`` (Phase-7 D7.3, F9 ablation axis), the env transitions
+        to IMPACT but does NOT terminate that step. The agent's *next*
+        action is taken as the explicit IMPACT-row decision, then
+        :meth:`_step_at_impact` runs with that action and the env
+        terminates. This decouples "the step where IMPACT arrives" from
+        "the step where the agent picks an IMPACT response", giving the
+        agent an unconfounded IMPACT-row decision. Default ``True``
+        preserves the Phase-3/4/5/6 frozen contract byte-for-byte.
     """
 
     # Lifecycle
@@ -182,6 +197,7 @@ class AdversarialEnvConfig:
     window_size: int = 5
     include_deltas: bool = True
     num_actions: int = 5
+    impact_is_terminal: bool = True
 
     # Reward — proportionality core (B2 fix)
     action_cost_scale: float = 1.0
@@ -474,11 +490,12 @@ class AdversarialIoTEnv(gym.Env):
         # Termination: only IMPACT triggers it, and only after the
         # min_episode_length grace period has elapsed (otherwise the agent
         # never sees a multi-stage trajectory).
-        terminated = (
+        impact_arrived = (
             self._current_attack_stage == KillChainStage.IMPACT.value
             and self._step_count >= self._config.min_episode_length
         )
-        if terminated:
+        if impact_arrived and self._config.impact_is_terminal:
+            # Phase-3 frozen contract (default).
             # Apply the terminal IMPACT penalty inline. The kill chain has
             # consummated this step; we do *not* hand the agent a separate
             # "_step_at_impact" turn for OBSERVE/LOG -> the missed defense
@@ -494,6 +511,17 @@ class AdversarialIoTEnv(gym.Env):
                 outcome = "impact_missed"
             else:
                 outcome = "compromised"
+            terminated = True
+        else:
+            # Either IMPACT has not arrived OR impact_is_terminal=False.
+            # When False and IMPACT just arrived this step, do NOT terminate
+            # and do NOT apply the inline terminal reward — the agent will
+            # get an explicit IMPACT-row decision on the *next* step via
+            # ``_step_at_impact`` (path 1 at the top of step()). The
+            # "ongoing"/"defended" outcome label set above is preserved
+            # so the F9 ablation sees this step as a normal pre-IMPACT
+            # step that *just happened* to land on IMPACT.
+            terminated = False
         truncated = self._step_count >= self._config.max_steps
 
         observation = self._build_observation()
