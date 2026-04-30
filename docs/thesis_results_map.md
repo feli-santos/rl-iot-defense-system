@@ -19,6 +19,7 @@ reproducible from the corresponding `produced_by` script.
 | F5  | Final security metrics table                       | 6     | `scripts/benchmark/build_summary_table.py` | extension                    |
 | F6  | Stage × Action confusion matrices per algorithm    | 6     | `scripts/benchmark/plot_stage_action_cm.py`| our contribution             |
 | F7  | Computation overhead (latency CDF + training time) | 6     | `scripts/benchmark/plot_overhead.py`       | IoTWarden Fig. 4(b)         |
+| F15 | OOD-class robustness (held-out attack-class eval) [audit-AF1, 2026-04-30] | 7 | `scripts/ablation/plot_ood_robustness.py` | our contribution (Phase-4 → Phase-7 link) |
 
 ## Tier 2 — Strongly recommended
 
@@ -35,7 +36,7 @@ reproducible from the corresponding `produced_by` script.
 | ID  | Title                                              | Phase | Produced by                                | Aligned with                |
 |-----|----------------------------------------------------|-------|--------------------------------------------|-----------------------------|
 | F13 | Robustness to observation noise / drift            | 8     | `scripts/robustness/plot_drift.py`         | extension                    |
-| F14 | Generalization to held-out attack class            | 8     | `scripts/robustness/plot_oo_attack.py`     | extension                    |
+| F14 | Generalization to held-out attack class (training-time augmentation) | 8 | `scripts/robustness/plot_oo_attack.py` | extension (F15 covers eval-time; F14 if it ships covers train-time) |
 | T1  | Hyperparameters per algorithm                      | 5     | `scripts/blue_team/dump_hparams.py`        | IoTWarden Tab. I            |
 
 ## Per-figure manifest
