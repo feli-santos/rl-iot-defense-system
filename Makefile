@@ -217,6 +217,35 @@ phase-7-ood-figure:  ## Phase 7: render F15 from runs/phase7/ood/.
 .PHONY: phase-7-ood
 phase-7-ood: phase-7-ood-eval phase-7-ood-figure  ## Phase 7 F15: full OOD eval + figure.
 
+# F9 — Reward-component ablation sweep
+PHASE7_REWARD_RUNS_ROOT ?= runs/phase7/reward_sweep
+PHASE7_REWARD_TIMESTEPS ?= 250000
+PHASE7_REWARD_ALGO      ?= ppo
+
+.PHONY: phase-7-reward-smoke
+phase-7-reward-smoke:  ## Phase 7 F9 smoke: 1 cell × 1 seed × 5K (~30 s).
+	$(PYTHON) -m scripts.ablation.run_reward_sweep \
+	    --smoke --algo $(PHASE7_REWARD_ALGO) \
+	    --out-root $(PHASE7_REWARD_RUNS_ROOT)
+
+.PHONY: phase-7-reward-sweep
+phase-7-reward-sweep:  ## Phase 7 F9 (D7.1): PPO × 5 seeds × 12 cells (~6 h CPU).
+	$(PYTHON) -m scripts.ablation.run_reward_sweep \
+	    --algo $(PHASE7_REWARD_ALGO) \
+	    --seeds $(PHASE5_SEEDS) \
+	    --total-timesteps $(PHASE7_REWARD_TIMESTEPS) \
+	    --out-root $(PHASE7_REWARD_RUNS_ROOT) \
+	    --continue-on-failure
+
+.PHONY: phase-7-reward-figure
+phase-7-reward-figure:  ## Phase 7: render F9 from runs/phase7/reward_sweep/.
+	$(PYTHON) -m scripts.ablation.plot_reward_ablation \
+	    --runs-root $(PHASE7_REWARD_RUNS_ROOT) \
+	    --out-dir $(PHASE7_OUT_DIR)
+
+.PHONY: phase-7-reward
+phase-7-reward: phase-7-reward-sweep phase-7-reward-figure  ## Phase 7 F9: full sweep + figure.
+
 .PHONY: train-generator
 train-generator:  ## Train the LSTM Red Team generator.
 	$(PYTHON) main.py --mode train-generator --config $(CONFIG) \
