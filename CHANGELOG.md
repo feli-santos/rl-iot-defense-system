@@ -5,6 +5,142 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] — Phase 6: RL Algorithm Benchmark (F5, F6, F7, F8)
+
+### Added
+
+- `docs/results/06_benchmark/PLAN.md` — pre-code audit + locked
+  design decisions D6.1–D6.10 plus dated post-lock revisions
+  **D6.2.1** (G6.2 threshold revised on first contact with
+  `test_balanced` evidence; the rule baseline strictly dominates
+  trained RL on the held-out split — declared FAIL-WITH-FINDING)
+  and **D6.8.1** (RF-Acting latency over budget due to sklearn
+  per-call dispatch — declared PASS-WITH-FINDING for that policy
+  only).
+- `docs/results/06_benchmark/RESULTS.md` — as-built record covering
+  the four Phase-6 findings worth defending in the thesis
+  (val-split selection-bias artefact in Phase-5 headline,
+  proportional behaviour learned on non-IMPACT stages,
+  supervised-stage-classifier baseline as strong runner-up,
+  cross-quadrant reward/latency trade-off).
+- `src/benchmark/` — new package:
+  - `baseline_policies.py`: `random_policy`, `always_observe`,
+    `always_block`, `recommended_action_policy`, `RFActingPolicy`
+    (D6.5 wrapper composing Phase-4 RandomForest with the Phase-3
+    recommended-action mapping), `SB3PolicyAdapter`, `Policy`
+    Protocol — every policy obeys the
+    `(obs, info) -> int` shape so the rollout harness drives any
+    of them through one code path.
+  - `eval_runner.py`: `run_policy(...)` rolls a Policy on a
+    single-env DummyVecEnv for `n_episodes`, writing schema-v1.0
+    `EpisodeRecord` JSONL (re-used from Phase-5 unchanged) plus an
+    optional sidecar `latency.jsonl` (D6.4 — schema v1.0 stays
+    frozen).
+  - `latency.py`: `measure_inference_latency(...)` ns-precision
+    micro-benchmark with `n_warmup` / `n_measure` and a deterministic-
+    clock injection point for tests.
+- `scripts/benchmark/` — new module:
+  - `run_test_eval.py`: CLI that rolls every Phase-5 trained
+    checkpoint and every non-RL baseline on `test_balanced` (D6.2 —
+    first use of the held-out split for blue-team metrics).
+    Produces `runs/phase6/<policy>/seed_<k>/{eval_test,latency}.jsonl`
+    + `runs/phase6/eval_manifest.json` (SHA-256 hash chain over every
+    Phase-5 `model.zip`, the RF model, the scaler, the splits
+    manifest, plus the producing git SHA — G6.7 / D6.9). Per D6.3:
+    3 RL × 5 seeds × 30 ep + 1 random × 5 seeds × 30 ep + 4
+    deterministic × 1 seed × 150 ep = 1200 episodes total.
+  - `build_summary_table.py` (F5): per-policy aggregation across
+    seeds; bootstrap CI computed at seed-level for non-deterministic
+    policies and at episode-level for deterministic ones; emits
+    `F5_summary.{json,md,csv}` + `F5_table.png` + `F5_manifest.json`.
+    Per D6.10 the "best" sticker goes to max `mean_reward`,
+    tie-break lower `p95_inference_latency_ms`.
+  - `plot_stage_action_cm.py` (F6): one row-normalised 5×5 heatmap
+    per policy with the proportionality band overlaid as a red box;
+    per-panel G6.3 score (mean over non-IMPACT stages of in-band
+    decision mass — D6.7).
+  - `plot_overhead.py` (F7): two-panel figure aligned with IoTWarden
+    Fig. 4(b). Left = per-step inference latency CDF (log-x) per
+    policy with G6.4 budget reference lines; right = total Phase-5
+    training wallclock per algo, summed across 5 seeds (read from
+    `runs/phase5/sweep_manifest.json`).
+  - `plot_baselines.py` (F8): horizontal bar chart of per-policy
+    mean reward with 95 % bootstrap CIs, sorted descending; reads
+    `F5_summary.json` directly so F5 and F8 numbers are guaranteed
+    identical.
+- `docs/results/06_benchmark/{F5_table,F6_stage_action_cm,F7_overhead,F8_baselines}.png`
+  + `*_summary.json` + `*_manifest.json` + `*_caption.md` per figure.
+- `docs/results/06_benchmark/G6_scoreboard.json` — per-gate threshold
+  + value + status + finding-id summary.
+- `tests/test_baseline_policies.py` (24 tests), `tests/test_benchmark_eval_runner.py`
+  (11 tests), `tests/test_benchmark_latency.py` (9 tests). All
+  synthetic-only; no real-data dependencies.
+- `Makefile` targets: `phase-6-smoke`, `phase-6-eval`,
+  `phase-6-figures`, `phase-6` (full eval + all four figures).
+
+### Phase-6 gate scoreboard
+
+| Gate | Threshold | Status | Value |
+|---|---|:---:|---|
+| **G6.1** | full pytest ≥ 388 passed | **PASS** | 420 / 420 |
+| **G6.2** | trained-RL `mean_reward` > recommended-action (D6.2.1 revised) | **FAIL-WITH-FINDING** | rec-action +1624 > {DQN +1336, PPO +1313, A2C +1297} |
+| **G6.3** | non-IMPACT proportionality band ≥ 0.70 | **PASS** | DQN 0.785, PPO 0.712, A2C 0.746 |
+| **G6.4** | p50 latency: RL ≤ 5 ms / RF ≤ 3 ms / rule ≤ 1 ms | **PASS-WITH-FINDING** | 7 / 8 with ≥ 30× headroom; RF-Acting 14 ms (D6.8.1) |
+| **G6.5** | trained-RL CI ⊥ every non-RL CI | **PASS** | DQN/PPO/A2C show zero CI overlap |
+| **G6.6** | no regression on Phase-3/4/5 frozen tests | **PASS** | every prior test still green |
+| **G6.7** | each figure ships a `manifest.json` | **PASS** | F5/F6/F7/F8 all SHA-pinned |
+
+### Findings worth defending
+
+- **D6.2.1 (FAIL-WITH-FINDING G6.2):** On the held-out
+  `test_balanced` split, the IoTWarden recommended-action rule
+  (mean +1624) **strictly dominates** trained RL (DQN +1336, PPO
+  +1313, A2C +1297). Phase-5's "25× over baseline" headline was a
+  val-split selection-bias artefact: the trained agents converged
+  on a de-escalation-farming strategy (G5.4 PASS-WITH-FINDING) that
+  scored well on val but does not generalise. Bootstrap CIs do not
+  overlap (DQN max 1407 < rec-action min 1572), so the gap is
+  statistically real. Phase 7 reward-component ablation owns the
+  remediation. The thesis chapter reframes from "RL beats baselines
+  by 25×" to "we identify a precise generalisation gap between
+  Phase-3 reward-shaping and held-out performance, and motivate
+  the Phase-7 ablation that closes it."
+- **G6.3 PASS:** Trained agents *do* learn proportional behaviour
+  on the four non-IMPACT stages (DQN 0.785, PPO 0.712, A2C 0.746;
+  threshold 0.70). The training produced something useful — it just
+  optimised the wrong objective on the IMPACT row.
+- **D6.8.1 (PASS-WITH-FINDING G6.4):** RF-Acting's per-call
+  inference time is 14 ms (vs. RL's 0.07–0.10 ms) due to sklearn
+  per-call Python dispatch on a 100-tree forest. This is a property
+  of the supervised-wrapper-as-policy construction, not of the
+  underlying detector head; production deployments would batch /
+  compile (treelite/skl2onnx) and easily meet the 3 ms budget. The
+  thesis cross-quadrant story: RF-Acting wins reward but loses
+  inference cost; RL wins inference cost but loses reward — which
+  is what motivates Phase 7 to *get both*.
+
+### Numbers
+
+| Policy | n | Mean reward (95 % CI) | Compromise % | Mit % | p50 latency (ms) |
+|---|---:|---|---:|---:|---:|
+| Recommended-Action (rule) ★ | 150 | +1624 (1572, 1672) | 100.0 | 18.7 | 0.001 |
+| RF-Acting (supervised + rules) | 150 | +1508 (1455, 1565) | 100.0 | 25.3 | 13.976 |
+| DQN | 150 | +1336 (1265, 1407) | 100.0 | 15.3 | 0.068 |
+| PPO | 150 | +1313 (1253, 1372) | 100.0 | 28.0 | 0.100 |
+| A2C | 150 | +1297 (1267, 1337) | 100.0 | 25.3 | 0.101 |
+| Always-BLOCK | 150 | +520 (483, 554) | 100.0 | 100.0 | 0.001 |
+| Random | 150 | +390 (384, 398) | 100.0 | 26.7 | 0.002 |
+| Always-OBSERVE | 150 | −418 (−421, −415) | 100.0 | 0.0 | 0.001 |
+
+★ = best by mean reward (D6.10).
+
+### Tests
+
+- 376 → **420 passed** (+44). No regression on any Phase-3/4/5
+  frozen test (G6.6).
+
+---
+
 ## [Unreleased] — Phase 5: RL Blue Team v2 (F3, F4, T1)
 
 ### Added

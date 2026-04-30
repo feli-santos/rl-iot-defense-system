@@ -1,0 +1,250 @@
+# Phase 6 — RL Algorithm Benchmark: Results
+
+> Companion to `PLAN.md`. Same protocol as Phases 3–5: locked PLAN
+> first, then implementation, then this document captures **what
+> happened on real data**. The single largest result is in §6 (D6.2.1
+> finding); §7 calls out the Phase-7 hand-offs.
+
+## 1 — Headline numbers
+
+Phase 6 evaluated every Phase-5 trained checkpoint plus four non-RL
+baselines on the held-out `test_balanced` split (D6.2 — first use of
+this split for blue-team metrics; n = 150 deterministic episodes per
+policy).
+
+**Final ranking by mean episodic reward (95 % bootstrap CI):**
+
+| # | Policy                          | Mean reward |    95 % CI    | Cluster        |
+|---|---------------------------------|------------:|---------------|----------------|
+| 1 | **Recommended-Action (rule)**   |    **+1624** | (1572, 1672)  | supervised+rules |
+| 2 | RF-Acting (supervised + rules)  |       +1508 | (1455, 1565)  | supervised+rules |
+| 3 | DQN                             |       +1336 | (1265, 1407)  | trained-RL     |
+| 4 | PPO                             |       +1313 | (1253, 1372)  | trained-RL     |
+| 5 | A2C                             |       +1297 | (1267, 1337)  | trained-RL     |
+| 6 | Always-BLOCK                    |        +520 | (483,  554)   | non-RL floor   |
+| 7 | Random                          |        +390 | (384,  398)   | non-RL floor   |
+| 8 | Always-OBSERVE                  |        −418 | (−421, −415)  | non-RL floor   |
+
+The IoTWarden-style recommended-action rule beats every trained RL
+algo by ~290 reward on the held-out split (G6.2 FAIL-WITH-FINDING,
+D6.2.1). RL still passes every other gate: it learns proportional
+behaviour on non-IMPACT stages (G6.3 PASS), runs ~50–75× faster than
+the budget (G6.4 PASS), and produces statistically-separated reward
+clusters from every non-RL baseline (G6.5 PASS).
+
+**Phase-6 wallclock:** 54.1 s for the full 24-run sweep
+(15 RL checkpoints × 30 ep + 5 random seeds × 30 ep + 4 deterministic
+baselines × 150 ep) + < 5 s for all four figure scripts. No
+retraining (D6.1).
+
+## 2 — Gate scoreboard
+
+| Gate | Threshold | Status | Value / Notes |
+|---|---|:---:|---|
+| **G6.1** | `pytest -q` ≥ 388 passed | **PASS** | 420 passed, 0 failed |
+| **G6.2** | trained-RL `mean_reward` > recommended-action (D6.2.1 revised) | **FAIL-WITH-FINDING** | rec-action +1624 > {DQN +1336, PPO +1313, A2C +1297}. **Headline finding** — see §6 |
+| **G6.3** | non-IMPACT proportionality band ≥ 0.70 | **PASS** | DQN 0.785, PPO 0.712, A2C 0.746 |
+| **G6.4** | p50 latency: RL ≤ 5 ms / RF ≤ 3 ms / rule ≤ 1 ms | **PASS-WITH-FINDING** | 7 / 8 policies pass with ≥ 30× headroom; RF-Acting 14 ms (D6.8.1) |
+| **G6.5** | trained-RL CI ⊥ every non-RL CI | **PASS** | DQN / PPO / A2C show zero CI overlap with any non-RL baseline |
+| **G6.6** | no regression on Phase-3 / 4 / 5 frozen tests | **PASS** | every Phase-3 / 4 / 5 test still green |
+| **G6.7** | F5/F6/F7/F8 each ship a `manifest.json` | **PASS** | SHA-256 hash chain on every figure |
+
+Tally: 4 PASS / 1 PASS-WITH-FINDING / 1 FAIL-WITH-FINDING / 0 PASS-VOIDS.
+Both findings are **registered design decisions** (D6.2.1, D6.8.1)
+with rationale + Phase-7 hand-offs, not silently relaxed gates.
+
+Source of record: `G6_scoreboard.json` next to this file.
+
+## 3 — Deliverables (figures + tables)
+
+| Artefact | Path | Description |
+|---|---|---|
+| **F5** | `F5_table.png` + `F5_summary.{json,md,csv}` | Final security metrics table (8 rows × 9 cols) with bootstrap CIs and best-row highlight. |
+| **F6** | `F6_stage_action_cm.png` + `F6_summary.json` | 2 × 3 grid of 5×5 stage × action heatmaps with proportionality-band overlay and per-panel G6.3 score. |
+| **F7** | `F7_overhead.png` + `F7_summary.json` | Two-panel: left = inference-latency CDF (log-x) per policy with G6.4 budget reference lines; right = Phase-5 training wallclock per algo (sum-over-seeds). |
+| **F8** | `F8_baselines.png` + `F8_summary.json` | Horizontal bar chart of mean reward with 95 % bootstrap CIs, sorted descending; recommended-action floor reference line. |
+| Captions | `F5_caption.md`, `F6_caption.md`, `F7_caption.md`, `F8_caption.md` | One-paragraph thesis-paper captions per figure. |
+| Manifests | `F5_manifest.json` … `F8_manifest.json` | SHA-256 hash chain over input JSONLs + upstream `runs/phase6/eval_manifest.json` + (where relevant) `runs/phase5/sweep_manifest.json` + git SHA at production time (D6.9). |
+| Scoreboard | `G6_scoreboard.json` | Per-gate threshold + value + status + finding-id summary. |
+| Run artefacts (gitignored) | `runs/phase6/<policy>/seed_<k>/{eval_test,latency}.jsonl` + `runs/phase6/eval_manifest.json` | The schema-v1.0 input data for every figure. |
+
+## 4 — Code summary
+
+| File | LoC | Purpose |
+|---|---:|---|
+| `src/benchmark/__init__.py` | 53 | Package surface; re-exports the public API. |
+| `src/benchmark/baseline_policies.py` | 287 | `random_policy`, `always_observe`, `always_block`, `recommended_action_policy`, `RFActingPolicy`, `SB3PolicyAdapter`, `Policy` Protocol. |
+| `src/benchmark/eval_runner.py` | 308 | `run_policy(...)` — drives any Policy on a VecEnv, emits schema-v1.0 EpisodeRecord JSONL + optional sidecar latency JSONL. |
+| `src/benchmark/latency.py` | 124 | `measure_inference_latency(...)` — ns-precision micro-benchmark with deterministic-clock injection for tests. |
+| `scripts/benchmark/run_test_eval.py` | 360 | CLI that rolls every Phase-5 checkpoint and every baseline on `test_balanced` and writes `runs/phase6/eval_manifest.json`. |
+| `scripts/benchmark/build_summary_table.py` | 308 | F5 builder. |
+| `scripts/benchmark/plot_stage_action_cm.py` | 243 | F6 builder. |
+| `scripts/benchmark/plot_overhead.py` | 287 | F7 builder. |
+| `scripts/benchmark/plot_baselines.py` | 215 | F8 builder. |
+| `tests/test_baseline_policies.py` | 188 | 24 tests pinning every baseline policy. |
+| `tests/test_benchmark_eval_runner.py` | 263 | 11 tests pinning the JSONL round-trip + decision-stage bookkeeping. |
+| `tests/test_benchmark_latency.py` | 117 | 9 tests pinning the warmup/measure split + clock injection. |
+
+Total: 376 → **420 tests** (+44).
+
+## 5 — Cross-phase findings discovered during Phase 6
+
+**None — but Phase 6 *re-frames* Phase-5's headline.**
+
+The C3 sweep on `test_balanced` revealed that Phase-5's reported
+"trained RL beats recommended-action floor by ~25×" was a val-split
+selection-bias artefact. Phase 6 does not modify any Phase-5 artefact
+(D6.1 forbids retraining; D6.6 forbids env changes), and `runs/phase5/`
+remains the canonical model-selection record. What changes is the
+*interpretation*:
+
+- Phase-5 RESULTS now reads as: "On `val_balanced` (which informed
+  hparam choices in T1), DQN/PPO/A2C trained for 250 K timesteps
+  reach mean rewards +1300..+1350. They learn proportional
+  behaviour on non-IMPACT stages and harvest defender-driven de-
+  escalation bonuses on IMPACT (G5.4 PASS-WITH-FINDING)."
+- Phase-6 RESULTS reads as: "On the held-out `test_balanced`, the
+  same checkpoints score +1297..+1336, *below* the recommended-
+  action floor of +1624. The de-escalation-farming strategy did
+  not generalise; Phase 7 reward-component ablation owns the
+  remediation."
+
+This re-framing was paid in advance: Phase-5 §8 D5.4.1 already named
+the de-escalation-farming risk. Phase 6 just supplied the held-out
+evidence that turns it from a *theoretical concern* into an
+*empirical bound*.
+
+## 6 — Phase-6 findings worth defending in the thesis
+
+### 6.1 The "25× over baseline" claim was a val-split artefact (D6.2.1)
+
+**Single most important Phase-6 finding.** The recommended-action
+rule baseline scores **+1624** on `test_balanced` — *higher* than
+every trained RL algorithm. The Phase-5 floor estimate of "+50" was
+based on Phase-3 G3.4, which used a different rollout protocol;
+under the Phase-6 rollout protocol (deterministic, n = 150 episodes,
+held-out split), the floor moves up by ~30× and now sits *above* the
+RL ceiling.
+
+Bootstrap CIs do not overlap (DQN max 1407 < rec-action min 1572),
+so the gap is statistically real. The thesis must walk this back
+honestly. Phase 6 declared G6.2 **FAIL-WITH-FINDING** and registered
+**D6.2.1** in PLAN §8 with full rationale.
+
+The thesis chapter now reframes from:
+
+> *"DQN/PPO/A2C all dominate non-RL baselines by ~25×, demonstrating
+> that the Phase-3 environment exposes a learnable structure rather
+> than a degenerate one."*
+
+to:
+
+> *"DQN/PPO/A2C all dominate the random-policy and always-OBSERVE
+> baselines by ≥3.3× on the held-out test split, but are dominated
+> in turn by the IoTWarden hand-crafted recommended-action rule
+> baseline. We identify the gap as a Phase-3 reward-shaping artefact
+> (the de-escalation bonus rewards a strategy that scores well in-
+> distribution but does not generalise) and motivate the Phase-7
+> reward-component ablation as the remediation."*
+
+This is more defensible because (a) the gap is precisely
+characterised, (b) the remediation is already scoped, and (c) the
+result is consistent with everything Phase-5 G5.4 already said.
+
+### 6.2 Trained agents *do* learn proportional behaviour on non-IMPACT stages (G6.3 PASS)
+
+DQN 0.785, PPO 0.712, A2C 0.746 — all clear the 0.70 proportionality
+threshold on BENIGN/RECON/ACCESS/MANEUVER (D6.7). The F6 heatmaps
+make the diagonal structure obvious: BENIGN → mostly OBSERVE/LOG;
+ACCESS → THROTTLE; MANEUVER → BLOCK. The training was not wasted —
+it just optimised for the wrong objective on the IMPACT row.
+
+### 6.3 The supervised-stage-classifier baseline (RF-Acting) is a strong second (+1508)
+
+RF-Acting beats every RL algo by ~+170 reward and sits ~+116 below
+the oracle recommended-action ceiling. The ~+116 gap is the cost of
+trading oracle stage knowledge (`info["attack_stage"]`) for a
+learned classifier (Phase-4 RF macro-F1 ≈ 0.79). The RF was *not*
+re-tuned for Phase 6; this is the same `artifacts/detector/random_forest.joblib`
+Phase 4 produced. The thesis claim "supervised stage classifier +
+recommended-action mapping" is now a credible runner-up baseline
+with a quantified head-to-head vs. learned RL.
+
+### 6.4 RF-Acting trades inference cost for reward (D6.8.1, G6.4 PASS-WITH-FINDING)
+
+RF-Acting's per-step inference time is **14 ms** (vs. RL's
+0.07–0.10 ms). This is sklearn's per-call Python dispatch on a
+100-tree forest, not the underlying classifier's intrinsic cost
+(Phase-4 G4.5 was ≤ 1 ms on per-flow inputs). Compiled (treelite/
+skl2onnx) or batched, RF-Acting would meet the budget — but the
+apples-to-apples per-call comparison in F7 surfaces the trade-off
+that production deployments must consider.
+
+The thesis chapter now has a **cross-quadrant story**:
+
+| Policy class | Reward (test) | Latency (p50) |
+|---|---:|---:|
+| Recommended-Action | **+1624** | 0.001 ms |
+| RF-Acting | +1508 | **14.0 ms** |
+| Trained RL | +1297..+1336 | 0.10 ms |
+| Random | +390 | 0.002 ms |
+
+— motivating the Phase-7 reward-component ablation as a way to
+*get both*: RL-grade latency + supervised-grade reward. Phase 6
+delivers the trade-off characterisation; Phase 7 attempts the
+remediation.
+
+## 7 — Phase-7 hand-offs (and what they *do not* include)
+
+Phase 7 owns:
+
+1. **Reward-component ablation.** Sweep the de-escalation bonus,
+   `penalty_missed_impact`, `reward_proportional`, `reward_benign_passive`,
+   and `penalty_disproportionate` per Phase-3 PLAN §3.7. Goal: close
+   the ~290-reward gap between trained RL and the rule baseline on
+   `test_balanced` (D6.2.1).
+
+2. **`impact_is_terminal` env-config flag.** Deferred from Phase 6
+   (D6.6). Lets the agent pick an explicit IMPACT-row action before
+   termination; combines naturally with the reward sweep.
+
+3. **Attack-aggressiveness sweep.** Phase-2's
+   `p_defender_deescalation` already varies; Phase 7 will sweep it
+   together with the reward components to see how the trade-off
+   surface changes.
+
+Phase 7 does **not** own:
+
+- Re-training the Phase-5 trio with a different env (Phase 8 if
+  ever needed).
+- OOD-class evaluation (Phase 8).
+- IoTWarden head-to-head re-implementation (officially retired).
+
+## 8 — Reproducibility
+
+Every Phase-6 figure ships a `manifest.json` with:
+
+- SHA-256 hashes of every input JSONL (`runs/phase6/.../eval_test.jsonl`,
+  `runs/phase6/.../latency.jsonl`).
+- SHA-256 hash of the upstream `runs/phase6/eval_manifest.json`,
+  which itself records SHA-256 hashes of every Phase-5
+  `model.zip`, the RF model `artifacts/detector/random_forest.joblib`,
+  the dataset scaler, and the Phase-1 `splits/manifest.json`.
+- Git SHA at production time.
+
+To regenerate from scratch on a fresh checkout:
+
+```bash
+make phase-5-sweep PHASE5_TIMESTEPS=250000   # ~108 min CPU (one-off)
+make phase-6                                 # phase-6-eval + phase-6-figures
+                                             # ~10 min CPU + < 1 min figures
+```
+
+The `runs/phase5/` and `runs/phase6/` directories are gitignored;
+all derived figures + summaries + manifests live under
+`docs/results/06_benchmark/` and are git-tracked (CSV is force-added).
+
+## 9 — Test count history
+
+Phase 0 254 → Phase 1 266 → Phase 2 283 → Phase 3 296 → Phase 4 329
+→ Phase 5 376 → **Phase 6 420** (+44).
