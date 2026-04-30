@@ -14,13 +14,147 @@
 |---|---|
 | **Repo** | `git@github.com-personal:feli-santos/rl-iot-defense-system.git` |
 | **Branch** | `feature/reward-shaping` (40+ commits ahead of `origin/...` at handoff) |
-| **Last commit at handoff** | `d3e8ae1` (`docs(phase-6): close — RESULTS + CHANGELOG + G6 scoreboard`) |
-| **Total tests** | 420/420 passing |
-| **Phases complete** | 0, 1, 2, 3, 4, 5, **6** |
-| **Next phase** | **Phase 7 — Ablations: reward components + attack aggressiveness + Pareto** (F9 + F10 + F12). The optional `impact_is_terminal` env-config flag deferred from Phase 6 (D6.6) is bundled into Phase 7's reward-shaping ablation. |
+| **Last commit at handoff** | `09bf0de` (this file) — most recent thesis work is `d3e8ae1` (`docs(phase-6): close — RESULTS + CHANGELOG + G6 scoreboard`) |
+| **Total tests** | 420/420 passing, 0 skipped |
+| **Phases complete** | 0, 1, 2, 3, 4, 5, **6** (audited mentor-mode 2026-04-30; verdict GREENLIGHT-FOR-PHASE-7) |
+| **Next phase** | **Phase 7 — Ablations: reward components + attack aggressiveness + Pareto + OOD-class robustness** (F9 + F10 + F12 + new F15). The optional `impact_is_terminal` env-config flag deferred from Phase 6 (D6.6) is bundled into Phase 7's reward-shaping ablation. **Per the 2026-04-30 mentor audit, OOD-class robustness was promoted from a Phase-7 ablation afterthought to a first-class deliverable (F15) — see "Audit findings to act on first" §AF1.** |
 | **Inspiring papers** | `docs/papers/IoTWarden- A Deep Reinforcement Learning Based Real-time Defense System...pdf` (especially Fig. 6 for attack-aggressiveness sensitivity) |
-| **Thesis-figure map** | `docs/thesis_results_map.md` (F0..F14, T1) — Phase 7 owns F9, F10, F12 |
+| **Thesis-figure map** | `docs/thesis_results_map.md` (F0..F14, T1) — Phase 7 owns F9, F10, F12, **and a new F15 (OOD-class robustness; user must update the map)** |
 | **Reproducibility** | every figure has a sibling `manifest.json` with SHA-256 hash chain pinned to the producing git SHA |
+
+---
+
+## Audit findings to act on first (mentor review, 2026-04-30)
+
+**Background.** The user paused between Phase 6 close and Phase 7 start
+to ask for an independent audit of all six completed phases. The audit
+ran with 4 parallel subagents (Phase-5 numbers, Phase-6 numbers,
+code-quality, thesis-narrative coherence). Verdict: **GREENLIGHT for
+Phase 7**, but with three findings the next agent must internalise
+*before* writing the Phase-7 PLAN. Full audit at `/tmp/handoff_audit.md`.
+
+### AF1 — Promote OOD-conditioned eval to a first-class Phase-7 deliverable (F15)
+
+**Problem identified.** Phase 4 RESULTS §4 said *"the detector has a
+structural blind spot for VulnerabilityScan / RECON, and this is
+exactly the gap the RL agent has to compensate for in Phase 7"*. But
+Phase 5 trained in-distribution only, Phase 6 evaluates only on
+`test_balanced` (in-distribution), and the Phase-7 ablations as
+originally scoped (F9 reward sweep, F10 aggressiveness, F12 Pareto)
+do not anchor any deliverable to the OOD finding. The dissertation's
+"RL closes the OOD gap" claim is therefore currently a hypothesis
+with no evidence on disk to support it.
+
+**Required action.** Before writing the Phase-7 PLAN.md, decide
+whether to:
+
+  (A) **Add a new F15 figure** ("OOD-class robustness — RL vs
+       RandomForest stage-detector vs recommended-action rule under
+       held-out attack classes"), evaluated by sweeping each of the
+       four OOD-attack-class indices into the env's
+       `RealizationEngine.allowed_indices` at eval time and
+       re-running the Phase-6 `eval_runner` harness. The infrastructure
+       already exists (`src/benchmark/eval_runner.py` accepts any
+       Policy callable; the env's `RealizationEngine.from_split_manifest`
+       already supports OOD restriction). This is the recommended path.
+  (B) Re-scope F12 from "security-vs-availability Pareto" to
+       "security-vs-availability Pareto, evaluated under both
+       in-distribution and OOD splits". Cheaper but couples two
+       findings into one figure and risks losing the OOD message.
+  (C) Defer OOD eval to Phase 8 (robustness chapter) and explicitly
+       state in the dissertation that Phase 7 does not address the
+       OOD claim. **Not recommended** — leaves the strongest
+       Phase-4 finding without a payoff figure.
+
+**Default (do this unless the user overrides):** option **(A)**.
+Update `docs/thesis_results_map.md` to add F15 as a Tier-1
+must-have, owned by Phase 7. Allocate ~1 hour CPU for the eval pass
+and ~30 minutes for the figure renderer (it is a 4-class × 5-policy
+bar chart with bootstrap CIs — same visual idiom as F8). The expected
+finding: trained RL recovers some of the
+`VulnerabilityScan→RECON` recall (currently 0.001 in the supervised
+detector) by acting on raw features rather than the detector's
+classification, validating the Phase-4-to-thesis-claim link.
+
+### AF2 — Reframe Phase-6 §6.4 of RESULTS.md before locking the chapter
+
+**Problem identified.** Phase-6 RESULTS §6.4 reports "best trained
+RL (DQN +1336) is dominated by the recommended-action rule (+1624)"
+as a generalisation gap. That is true but **misses the strongest
+defensible reading**: the recommended-action rule baseline has
+*oracle access to the true stage* (`info["attack_stage"]`), which
+makes it not a deployable defender but **an upper bound on the
+value of perfect stage detection**. Read this way, the headline
+becomes:
+
+> *"We measured the value of perfect stage detection at +288 reward
+> on the test split. Trained RL captures **+1336 / +1624 = 82 %** of
+> that ceiling without seeing stages — the deployable result. The
+> remaining 18 % gap is what the Phase-7 reward-component sweep
+> attempts to close."*
+
+**Required action.** Before locking the Phase-7 PLAN, the next agent
+should **reframe `docs/results/06_benchmark/RESULTS.md` §6.4** to
+explicitly label the recommended-action rule as an oracle upper
+bound, cite the 82 % ratio as the deployable headline, and frame
+the +288 absolute gap as the Phase-7 target rather than the
+Phase-6 "loss". The numbers do not change; only the
+interpretation. ~20 minutes; one commit message of the form
+`docs(phase-6,§6.4): reframe rec-action floor as oracle upper bound (audit AF2)`.
+
+### AF3 — Pre-empt the "moving-the-goalpost" reading of D5.4.1 + D6.2.1
+
+**Problem identified.** Two phases (5 and 6) had exit gates whose
+empirical observation forced reformulation: G5.4 (`passes:false` in
+the JSON, "PASS-with-finding" in RESULTS) and G6.2 (`status:
+FAIL-WITH-FINDING` in the JSON, the same in RESULTS). Each
+reformulation has a defensible explanation in its phase's PLAN §8
+D-decision. **But this is the second phase where the same protocol
+("rename the failed gate to a finding") has been used**, and a careful
+examiner will ask: how do we know the gates aren't being moved to
+wherever the result lands?
+
+The protocol *is* principled — the original threshold is preserved
+in every D-decision and the JSON honestly records `passes:false` —
+but the user's defense narrative needs to make this point
+explicitly *up front*, not when challenged.
+
+**Required action.** This is a **defense-deck** action, not a
+codebase action. Before defense, the user adds a slide titled
+something like "When gates change: D5.4.1 and D6.2.1" that lists:
+
+  - the gate name, its original threshold, the empirical observation
+  - the reformulated gate, its threshold
+  - the original-threshold-preserved invariant (`passes:false` is
+    permanent in the JSON)
+  - the remediation path (Phase 7 reward sweep is the remediation
+    for both)
+
+The Phase-7 PLAN should explicitly cite these two precedents in §8
+when (not if) it adds new D-decisions of its own — pattern continuity
+is the credibility argument. **No code change required for AF3.**
+
+### AF4 — Code hygiene to clean up before Phase 10 open-source release
+
+Not blocking Phase 7, but worth knowing about. Subagent-3 found:
+
+  1. `src/benchmarking/` (singular, three files) is dead but still
+     consumed by 43 tests in `test_benchmark_runner.py` (21) +
+     `test_metrics_collector.py` (22). Phase-5/6 pipelines use the
+     newer `src/benchmark/` (no g) instead. Recommended: delete
+     the package and its tests in a one-shot hygiene commit before
+     Phase 10. Confirm Phase 7 doesn't need the older
+     `MetricsCollector` first.
+  2. Three pre-restart orphan scripts (`scripts/evaluate_generator.py`,
+     `scripts/measure_improved_targets.py`,
+     `scripts/separability_analysis.py`) have zero references in the
+     post-restart pipeline. Safe to delete now.
+  3. The repo-root `README.md` is the pre-restart README — does not
+     mention any of the six completed phases, the F-figures, or the
+     `make phase-N` targets. Phase 10 will rewrite it.
+
+The Phase-7 PLAN should NOT bundle these in (they are Phase-10 work)
+but the next agent should be aware they exist.
 
 ### Phase-6 headline numbers (just shipped)
 
@@ -119,8 +253,20 @@ You are taking over as mentor/engineer on a Master's thesis project at
 `feature/reward-shaping` branch. The thesis is an extension of IoTWarden
 (Bhattacharjee et al. 2023, see docs/papers/) using the CICIoT2023
 dataset. Seven phases (0-6) are complete; you are picking up at Phase 7
-(Ablations — F9 reward-component sweep + F10 attack-aggressiveness
-sweep + F12 security-vs-availability Pareto).
+(Ablations + OOD-class robustness — F9 reward-component sweep +
+F10 attack-aggressiveness sweep + F12 security-vs-availability Pareto +
+**F15 OOD-class robustness, promoted from afterthought to first-class
+deliverable per the 2026-04-30 mentor audit, AF1**).
+
+**BEFORE YOU START STEP 0**: read the section above this prompt
+("Audit findings to act on first") in full. That section was produced
+by an independent mentor-mode review on 2026-04-30 and identifies four
+audit findings (AF1-AF4) that *must* be internalised by the Phase-7
+PLAN. The full audit is at /tmp/handoff_audit.md if you want the
+underlying evidence. The most consequential finding is AF1: the
+"RL closes the OOD gap" thesis claim is currently a hypothesis with
+no evidence on disk, and Phase 7 is the right place to fix that with
+a new F15 figure.
 
 Your operating principles, learned from this project's history, are:
 
@@ -256,7 +402,29 @@ should touch in `src/environment/`. The frozen-contract tests in
 catch any change to the obs / action / step contract — if they fail,
 fix the change, not the tests (G7.6 will mirror G6.6 exactly).
 
-The thesis-results map (`docs/thesis_results_map.md`) lists for Phase 7:
+The thesis-results map (`docs/thesis_results_map.md`) lists for Phase 7
+(F15 is the new audit-driven addition, see AF1 above):
+
+  - **F15 (NEW, audit-AF1)** — OOD-class robustness. For each of the
+       four held-out attack classes (DDoS-HTTP_Flood, Mirai-udpplain,
+       VulnerabilityScan, XSS), run the Phase-6 `eval_runner` harness
+       on episodes where `RealizationEngine.allowed_indices` is
+       restricted to that OOD class's row indices (loaded from
+       `data/processed/ciciot2023/splits/ood_attack/<class>.idx.npy`).
+       Evaluate every Phase-6 policy: rec-action rule, RF-Acting,
+       DQN, PPO, A2C, random, always-OBSERVE, always-BLOCK. Plot a
+       4-class × 5-policy grouped bar chart with bootstrap CIs (same
+       visual idiom as F8). The expected finding: the supervised RF
+       baseline collapses on `VulnerabilityScan` (recall 0.001 from
+       Phase 4 F11), trained RL recovers some of that gap by acting
+       on raw features rather than detector outputs, and the
+       rec-action oracle floor stays high (it sees the true stage
+       directly). This is the thesis's "RL closes the OOD gap"
+       evidence. **The first-class deliverable promoted from a
+       Phase-7 ablation afterthought per audit AF1.** Allocate ~1 h
+       CPU eval + ~30 min figure rendering. Update
+       `docs/thesis_results_map.md` to list F15 as Tier-1, owned by
+       Phase 7.
 
   - F9 — Reward-component ablation. Sweep at least
          {defense_success_bonus, penalty_missed_impact,
@@ -298,18 +466,34 @@ Cross-reference: Phase-6's `runs/phase6/eval_manifest.json` already
 hash-pins the Phase-5 model.zips + RF model + scaler + splits manifest;
 Phase 7's manifests must do the same for any new sweep results.
 
+=== STEP 1.5: One-shot AF2 reframe of Phase-6 RESULTS §6.4 (before PLAN) ===
+
+Per audit AF2 above, before locking the Phase-7 PLAN edit
+docs/results/06_benchmark/RESULTS.md §6.4 to (a) explicitly label
+the recommended-action rule baseline as an "oracle upper bound on the
+value of perfect stage detection" (because it has free access to
+info["attack_stage"]), (b) cite the +1336/+1624 = 82 % deployable
+ratio as the headline rather than the +288 absolute gap as a "loss",
+and (c) frame the +288 as the Phase-7 target. The numbers do not
+change, only the interpretation. Commit message:
+`docs(phase-6,§6.4): reframe rec-action floor as oracle upper bound (audit AF2)`.
+This is one focused commit, ~20 minutes, to be done BEFORE writing
+docs/results/07_ablation/PLAN.md so Phase 7's §1 can cite the
+reframed Phase-6 narrative rather than the old "loss" narrative.
+
 === STEP 2: Write docs/results/07_ablation/PLAN.md ===
 
 Cover, in this order:
 
-  §1 Why Phase 7 exists (one paragraph; lead with D6.2.1 — the
-     recommended-action floor of +1624 is what Phase 7 must close
-     the gap to. Cite the thesis claim it supports — "we identify
-     the precise reward-shaping component that, when retuned,
-     closes the generalisation gap between Phase-3 in-distribution
-     training reward and held-out test reward, and we plot the
-     security-vs-availability Pareto frontier produced by the
-     resulting policy family").
+  §1 Why Phase 7 exists (one paragraph; lead with two strands —
+     (a) the AF2-reframed +288 deployable gap to the rec-action
+     oracle floor (the "RL-grade latency + supervised-grade
+     reward" target from D6.2.1), and (b) the AF1 OOD claim
+     ("trained RL must compensate for the supervised detector's
+     RECON blind spot, currently 0.001 recall on
+     VulnerabilityScan from Phase 4 F11 — Phase 7 quantifies the
+     compensation in F15"). Cite the thesis claim each strand
+     supports.
 
   §2 Audit findings:
        - what code already exists from Phases 3-6 (a lot — every
@@ -354,6 +538,25 @@ Cover, in this order:
             - `scripts/ablation/plot_pareto.py` (F12) — Pareto-
               frontier scatter on (security, availability) using
               every (reward_config, aggressiveness) point.
+            - `scripts/ablation/run_ood_eval.py` (F15, audit-AF1) —
+              evaluator that re-uses Phase-6's `eval_runner` with
+              `RealizationEngine.allowed_indices` constrained to
+              one of the four held-out OOD-attack splits at a time.
+              Loads each Phase-6 policy in turn (rec-action, RF-Acting,
+              DQN/PPO/A2C from `runs/phase5/<algo>/seed_<k>/model.zip`,
+              random, always-OBSERVE, always-BLOCK) and emits
+              `runs/phase7/ood/<class>/<policy>/seed_<k>/eval_test.jsonl`.
+              Per-class budget: ~1 h CPU total (much smaller than F9
+              because there is NO retraining — only eval rollouts on
+              already-trained agents).
+            - `scripts/ablation/plot_ood_robustness.py` (F15) —
+              4-class × 5-policy grouped bar chart with bootstrap CIs,
+              same visual idiom as Phase-6's F8. Headline: which
+              policies retain reward when faced with each held-out
+              attack class. Phase-4 F11 implies the supervised RF
+              baseline collapses on `VulnerabilityScan`; F15 quantifies
+              how much of that collapse the trained RL agents
+              recover.
 
        3.2 OPTIONAL: re-run Phase-6 evaluations on the best
            Phase-7 reward-config so the closing chapter shows
@@ -379,16 +582,19 @@ Cover, in this order:
               dependent).
 
        3.4 exit gates G7.1..G7.k (each with a numerical threshold).
-            See "Recommended gates" below.
+            See "Recommended gates" below — note G7.8 / G7.9 are the
+            two new audit-AF1-driven gates for F15.
 
-       3.5 figures produced (F9, F10, F12) with caption sketches.
+       3.5 figures produced (F9, F10, F12, **F15**) with caption
+            sketches.
 
   §4 Sequencing table (commits + estimated cost). Phase 7 is the
      single most expensive phase in compute terms because it
      re-trains. Estimated 6-8 commits, 1-2 days of work, 4-8 h CPU.
 
-  §5 What we are NOT doing (defer to Phase 8):
-       - OOD-class evaluation (Phase 8, F14).
+  §5 What we are NOT doing (defer to Phase 8 or later):
+       - **(was 'OOD-class evaluation', moved to Phase 7 F15 by
+         audit AF1.)**
        - Robustness to observation noise / drift (Phase 8, F13).
        - Re-training at full 500 K timesteps (Phase 5's D5.3.1
          locked us at 250 K; Phase 7 inherits that).
@@ -442,9 +648,27 @@ edit them):
   G7.6  No regression on Phase-3/4/5/6 frozen tests overall —
         same hard-stop as G6.6.
 
-  G7.7  Reproducibility — F9/F10/F12 each carry a manifest.json
+  G7.7  Reproducibility — F9/F10/F12/F15 each carry a manifest.json
         hash-pinning eval JSONLs + reward_config JSON per cell +
         git SHA.
+
+  G7.8  (audit-AF1) F15 OOD-class robustness eval runs successfully
+        on each of the four held-out classes (DDoS-HTTP_Flood,
+        Mirai-udpplain, VulnerabilityScan, XSS) for every Phase-6
+        policy, producing a 4×8 result matrix with bootstrap CIs.
+        Pass criterion: results emitted, none NaN, manifest hash
+        chain valid.
+
+  G7.9  (audit-AF1, the headline gate) On `VulnerabilityScan` (the
+        class with Phase-4 RF recall = 0.001), trained RL mean
+        reward beats the RF-Acting policy mean reward by at least
+        1 sigma of the per-policy bootstrap CI. This is the
+        thesis's "RL closes the OOD gap" evidence. Acceptable
+        failure mode (turns into a finding): RL does NOT beat
+        RF-Acting on VulnerabilityScan; document why and how the
+        thesis claim must be narrowed to "RL is *robust to* (not
+        *better at*) the OOD class". Either outcome is defensible
+        if honestly characterised.
 
 The user's standing instructions for D-decisions:
   - The user has consistently said "I leave the decisions to you.
@@ -479,15 +703,32 @@ estimate (sparse F9 grid + F10 + figures):
 
 === STEP 4: Close Phase 7 ===
 
-  - Run all gates G7.1..G7.k on real data.
-  - Render F9 + F10 + F12 with manifests.
+  - Run all gates G7.1..G7.9 on real data (G7.8 and G7.9 are
+    new and audit-AF1-driven; do not skip them).
+  - Render F9 + F10 + F12 + **F15** with manifests.
   - Write docs/results/07_ablation/RESULTS.md sister to PLAN.md.
-  - Prepend a Phase-7 section to CHANGELOG.md.
-  - Ensure pytest -q is green.
+    The §4 "findings worth defending" must include three threads:
+    (i) which reward component closed the +288 deployable gap
+    (or did not), (ii) the IoTWarden-aligned aggressiveness curve
+    (F10), and (iii) **the OOD-class robustness story (F15) — does
+    trained RL recover the supervised detector's
+    `VulnerabilityScan` blind spot or not?** This last item is the
+    Phase-4-to-thesis-claim payoff promised in audit AF1.
+  - Prepend a Phase-7 section to CHANGELOG.md. Note: AF2 must have
+    already been committed in STEP 1.5 (one focused commit
+    reframing Phase-6 §6.4); if you forgot, do it now and cite it
+    in the Phase-7 CHANGELOG entry.
+  - Ensure pytest -q is green (G7.1).
   - Tell the user the gate scoreboard, the headline numbers, and
-    the findings worth defending. SPECIFICALLY state whether the
-    reward sweep closed the +290-reward gap to the rule baseline,
-    and if not, what the limit appears to be.
+    the findings worth defending. SPECIFICALLY state:
+      (a) whether the reward sweep closed the +288-reward gap to
+          the rule baseline (G7.2);
+      (b) the F15 result on VulnerabilityScan: did trained RL beat
+          RF-Acting (G7.9), or not, and what the difference means
+          for the thesis claim;
+      (c) any new D-decisions added in PLAN §8 with their
+          original-threshold-preserved rationale (the Phase-7
+          equivalent of D5.4.1 / D6.2.1).
 
 === House rules ===
 
