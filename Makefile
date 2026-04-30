@@ -137,6 +137,50 @@ phase-5-gates:  ## Phase 5: evaluate G5.2-G5.7 against runs/phase5/.
 .PHONY: phase-5
 phase-5: phase-5-sweep phase-5-figures phase-5-gates  ## Phase 5: full sweep + figures + gate scoreboard.
 
+# -----------------------------------------------------------------------------
+# Phase 6: RL Algorithm Benchmark — F5 + F6 + F7 + F8 from frozen Phase-5 ckpts
+# -----------------------------------------------------------------------------
+PHASE6_RUNS_ROOT     ?= runs/phase6
+PHASE5_RUNS_ROOT     ?= runs/phase5
+PHASE6_OUT_DIR       ?= docs/results/06_benchmark
+PHASE6_N_EPISODES    ?= 30
+PHASE6_N_DET_EPISODES ?= 150
+PHASE6_RF_PATH       ?= artifacts/detector/random_forest.joblib
+
+.PHONY: phase-6-smoke
+phase-6-smoke:  ## Phase 6 smoke: 1 algo × 1 seed × 2 ep + 2 ep / baseline (~20 s CPU).
+	$(PYTHON) -m scripts.benchmark.run_test_eval \
+	    --smoke --out-root $(PHASE6_RUNS_ROOT)
+
+.PHONY: phase-6-eval
+phase-6-eval:  ## Phase 6: roll Phase-5 ckpts + 5 baselines on test_balanced (~10 min CPU).
+	$(PYTHON) -m scripts.benchmark.run_test_eval \
+	    --algos $(PHASE5_ALGOS) --seeds $(PHASE5_SEEDS) \
+	    --n-episodes $(PHASE6_N_EPISODES) \
+	    --n-deterministic-episodes $(PHASE6_N_DET_EPISODES) \
+	    --phase5-runs-root $(PHASE5_RUNS_ROOT) \
+	    --out-root $(PHASE6_RUNS_ROOT) \
+	    --rf-path $(PHASE6_RF_PATH)
+
+.PHONY: phase-6-figures
+phase-6-figures:  ## Phase 6: render F5, F6, F7, F8 from runs/phase6/.
+	$(PYTHON) -m scripts.benchmark.build_summary_table \
+	    --runs-root $(PHASE6_RUNS_ROOT) \
+	    --out-dir $(PHASE6_OUT_DIR)
+	$(PYTHON) -m scripts.benchmark.plot_stage_action_cm \
+	    --runs-root $(PHASE6_RUNS_ROOT) \
+	    --out-dir $(PHASE6_OUT_DIR)
+	$(PYTHON) -m scripts.benchmark.plot_overhead \
+	    --runs-root $(PHASE6_RUNS_ROOT) \
+	    --phase5-runs-root $(PHASE5_RUNS_ROOT) \
+	    --out-dir $(PHASE6_OUT_DIR)
+	$(PYTHON) -m scripts.benchmark.plot_baselines \
+	    --runs-root $(PHASE6_RUNS_ROOT) \
+	    --out-dir $(PHASE6_OUT_DIR)
+
+.PHONY: phase-6
+phase-6: phase-6-eval phase-6-figures  ## Phase 6: full eval sweep + F5/F6/F7/F8 figures.
+
 .PHONY: train-generator
 train-generator:  ## Train the LSTM Red Team generator.
 	$(PYTHON) main.py --mode train-generator --config $(CONFIG) \
