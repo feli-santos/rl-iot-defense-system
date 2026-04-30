@@ -1,0 +1,39 @@
+{
+  "schema_version": "1.0",
+  "figure": "F6",
+  "git_sha": "b63b4d708d01a9c202e51d67859d79eab77b4dc0",
+  "outputs": {
+    "png": "docs/results/06_benchmark/F6_stage_action_cm.png",
+    "json": "docs/results/06_benchmark/F6_summary.json"
+  },
+  "inputs": {
+    "eval_manifest": {
+      "path": "runs/phase6/eval_manifest.json",
+      "sha256": "c4a60a8f51d65095af339eca5bee7e2faa2aa75461efe69e0e37813e342b8f10"
+    },
+    "eval_jsonl_sha256": {
+      "runs/phase6/dqn/seed_0/eval_test.jsonl": "93ec0db37e7c9379c25ca5ff9271a275193518a9a98638315b694dbe2e999b4f",
+      "runs/phase6/dqn/seed_1/eval_test.jsonl": "8fafae739a929526bbce8aced56623b6edac903c34b3bb6681a666910931e297",
+      "runs/phase6/dqn/seed_2/eval_test.jsonl": "ea4feac30133608b92253aed2d54bee7154375a55885cb6884ab2dd8d0eb09b5",
+      "runs/phase6/dqn/seed_3/eval_test.jsonl": "ac8004565229d27988bdb26b30b2d3362b7c42f316391ebd98faea18658abea6",
+      "runs/phase6/dqn/seed_4/eval_test.jsonl": "57520431b6a08686ad5dca9c2af8662541dfedc5725296df27d747f62ed92863",
+      "runs/phase6/ppo/seed_0/eval_test.jsonl": "38231f9f609e2d85bf9aac52c4471501bc3c84ad282a902bb224f5c903bcb705",
+      "runs/phase6/ppo/seed_1/eval_test.jsonl": "bed8580c349f412972dc42059328b868af8e5a4884a5c8ada9da7dc6a5aad845",
+      "runs/phase6/ppo/seed_2/eval_test.jsonl": "af1dae7deaf5f590755e7a3fd2b261f908bf2005b5b07504af445418c6bff585",
+      "runs/phase6/ppo/seed_3/eval_test.jsonl": "3da3b2f7248f32d041adf70c5bbd20e1aefd46c54cd61044958756b223476606",
+      "runs/phase6/ppo/seed_4/eval_test.jsonl": "232dccec1a58df0e00a17ad1f2371627f57b8cac738e700cfa69a6460704ddcc",
+      "runs/phase6/a2c/seed_0/eval_test.jsonl": "163cc95e1e81597e58fd4a4ce6e4a82bf2dcecd201a623572c0c0f30746d9450",
+      "runs/phase6/a2c/seed_1/eval_test.jsonl": "d401bfbc89b989335a87ac01ca0b00ad6abfb468298eb5d1ef9e757c7e7d8975",
+      "runs/phase6/a2c/seed_2/eval_test.jsonl": "24ce0e67483d12531e9eb1067ee97e58188d3d2c9f41891bd6c9b4c1b248efcd",
+      "runs/phase6/a2c/seed_3/eval_test.jsonl": "21d2930ba517aaff8793fcf9707e6ad5a9538acc7ead722b9f36d85a478af3cf",
+      "runs/phase6/a2c/seed_4/eval_test.jsonl": "73118fc23307da823631878c856fb1528781b6f9f4ad45acc53244824c6217e3",
+      "runs/phase6/random/seed_0/eval_test.jsonl": "bdf03572be593b1ce368bda5e2c90a1d39b914955c96812a6ece37070cb01e14",
+      "runs/phase6/random/seed_1/eval_test.jsonl": "3cedf63c52b110ba921a8c524b319ba12b3a3cbe920d11787ba43b7963481c4f",
+      "runs/phase6/random/seed_2/eval_test.jsonl": "a6e6967390f49c722c7c6744e9697a2d2092245f32b99797587c2009364f2fbe",
+      "runs/phase6/random/seed_3/eval_test.jsonl": "70c2567a16b568b387e63307d679848d806ed064ce93b57ce85fb6161da69234",
+      "runs/phase6/random/seed_4/eval_test.jsonl": "92e947fb95d044cd5b095f2dac8034c13d229b08e0a6742e1ac096a3f035cb90",
+      "runs/phase6/always_observe/seed_0/eval_test.jsonl": "ef1e4457bd53926ab55e845710ede832621c505b56bc43eb0e7e5be1dd28bfae",
+      "runs/phase6/always_block/seed_0/eval_test.jsonl": "ab121080e78370244f9dc14ac5dd1bbca96c358e5d13c498898807da43c1782f"
+    }
+  }
+}
