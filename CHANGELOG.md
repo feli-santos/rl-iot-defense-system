@@ -1,3 +1,94 @@
+## [Unreleased] — Phase 7 closeout (2026-05-01)
+
+Tally: **7 PASS / 2 FAIL-WITH-FINDING** across G7.1–G7.9.
+
+### Gate scoreboard
+
+| Gate | Threshold | Status | Value / Notes |
+|---|---|:---:|---|
+| **G7.1** | pytest -q ≥ 430 passed; zero new skips | **PASS** | ================== 454 passed, 2 warnings in 63.07s (0:01:03) ================== |
+| **G7.2** | F9 best reward-comparable cell mean test reward > Phase-6 DQN +1336 by ≥1σ (apples-to-apples; reward-coefficient cells fall back to security-KPI strand per D7.1.1) | **PASS** | reward-comparable best=impact_is_terminal_false (+1541.9); security-KPI best=impact_is_terminal_false (mit=0.900); meets_oracle_stretch=False |
+| **G7.3** | PPO p=0.0 < p=0.6 by ≥1σ AND rule monotone | **PASS** | p=0.0 CI=(133.5, 140.7); p=0.6 CI=(1280.1, 1359.2) |
+| **G7.4** | Pareto frontier ≥ 3 distinct dominant points | FAIL-WITH-FINDING | n_distinct=1/32 |
+| **G7.5** | Phase-3 frozen tests pass with impact_is_terminal=True | **PASS** | G7.1 carries this through (full pytest green ⇒ Phase-3 contract preserved) |
+| **G7.6** | No regression on Phase-3/4/5/6 frozen tests overall | **PASS** | G7.1 carries this through |
+| **G7.7** | F9/F10/F12/F15 manifest.json all present + SHA-pinned | **PASS** | all 4 manifests present |
+| **G7.8** | F15 4-class × 8-policy matrix complete, no NaN means | **PASS** | 32/32 cells; n_missing=0; n_nan=0 |
+| **G7.9** | On VulnerabilityScan, best trained RL CI_low > RF-Acting CI_high (≥1σ separation, RL > RF) | FAIL-WITH-FINDING | best_rl=dqn (+1312.5), RF=(+1610.7), Δ=-298.2 |
+
+### Headline findings (see `docs/results/07_ablation/RESULTS.md` for full text)
+
+- **G7.2 PASS-WITHOUT-STRETCH (F9 reward-component sweep, D7.1.1
+  partially activated):** the apples-to-apples winner is
+  `impact_is_terminal=False` at PPO mean **+1542 (CI 1524–1573)**,
+  beating the Phase-6 DQN deployable best +1336 by **+205.6**
+  (71 % of the +287.6 gap to the oracle ceiling +1624). Mitigated-
+  impact rate jumps from the DQN baseline 0.153 to **0.900**
+  (5.9× improvement). The remaining −82.5 to the oracle ceiling
+  is "the cost of operating without oracle stage knowledge" —
+  no reward-coefficient cell moves the apples-to-apples number,
+  characterising the limit of one-at-a-time Phase-3-style reward
+  shaping (RESULTS §6.1).
+- **G7.9 FAIL-WITH-FINDING (F15 audit-AF1 HEADLINE, D7.9.1 fully
+  ACTIVATED):** on `VulnerabilityScan` (Phase-4 RF recall =
+  0.001) trained RL does NOT beat RF-Acting (DQN +1313 CI
+  1228–1387 vs RF-Acting +1611 CI 1556–1666; Δ = −298 at ≥ 1σ).
+  Thesis claim narrows from "RL closes the OOD gap" to
+  **"RL is *robust to* (not *better at*) the OOD class"** — DQN's
+  mean OOD reward (+1313) is within seed-noise of its in-
+  distribution mean (+1336). Future work to *exceed* RF-Acting OOD
+  belongs in Phase 8 F14 (RESULTS §6.2).
+- **G7.3 PASS (F10 IoTWarden Fig. 6 replication):** PPO mean
+  reward grows monotonically with `p_defender_deescalation`, from
+  CI (134, 141) at p=0.0 to CI (1280, 1359) at p=0.6 — the
+  cleanest paper-replication win in Phase 7 (RESULTS §6.3).
+- **G7.4 FAIL-WITH-FINDING (F12 Pareto, R7.3 fired):** only 1
+  distinct Pareto-dominant point across 32 candidates — the
+  trade-off surface under the Phase-3 reward formulation is
+  approximately linear, so operating-point selection reduces to
+  a single scalar weighting (RESULTS §6.4).
+
+### Audit-fix commit (2026-05-01)
+
+This Phase-7 closeout block follows a same-day audit cycle that
+caught and corrected three issues *before* the chapter locked:
+
+1. **G7.2 evaluator was reward-scaling-blind:** the original
+   logic treated `defense_success_bonus_x2p0` (+2926) as the
+   winner, but that cell's reward function differs from
+   Phase-6's by construction (×2 the per-defense-success bonus),
+   so the +2926 number is not commensurable with DQN +1336. The
+   corrected `_evaluate_g72` now splits into two strands —
+   apples-to-apples raw reward (only Phase-3-reward-fn-preserving
+   cells qualify) and security-KPI fallback (mitigated-impact
+   rate, commensurable across cells) — per pre-registered D7.1.1.
+   Both strands now agree: `impact_is_terminal=False` wins
+   honestly. (RESULTS §5.2.)
+2. **`close_phase7._run_pytest_count` exit-code bug:** the parser
+   gated on `proc.returncode == 0` and reported G7.1 false-fail
+   (despite "442 passed"), cascading false-fail to G7.5 and G7.6
+   (which piggyback on G7.1). Fixed to gate on `passed > 0 and
+   failed == 0 and errors == 0` from the trailing summary line.
+   (RESULTS §5.3.)
+3. **Phase-7 closer test coverage:** added 12 pure-Python tests
+   in `tests/test_close_phase7_parsers.py` covering both fixes
+   (6 pytest-summary parser cases + 6 two-strand G7.2 evaluator
+   cases) so future Phase-7 re-runs cannot honestly regress.
+
+### What ships
+
+- F9 / F10 / F12 / F15 figures + summaries + manifests under
+  `docs/results/07_ablation/`.
+- `G7_scoreboard.json` per-gate JSON record.
+- `runs/phase7/{ood,reward_sweep,aggressiveness}/` raw eval JSONLs
+  (gitignored; ~7.5 h CPU walk-away to regenerate via `make phase-7`).
+- 34 new synthetic-only tests across (a) Phase-7 §3.3 implementation
+  (C3 + C4 = 22 tests; `test_phase31_impact_terminal.py` +
+  `test_train_agent_reward_overrides.py`) and (b) the 2026-05-01
+  audit fix (12 tests; `test_close_phase7_parsers.py`). Test count
+  420 → **454**.
+
+
 # Changelog
 
 All notable changes to this project will be documented in this file.

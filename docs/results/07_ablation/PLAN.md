@@ -545,17 +545,50 @@ D6.8.1).
 
 ### Pre-emptive D-decisions (logged here so future agents can find them)
 
-- **D7.1.1** (placeholder) — reserved for the case where R7.1
-  fires (F9 sparse sweep finds no winner). Activation rule: if
-  the F9 plotter reports `headline.best_cell.mean - phase6_dqn`
-  < 0 across all 12 cells, this section gets a follow-up entry
-  with date + rationale, the gate G7.2 verdict flips to
-  PASS-WITH-FINDING, and the JSON scoreboard records the
-  original threshold verbatim.
-- **D7.9.1** (placeholder) — reserved for the case where R7.2
-  fires (F15 RL does not beat RF-Acting on `VulnerabilityScan`).
-  Activation rule: same protocol — flip to PASS-WITH-FINDING,
-  preserve the original threshold, narrow the thesis claim.
+- **D7.1.1** (locked 2026-05-01 — partial activation, audit
+  fix) — the F9 sparse sweep DID find a winner on the
+  apples-to-apples strand (`impact_is_terminal_false` PPO mean
+  +1542 beats DQN +1336 by +205.6, mit_rate 0.900 vs 0.153
+  baseline → G7.2 PASS-WITHOUT-STRETCH). However the audit
+  cycle on 2026-05-01 also surfaced a subtler finding worth
+  capturing: **no reward-coefficient cell** (axis="reward",
+  10/12 of the grid) moves PPO mean reward by ≥ 1σ on the
+  apples-to-apples strand. The 11 reward-coefficient + centre
+  baseline cells stay within ±150 of the centre baseline. The
+  one cell that moves the needle (`impact_is_terminal_false`)
+  is an **env-semantics flip**, not a reward-coefficient
+  perturbation. Implications: (a) coefficient scaling within
+  the Phase-3 reward formulation is bounded — closing the
+  remaining −82.5 gap to the oracle ceiling +1624 requires a
+  mechanism *other* than coefficient scaling (curriculum,
+  reward modelling, or non-linear composition); (b) the
+  G7.2 evaluator gained a two-strand definition (raw-reward
+  apples-to-apples + security-KPI fallback) so future Phase-7
+  re-runs cannot mistake reward-coefficient scaling for policy
+  improvement (see `tests/test_close_phase7_parsers.py` for the
+  pinned logic). Original G7.2 threshold preserved verbatim in
+  `G7_scoreboard.json#gates[1].threshold`. See RESULTS.md §6.1
+  for the full chapter narrative.
+- **D7.9.1** (locked 2026-05-01 — fully ACTIVATED) — R7.2
+  fired: on `VulnerabilityScan` trained RL does NOT beat
+  RF-Acting (DQN +1313 (CI 1228–1387) vs RF-Acting +1611 (CI
+  1556–1666); Δ = −298 at ≥ 1σ separation). Original G7.9
+  threshold preserved verbatim in
+  `G7_scoreboard.json#gates[8].threshold`. **Thesis claim
+  narrows from** "RL closes the OOD gap by acting on raw
+  features" **to** "RL is **robust to** (not **better at**)
+  the OOD class" — DQN's mean OOD reward (+1313) is within
+  seed-noise of its in-distribution mean (+1336), so
+  generalisation does not collapse the policy. RF-Acting's
+  stronger OOD reward (+1611) is not evidence of RF working
+  (Phase-4 RF recall on this class = 0.001) — it is evidence
+  that the recommended-action mapping defaults to OBSERVE on
+  RF's mis-prediction, and 'do nothing' is locally-good when
+  the Phase-3 reward function is dominated by avoiding
+  disproportionate-penalty costs. Future work to *exceed*
+  RF-Acting OOD belongs in Phase 8 F14 (train-time OOD-class
+  augmentation). See RESULTS.md §6.2 for the full chapter
+  narrative + defense-committee Q&A pre-rebuttals.
 
 ## 9 — Test count history
 

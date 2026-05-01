@@ -1,0 +1,81 @@
+{
+  "schema_version": "1.0",
+  "phase": 7,
+  "git_sha": "1783644c617a7a30c162cec683d0166b87752819",
+  "completed_at": "2026-05-01T03:54:59Z",
+  "n_pass": 7,
+  "n_fail": 2,
+  "n_skip": 0,
+  "gates": [
+    {
+      "id": "G7.1",
+      "threshold": "pytest -q \u2265 430 passed; zero new skips",
+      "value": "================== 454 passed, 2 warnings in 63.07s (0:01:03) ==================",
+      "passes": true,
+      "kind": "tests"
+    },
+    {
+      "id": "G7.2",
+      "threshold": "F9 best reward-comparable cell mean test reward > Phase-6 DQN +1336 by \u22651\u03c3 (apples-to-apples; reward-coefficient cells fall back to security-KPI strand per D7.1.1)",
+      "value": "reward-comparable best=impact_is_terminal_false (+1541.9); security-KPI best=impact_is_terminal_false (mit=0.900); meets_oracle_stretch=False",
+      "passes": true,
+      "kind": "f9",
+      "interpretation": "PASS-WITHOUT-STRETCH: reward-comparable cell (`impact_is_terminal_false`) beats DQN +1336 on RAW REWARD but does not reach the oracle ceiling +1624; the +288 gap is partially closed.",
+      "security_kpi_strand_passes": true
+    },
+    {
+      "id": "G7.3",
+      "threshold": "PPO p=0.0 < p=0.6 by \u22651\u03c3 AND rule monotone",
+      "value": "p=0.0 CI=(133.5, 140.7); p=0.6 CI=(1280.1, 1359.2)",
+      "passes": true,
+      "kind": "f10",
+      "interpretation": "PASS: PPO benefits from a more lenient defender (p\u2191 \u21d2 reward\u2191) by \u2265 1\u03c3 between p=0.0 and p=0.6, and the rule curve is monotone non-decreasing in p \u2014 replicates the IoTWarden Fig. 6 qualitative shape on CICIoT2023."
+    },
+    {
+      "id": "G7.4",
+      "threshold": "Pareto frontier \u2265 3 distinct dominant points",
+      "value": "n_distinct=1/32",
+      "passes": false,
+      "kind": "f12",
+      "interpretation": "FAIL-WITH-FINDING (R7.3): only 1 distinct dominant point(s) on the frontier \u2014 the trade-off surface is approximately linear under the Phase-3 reward formulation; operating-point choice reduces to a single scalar weighting."
+    },
+    {
+      "id": "G7.5",
+      "threshold": "Phase-3 frozen tests pass with impact_is_terminal=True",
+      "passes": true,
+      "value": "G7.1 carries this through (full pytest green \u21d2 Phase-3 contract preserved)",
+      "kind": "regression"
+    },
+    {
+      "id": "G7.6",
+      "threshold": "No regression on Phase-3/4/5/6 frozen tests overall",
+      "passes": true,
+      "value": "G7.1 carries this through",
+      "kind": "regression"
+    },
+    {
+      "id": "G7.7",
+      "threshold": "F9/F10/F12/F15 manifest.json all present + SHA-pinned",
+      "passes": true,
+      "value": "all 4 manifests present",
+      "kind": "manifests"
+    },
+    {
+      "id": "G7.8",
+      "threshold": "F15 4-class \u00d7 8-policy matrix complete, no NaN means",
+      "value": "32/32 cells; n_missing=0; n_nan=0",
+      "passes": true,
+      "kind": "f15",
+      "audit_finding": "AF1"
+    },
+    {
+      "id": "G7.9",
+      "threshold": "On VulnerabilityScan, best trained RL CI_low > RF-Acting CI_high (\u22651\u03c3 separation, RL > RF)",
+      "value": "best_rl=dqn (+1312.5), RF=(+1610.7), \u0394=-298.2",
+      "passes": false,
+      "kind": "f15",
+      "audit_finding": "AF1 (HEADLINE)",
+      "interpretation": "FAIL-WITH-FINDING: trained RL does NOT beat RF-Acting on VulnerabilityScan; the thesis claim narrows from 'RL closes the OOD gap' to 'RL is robust to (not better at) the OOD class'. See PLAN \u00a78 D7.9.1."
+    }
+  ]
+}
