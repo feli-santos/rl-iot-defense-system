@@ -166,51 +166,195 @@ def _summarise_cell(
 # --------------------------------------------------------------- gates
 
 
+# Phase-6 DQN (deployable best) security KPI under the Phase-3 reward
+# function. This is the apples-to-apples bar for cells that ALSO use
+# the Phase-3 reward function (impact_is_terminal axis + the
+# baseline_phase5_defaults centre cell). Reward-coefficient cells use
+# a DIFFERENT reward function and are NOT directly comparable on raw
+# reward — they are evaluated on the security KPI only.
+_PHASE6_DEPLOYABLE_BEST_MITIGATED = 0.153  # DQN mitigated_impact_rate on test_balanced
+
+
 def _evaluate_g72(
     rows: List[Dict[str, Any]],
     deployable_best: float = _PHASE6_DEPLOYABLE_BEST_REWARD,
     oracle_ceiling: float = _PHASE6_ORACLE_CEILING_REWARD,
+    deployable_best_mitigated: float = _PHASE6_DEPLOYABLE_BEST_MITIGATED,
 ) -> Dict[str, Any]:
-    """G7.2: at least one cell's CI lower bound > Phase-6 DQN +1336."""
-    candidates = [
-        r for r in rows
-        if math.isfinite(r.get("ci_low", math.nan))
-        and r.get("axis") != "baseline"
-    ]
-    if not candidates:
+    """G7.2 — corrected: compare cells fairly on a metric that is
+    commensurable across cells with **different reward functions**.
+
+    The audit-D7.1.1 framing (2026-05-01): cells that scale a reward
+    *coefficient* by 0.5×/2× are **not directly comparable to
+    Phase-6 raw reward** because the reward scale itself moved. The
+    only Phase-6-comparable raw-reward cells in this 12-cell sparse
+    grid are (a) ``baseline_phase5_defaults`` (Phase-3 reward fn,
+    one extra seed pool) and (b) the two ``impact_is_terminal``
+    cells (env semantics change, reward fn unchanged).
+
+    The honest pass criterion therefore splits into two strands:
+
+    1. **Reward-comparable strand** (raw-reward gate): for cells
+       under the unchanged Phase-3 reward fn, does any cell's
+       CI_low exceed Phase-6 DQN +1336?
+    2. **Security-KPI strand** (mitigated_impact_rate gate): for
+       *all* cells (incl. coefficient-scaled), does any cell beat
+       Phase-6 DQN's mitigated_impact_rate (0.153) by ≥ 1.5×? This
+       is the metric that survives reward-function changes.
+
+    G7.2 PASSES iff strand-1 holds (the original-shape gate). If
+    strand-1 fails but strand-2 holds, that is **D7.1.1
+    PASS-WITH-FINDING**: reward shaping cannot move the
+    apples-to-apples reward number, but the env-semantics flip
+    (`impact_is_terminal=False`) or coefficient scaling does
+    improve real security on the security KPI — useful diagnostic,
+    narrowed thesis claim.
+    """
+    finite = [r for r in rows if math.isfinite(r.get("ci_low", math.nan))]
+    if not finite:
         return {
             "passes": False,
             "reason": "no candidate cells with finite CI",
             "deployable_best_threshold": deployable_best,
         }
-    best = max(candidates, key=lambda r: r["mean_reward"])
-    passes_deployable = best["ci_low"] > deployable_best
-    meets_oracle = best["ci_low"] > oracle_ceiling
+
+    # Strand 1: reward-comparable cells only (Phase-3 reward fn).
+    # axis="reward" cells scale a coefficient ⇒ NOT comparable.
+    # axis="baseline" + axis="impact_terminal" preserve the reward fn.
+    reward_comparable = [r for r in finite if r.get("axis") in ("baseline", "impact_terminal")]
+    best_rc = (
+        max(reward_comparable, key=lambda r: r["mean_reward"])
+        if reward_comparable else None
+    )
+    passes_strand1 = bool(best_rc and best_rc["ci_low"] > deployable_best)
+    meets_oracle_strand1 = bool(best_rc and best_rc["ci_low"] > oracle_ceiling)
+
+    # Strand 2: security KPI across ALL cells (incl. coefficient-scaled).
+    sec_candidates = [
+        r for r in finite
+        if math.isfinite(r.get("mitigated_impact_rate", math.nan))
+        and r.get("axis") != "baseline"
+    ]
+    best_sec = (
+        max(sec_candidates, key=lambda r: r["mitigated_impact_rate"])
+        if sec_candidates else None
+    )
+    sec_threshold = deployable_best_mitigated * 1.5
+    passes_strand2 = bool(best_sec and best_sec["mitigated_impact_rate"] >= sec_threshold)
+
+    # The *raw-reward winner* (any axis) is reported for transparency
+    # but is NOT the headline in the corrected logic — the
+    # 2026-05-01 audit (Finding #1) showed that the +2926 cell is a
+    # mix of real improvement on the security KPI (mit_rate 0.547 vs
+    # 0.153 baseline) and reward-coefficient scaling (×2 the bonus).
+    raw_winner = max(finite, key=lambda r: r["mean_reward"])
+
+    if passes_strand1 and meets_oracle_strand1:
+        interp = (
+            f"PASS: at least one reward-comparable cell "
+            f"(`{best_rc['cell_id']}`) beats the Phase-6 deployable "
+            f"best DQN +{deployable_best:.0f} by ≥ 1σ on RAW REWARD "
+            f"(commensurable to Phase-6). STRETCH MET: cell also "
+            f"exceeds the oracle ceiling +{oracle_ceiling:.0f} — "
+            f"the deployable +288 gap is closed."
+        )
+    elif passes_strand1:
+        interp = (
+            f"PASS-WITHOUT-STRETCH: reward-comparable cell "
+            f"(`{best_rc['cell_id']}`) beats DQN +{deployable_best:.0f} "
+            f"on RAW REWARD but does not reach the oracle ceiling "
+            f"+{oracle_ceiling:.0f}; the +288 gap is partially closed."
+        )
+    elif passes_strand2:
+        interp = (
+            f"FAIL-WITH-FINDING (D7.1.1, activated 2026-05-01): no "
+            f"reward-comparable cell (Phase-3 reward fn preserved) "
+            f"beats DQN +{deployable_best:.0f} on raw reward by ≥ 1σ. "
+            f"BUT: the security-KPI strand passes — cell "
+            f"`{best_sec['cell_id']}` improves mitigated_impact_rate "
+            f"to {best_sec['mitigated_impact_rate']:.3f} "
+            f"(vs DQN baseline {deployable_best_mitigated:.3f}, "
+            f"≥ 1.5× threshold {sec_threshold:.3f}). The "
+            f"one-at-a-time linear sweep characterised the limit of "
+            f"Phase-3-style reward shaping at the apples-to-apples "
+            f"reward level, but env-semantics + coefficient scaling "
+            f"do move the real-security needle. Closing the +288 "
+            f"reward gap under fixed reward semantics requires a "
+            f"different mechanism (curriculum, reward modelling, or "
+            f"attack-aware exploration), deferred to future work."
+        )
+    else:
+        interp = (
+            f"FAIL-WITH-FINDING (D7.1.1): the linear sweep failed to "
+            f"close the gap on either strand — neither raw reward "
+            f"(reward-comparable cells) nor security KPI "
+            f"(mitigated_impact_rate) beats Phase-6 DQN by the "
+            f"≥ 1σ / ≥ 1.5× threshold. Characterises the limit of "
+            f"one-at-a-time Phase-3-style reward shaping. Closing "
+            f"the gap requires a different mechanism (curriculum, "
+            f"reward modelling, or attack-aware exploration), "
+            f"deferred to future work."
+        )
+
     return {
-        "passes": bool(passes_deployable),
-        "best_cell": best["cell_id"],
-        "best_mean_reward": best["mean_reward"],
-        "best_ci": [best["ci_low"], best["ci_high"]],
-        "deployable_best_threshold": deployable_best,
-        "oracle_ceiling": oracle_ceiling,
-        "meets_oracle_ceiling_stretch": bool(meets_oracle),
-        "delta_to_deployable": best["mean_reward"] - deployable_best,
-        "delta_to_oracle": best["mean_reward"] - oracle_ceiling,
-        "interpretation": (
-            "PASS: at least one reward-component cell beats the "
-            "Phase-6 deployable best DQN +1336 by ≥ 1σ. "
-            + ("STRETCH MET: cell also exceeds the oracle ceiling +1624 — "
-               "the deployable +288 gap is closed.")
-            if passes_deployable and meets_oracle else
-            ("PASS-WITHOUT-STRETCH: cell beats DQN +1336 but does not reach "
-             "the oracle ceiling +1624; the +288 gap is partially closed."
-             if passes_deployable else
-             "FAIL-WITH-FINDING (D7.1.1): the linear sweep failed to close "
-             "the gap, characterising the limit of one-at-a-time Phase-3-"
-             "style reward shaping. Closing the gap requires a different "
-             "mechanism (curriculum, reward modelling, or attack-aware "
-             "exploration), deferred to future work.")
+        "passes": bool(passes_strand1),
+        # Reward-comparable strand (the canonical G7.2 gate).
+        "best_reward_comparable_cell": best_rc["cell_id"] if best_rc else None,
+        "best_reward_comparable_mean": (
+            best_rc["mean_reward"] if best_rc else None
         ),
+        "best_reward_comparable_ci": (
+            [best_rc["ci_low"], best_rc["ci_high"]] if best_rc else None
+        ),
+        "best_reward_comparable_mitigated": (
+            best_rc.get("mitigated_impact_rate") if best_rc else None
+        ),
+        # Security-KPI strand (D7.1.1 fallback metric).
+        "best_security_kpi_cell": (
+            best_sec["cell_id"] if best_sec else None
+        ),
+        "best_security_kpi_mitigated": (
+            best_sec["mitigated_impact_rate"] if best_sec else None
+        ),
+        "best_security_kpi_reward": (
+            best_sec["mean_reward"] if best_sec else None
+        ),
+        "security_kpi_strand_passes": passes_strand2,
+        "security_kpi_threshold": sec_threshold,
+        # Raw-reward winner (for transparency, NOT the headline).
+        "raw_reward_winner_cell": raw_winner["cell_id"],
+        "raw_reward_winner_mean": raw_winner["mean_reward"],
+        "raw_reward_winner_note": (
+            "raw-reward winner across ALL cells; NOT directly "
+            "comparable to Phase-6 if axis='reward' because reward-"
+            "coefficient cells use a different reward function. See "
+            "best_reward_comparable_* for the apples-to-apples row."
+        ),
+        # Phase-6 baselines.
+        "deployable_best_threshold": deployable_best,
+        "deployable_best_mitigated": deployable_best_mitigated,
+        "oracle_ceiling": oracle_ceiling,
+        "meets_oracle_ceiling_stretch": meets_oracle_strand1,
+        # Legacy fields preserved (close_phase7 reads these). They
+        # now point at the reward-comparable strand to match the
+        # canonical gate.
+        "best_cell": best_rc["cell_id"] if best_rc else raw_winner["cell_id"],
+        "best_mean_reward": (
+            best_rc["mean_reward"] if best_rc else raw_winner["mean_reward"]
+        ),
+        "best_ci": (
+            [best_rc["ci_low"], best_rc["ci_high"]] if best_rc
+            else [raw_winner["ci_low"], raw_winner["ci_high"]]
+        ),
+        "delta_to_deployable": (
+            best_rc["mean_reward"] - deployable_best if best_rc
+            else raw_winner["mean_reward"] - deployable_best
+        ),
+        "delta_to_oracle": (
+            best_rc["mean_reward"] - oracle_ceiling if best_rc
+            else raw_winner["mean_reward"] - oracle_ceiling
+        ),
+        "interpretation": interp,
     }
 
 

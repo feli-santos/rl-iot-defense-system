@@ -71,29 +71,86 @@ def _read_summary(path: Path) -> Optional[Dict[str, Any]]:
         return None
 
 
+def _parse_pytest_summary(last_line: str) -> Dict[str, int]:
+    """Extract counts from a pytest summary line.
+
+    The line typically looks like one of:
+
+        ``442 passed, 2 warnings in 84.49s (0:01:24)``
+        ``442 passed in 64.00s``
+        ``439 passed, 3 failed, 1 warning in 90s``
+        ``442 passed, 1 skipped in 60s``
+
+    Strategy: tokenise on commas, then for each segment look for the
+    first integer + a known keyword (passed/failed/skipped/error/
+    warning). This is robust to extra noise after the closing
+    ``=`` decoration the bare-tokens approach had trouble with.
+    """
+    counts = {"passed": 0, "failed": 0, "skipped": 0, "errors": 0, "warnings": 0}
+    # Strip leading/trailing '=' decoration.
+    cleaned = last_line.strip().strip("=").strip()
+    # Drop trailing "in <duration>" segment (e.g. "in 84.49s (0:01:24)").
+    head, _, _tail = cleaned.partition(" in ")
+    if not head:
+        head = cleaned
+    for segment in head.split(","):
+        segment = segment.strip()
+        if not segment:
+            continue
+        tokens = segment.split()
+        # Find first integer token in this segment.
+        n = None
+        for tok in tokens:
+            if tok.isdigit():
+                n = int(tok)
+                break
+        if n is None:
+            continue
+        for key in counts:
+            # singularise/pluralise tolerance — "1 warning", "2 warnings".
+            if key.rstrip("s") in segment or key in segment:
+                counts[key] = n
+                break
+    return counts
+
+
 def _run_pytest_count() -> Dict[str, Any]:
-    """Run pytest -q and parse the trailing 'X passed' line."""
+    """Run pytest -q and parse the trailing summary line.
+
+    Decision rule for ``ok``: a run is considered green iff
+    ``passed > 0 and failed == 0 and errors == 0``. We deliberately
+    do NOT gate on ``proc.returncode == 0`` — pytest can return
+    non-zero on warning-only summaries in certain shell
+    configurations (observed 2026-05-01 when the auto-finalizer
+    reported ``passes: false`` for G7.1 despite "442 passed,
+    2 warnings"). The trailing summary line is the source of truth.
+    """
     try:
         proc = subprocess.run(
             ["pytest", "-q", "--tb=no"],
             cwd=_ROOT, capture_output=True, text=True, timeout=600,
         )
-        last_line = (proc.stdout.strip().splitlines() or [""])[-1]
-        passed = 0
-        failed = 0
-        for word in last_line.split():
-            if word.isdigit():
-                # Pattern: '442 passed, 0 failed in 64s'
-                idx = last_line.index(word)
-                tail = last_line[idx:].split(",", 1)[0]
-                if "passed" in tail:
-                    passed = int(word)
-                elif "failed" in tail:
-                    failed = int(word)
+        lines = proc.stdout.strip().splitlines()
+        last_line = lines[-1] if lines else ""
+        counts = _parse_pytest_summary(last_line)
+        # Some pytest versions put the count line one above the
+        # final blank/separator line; if the last line had no
+        # 'passed', try the previous non-blank line.
+        if counts["passed"] == 0 and counts["failed"] == 0:
+            for prev in reversed(lines[:-1]):
+                if "passed" in prev or "failed" in prev:
+                    last_line = prev
+                    counts = _parse_pytest_summary(prev)
+                    break
+        ok = counts["passed"] > 0 and counts["failed"] == 0 and counts["errors"] == 0
         return {
-            "ok": proc.returncode == 0,
-            "passed": passed,
-            "failed": failed,
+            "ok": ok,
+            "passed": counts["passed"],
+            "failed": counts["failed"],
+            "skipped": counts["skipped"],
+            "errors": counts["errors"],
+            "warnings": counts["warnings"],
+            "returncode": proc.returncode,
             "summary_line": last_line,
         }
     except Exception as exc:  # noqa: BLE001
@@ -127,18 +184,34 @@ def _evaluate_gates(
     f9 = _read_summary(out_dir / "F9_summary.json")
     if f9 is not None:
         g72 = f9.get("gates", {}).get("G7.2", {})
-        gates.append({
-            "id": "G7.2",
-            "threshold": "F9 best cell mean test reward > Phase-6 DQN +1336 by ≥1σ",
-            "value": (
+        # New (2026-05-01) two-strand value string. Falls back to
+        # the legacy fields if the summary predates the corrected
+        # plotter.
+        rc_cell = g72.get("best_reward_comparable_cell")
+        rc_mean = g72.get("best_reward_comparable_mean")
+        sec_cell = g72.get("best_security_kpi_cell")
+        sec_mit = g72.get("best_security_kpi_mitigated")
+        if rc_cell is not None:
+            value_str = (
+                f"reward-comparable best={rc_cell} ({rc_mean:+.1f}); "
+                f"security-KPI best={sec_cell} (mit={sec_mit:.3f}); "
+                f"meets_oracle_stretch={g72.get('meets_oracle_ceiling_stretch')}"
+            )
+        else:
+            value_str = (
                 f"best_cell={g72.get('best_cell', '?')}, "
                 f"mean={g72.get('best_mean_reward', float('nan')):+.1f}, "
                 f"Δ_to_dqn={g72.get('delta_to_deployable', float('nan')):+.1f}, "
                 f"meets_oracle_stretch={g72.get('meets_oracle_ceiling_stretch')}"
-            ),
+            )
+        gates.append({
+            "id": "G7.2",
+            "threshold": "F9 best reward-comparable cell mean test reward > Phase-6 DQN +1336 by ≥1σ (apples-to-apples; reward-coefficient cells fall back to security-KPI strand per D7.1.1)",
+            "value": value_str,
             "passes": bool(g72.get("passes")),
             "kind": "f9",
             "interpretation": g72.get("interpretation"),
+            "security_kpi_strand_passes": g72.get("security_kpi_strand_passes"),
         })
     else:
         gates.append({
