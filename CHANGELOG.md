@@ -1,3 +1,71 @@
+## [v0.1.0] — Phase 10 closeout (2026-05-04)
+
+Tally: **7 PASS / 0 FAIL across G10.1 – G10.7.** Phase 10 ships no
+new science; it brings the public-repo surface in line with the
+thesis chapter locked in Phase 7 (`396f827`).
+
+### Highlights
+
+- **Test count: 454 → 411** (−43, all from `tests/test_benchmark_runner.py`
+  + `tests/test_metrics_collector.py`, the exclusive consumers of the
+  deleted pre-restart `src/benchmarking/` package). Phase-0..7 frozen
+  test coverage is preserved in the surviving 411.
+- **Root `README.md` rewritten** as a thesis-aware document: 8 phases
+  as numbered chapters with their headline F-figures and `make phase-N`
+  reproduction recipes inline; 3 primary thesis claims (G6.2 / G7.3 /
+  G7.2 / D7.1.1 partial) and 1 pre-registered finding (G7.9 / D7.9.1)
+  cited with bootstrap CIs and links to `docs/results/`.
+- **Pre-restart code deleted:** `src/benchmarking/` (3 modules, ~80 KB)
+  + 3 orphan top-level scripts (`scripts/{evaluate_generator,
+  measure_improved_targets,separability_analysis}.py`, ~488 lines).
+- **`main.py --mode evaluate` deprecated** (not deleted, per PLAN §8
+  D10.1): the function body is now a deprecation pointer to
+  `make phase-6-eval` / `scripts/benchmark/run_test_eval.py`. The CLI
+  flag itself is retained for one release; future phases (Phase 11+)
+  may remove it.
+- **Pre-restart docs annotated** with a STATUS banner pointing at the
+  Phase-6 RESULTS chapter as canonical (`docs/benchmarking-results.md`,
+  `docs/metrics-glossary.md`). Files NOT deleted (PLAN §8 D10.2 — the
+  metric definitions remain useful as historical reference).
+- **`CITATION.cff`**: added `version: "0.1.0"` and
+  `date-released: "2026-05-04"` so GitHub renders a complete BibTeX
+  once the tag pushes.
+- **`v0.1.0` tag** created against the closeout commit. This is the
+  canonical thesis-cited HEAD; future research (Phase 8 / F13–F14, or
+  downstream forks) can branch from it.
+
+### Gate scoreboard
+
+| Gate | Threshold | Status | Headline value |
+|---|---|:---:|---|
+| **G10.1** | `pytest -q == 411 passed`, 0 errors, 0 failed, 0 new skips | **PASS** | `411 passed, 2 warnings in 63.70s` |
+| **G10.2** | No `from src.benchmarking` import in any `*.py` | **PASS** | grep clean post-C3 |
+| **G10.3** | Three orphan scripts no longer on disk | **PASS** | all three `No such file or directory` |
+| **G10.4** | README mentions ≥ 8 phases AND ≥ 1 `make phase-` AND ≥ 1 reproducibility marker | **PASS** | 24 / 16 / 23 |
+| **G10.5** | Frozen Phase-0..7 test coverage preserved | **PASS** | 454 − 43 = 411 (no other tests touched) |
+| **G10.6** | `git tag -l v0.1.0` non-empty | **PASS** | tag created in this commit |
+| **G10.7** | `G10_scoreboard.json` with 7 PASS entries | **PASS** | self-referential |
+
+Canonical record: `docs/results/10_release/G10_scoreboard.json`. Full
+narrative: `docs/results/10_release/RESULTS.md`.
+
+### Commits
+
+- `f1a68f3` — `docs(phase-10,§1-§8): audit & PLAN`
+- `fa1a791` — `fix(phase-10,§3.1): retire main.py benchmarking imports (D10.1)`
+- `8c6e665` — `fix(phase-10,§3.3): delete pre-restart orphan scripts (D10.3)` (also covered C3 deletions)
+- `0a1352d` — `docs(phase-10,§4): rewrite README.md + annotate pre-restart docs (D10.4, D10.8, D10.9)`
+- `2deda39` — `docs(phase-10,§5): CITATION.cff version + date-released (D10.5)`
+- (this commit) — `docs(phase-10,§6): close — RESULTS + CHANGELOG + tag v0.1.0`
+
+### Phase-7 numbers, unchanged
+
+The Phase-7 verdict (**7 PASS / 2 FAIL-WITH-FINDING** across G7.1 –
+G7.9) is unchanged. G7.1's `pytest -q ≥ 430 passed` threshold remains
+satisfied at 411 passed. No edits to `docs/results/0[2-7]_*/RESULTS.md`.
+
+---
+
 ## [Unreleased] — Phase 7 closeout (2026-05-01)
 
 Tally: **7 PASS / 2 FAIL-WITH-FINDING** across G7.1–G7.9.
