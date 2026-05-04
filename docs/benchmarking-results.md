@@ -1,5 +1,16 @@
 # Benchmarking & Results Interpretation
 
+> **STATUS — pre-restart, retained for historical reference (Phase 10, D10.2).**
+> This document predates the Phase-1 restart and refers to the dead
+> `src/benchmarking/` package, which was removed in Phase 10 (2026-05-04).
+> The canonical, gate-passing benchmark chapter is now
+> [`docs/results/06_benchmark/RESULTS.md`](results/06_benchmark/RESULTS.md);
+> the Phase-7 ablation/OOD chapter is
+> [`docs/results/07_ablation/RESULTS.md`](results/07_ablation/RESULTS.md).
+> The live evaluation runners are `src/benchmark/{baseline_policies,
+> eval_runner,latency}.py` (Phase 6) and `scripts/benchmark/run_test_eval.py`,
+> not the modules referenced below.
+
 ## Purpose
 
 Benchmarking evaluates how well the Blue Team policy mitigates attacks while minimizing false positives and preserving availability.

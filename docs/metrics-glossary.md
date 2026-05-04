@@ -1,5 +1,13 @@
 # Metrics Glossary
 
+> **STATUS — pre-restart, retained for historical reference (Phase 10, D10.2).**
+> The metric *definitions* below are still useful, but the file
+> references the dead `src/benchmarking/` package, which was removed in
+> Phase 10 (2026-05-04). The canonical glossary used by the Phase 5/6/7
+> RESULTS chapters is inlined per-figure in the corresponding
+> `RESULTS.md` and `<F<N>>_summary.json`. Metrics are computed by the
+> live `src/benchmark/eval_runner.py`, not by the dead modules cited here.
+
 ## Generator metrics
 
 - **Loss**: Cross-entropy loss for next-token prediction.
