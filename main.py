@@ -655,78 +655,46 @@ def train_all_rl(config: dict, args: argparse.Namespace) -> bool:
 
 
 def run_evaluate(config: dict, args: argparse.Namespace) -> bool:
-    """Evaluate trained models (single or comparison mode).
-    
-    - Single model: Detailed security metrics for one model
-    - Comparison: Summary metrics across multiple algorithms
+    """[DEPRECATED — Phase 10, D10.1] ``main.py --mode evaluate`` is retired.
+
+    The pre-restart ``src/benchmarking/`` package this entry point used to
+    import was deleted in Phase 10 (audit AF4). The canonical evaluation
+    paths that produced the thesis-cited Phase 6 / Phase 7 RESULTS are:
+
+      - ``make phase-6-eval`` — RL × baselines on test_balanced (Phase 6).
+      - ``make phase-7-ood-eval`` — held-out OOD-class robustness (Phase 7).
+      - ``python -m scripts.benchmark.run_test_eval`` — direct invocation.
+      - ``python -m scripts.ablation.run_ood_eval`` — direct invocation.
+
+    See ``docs/results/06_benchmark/RESULTS.md`` and
+    ``docs/results/07_ablation/RESULTS.md`` for the produced artefacts.
+
+    This function intentionally returns ``False`` so the process exits
+    non-zero, surfacing the deprecation to any shell script that still
+    invokes the legacy mode. The CLI flag itself is retained for one
+    release; future phases (Phase 11+) may delete it entirely.
     """
-    print("\n📊 Evaluating Trained Models")
+    del config, args  # unused — preserved for signature compatibility
+
+    print("\n⚠️  --mode evaluate is DEPRECATED (Phase 10, D10.1)")
     print("=" * 60)
-    
-    try:
-        from src.benchmarking.benchmark_runner import BenchmarkRunner, BenchmarkConfig
-        from src.benchmarking.benchmark_analyzer import BenchmarkAnalyzer
-        
-        # Resolve generator path
-        generator_path = get_generator_path(args)
-        
-        if not (generator_path / "attack_sequence_generator.pth").exists():
-            print(f"❌ Generator not found at {generator_path}. Train generator first.")
-            return False
-        
-        data_path = Path(args.data_path)
-        if not (data_path / "features.npy").exists():
-            print("❌ Processed data not found. Process data first.")
-            return False
-        
-        # Create benchmark config
-        benchmark_config = BenchmarkConfig(
-            num_episodes=args.eval_episodes,
-            generator_path=generator_path,
-            dataset_path=data_path,
-        )
-        
-        runner = BenchmarkRunner(config, benchmark_config)
-        
-        # Determine mode: single model or comparison
-        if args.model_path:
-            # Single model evaluation
-            print(f"   Mode: Single Model Evaluation")
-            print(f"   Model: {args.model_path}")
-            
-            model_path = Path(args.model_path)
-            if not model_path.exists():
-                print(f"❌ Model not found: {model_path}")
-                return False
-            
-            results = runner.evaluate_model(model_path)
-            
-            # Use analyzer for detailed report
-            analyzer = BenchmarkAnalyzer(runner.metrics_collector)
-            algorithm = results.get('algorithm', 'unknown')
-            analyzer.generate_single_model_report(algorithm, run_id=0)
-            
-        else:
-            # Comparison mode
-            algorithms = args.algorithms or ['dqn', 'ppo', 'a2c']
-            print(f"   Mode: Algorithm Comparison")
-            print(f"   Algorithms: {', '.join(algorithms)}")
-            
-            runner.run_comparison(algorithms)
-            
-            # Generate comparison report with visualizations
-            analyzer = BenchmarkAnalyzer(runner.metrics_collector)
-            analyzer.generate_comparison_report()
-        
-        print("\n✅ Evaluation completed!")
-        return True
-        
-    except Exception as e:
-        logger.error(f"Evaluation failed: {e}")
-        print(f"❌ Evaluation failed: {e}")
-        import traceback
-        traceback.print_exc()
-        return False
+    print("The src/benchmarking/ package this mode used was deleted")
+    print("in Phase 10. Use the canonical Phase-6 / Phase-7 paths:")
+    print("")
+    print("  RL × baselines benchmark:")
+    print("    make phase-6-eval && make phase-6-figures")
+    print("")
+    print("  Held-out OOD-class robustness:")
+    print("    make phase-7-ood")
+    print("")
+    print("  Direct invocations (no Make):")
+    print("    python -m scripts.benchmark.run_test_eval --help")
+    print("    python -m scripts.ablation.run_ood_eval     --help")
+    print("")
+    print("See docs/results/06_benchmark/RESULTS.md +")
+    print("    docs/results/07_ablation/RESULTS.md for produced artefacts.")
+    print("=" * 60)
+    return False
 
 
 def main() -> None:
