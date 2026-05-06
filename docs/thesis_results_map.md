@@ -1,55 +1,73 @@
 # Thesis Results Map
 
 This document is the **single canonical mapping** between thesis figures /
-tables and the code, data, and MLflow runs that produce them. Every figure
-that ships in the thesis must appear here, and every entry must be
-reproducible from the corresponding `produced_by` script.
+tables and the code, data, and MLflow runs that produce them. Every
+figure that ships in the thesis must appear here, and every entry must
+be reproducible from the corresponding `produced_by` script.
 
-> **Convention:** Figures are labeled `F1, F2, …` and tables `T1, T2, …`.
-> The labels match the filenames committed under `docs/results/<phase>/`.
+> **Convention.** Figures are labeled `F1, F2, …` and tables `T1, T2, …`
+> The labels match the filenames committed under
+> `docs/results/<phase>/`. Chapter and section identifiers refer to the
+> 5-chapter structure locked in
+> [`mentor_review/00_framing.md`](mentor_review/00_framing.md).
 
-## Tier 1 — Must-have (thesis-blocking)
+## Thesis-blocking figures (must ship)
 
-| ID  | Title                                              | Phase | Produced by                                | Aligned with                |
-|-----|----------------------------------------------------|-------|--------------------------------------------|-----------------------------|
-| F1  | LSTM Red Team learning curves (loss + token-acc) on synthetic episodes | 2 | `scripts/red_team/train_lstm.py` | IoTWarden Fig. 3(a)         |
-| F2  | LSTM empirical 5×5 transition matrix vs ground truth | 2  | `scripts/red_team/train_lstm.py` | our contribution             |
-| F3  | RL episodic reward curves (DQN/PPO/A2C × 5 seeds)  | 5     | `scripts/blue_team/plot_learning_curves.py`| IoTWarden Fig. 4(a)         |
-| F4  | Action-distribution evolution over training        | 5     | `scripts/blue_team/plot_action_dist.py`    | IoTWarden Fig. 5            |
-| F5  | Final security metrics table                       | 6     | `scripts/benchmark/build_summary_table.py` | extension                    |
-| F6  | Stage × Action confusion matrices per algorithm    | 6     | `scripts/benchmark/plot_stage_action_cm.py`| our contribution             |
-| F7  | Computation overhead (latency CDF + training time) | 6     | `scripts/benchmark/plot_overhead.py`       | IoTWarden Fig. 4(b)         |
-| F15 | OOD-class robustness (held-out attack-class eval) [audit-AF1, 2026-04-30] | 7 | `scripts/ablation/plot_ood_robustness.py` | our contribution (Phase-4 → Phase-7 link) |
+| ID  | Title                                                                  | Phase | Chapter | Section | Produced by |
+|-----|------------------------------------------------------------------------|-------|---------|---------|-------------|
+| F0a | Class distribution after rebalancing (per CICIoT2023 class)            | 1     | Ch. 4   | §4.1    | `scripts/data/plot_dataset_overview.py` |
+| F0b | Kill-Chain stage distribution per split                                | 1     | Ch. 4   | §4.1    | `scripts/data/plot_dataset_overview.py` |
+| F1  | LSTM Red Team learning curves (loss + token-acc) on synthetic episodes | 2     | Ch. 4   | §4.1    | `scripts/red_team/train_lstm.py` |
+| F2  | LSTM empirical 5×5 transition matrix vs ground truth                   | 2     | Ch. 4   | §4.1    | `scripts/red_team/train_lstm.py` |
+| F11 | Per-stage detection recall (Random Forest + 1D-CNN)                    | 4     | Ch. 4   | §4.2    | `scripts/detector/train_detector.py` (+ plotter) |
+| F3  | RL episodic reward curves (DQN/PPO/A2C × 5 seeds)                      | 5     | Ch. 4   | §4.3    | `scripts/blue_team/plot_learning_curves.py` |
+| F4  | Action-distribution evolution over training                            | 5     | Ch. 4   | §4.3    | `scripts/blue_team/plot_action_dist.py` |
+| F5  | Final security metrics table (8 policies, bootstrap CIs)               | 6     | Ch. 4   | §4.4    | `scripts/benchmark/build_summary_table.py` |
+| F6  | Stage × action confusion matrices per algorithm                        | 6     | Ch. 4   | §4.4    | `scripts/benchmark/plot_stage_action_cm.py` |
+| F7  | Computation overhead (latency CDF + training time)                     | 6     | Ch. 4   | §4.4    | `scripts/benchmark/plot_overhead.py` |
+| F8  | RL vs random / always-OBSERVE / always-BLOCK / RF-acting / oracle      | 6     | Ch. 4   | §4.4    | `scripts/benchmark/plot_baselines.py` |
+| F9  | Reward-component ablation (5 components × {0.5×,1×,2×} + impact_terminal) | 7  | Ch. 4   | §4.5    | `scripts/ablation/plot_reward_ablation.py` |
+| F10 | Sensitivity to attack aggressiveness (`p_defender_de-escalation` sweep) | 7    | Ch. 4   | §4.5    | `scripts/ablation/plot_aggressiveness.py` |
+| F12 | Pareto: security gain vs availability cost                             | 7     | Ch. 4   | §4.5    | `scripts/ablation/plot_pareto.py` |
+| F15 | OOD-class robustness (held-out attack-class evaluation)                | 7     | Ch. 4   | §4.6    | `scripts/ablation/plot_ood_robustness.py` |
+| T1  | Hyperparameters per algorithm                                          | 5     | App. C  | —       | `scripts/blue_team/dump_hparams.py` |
 
-## Tier 2 — Strongly recommended
+All Tier-1 + Tier-2 figures from earlier planning rounds are present
+in this list and committed under `docs/results/<phase>/`.
 
-| ID  | Title                                              | Phase | Produced by                                | Aligned with                |
-|-----|----------------------------------------------------|-------|--------------------------------------------|-----------------------------|
-| F8  | RL vs random / always-OBSERVE / always-BLOCK / RF / recommended-action | 6 | `scripts/benchmark/plot_baselines.py`      | extension                    |
-| F9  | Reward-component ablation                          | 7     | `scripts/ablation/plot_reward_ablation.py` | our contribution             |
-| F10 | Sensitivity to attack aggressiveness               | 7     | `scripts/ablation/plot_aggressiveness.py`  | IoTWarden Fig. 6            |
-| F11 | Per-stage detection recall (detector + RF + 1D-CNN)| 4     | `scripts/detector/plot_per_stage_recall.py`| Tharewal et al.             |
-| F12 | Pareto: security gain vs availability cost         | 7     | `scripts/ablation/plot_pareto.py`          | our contribution             |
+## Future-work figures (Chapter 5 only — not blocking)
 
-## Tier 3 — Nice-to-have
+These were originally scoped as Phase-8 deliverables but are reframed as
+**future work** in the conclusions chapter. They are *not* required for
+the defense and **no producing script ships in this release**.
 
-| ID  | Title                                              | Phase | Produced by                                | Aligned with                |
-|-----|----------------------------------------------------|-------|--------------------------------------------|-----------------------------|
-| F13 | Robustness to observation noise / drift            | 8     | `scripts/robustness/plot_drift.py`         | extension                    |
-| F14 | Generalization to held-out attack class (training-time augmentation) | 8 | `scripts/robustness/plot_oo_attack.py` | extension (F15 covers eval-time; F14 if it ships covers train-time) |
-| T1  | Hyperparameters per algorithm                      | 5     | `scripts/blue_team/dump_hparams.py`        | IoTWarden Tab. I            |
+| ID  | Title                                                          | Status |
+|-----|----------------------------------------------------------------|--------|
+| F13 | Robustness to observation noise / drift                        | Future work (Ch. 5) |
+| F14 | Generalisation to held-out attack class via training-time augmentation | Future work (Ch. 5) |
 
 ## Per-figure manifest
 
 Each figure directory under `docs/results/<phase>/` contains a
-`manifest.json` referencing the MLflow run id(s) that produced its underlying
-data. Figures with no manifest are not considered ready for the thesis.
+`manifest.json` referencing the input JSONL / model / split SHA-256
+hashes and the producing git SHA. Figures with no manifest are not
+considered ready for the thesis.
 
 ## Update protocol
 
 When a figure is regenerated:
 
-1. Delete old PNG and `manifest.json`.
+1. Delete the old PNG and `manifest.json`.
 2. Re-run the producing script (it must read seed and config from CLI).
 3. Commit the new artifacts together with the script change.
 4. Update this table only if the figure title or scope changes.
+
+## Note on prior IoTWarden alignment claims
+
+Earlier revisions of this file annotated several figures (F1 / F3 /
+F4 / F7 / F10 / T1) as "aligned with IoTWarden Fig. X" or "Tab. I". Per
+[`mentor_review/00_framing.md`](mentor_review/00_framing.md), IoTWarden
+is now scoped as inspiration only and no head-to-head visual or
+numerical comparison is part of the thesis contract. Those alignment
+annotations have been removed; the figures stand on their own as
+direct empirical results on CICIoT2023.
