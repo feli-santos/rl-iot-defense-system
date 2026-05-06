@@ -127,24 +127,49 @@ A raw (un-scaled) copy of the same 29 features is preserved in
 ## 5 — Splits (immutable, seed-pinned)
 
 The split builder is `scripts/data/build_split_indices.py`. With seed 42
-and the default ratios it produces:
+and the default 70 / 10 / 20 ratios it produces the following partition
+of the 442 237-row processed snapshot.
 
-| Split           | Rows    | Stage 0 | 1     | 2     | 3     | 4       |
-|-----------------|--------:|--------:|------:|------:|------:|--------:|
-| **all**         | 442 237 | 100 000 | 50 746| 36 950| 60 605| 193 936 |
-| **train** (70 %)| 309 566 |  70 000 | 35 522| 25 865| 42 424| 135 755 |
-| **val** (10 %)  |  44 224 |  10 000 |  5 075|  3 695|  6 060|  19 394 |
-| **test** (20 %) |  88 447 |  20 000 | 10 149|  7 390| 12 121|  38 787 |
-| **val_balanced**|   1 000 |     200 |    200|    200|    200|     200 |
-| **test_balanced**|  5 000 |   1 000 |  1 000|  1 000|  1 000|   1 000 |
+### Top-level row counts (post Phase-4 OOD-leakage fix, commit `3cd2fb9`)
 
-**Disjoint and exhaustive.** `train ⊔ val ⊔ test` = `all`; verified by
-`tests/test_build_split_indices.py::TestStratifiedSplit`.
+OOD-class rows are removed from the snapshot **before** the stratified
+train/val/test split (see `scripts/data/build_split_indices.py:258-283`),
+so OOD is one of the four disjoint top-level partitions, not a tag inside
+train/val/test. The 442 237 total is therefore split as:
 
-**Balanced subsets ⊆ pools.** `val_balanced ⊆ val`,
-`test_balanced ⊆ test`. The balanced splits are designed for the LSTM
-held-out evaluation (so per-stage F1 is meaningful) and the RL benchmark's
-"per-stage decision" matrices.
+| Partition            | Rows      | Notes |
+|----------------------|----------:|-------|
+| **train** (≈70 % of in-distribution pool) | ≈281 420 | stratified on the 5 kill-chain stages, in-distribution only |
+| **val**   (≈10 %)                          |  ≈40 202 | stratified |
+| **test**  (≈20 %)                          |  ≈80 414 | stratified |
+| **ood_attack** (held out from training)    |   40 209 | union of the 4 OOD classes; never seen during any training phase |
+| **all**                                    |  442 237 | `train ⊔ val ⊔ test ⊔ ood_attack` |
+
+These are the sizes printed by the Phase-4 fix commit message; the canonical
+source of truth at any commit is the corresponding
+`data/processed/ciciot2023/splits/manifest.json::sizes` field. Per-stage
+counts within each split are recomputed on each build and are recorded in
+the same manifest.
+
+**Disjoint and exhaustive.** `train ⊔ val ⊔ test ⊔ ood_attack = all`,
+pairwise disjoint. The disjointness invariant — including OOD lockout —
+is asserted by
+`tests/test_build_split_indices.py::TestBuildSplitsEndToEnd::test_run_on_synthetic_dataset`
+(see lines 181–198 for the explicit `ood_set.intersection(split_idx) == ∅`
+regression check that locks the Phase-4 fix in place).
+
+### Balanced eval subsets
+
+| Subset            | Rows  | Per-stage |
+|-------------------|------:|----------:|
+| **val_balanced**  | 1 000 |       200 |
+| **test_balanced** | 5 000 |     1 000 |
+
+`val_balanced ⊆ val`, `test_balanced ⊆ test`. They are drawn from the
+already-disjoint, already-OOD-free in-distribution pools
+(`build_split_indices.py:305+`) and are designed for the LSTM held-out
+evaluation (so per-stage F1 is meaningful) and the RL benchmark's
+per-stage decision matrices.
 
 ### OOD-attack splits
 
@@ -165,11 +190,17 @@ Phase 7 to test generalization:
 > ≈ Mirai-class size) for a meaningful held-out experiment yet costs only
 > ~10 % of stage data.
 
-> **Important.** OOD indices are computed from the **string label array**,
-> so they overlap with `train`/`val`/`test` by construction. Phase-2/4
-> training code must subtract them before fitting; helper
-> `src/utils/dataset_loader.py::exclude_ood_classes` will be added in
-> Phase 2 to enforce this.
+> **Disjointness from train/val/test is structural, not run-time.**
+> `build_split_indices.py:258-283` computes the OOD-class indices from
+> the string-label array, masks them out of the in-distribution pool,
+> and stratifies *only* the in-distribution pool. As a result no
+> downstream training script ever needs to "subtract OOD before
+> fitting" — it simply consumes the relevant `<split>.idx.npy` and the
+> OOD rows are absent by construction. The default Phase 2 / Phase 4
+> training entry point is
+> `RealizationEngine.from_split_manifest(..., exclude_ood=True)`
+> (`src/utils/realization_engine.py:104`), where `exclude_ood=True` is
+> a belt-and-braces second line of defence.
 
 ## 6 — Hash manifest
 
