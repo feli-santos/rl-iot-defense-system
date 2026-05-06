@@ -1,4 +1,4 @@
-# Figure F0 — Class distribution after rebalancing
+# Figure F0a — Class distribution after rebalancing
 
 **LaTeX caption (proposed).**
 *Distribution of the 34 CICIoT2023 attack classes in the processed
@@ -13,7 +13,7 @@ than 5 000 rows are annotated with their absolute count.*
 2. The IMPACT-stage bars dominate the chart (sixteen DDoS/DoS variants),
    which explains why a stage-conditioned classifier still has a 5.25:1
    imbalance even after rebalancing.
-3. Five small classes — `BrowserHijacking`, `CommandInjection`,
+3. Seven small classes — `BrowserHijacking`, `CommandInjection`,
    `SqlInjection`, `XSS`, `Backdoor_Malware`, `Recon-PingSweep`,
    `Uploading_Attack` — fall below the 12 121-row cap and are the
    bottleneck for ACCESS- and RECON-stage statistics.
