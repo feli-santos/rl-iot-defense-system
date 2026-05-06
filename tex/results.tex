@@ -1,0 +1,63 @@
+% ====================================================================
+% Section: Preliminary Results and Analysis
+% ====================================================================
+\section{Preliminary Results and Analysis}\label{sec:results}
+
+This section presents the preliminary results from the implementation of the proposed IoT defense framework. The experiments were designed to validate two core hypotheses: first, that a deep learning model can be effectively trained on a real-world dataset to provide proactive attack predictions; and second, that a Deep Reinforcement Learning (DRL) agent can leverage these predictions to learn an effective and adaptive defense policy. Section \ref{subsec:exp_setup} outlines the experimental setup. Section \ref{subsec:lstm_results} details the performance of the LSTM-based attack prediction module. Finally, Section \ref{subsec:drl_results} provides a comparative analysis of the benchmarked DRL defense agents.
+
+% --- Subsection 4.1 ---
+\subsection{Experimental Setup}\label{subsec:exp_setup}
+The experiments were conducted using the Python programming language, with PyTorch for the LSTM model and Stable Baselines3 for the DRL algorithm implementations. The custom IoT network was developed using the Gymnasium toolkit. All experiments, including model training, hyperparameter configurations, and performance metrics, were tracked and versioned using the MLflow platform to ensure reproducibility. The primary data source for all training and analysis is the CICIoT2023 dataset \cite{Neto2023}.
+
+% --- Subsection 4.2 ---
+\subsection{Performance of the Proactive Attack Predictor}\label{subsec:lstm_results}
+The efficacy of the entire defense framework hinges on the performance of the proactive attack prediction module. An LSTM model was trained on the preprocessed CICIoT2023 dataset to classify network traffic sequences into one of the 34 categories (benign traffic and 33 distinct attack types).
+
+\begin{figure}[h!]
+    \centering
+    \subfloat[Training Accuracy and Loss]{\includegraphics[width=0.7\textwidth]{figs/lstm_train_accuracy_and_loss.png}\label{fig:lstm_train_curves}}
+    \hfill
+    \subfloat[Validation Accuracy and Loss]{\includegraphics[width=0.7\textwidth]{figs/lstm_validation_acc_and_loss.png}\label{fig:lstm_val_curves}}
+    \caption{LSTM model training and validation performance curves over 20 epochs. The model demonstrates rapid convergence and stable performance without significant overfitting.}
+    \label{fig:lstm_learning_curves}
+\end{figure}
+
+The learning curves for the LSTM model are presented in Figure \ref{fig:lstm_learning_curves}. Figure \ref{fig:lstm_train_curves} shows that during training, the accuracy swiftly rises to over 95\% within the first five epochs, eventually plateauing near 98\%. Correspondingly, the training loss decreases sharply, indicating efficient learning. More importantly, the validation curves in Figure \ref{fig:lstm_val_curves} closely mirror the training performance, with validation accuracy remaining high and stable. The minimal gap between the training and validation curves suggests that the model generalizes well to unseen data and is not significantly overfitting.
+
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=0.7\textwidth]{figs/lstm_confusion_matrix.png}
+    \caption{Confusion matrix for the LSTM attack predictor on the test set. The strong diagonal indicates high classification accuracy across most attack categories.}
+    \label{fig:lstm_confusion_matrix}
+\end{figure}
+
+To further assess the model's classification capability, a confusion matrix was generated from the test set, as shown in Figure \ref{fig:lstm_confusion_matrix}. The pronounced diagonal confirms a high rate of correct predictions across the majority of classes. The model is highly effective at distinguishing between major attack categories (e.g., DoS, DDoS, Reconnaissance) and benign traffic. Minor confusion is observed between highly similar sub-categories of attacks, such as different variants of DDoS floods, which is an expected outcome given the subtlety in their traffic patterns. Overall, the predictor achieved an accuracy of over 98\% on the test set, establishing a reliable foundation for the DRL agents.
+
+% --- Subsection 4.3 ---
+\subsection{Comparative Analysis of DRL Defense Agents}\label{subsec:drl_results}
+With a validated prediction module, the next stage of experiments focused on training and benchmarking the three DRL defense agents: DQN, PPO, and A2C. Each agent was trained in the custom Gymnasium environment, where its observations included the proactive predictions from the LSTM model. The objective was to learn a policy that maximizes the cumulative reward by selecting the most appropriate defensive action in response to the perceived network state.
+
+The performance of the trained agents was evaluated over a series of independent episodes. Figure \ref{fig:rl_performance_comparison} provides a comparative summary of the results. The bar chart on the left illustrates the average reward achieved by each algorithm, while the box plot on the right shows the distribution of rewards across all evaluation episodes.
+
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=0.9\textwidth]{figs/performance_comparison.png}
+    \caption{Comparative performance of the trained DRL agents. The bar plot shows the mean reward with standard deviation, while the box plot illustrates the distribution, median, and variance of rewards for each algorithm.}
+    \label{fig:rl_performance_comparison}
+\end{figure}
+
+From these results, it is evident that the value-based DQN agent achieved the highest average reward, suggesting it was the most effective at maximizing the scoring criteria defined in the reward function. However, the error bars in the bar plot and the size of the box plot indicate that DQN's performance also had the highest variance. In contrast, the policy-based PPO agent, while achieving a slightly lower average reward, demonstrated significantly more stable performance with the lowest variance among the three. This suggests that PPO's policy is more reliable and consistent. The A2C agent's performance was comparable to PPO but with a wider reward distribution.
+
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=\textwidth]{figs/reward_distributions.png}
+    \caption{Histograms showing the density of episode rewards for each trained DRL agent. The red dashed line indicates the mean reward for each algorithm.}
+    \label{fig:rl_reward_distributions}
+\end{figure}
+
+Figure \ref{fig:rl_reward_distributions} provides a more granular view of the reward distributions for each agent. The DQN histogram is visibly shifted further to the right (higher rewards) but is also broad. The PPO histogram is narrower and more sharply peaked around its mean, confirming its lower variance and more consistent performance. The A2C distribution is multimodal and wide, indicating less stability in the learned policy.
+
+\subsubsection{Discussion of Preliminary Results}
+The experimental results successfully validate the core premise of this thesis. The high accuracy of the LSTM predictor confirms that modern deep learning models can effectively learn real-world attack patterns from a complex dataset like CICIoT2023.
+
+Furthermore, the DRL agent benchmarking reveals a critical trade-off between performance and stability. While DQN appears to achieve the highest score on average, its high variance might be undesirable in a real-world security system where predictable and reliable performance is paramount. PPO, with its lower variance, presents a compelling case for being a more robust and dependable choice, even at the cost of a slightly lower optimal reward. These preliminary findings demonstrate that the proposed framework is not only functional but also provides a valuable platform for analyzing the nuanced behaviors of different DRL algorithms in a proactive cybersecurity context.

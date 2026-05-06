@@ -1,0 +1,76 @@
+\documentclass[Ingles,Final]{thesis}
+
+% Add your bibliography file
+\addbibresource{references.bib}
+
+\usepackage{subfig}
+
+\begin{document}
+
+% Author information
+\autor{Felipe Augusto Oliveira dos Santos}
+\title{An Adaptive Defense System for IoT Networks Using Proactive Attack Prediction and Deep Reinforcement Learning}
+
+% Advisor information
+\orientador{Prof. Dr. Denis Fantinato}
+
+% Type of document
+\qualificacaoMestrado
+\areaConcentracao{Engenharia de Computação}
+
+% Defense date
+\datadadefesa{16}{7}{2025}
+
+% Evaluators
+%\avaliadorA{Prof. Dr. Denis Fantinato}{FEEC/UNICAMP}
+%\avaliadorB{Prof. Dr. Eric Rohmer}{FEEC/UNICAMP}
+%\avaliadorC{Prof. Dr. João Kleinschmidt}{UFABC}
+
+% Start document
+\paginasiniciais
+
+% Abstract
+\begin{abstract}
+The exponential proliferation of the Internet of Things (IoT) has led to a vast network of interconnected devices, with projections estimating the number of worldwide connections may reach over 40 billion by 2034. As the economic impact of cyber threats is estimated to reach USD 12.2 trillion annually by 2031, robust IoT security is critical. However, the inherent computational and memory constraints of many IoT devices render traditional, resource-intensive security solutions ineffective. This gap necessitates intelligent, adaptive defense mechanisms capable of operating autonomously. This thesis addresses this challenge by presenting an adaptive defense framework for IoT networks that shifts from a reactive to a proactive security posture by leveraging the synergy of predictive analytics and Deep Reinforcement Learning (DRL).
+
+This framework is architected around a novel two-stage process. First, a Long Short-Term Memory (LSTM) neural network is trained on the comprehensive CICIoT2023 dataset, which contains traffic from 105 real IoT devices and 33 modern attack types. This allows the LSTM to learn temporal patterns and proactively predict impending attacks. Second, these predictions are integrated as state observations into a custom-built Gymnasium environment. Within this simulated IoT network, DRL agents are trained to learn optimal defense policies. This work implements and benchmarks three prominent DRL algorithms: the value-based Deep Q-Network (DQN) and the policy-gradient methods Proximal Policy Optimization (PPO) and Advantage Actor-Critic (A2C).
+
+Preliminary results indicate that the trained DRL agents are capable of learning policies that could potentially maximize the defined reward signal, demonstrating the framework's ability to train agents for this complex task. This work implements and benchmarks three prominent DRL algorithms: the value-based Deep Q-Network (DQN) and the policy-gradient methods Proximal Policy Optimization (PPO) and Advantage Actor-Critic (A2C). The comparative analysis provides crucial insights into the performance, stability, and sample efficiency of each algorithm, offering a clear guide for their practical application in context-aware cyber defense.
+
+\keywords{IoT, CyberSecurity, Deep Reinforcement Learning, Attack Prediction, Proactive Defense, LSTM, DRL, DQN, PPO, A2C}
+\end{abstract}
+
+
+% List of acronyms
+\printnomenclature[3cm]
+
+% Table of contents
+\tableofcontents
+
+% Reset page counter and start main content with page numbering
+\cleardoublepage
+\setcounter{page}{1}
+
+% Start main content with page numbering
+\fimdaspaginasiniciais
+
+% Include your sections
+\input{introduction}
+\input{background}
+\input{methodology}
+\input{results}
+\input{conclusions}
+
+% References
+\newpage
+\begin{singlespacing}
+\setlength\bibitemsep{10pt}
+\printbibliography[heading=bibintoc, title={References}]
+\end{singlespacing}
+
+% Appendices
+\newpage
+\appendix
+\input{appendices}
+
+\end{document}

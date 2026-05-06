@@ -1,0 +1,47 @@
+% ====================================================================
+% Section: Conclusion and Future Work (Revised)
+% ====================================================================
+\section{Conclusion and Future Work}\label{sec:conclusion}
+
+This thesis has proposed an adaptive defense framework designed to address the unique and dynamic security challenges of modern Internet of Things (IoT) ecosystems. By shifting from a traditional reactive posture to a proactive and autonomous defense strategy, this research validates a novel approach for securing large-scale, heterogeneous IoT networks against contemporary cyber threats. This concluding section summarizes the core contributions of the proposed work and outlines a clear roadmap for future research and development.
+
+% --- Subsection 5.1 ---
+\subsection{Summary of Contributions}\label{subsec:summary}
+The proliferation of IoT devices has created a vast and vulnerable attack surface, overwhelming conventional security paradigms that rely on static signatures and manual intervention. This thesis addresses this critical gap by presenting a closed-loop security framework that synergizes predictive analytics with autonomous, adaptive defense. The primary contributions of this work are:
+\begin{enumerate}
+    \item \textbf{A Proactive-Adaptive Defense Architecture:} We proposed and designed a novel two-stage framework that integrates a predictive Long Short-Term Memory (LSTM) model with a Deep Reinforcement Learning (DRL) agent. This architecture creates a powerful synergy where data-driven threat anticipation directly informs autonomous defensive action, allowing the system to act proactively rather than merely reacting to attacks in progress.
+    
+    \item \textbf{Grounding in Real-World Data:} The entire framework is empirically grounded in the \textbf{CICIoT2023 dataset}. By training the predictive model on this large-scale, modern, and realistic dataset, we ensure that the system's understanding of threats is based on observed, real-world attacker tactics, making the learned defense policies more relevant and robust.
+    
+    \item \textbf{Rigorous Benchmarking of DRL Paradigms:} We implemented and conducted a comparative analysis of three state-of-the-art DRL algorithms—the value-based DQN and the policy-gradient PPO and A2C. The preliminary results provide critical insights into the performance, stability, and reliability trade-offs inherent in each approach within a cybersecurity context, offering a valuable guide for practical implementation.
+    
+    \item \textbf{A High-Fidelity Simulation Environment:} A custom Gymnasium environment was developed to facilitate the training and evaluation of the defense agents. Its key innovation is the integration of the LSTM's predictions directly into the agent's observation space, creating a realistic and reproducible testbed for studying proactive defense strategies.
+\end{enumerate}
+In summary, this research validates a powerful and scalable framework for the next generation of IoT security. By successfully integrating prediction with action, it represents a significant step toward creating resilient, intelligent systems capable of autonomously defending the ever-expanding IoT landscape.
+
+% --- Subsection 5.2 ---
+\subsection{Future Work and Research Directions}\label{subsec:future_work}
+The results presented in this thesis confirm the viability of the proposed framework and open up several promising avenues for future research. The following roadmap outlines the immediate next steps required to complete this thesis, as well as long-term directions for extending this work.
+
+\subsubsection{Next Steps}
+The following tasks represent the path to completing the research outlined in this proposal:
+\begin{itemize}
+    \item \textbf{In-Depth Performance Analysis:} Conduct a more granular analysis of the trained models. This includes evaluating the LSTM's per-class performance to identify challenging attack types and examining the DRL agents' learned policies under specific threat scenarios to understand their decision-making logic.
+    
+    \item \textbf{Hyperparameter Optimization:} Systematically tune the hyperparameters for both the LSTM and the DRL agents. Utilizing automated tools such as Optuna, integrated with MLflow, will be crucial for finding the optimal configurations that maximize performance and training efficiency.
+    
+    \item \textbf{Robustness and Sensitivity Testing:} Evaluate the robustness of the trained DRL agents by varying the environment's parameters, such as the \texttt{attack\_probability} and the types of simulated attacks. This will assess how well the learned policies generalize to conditions not seen during training.
+    
+    \item \textbf{Final Benchmarking and Thesis Completion:} Execute the final, extensive benchmarks comparing the optimized DQN, PPO, and A2C agents. The results will be used to draw definitive conclusions and complete the final chapters of the thesis document.
+\end{itemize}
+
+\subsubsection{Other Directions}
+Beyond the scope of this thesis, the framework can be extended in several exciting directions:
+\begin{itemize}
+    \item \textbf{Exploration of Advanced Architectures:} The current framework relies on an LSTM for prediction. A promising direction is to replace the LSTM with a \textbf{Transformer-based model} to leverage its self-attention mechanism, which may provide a more sophisticated understanding of the relationships between different network features and improve predictive accuracy \cite{Gueriani2023}.
+    
+    \item \textbf{Synthetic Data Augmentation with GANs:} Cybersecurity datasets, including CICIoT2023, are often highly imbalanced, with far fewer samples of rare but critical attacks compared to common ones. Future work could involve implementing a \textbf{Generative Adversarial Network (GAN)} to create high-fidelity synthetic data for these underrepresented attack classes. This data augmentation approach could significantly improve the robustness of the predictive model, enabling it to better recognize a wider spectrum of threats and thereby enhancing the overall efficacy of the DRL agent.
+    
+    \item \textbf{Multi-Agent Reinforcement Learning (MARL):} The defense of a complex network could be modeled as a cooperative task. Future iterations could explore a MARL system where multiple specialized agents are responsible for different aspects of security (e.g., one agent for DDoS, another for reconnaissance) or for defending different network segments, learning to coordinate their actions to protect the entire system.
+\end{itemize}
+These future directions highlight the significant potential for this research to continue evolving and contributing to the critical field of autonomous cybersecurity.
