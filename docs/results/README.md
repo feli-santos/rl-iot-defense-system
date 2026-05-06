@@ -22,6 +22,41 @@ docs/results/
 └── thesis_figures.md         # Index: figure id ↔ filename ↔ caption
 ```
 
+## Phase-1 has no `PLAN.md` / `RESULTS.md` (intentional)
+
+`docs/results/01_dataset/` carries only the F0 figures, captions, the F0
+summary JSON, and the figure manifest. Unlike Phases 02–10 it does **not**
+contain a `PLAN.md` or `RESULTS.md`. This is intentional, not an oversight,
+and is documented here so that future agents do not "fix" the asymmetry by
+backfilling fake history.
+
+The substantive content that would belong in those two files lives in two
+canonical documents that pre-date the per-phase audit-trail convention:
+
+- `docs/dataset_card.md` — the Hugging-Face-style dataset card. Covers
+  provenance, sampling strategy, kill-chain projection (cross-referenced
+  to `docs/kill-chain-mapping.md`), feature engineering, splits (post
+  Phase-4 OOD-leakage fix, commit `3cd2fb9`), hash manifest, declared
+  limitations, and reproduction recipe. This is the document the
+  defense committee will read.
+- `docs/data-pipeline.md` — the anti-leakage and processing protocol:
+  split-then-scale order, `StandardScaler` fit on train only, feature
+  selection rules.
+
+The numerical record for Phase 1 is the F0 figures plus
+`docs/results/01_dataset/F0_summary.json` and `manifest.json`; the
+narrative is in the two documents above. Step 9 (LaTeX rebuild) draws
+its §3.1 (Methodology — Dataset preparation) and §4.1 introductory
+paragraph from `dataset_card.md` directly, and the Phase-2 results
+chapter inherits the splits from there.
+
+If a future revision *does* want a `PLAN.md` and `RESULTS.md` for
+Phase 1, they should be authored as a single `docs(phase-1):` commit
+with both files explicitly marked as **retroactive audit trail**, not
+mistaken for pre-registration. Source-of-truth status would then move
+from `dataset_card.md` to the new `RESULTS.md`, and the dataset card
+would point upward.
+
 ## Per-figure conventions
 
 Every figure committed under `docs/results/<phase>/` MUST be paired with:
