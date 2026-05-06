@@ -6,12 +6,13 @@
 [![Phases: 0–7 closed](https://img.shields.io/badge/phases-0--7%20closed-brightgreen.svg)](#phases-as-chapters)
 [![Release: v0.1.0](https://img.shields.io/badge/release-v0.1.0-blue.svg)](#)
 
-> **TL;DR.** A reproducible MSc-thesis codebase that extends *IoTWarden*
-> (Alam et al., 2024) to the CICIoT2023 dataset. We train DQN / PPO / A2C
-> defenders against an LSTM red-team that produces realistic attack
-> kill-chain sequences, and ship the empirical machinery — manifest
-> hash-chains, audit-first PLANs, exit-gate scoreboards — that lets every
-> figure in the thesis be regenerated from raw data with `make phase-N`.
+> **TL;DR.** A reproducible MSc-thesis codebase: an adversarial
+> reinforcement-learning framework for kill-chain-aware defense on
+> real IoT traffic (CICIoT2023). We train DQN / PPO / A2C defenders
+> against an LSTM red-team that produces realistic attack kill-chain
+> sequences, and ship the empirical machinery — manifest hash-chains,
+> audit-first PLANs, exit-gate scoreboards — that lets every figure in
+> the thesis be regenerated from raw data with `make phase-N`.
 
 ---
 
@@ -31,10 +32,9 @@ pre-registered finding, all backed by gate-passing artefacts under
 
 2. **(Phase 7, G7.3)** With the Phase-3 reward function held fixed, PPO
    mean reward grows **monotonically** with the
-   `p_defender_de-escalation` parameter — qualitatively reproducing
-   IoTWarden Fig. 6 on a **realer** environment (29-feature CICIoT2023
-   observations vs. IoTWarden's hand-crafted IFTTT trigger graph).
-   p = 0.0 CI = (134, 141); p = 0.6 CI = (1280, 1359). *See
+   `p_defender_de-escalation` parameter, increasing roughly tenfold from
+   p = 0.0 (CI 134, 141) to p = 0.6 (CI 1280, 1359). The trend is
+   monotone non-decreasing across the full sweep. *See
    [`docs/results/07_ablation/F10_aggressiveness.png`](docs/results/07_ablation/F10_aggressiveness.png).*
 
 3. **(Phase 7, G7.2 / D7.1.1 partial)** Within the Phase-3 reward
@@ -292,19 +292,20 @@ authoring conventions.
 
 ---
 
-## Inspiring paper
+## Inspiring work
 
-This project is an **extension of**, not a head-to-head replacement of,
-the IoTWarden paper:
+This project takes its conceptual cue from the IoTWarden paper, which
+established the trigger-action-attack / RL-defense paradigm we build
+on. IoTWarden is **inspiration**, not a baseline; the dataset, MDP,
+action space, and red team are all different and no head-to-head
+numerical comparison is made or claimed.
 
 > Alam, Md M., Jahan, I., & Wang, W. (2024).
 > **IoTWarden: A Deep Reinforcement Learning Based Real-time Defense
 > System to Mitigate Trigger-action IoT Attacks.**
 > *arXiv preprint arXiv:2401.08141.*
 
-Key differences from the inspiring work, all documented in
-[`docs/results/02_red_team/RESULTS.md`](docs/results/02_red_team/RESULTS.md)
-and [`docs/results/06_benchmark/RESULTS.md`](docs/results/06_benchmark/RESULTS.md):
+Notable differences from IoTWarden's setup:
 
 - **Environment.** IoTWarden uses a hand-crafted IFTTT trigger graph
   with a small synthetic state space. We use a 29-feature
@@ -314,25 +315,27 @@ and [`docs/results/06_benchmark/RESULTS.md`](docs/results/06_benchmark/RESULTS.m
   schedule. We train an LSTM next-token predictor on synthetic
   kill-chain episodes (Phase 2) and use its sampled stage trajectory
   to drive the realisation engine.
-- **Action space.** IoTWarden uses block-or-not. We use a 5-level
-  graduated **force continuum** (OBSERVE → ALERT → ISOLATE →
-  RATE-LIMIT → BLOCK), which lets the policy under- and over-react
-  in measurable ways.
-- **Reproducibility.** IoTWarden ships gist code; we ship a
-  hash-chain-pinned set of `make phase-N` recipes that regenerate
-  every figure end-to-end.
+- **Action space.** IoTWarden uses a binary block-or-not action. We
+  use a 5-level graduated **force continuum** (OBSERVE → ALERT →
+  ISOLATE → RATE-LIMIT → BLOCK), which lets the policy under- and
+  over-react in measurable ways.
+- **Reproducibility.** We ship a hash-chain-pinned set of
+  `make phase-N` recipes that regenerate every figure end-to-end.
 
-The qualitative IoTWarden Fig. 6 result (mean reward grows monotonically
-with `p_defender_de-escalation`) is **reproduced** in our environment as
-Phase-7 G7.3 (see [Headline thesis claims](#headline-thesis-claims)
-above).
+One design choice we deliberately kept from IoTWarden is the
+stage-action *recommended-action* mapping (BENIGN→OBSERVE,
+RECON→LOG, ACCESS→THROTTLE, MANEUVER→BLOCK, IMPACT→ISOLATE), which
+seeds our oracle baseline policy.
 
 ---
 
 ## Operating principles
 
 The eight closed phases share a common protocol that the codebase enforces.
-See [`docs/HANDOFF.md`](docs/HANDOFF.md) for the canonical statement.
+The current state-of-the-thesis review is tracked in
+[`docs/mentor_review/`](docs/mentor_review/); see also
+[`docs/HANDOFF.md`](docs/HANDOFF.md) for the historical Phase-7→10
+handoff record.
 
 1. **Audit-first.** Every new phase opens with a `PLAN.md` that contains
    audit findings, deliverables, exit gates, sequencing, and what we are

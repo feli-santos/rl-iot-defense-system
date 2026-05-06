@@ -1,6 +1,6 @@
 # F7 — Computational Overhead (Inference + Training)
 
-> **Two-panel figure aligned with IoTWarden Fig. 4(b).** *Left:*
+> **Two-panel computational-overhead figure.** *Left:*
 > per-step inference latency CDF, one curve per policy, x-axis log-
 > scaled in milliseconds. The grey vertical reference lines are the
 > G6.4 budgets (rule-based ≤ 1 ms, RF ≤ 3 ms, RL ≤ 5 ms; see D6.8).

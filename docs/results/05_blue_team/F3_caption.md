@@ -11,8 +11,8 @@ evaluation rollouts on the held-out `val_balanced` split (eval every
 
 1. **Mean episodic reward.** All three algorithms converge to a
    strongly positive reward of ~+1300 per episode by ~150 K
-   timesteps. The recommended-policy IoTWarden reference (Phase-3
-   G3.4) nets ~+50 per episode on this env, so the trained agent
+   timesteps. The oracle recommended-action policy (Phase-3 G3.4)
+   nets ~+50 per episode on `val_balanced`, so the trained agent
    beats the hand-crafted policy by **roughly 25×** — confirming the
    env exposes a learnable structure (G5.2 PASS).
 2. **Mean MTTC (Mean Time-To-Compromise).** Stable at **19.2-19.3
@@ -25,6 +25,5 @@ evaluation rollouts on the held-out `val_balanced` split (eval every
    D5.4.1-revised G5.4 target of ≥ 0.5 — see RESULTS.md §4 Finding 2
    for the thesis-relevant interpretation.
 
-Caption credit: F3 is aligned with IoTWarden Fig. 4(a). Per-algo
-last-10 % numbers and per-seed values are in
+Per-algo last-10 % numbers and per-seed values are in
 `F3_summary.json`; SHA-256 inputs/outputs in `F3_manifest.json`.

@@ -33,12 +33,14 @@ noise of its in-distribution mean (+1336), so generalisation to a
 class with Phase-4 RF recall = 0.001 does not collapse the
 policy — but it does not earn the right to a stronger claim.
 
-**F10 — attack aggressiveness (IoTWarden Fig. 6 re-impl; G7.3
-PASS):** PPO mean reward grows monotonically with the defender de-
+**F10 — attack aggressiveness sweep (G7.3 PASS):** PPO mean
+reward grows monotonically with the defender de-
 escalation probability `p`: from p=0.0 (CI 134–141) to p=0.6 (CI
 1280–1359), with the oracle rule curve also monotone non-
-decreasing. Replicates the IoTWarden Fig. 6 qualitative shape on
-CICIoT2023 — the cleanest paper-replication win in Phase 7.
+decreasing. Confirms that on CICIoT2023, with a 29-feature state
+and a kill-chain-derived reward, the trained policy responds in the
+expected direction to attacker aggressiveness — the cleanest
+behavioural sanity-check in Phase 7.
 
 **F12 — security-vs-availability Pareto (G7.4 FAIL-WITH-FINDING /
 R7.3):** Only 1 distinct Pareto-dominant point across 32
@@ -75,7 +77,7 @@ threshold verbatim in the JSON record.
 | Artefact | Path | Description |
 |---|---|---|
 | **F9** (Tier 2) | `F9_reward_ablation.png` + `F9_summary.json` | 6-panel reward-component effect plot (5 components × {0.5×, 1×, 2×} + impact_is_terminal binary) with Phase-6 reference lines (oracle +1624, DQN +1336). |
-| **F10** (Tier 2) | `F10_aggressiveness.png` + `F10_summary.json` | PPO and oracle-rule mean test reward as a function of `p_defender_deescalation`; IoTWarden Fig. 6 re-impl. |
+| **F10** (Tier 2) | `F10_aggressiveness.png` + `F10_summary.json` | PPO and oracle-rule mean test reward as a function of `p_defender_deescalation`. |
 | **F12** (Tier 2) | `F12_pareto.png` + `F12_summary.json` | 2-D scatter on (availability_cost, security_gain) with Pareto frontier; reads F9 + F10 + Phase-6 outputs. |
 | **F15** (Tier 1, audit-AF1) | `F15_ood_robustness.png` + `F15_summary.json` | 4 OOD class × 8 policy grouped bar chart with bootstrap CIs. |
 | Captions | `F9_caption.md`, `F10_caption.md`, `F12_caption.md`, `F15_caption.md` | Thesis-paper captions per figure. |
@@ -331,10 +333,9 @@ likely raise:
      change that ranking — it just narrows the gap on the
      in-distribution split.
 
-### 6.3 The IoTWarden Fig. 6 sensitivity replication (G7.3 PASS)
+### 6.3 Sensitivity to attacker aggressiveness (G7.3 PASS)
 
-The cleanest paper-replication win in Phase 7. Original IoTWarden
-Fig. 6 (Bhattacharjee et al. 2023, p. 9) showed mean episodic
+The cleanest behavioural sanity-check in Phase 7. The
 reward as a function of the defender de-escalation probability `p`
 on a synthetic environment; here we sweep `p ∈ {0.0, 0.2, 0.4,
 0.6, 0.8, 1.0}` × PPO × 5 seeds on CICIoT2023 and overlay the
@@ -347,9 +348,9 @@ upper p-range — by p ≥ 0.6 the agent's optimal action is to LOG
 or BLOCK and let the env de-escalate for it.
 
 **Defensible thesis claim:** "On CICIoT2023, with a 29-feature
-state and a Kill-Chain-derived reward, we replicate the
-qualitative shape of IoTWarden Fig. 6: trained RL is sensitive to
-attacker aggressiveness (parameterised here as the defender's
+state and a Kill-Chain-derived reward, the trained policy is
+sensitive to attacker aggressiveness in the expected direction
+(parameterised here as the defender's
 de-escalation probability), with PPO mean reward growing from a
 near-floor at p=0.0 to within 200 of the oracle rule at p=0.6.
 This validates the Phase-3 reward formulation as having the same

@@ -57,7 +57,7 @@ Finding 2 for the full story.
 
 ### 3.3 Action distribution at convergence (PPO, late checkpoint)
 
-| Stage | Argmax action | Argmax share | Recommended (IoTWarden) |
+| Stage | Argmax action | Argmax share | Recommended (oracle) |
 |---|---|---:|---|
 | BENIGN   | LOG     | 0.45 | OBSERVE |
 | RECON    | LOG     | 0.34 | LOG ✓ |
@@ -93,8 +93,8 @@ reached.
 ### Finding 1 — The Phase-3 env exposes a strongly learnable structure (G5.2)
 
 All three algorithms learn from raw windowed observations to a mean
-eval reward of **+1300 to +1350 per episode**, against a
-recommended-policy IoTWarden baseline of ~+50. Convergence is clean
+eval reward of **+1300 to +1350 per episode**, against an oracle
+recommended-action baseline of ~+50 on `val_balanced`. Convergence is clean
 and roughly seed-stable: PPO reward across seeds is
 [+1328, +1301, +1371, +1369, +1385] — a 6 % spread. **The Phase-3
 contract works.**
@@ -102,7 +102,8 @@ contract works.**
 This is the headline thesis claim Phase 5 was built to support
 (PLAN §1 verbatim quote): *"a model-free RL agent learns a
 stage-action proportional defense policy whose mean episodic reward
-exceeds the hand-crafted IoTWarden recommended-action policy"*.
+exceeds the hand-crafted oracle recommended-action policy on
+`val_balanced`"*.
 Confirmed across DQN, PPO, A2C with bootstrap-CI bands that
 visibly lift off the baseline by ~50 K timesteps.
 
@@ -114,7 +115,7 @@ The reward equation in the Phase-3 env (frozen contract) gives:
   BLOCK/ISOLATE on an active ACCESS+ stage and the env's 60 % roll
   succeeds).
 - **+5** per step where action is within ±1 of the
-  IoTWarden-recommended action.
+  oracle-recommended action.
 - **+10** per BENIGN-OBSERVE/LOG step.
 - **−200 (impact penalty) ± modulators** at the IMPACT termination:
   `+250 − 200 = +49` for ISOLATE@IMPACT, `−150 − 200 = −350` for
@@ -170,7 +171,7 @@ because OOD generalisation was *too good* on one class and
 ### Finding 3 — Stage-action proportionality is learned, not collapsed (G5.5)
 
 The per-stage action distribution at the late checkpoint
-(F4 panel b) shows that the agent argmax matches the IoTWarden
+(F4 panel b) shows that the agent argmax matches the oracle
 recommended action *in the right direction* on every decision
 stage:
 
@@ -204,8 +205,8 @@ mean reward, lowest variance); A2C is comparable; DQN is slightly
 behind, with one wider-variance seed (DQN seed 3: +998 vs others
 +1300+).
 
-This is the IoTWarden Tab. I story: *all three SB3 baselines work*
-on the Phase-3 env, and the differences between them are within
+The Phase-5 result is that *all three SB3 baselines work* on the
+Phase-3 env, and the differences between them are within
 seed-variance noise. The thesis can confidently report this as a
 "per-algo head-to-head with no overall winner" — strengthening the
 robustness story.

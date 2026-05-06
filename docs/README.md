@@ -1,6 +1,14 @@
 # RL-IoT Defense System Documentation
 
-Welcome to the technical documentation for the **Adversarial IoT Defense System**. This doc set targets internal engineers and is aligned with the current implementation on branch `feature/reward-shaping`.
+Welcome to the technical documentation for the **Adversarial IoT
+Defense System**. This doc set targets internal engineers and the
+thesis defense committee, and is aligned with the current
+implementation on branch `feature/reward-shaping`.
+
+> **Looking for the thesis-mentor walkthrough?** See
+> [`mentor_review/`](mentor_review/) — that directory tracks the
+> end-to-end review of every phase / figure / claim that finalises
+> the dissertation.
 
 ## What this system does
 
@@ -40,6 +48,8 @@ All descriptions are derived from these entry points and modules:
 - `src/environment/adversarial_env.py`
 - `src/algorithms/adversarial_algorithm.py`
 - `src/training/*` (training managers and callbacks)
-- `src/benchmarking/*` (benchmark runner, analyzer, metrics)
+- `src/benchmark/*` (Phase-6 baselines, eval runner, latency bench)
+- `src/blue_team/*` (Phase-5 env factory, callbacks, run config)
+- `src/detector/*` (Phase-4 supervised stage detector: RF + 1D-CNN)
 
 If you spot a mismatch between docs and code, treat code as canonical and flag the discrepancy.
