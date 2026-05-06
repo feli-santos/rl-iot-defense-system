@@ -1,3 +1,101 @@
+## [Unreleased] — Mentor-review Step 0c framing pass (2026-05-05)
+
+Audience and IoTWarden-role lock-in for the MSc defense at
+Unicamp/FEEC. **No code changes, no model runs, no plot
+regenerations.** Pure documentation hygiene + scaffolding for the
+end-to-end thesis-mentor walkthrough.
+
+### Locked decisions
+
+- **Audience.** Primary: MSc defense committee (FEEC/UNICAMP). IEEE
+  conference paper deferred — may derive from the thesis later, but is
+  not the primary optimisation target.
+- **IoTWarden.** Reframed from *"this thesis extends / reproduces
+  IoTWarden"* to *"IoTWarden is a key inspiration cited in related
+  work"*. No head-to-head numerical or visual comparison is part of
+  the thesis contract; the figures stand on their own as direct
+  CICIoT2023 results. The stage-action recommended-action mapping
+  borrowed from IoTWarden remains, attributed.
+- **Chapter outline.** Standard FEEC 5-chapter structure (Intro,
+  Background & Related Work, Methodology, Results & Discussion,
+  Conclusions) + 3 appendices. The qualification-stage `tex/` draft
+  is treated as raw material; chapters will be rebuilt against the
+  current `docs/results/` artefacts in mentor-review Step 9.
+
+### Files added
+
+- `docs/mentor_review/README.md` — directory purpose, naming
+  conventions, walkthrough plan, resume protocol.
+- `docs/mentor_review/HANDOFF_TEMPLATE.md` — canonical template for
+  per-step resume-handoff files.
+- `docs/mentor_review/00_framing.md` — locked thesis claims (P1–P3,
+  R1–R2), chapter outline, IoTWarden role, doc-cleanup record.
+- `docs/mentor_review/00_HANDOFF.md` — first resume point. Documents
+  the Step-0c → Step-1 transition.
+
+### Files edited (forward-facing surfaces only)
+
+- `README.md` — TL;DR no longer says "extends IoTWarden". Claim 2 no
+  longer claims "qualitatively reproduces IoTWarden Fig. 6". The
+  *"Inspiring paper"* section renamed to *"Inspiring work"* and
+  reworded so IoTWarden is positioned as inspiration, with the kept
+  recommended-action mapping attributed. Operating-principles
+  section now points to `docs/mentor_review/` as the live thesis-
+  state directory.
+- `docs/README.md` — added a banner redirecting to
+  `docs/mentor_review/`. Fixed stale `src/benchmarking/*` reference
+  (singular) to the canonical `src/benchmark/*` (no `g`) and added
+  the `src/blue_team/`, `src/detector/` entries it was missing.
+- `docs/HANDOFF.md` — STATUS banner at the top declaring the file a
+  superseded historical record (Phase-7 → Phase-10 closeout
+  decision); content preserved intact for traceability against the
+  `7537493` / `396f827` audit-fix commits.
+- `docs/thesis_results_map.md` — restructured. Tier columns and
+  *"Aligned with IoTWarden Fig. X"* annotations dropped; replaced
+  with *Thesis chapter* / *Thesis section* columns aligned to the
+  5-chapter outline. F13 / F14 explicitly relabelled as future-work
+  (Chapter 5).
+- `docs/results/05_blue_team/F3_caption.md` and `F4_caption.md` —
+  *"aligned with IoTWarden Fig. 4(a) / Fig. 5"* removed; references
+  to *"the IoTWarden recommended policy"* corrected to *"oracle
+  recommended-action policy"* (the actual code-level identity).
+- `docs/results/06_benchmark/F7_caption.md` — *"aligned with
+  IoTWarden Fig. 4(b)"* removed.
+- `docs/results/06_benchmark/F8_caption.md` — *"the IoTWarden
+  hand-crafted rule baseline (floor)"* corrected to *"the oracle
+  Recommended-Action ceiling"* (consistent with Phase-6 audit-AF2
+  reframe in `RESULTS.md` §6.1; the rule has free oracle stage
+  access and is therefore a ceiling, not a floor).
+- `docs/results/07_ablation/F10_caption.md` — *"aligned with
+  IoTWarden Fig. 6"* removed.
+- `docs/results/05_blue_team/RESULTS.md` — six prose softening
+  edits replacing *"IoTWarden recommended policy"* /
+  *"hand-crafted IoTWarden recommended-action policy"* /
+  *"IoTWarden Tab. I story"* with neutral oracle / per-stage-
+  proportionality framing. **No numerical results changed.**
+- `docs/results/07_ablation/RESULTS.md` — five prose softening
+  edits. Section 6.3 retitled *"Sensitivity to attacker
+  aggressiveness (G7.3 PASS)"* (was *"The IoTWarden Fig. 6
+  sensitivity replication"*). **No numerical results, no gate
+  verdicts, no manifest hashes touched.**
+
+### Files deliberately NOT touched
+
+- All `docs/results/<phase>/PLAN.md` files — frozen audit trail.
+- All `G<N>_scoreboard.json` files — numerical truth.
+- All figure PNGs and `manifest.json` files — hash-chain pinned.
+- `docs/results/00_phase0_diagnosis.md` — historical pre-restart
+  audit.
+- `docs/decisions.md` — already free of IoTWarden-faithfulness
+  language.
+- `tex/*.tex`, `tex/*.bib`, `tex/*.cls` — Step 9 rebuild owns these.
+
+### Test impact
+
+n/a — documentation-only pass; `pytest -q` count unchanged at 411.
+
+---
+
 ## [v0.1.0] — Phase 10 closeout (2026-05-04)
 
 Tally: **7 PASS / 0 FAIL across G10.1 – G10.7.** Phase 10 ships no

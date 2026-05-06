@@ -1,8 +1,33 @@
 # Handoff prompt — RL IoT Defense thesis (CICIoT2023)
 
-> **Hand this whole document to the next coding agent (or future-you).** The
-> prompt is self-contained: an agent following it should need nothing other
-> than this file, the repo, and CPU.
+> **STATUS (2026-05-05): SUPERSEDED — historical record.**
+>
+> This file documented the Phase-7 → Phase-10 closeout decision (the
+> "next agent picks Phase 8 vs Phase 10" branch point). It is preserved
+> intact because the audit narrative in §"Audit-fix cycle on
+> 2026-05-01" is referenced from `docs/results/07_ablation/RESULTS.md`
+> §5 and from the `7537493` / `396f827` commit messages.
+>
+> **For the current state of the project**, read
+> [`docs/mentor_review/`](mentor_review/) instead — specifically the
+> highest-numbered `<NN>_HANDOFF.md` in that directory. Phase 7 and
+> Phase 10 are both closed; the project is now in mentor-review mode
+> and finalising the dissertation.
+>
+> The Phase 8 (F13 noise/drift robustness) section below is **not the
+> current next step**; per `docs/mentor_review/00_framing.md` it has
+> been reframed as future-work in Chapter 5 of the thesis rather than
+> a phase of work to execute.
+
+---
+
+## (historical) Hand this whole document to the next coding agent (or future-you).
+
+The prompt below is self-contained: an agent following it should need
+nothing other than this file, the repo, and CPU. **But:** the
+mentor-review walkthrough has now superseded the
+"Phase 8 vs Phase 10" decision branch this prompt documents. New
+agents should defer to `docs/mentor_review/<latest>_HANDOFF.md`.
 
 ---
 
