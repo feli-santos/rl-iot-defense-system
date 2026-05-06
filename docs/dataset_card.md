@@ -96,8 +96,8 @@ during processing — recorded in `metadata.json → feature_selection_info`:
 - **Zero-variance dropped (4)**: `DHCP`, `IRC`, `SMTP`, `Telnet` — protocols
   that never occur in the snapshot.
 - **Low-variance dropped (7)**: `ARP`, `DNS`, `IPv`, `LLC`, `SSH`,
-  `cwr_flag_number`, `ece_flag_number` — variance below 0.01 after MinMax
-  scaling.
+  `cwr_flag_number`, `ece_flag_number` — variance below 0.01 on the raw
+  per-feature scale (pre-StandardScaler).
 - **High-correlation dropped (6)**: `Magnitue` (sic), `Number`, `Radius`,
   `Srate`, `Std`, `Weight` — Pearson > 0.95 with another retained feature.
 
@@ -112,10 +112,14 @@ in canonical order and split across:
 - **Protocol indicators**: `Protocol Type`, `HTTP`, `HTTPS`, `TCP`, `UDP`, `ICMP`.
 - **Distribution moments**: `Covariance`, `Variance`.
 
-All 29 features are MinMax-scaled. The fitted `MinMaxScaler` is persisted
-in `data/processed/ciciot2023/scaler.joblib` and is used unchanged
-throughout the thesis (held-out, OOD, and benchmark splits are all
-projected with the same scaler).
+All 29 features are zero-mean / unit-variance scaled with
+`sklearn.preprocessing.StandardScaler`. The scaler is fit on the **train
+split only** (see `docs/data-pipeline.md` §Anti-leakage protocol) and
+persisted to `data/processed/ciciot2023/scaler.joblib`. The same fitted
+scaler is used unchanged on the val, test, balanced-eval, and OOD splits
+throughout the thesis — code reference: `src/utils/dataset_processor.py`
+(`StandardScaler` instantiated at lines 232, 288, 877; persisted via the
+processor's `save_artifacts` path).
 
 A raw (un-scaled) copy of the same 29 features is preserved in
 `features_raw.npy` for ablation studies that require interpretable units.
