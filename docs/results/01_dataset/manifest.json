@@ -1,5 +1,21 @@
 {
-  "figure_id": "F0",
+  "figure_ids": ["F0a", "F0b"],
+  "figures": {
+    "F0a": {
+      "title": "Class distribution after rebalancing (per CICIoT2023 class)",
+      "output": "F0_class_distribution.png",
+      "caption": "F0_class_distribution.caption.md",
+      "thesis_chapter": "Ch. 4",
+      "thesis_section": "§4.1"
+    },
+    "F0b": {
+      "title": "Kill Chain stage distribution per split",
+      "output": "F0_stage_distribution.png",
+      "caption": "F0_stage_distribution.caption.md",
+      "thesis_chapter": "Ch. 4",
+      "thesis_section": "§4.1"
+    }
+  },
   "git_sha": "a69846f7ee70b8b1de70f4d5da8c7194aac5c196",
   "inputs": {
     "data/processed/ciciot2023/labels.npy": "fb6bbbdc3b5a35ba201e6d087fc135ac94325c4867ec5d40383d8f82ebb3f743",
@@ -14,5 +30,6 @@
   "phase": 1,
   "produced_by": "scripts/data/plot_dataset_overview.py",
   "tier": "context",
-  "title": "Phase-1 dataset overview (CICIoT2023, post-rebalance)"
+  "title": "Phase-1 dataset overview (CICIoT2023, post-rebalance)",
+  "_note": "This manifest covers two figures (F0a, F0b) emitted by a single script run. The hash chain on outputs is unchanged from the original single-figure_id manifest produced at git_sha a69846f7. See docs/mentor_review/01_dataset.md §3 Finding 5 for the rationale behind splitting figure_id into figure_ids/figures."
 }
