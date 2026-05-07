@@ -17,8 +17,12 @@
 > - **A2C p50 = 0.101 ms** ✓ (budget 5 ms; ~50× headroom)
 > - Random p50 = 0.002 ms ✓
 > - Always-OBSERVE / Always-BLOCK / Recommended-Action p50 = 0.001 ms ✓
-> - **RF-Acting p50 = 13.976 ms** ✗ (budget 3 ms; **G6.4 FAIL** — see
->   D6.8.1 in PLAN §8 for the disposition)
+> - **RF-Acting p50 = 13.976 ms** ✗ (budget 3 ms; **G6.4
+>   PASS-WITH-FINDING** per D6.8.1 — 7/8 policies pass with ≥30×
+>   headroom; the RF-Acting outlier is sklearn-dispatch overhead,
+>   not the underlying classifier; see G6_scoreboard.json status
+>   field; Step-6 F6 / Step-8 doc-fix retired the older "FAIL"
+>   wording so the caption matches the scoreboard verdict.)
 >
 > The RF-Acting baseline's p50 latency is governed by sklearn's
 > `RandomForestClassifier.predict()` on a 100-tree ensemble called

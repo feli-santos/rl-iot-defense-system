@@ -25,9 +25,30 @@
 
 ## 3 — Headline numbers
 
-### 3.1 In-distribution (test_balanced)
+### 3.0 As-built post-`3cd2fb9` train counts (Step-4 F1 / Step-8 doc-fix)
 
-| Model | Macro-F1 | BENIGN | RECON | ACCESS | MANEUVER | IMPACT |
+`PLAN.md` §A4 was authored *before* the Phase-1 leakage-fix at commit
+`3cd2fb9` and cites the **pre-fix** train pool (309 566 rows total;
+RECON 26 967, ACCESS 23 198, MANEUVER 33 947, IMPACT 127 209). The
+post-`3cd2fb9` canonical train index file (`docs/results/01_dataset/manifest.json`,
+SHA `c8574094...`) holds **281 420 rows** with revised per-stage
+counts (RECON 27 038, ACCESS 23 173, MANEUVER 33 939, IMPACT 127 270).
+The 28 146-row delta corresponds exactly to the four OOD-attack
+classes' train rows (40 209 × 70 % train ratio = 28 146) that the
+pre-fix split had folded into the train pool. PLAN.md is preserved
+verbatim as the audit-trail record of pre-registration; this
+subsection is the as-built counterpart. The detector was actually
+trained against the post-fix counts above.
+
+### 3.1 In-distribution (test_balanced) — per-stage recall
+
+The five-cell numerics in this table are **per-stage recall on the
+held-out test_balanced split**, not per-class F1 (Step-4 F4 / Step-8
+clarification). Macro-F1 in the leftmost column is the macro
+average of per-stage F1 across all five stages; the per-stage cells
+are recall only, mirroring `F11_summary.json::models.<model>.recall_per_stage`.
+
+| Model | Macro-F1 | BENIGN<br/>recall | RECON<br/>recall | ACCESS<br/>recall | MANEUVER<br/>recall | IMPACT<br/>recall |
 |---|---:|---:|---:|---:|---:|---:|
 | **StageDetector** (production) | **0.7855** | 0.819 | 0.539 | 0.801 | 0.770 | 0.998 |
 | RandomForest baseline | 0.9045 | 0.967 | 0.785 | 0.884 | 0.888 | 0.999 |

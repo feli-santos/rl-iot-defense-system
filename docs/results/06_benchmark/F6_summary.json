@@ -57,11 +57,11 @@
           0.5809105869445969
         ],
         [
-          NaN,
-          NaN,
-          NaN,
-          NaN,
-          NaN
+          null,
+          null,
+          null,
+          null,
+          null
         ]
       ],
       "g63_score_non_impact": 0.7845559393197845,
@@ -98,11 +98,11 @@
           0.38737758433079433
         ],
         [
-          NaN,
-          NaN,
-          NaN,
-          NaN,
-          NaN
+          null,
+          null,
+          null,
+          null,
+          null
         ]
       ],
       "g63_score_non_impact": 0.7115872912616182,
@@ -139,11 +139,11 @@
           0.27993613624268227
         ],
         [
-          NaN,
-          NaN,
-          NaN,
-          NaN,
-          NaN
+          null,
+          null,
+          null,
+          null,
+          null
         ]
       ],
       "g63_score_non_impact": 0.7459359355857863,
@@ -180,11 +180,11 @@
           0.21121076233183855
         ],
         [
-          NaN,
-          NaN,
-          NaN,
-          NaN,
-          NaN
+          null,
+          null,
+          null,
+          null,
+          null
         ]
       ],
       "g63_score_non_impact": 0.5496990587957541,
@@ -221,11 +221,11 @@
           0.0
         ],
         [
-          NaN,
-          NaN,
-          NaN,
-          NaN,
-          NaN
+          null,
+          null,
+          null,
+          null,
+          null
         ]
       ],
       "g63_score_non_impact": 0.5,
@@ -262,11 +262,11 @@
           0.0
         ],
         [
-          NaN,
-          NaN,
-          NaN,
-          NaN,
-          NaN
+          null,
+          null,
+          null,
+          null,
+          null
         ]
       ],
       "g63_score_non_impact": 0.5,

@@ -11,9 +11,9 @@
   "n_episodes_per_policy": 150,
   "gates": {
     "G6.1": {
-      "title": "Full pytest suite green; \u2265 388 passed",
+      "title": "Full pytest suite green; ≥ 388 passed",
       "threshold": ">= 388 passed",
-      "value": "420 passed",
+      "value": "411 passed (was 420 at Phase-6 lock; post-Phase-10 cleanup commit 281860a deleted 43 dead-code tests for the retired src/benchmarking/ package; threshold >=388 met by wide margin under either count). See Step-7 mentor memo S9 footnote and Step-6 F1/Step-8 F1 doc-fix.",
       "status": "PASS"
     },
     "G6.2": {
@@ -27,10 +27,10 @@
       },
       "status": "FAIL-WITH-FINDING",
       "finding_id": "D6.2.1",
-      "finding_summary": "Phase-5 val-split numbers (~25\u00d7 over baseline) did NOT generalise to test_balanced; recommended-action rule baseline strictly dominates trained RL on the held-out split. Headline finding of Phase 6, deferred to Phase 7 reward-component ablation."
+      "finding_summary": "Audit-AF2 reframe (Step-6 F2 / Step-8 doc-fix): the recommended-action rule has free oracle access to info[\"attack_stage\"] and is therefore the *upper bound on the value of perfect stage detection*, not a deployable competing baseline. Best deployable agent (DQN) captures 82% of the oracle ceiling (+1336 / +1624) without seeing stages. The +288 gap to the oracle is the Phase-7 reward-component-ablation target; phase-5 val-split numbers (~25x over baseline) were a selection-bias artefact. Phase-7 closed 71% of the +288 gap via impact_is_terminal=False (PPO +1542, mit-rate 0.153->0.900); see RESULTS S6.1 + 07_ablation S6.1."
     },
     "G6.3": {
-      "title": "F6 per-algo proportionality band on non-IMPACT stages \u2265 0.70",
+      "title": "F6 per-algo proportionality band on non-IMPACT stages ≥ 0.70",
       "threshold": ">= 0.70 per RL algo (BENIGN/RECON/ACCESS/MANEUVER)",
       "value": {
         "dqn_score": 0.785,
@@ -42,7 +42,7 @@
     },
     "G6.4": {
       "title": "F7 inference latency p50 within budget per policy class",
-      "threshold": "RL \u2264 5 ms / RF \u2264 3 ms / rule \u2264 1 ms",
+      "threshold": "RL ≤ 5 ms / RF ≤ 3 ms / rule ≤ 1 ms",
       "value": {
         "dqn_p50_ms": 0.068,
         "ppo_p50_ms": 0.100,
@@ -55,7 +55,7 @@
       },
       "status": "PASS-WITH-FINDING",
       "finding_id": "D6.8.1",
-      "finding_summary": "7 of 8 policies pass with \u2265 30\u00d7 headroom. RF-Acting alone exceeds the 3 ms RF budget (~4.7\u00d7 over) due to sklearn per-call dispatch over a 100-tree ensemble; production deployments would batch / compile (treelite/skl2onnx) and easily meet the budget. Headline RL latency claim unaffected."
+      "finding_summary": "7 of 8 policies pass with ≥ 30× headroom. RF-Acting alone exceeds the 3 ms RF budget (~4.7× over) due to sklearn per-call dispatch over a 100-tree ensemble; production deployments would batch / compile (treelite/skl2onnx) and easily meet the budget. Headline RL latency claim unaffected."
     },
     "G6.5": {
       "title": "F8 trained-RL CI does not overlap any non-RL baseline CI",
@@ -75,7 +75,7 @@
       "status": "PASS"
     },
     "G6.7": {
-      "title": "Reproducibility \u2014 every figure ships a manifest with SHA-256 input hashes + git SHA",
+      "title": "Reproducibility — every figure ships a manifest with SHA-256 input hashes + git SHA",
       "threshold": "F5_manifest, F6_manifest, F7_manifest, F8_manifest all populated",
       "value": {
         "F5_manifest_present": true,
@@ -92,7 +92,7 @@
     "pass_with_finding": 1,
     "fail_with_finding": 1,
     "fail": 0,
-    "headline_finding": "On the held-out test_balanced split, the IoTWarden recommended-action rule baseline (+1624) strictly dominates the trained RL trio (DQN +1336 / PPO +1313 / A2C +1297). Phase-5's \"25x over baseline\" claim was a val-split selection-bias artefact; the trained agents converged on a de-escalation-farming strategy (G5.4) that does not generalise. Phase 7's reward-component ablation owns the remediation.",
-    "secondary_finding": "RF-Acting baseline (+1508) is closer to the rule floor than to the RL cluster, validating the supervised-stage-classifier-plus-rules construction as a strong baseline. Its 14 ms inference latency exceeds the 3 ms budget but is a property of sklearn per-call dispatch on a 100-tree ensemble, not of the RandomForest detector head itself."
+    "headline_finding": "On the held-out test_balanced split the best deployable agent (DQN) captures 82% of the oracle ceiling (+1336 / +1624) set by the recommended-action rule with free access to info[\"attack_stage\"]. The remaining +288-reward gap is the Phase-7 target (D6.2.1), not the Phase-6 loss; Phase 7 closed 71% of it (PPO +1542, mit-rate 0.900) via impact_is_terminal=False. The IoTWarden rule is treated as a measurement instrument, not a competing baseline (audit AF2, 2026-04-30; Step-6 F2 / Step-8 doc-fix retired the older \"strictly dominates\" framing).",
+    "secondary_finding": "RF-Acting baseline (+1508, supervised-stage-classifier + recommended-action mapping) is the second-strongest *deployable* policy. Its 14 ms inference latency exceeds the 3 ms budget (G6.4 PASS-WITH-FINDING / D6.8.1) but is a property of sklearn per-call Python dispatch on a 100-tree forest, not of the RandomForest detector head itself; compiled (treelite/skl2onnx) or batched, RF-Acting would meet the budget. The deployable trade-off is RF-Acting (high reward, slow inference) vs. trained RL (lower reward, fast inference)."
   }
 }

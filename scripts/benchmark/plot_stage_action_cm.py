@@ -78,6 +78,27 @@ _DISPLAY: Dict[str, str] = {
 }
 
 
+def _nan_to_none(o: Any) -> Any:
+    """Recursively translate float NaN to ``None`` so the resulting
+    structure round-trips through ``json.dumps(..., allow_nan=False)``
+    without exception. Step-6 F5 / Step-8 doc-fix.
+
+    Phase-6 F6 emits per-policy 5×5 matrices whose IMPACT row is
+    intentionally NaN-filled (D6.7 excludes IMPACT from the
+    proportionality scoring); the RFC-7159 representation is JSON
+    null, not the bare token ``NaN``. This helper is a pre-pass
+    that touches only float NaN; integers, strings, lists, and
+    dicts pass through unchanged.
+    """
+    if isinstance(o, float) and o != o:  # NaN check
+        return None
+    if isinstance(o, list):
+        return [_nan_to_none(x) for x in o]
+    if isinstance(o, dict):
+        return {k: _nan_to_none(v) for k, v in o.items()}
+    return o
+
+
 def _sha256(path: Path) -> Optional[str]:
     """SHA-256 of file content; ``None`` if missing."""
     p = Path(path)
@@ -285,7 +306,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         "g63_excludes_impact": True,
         "policies": {
             pol: {
-                "matrix": matrices[pol].tolist(),
+                "matrix": _nan_to_none(matrices[pol].tolist()),
                 "g63_score_non_impact": (
                     None if not np.isfinite(scores[pol])
                     else float(scores[pol])
@@ -297,7 +318,19 @@ def main(argv: Optional[List[str]] = None) -> int:
             for pol in matrices
         },
     }
-    (out_dir / "F6_summary.json").write_text(json.dumps(summary, indent=2))
+    # Step-6 F5 / Step-8 doc-fix: emit RFC-7159 / ECMA-404 valid JSON
+    # by translating bare NaN to JSON null. The previous emission used
+    # Python's default `allow_nan=True` which produces non-strict-JSON
+    # `NaN` literals — strict parsers reject them. The IMPACT row of
+    # the per-policy `matrix` is intentionally NaN-filled (D6.7
+    # excludes IMPACT from the proportionality scoring); we encode
+    # that as `null` and pass `allow_nan=False` so any future
+    # regression that introduces a non-IMPACT NaN will fail loudly
+    # at serialisation time rather than silently emitting non-RFC
+    # JSON.
+    (out_dir / "F6_summary.json").write_text(
+        json.dumps(summary, indent=2, allow_nan=False)
+    )
 
     eval_manifest_path = runs_root / "eval_manifest.json"
     manifest = {

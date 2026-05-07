@@ -79,7 +79,22 @@ def _evaluate_g5_2_g5_3_g5_4(
 
 
 def _select_best_algo(per_algo: Dict[str, Any]) -> str:
-    """Pick the algo with the highest mean reward; tie-break by lowest std."""
+    """Pick the algo with the highest mean reward; tie-break by **highest
+    mean MTTC** (longest mean time to compromise — i.e., the algo that
+    held off compromise the longest among reward-tied candidates).
+
+    .. note::
+       **Step-5 F3 / Step-8 doc-fix.** Earlier docstring versions claimed
+       "lowest std" and PLAN §8 D5.11 used "lower variance". The actual
+       implementation tie-breaks by highest MTTC: see the sort key
+       ``(-mean_reward, -mean_mttc)`` below. The triple disagreement
+       between docstring / PLAN / code never fired in practice (the
+       Phase-5 mean-reward gaps are ≥ 25 points, far larger than
+       any plausible reward-tie band), but the docstring is now
+       authoritative and matches the code byte-for-byte. PLAN §8 D5.11
+       is preserved verbatim as the audit-trail record of
+       pre-registration; consult this docstring for as-built behaviour.
+    """
     if not per_algo:
         raise RuntimeError("no algos evaluated")
     ranked = sorted(
