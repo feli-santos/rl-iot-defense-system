@@ -287,7 +287,20 @@ Every Phase-6 figure ships a `manifest.json` with:
 - SHA-256 hash of the upstream `runs/phase6/eval_manifest.json`,
   which itself records SHA-256 hashes of every Phase-5
   `model.zip`, the RF model `artifacts/detector/random_forest.joblib`,
-  the dataset scaler, and the Phase-1 `splits/manifest.json`.
+  the dataset scaler, the Phase-1 `splits/manifest.json`, **and (post
+  Step-8 F3 fix) the Phase-2 LSTM checkpoint
+  `artifacts/generator/phase2/attack_sequence_generator.pth`** — see
+  `scripts/benchmark/run_test_eval.py:494` (`schema_version: 1.1`).
+  Pre-Step-8 the LSTM pin was implicit (the env consumed the
+  Phase-2 generator dir at runtime but the SHA was not surfaced in
+  `eval_manifest.json::input_hashes`); the producer-script fix lands
+  the explicit pin so future re-runs ship a self-contained Phase-6
+  hash chain. The currently locked F5/F6/F7/F8 manifests pin the
+  pre-Step-8 `eval_manifest.json` (SHA `c4a60a8f...`) which is
+  byte-perfect on disk; re-running the Phase-6 sweep would produce
+  a new `eval_manifest.json` with the LSTM pin and a new SHA, which
+  the four figure manifests would re-pin atomically on the next
+  `make phase-6-figures` invocation.
 - Git SHA at production time.
 
 To regenerate from scratch on a fresh checkout:
