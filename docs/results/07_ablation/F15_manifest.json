@@ -20,6 +20,10 @@
       "path": "runs/phase5/sweep_manifest.json",
       "sha256": "cc7454320d9acca8830f71c8d63a56f07934dc7f9563ceb089332b14f995592e"
     },
+    "phase1_splits_manifest": {
+      "path": "docs/results/01_dataset/manifest.json",
+      "sha256": "c8574094e7b914fdf5ecb16e107facbf2f073ac3f4ec1b80b5284c49f96e19e5"
+    },
     "eval_jsonls_sha256": {
       "runs/phase7/ood/DDoS-HTTP_Flood/recommended_action/seed_0/eval_test.jsonl": "796f630d3e72a7b7275fdc180e62001d3b1f4fb7c12f9a2c412b873face04f17",
       "runs/phase7/ood/DDoS-HTTP_Flood/rf_acting/seed_0/eval_test.jsonl": "cc4221433969e542ba30443646a0f4ab87a0e876d191dea296f52c87258e719c",

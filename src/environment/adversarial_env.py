@@ -254,6 +254,36 @@ class AdversarialIoTEnv(gym.Env):
         >>> env = AdversarialIoTEnv(generator_path, dataset_path)
         >>> obs, info = env.reset()
         >>> obs, reward, terminated, truncated, info = env.step(2)
+
+    .. warning::
+       **Direct construction contract (Step-3 F2 / Step-8 doc-fix).**
+       Calling ``AdversarialIoTEnv(generator_path, dataset_path, ...)``
+       directly builds a non-split-aware ``RealizationEngine`` (the
+       constructor at L305-ish below instantiates ``RealizationEngine(
+       dataset_path)`` with no ``split_manifest`` / ``allowed_indices``
+       argument). This means the engine samples from the *full* row
+       pool — it does NOT honour the Phase-1 OOD-exclusion or
+       ``split="train"`` invariants Phases 4–7 depend on.
+
+       **Production callers must use one of**:
+
+       - ``src.blue_team.env_factory.make_train_env(...)`` (sets
+         ``split="train", exclude_ood=True`` and monkey-patches the
+         engine post-construction via ``env._realization_engine =
+         engine``); or
+       - ``src.blue_team.env_factory.make_eval_env(...)`` (caller
+         supplies the eval split — typically ``"val_balanced"`` for
+         Phase-5 eval or ``"test_balanced"`` for Phase-6 / Phase-7).
+
+       Direct ``AdversarialIoTEnv(...)`` construction is reserved for
+       synthetic-data unit tests (see ``tests/test_adversarial_env.py``)
+       and the hand-rolled smoke probe in
+       ``scripts/benchmark/run_test_eval.py:_roll_deterministic`` (RF-
+       Acting feature-dim probe). A future refactor could add an
+       ``engine: Optional[RealizationEngine] = None`` injection seam
+       to ``__init__`` so the factory could pass the engine in
+       directly (eliminating the ``# type: ignore[attr-defined]``
+       monkey-patch in ``env_factory.py``); deferred to post-thesis.
     """
     
     metadata = {"render_modes": ["human"]}

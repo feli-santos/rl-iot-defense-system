@@ -5,9 +5,16 @@
 > seed, n=150 each) vs. four non-RL baselines: random policy seeded
 > 5 ways (n=150); deterministic always-OBSERVE / always-BLOCK /
 > recommended-action / RF-Acting at single seed × 150 episodes (D6.3).
-> The **recommended-action** rule baseline achieves the best mean
-> reward (★) — the trained RL trio is dominated by a hand-crafted
-> rule on the held-out split (D6.2.1 finding; see RESULTS §6).
+> The **recommended-action** rule baseline ⓞ achieves the best mean
+> reward (+1624) — but it has free oracle access to
+> `info["attack_stage"]`, so it is the *upper bound on the value of
+> perfect stage detection*, not a deployable competing baseline
+> (audit AF2 / Step-6 F2 reframe; Step-8 doc-fix). The best
+> deployable agent (DQN, +1336) captures **82 % of the oracle
+> ceiling** without ever seeing a stage; the remaining +288-reward
+> gap is the **Phase-7 target** (D6.2.1) — Phase 7 closed 71 % of
+> it via `impact_is_terminal=False` (PPO +1542 / mit-rate 0.900).
+> See RESULTS.md §6.1 for the full reframe.
 > All policies fully reach IMPACT under the upper-triangular Phase-2
 > LSTM (compromise rate = 100 %); they differ on the **proportion of
 > episodes that ended in `impact_mitigated`** (i.e., the agent

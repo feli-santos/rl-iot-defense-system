@@ -58,7 +58,7 @@ retraining (D6.1).
 
 | Gate | Threshold | Status | Value / Notes |
 |---|---|:---:|---|
-| **G6.1** | `pytest -q` ≥ 388 passed | **PASS** | 420 passed, 0 failed |
+| **G6.1** | `pytest -q` ≥ 388 passed | **PASS** | 411 passed, 0 failed (was 420 at Phase-6 lock; post-Phase-10 cleanup commit `281860a` deleted 43 dead-code tests for the retired `src/benchmarking/` package — see Step-7 §9 footnote and Step-8 F1 follow-up. Threshold ≥388 met by wide margin under either count.) |
 | **G6.2** | trained-RL `mean_reward` > recommended-action (D6.2.1 revised) | **FAIL-WITH-FINDING** | rec-action +1624 > {DQN +1336, PPO +1313, A2C +1297}. **Headline finding** — see §6 |
 | **G6.3** | non-IMPACT proportionality band ≥ 0.70 | **PASS** | DQN 0.785, PPO 0.712, A2C 0.746 |
 | **G6.4** | p50 latency: RL ≤ 5 ms / RF ≤ 3 ms / rule ≤ 1 ms | **PASS-WITH-FINDING** | 7 / 8 policies pass with ≥ 30× headroom; RF-Acting 14 ms (D6.8.1) |
@@ -287,7 +287,20 @@ Every Phase-6 figure ships a `manifest.json` with:
 - SHA-256 hash of the upstream `runs/phase6/eval_manifest.json`,
   which itself records SHA-256 hashes of every Phase-5
   `model.zip`, the RF model `artifacts/detector/random_forest.joblib`,
-  the dataset scaler, and the Phase-1 `splits/manifest.json`.
+  the dataset scaler, the Phase-1 `splits/manifest.json`, **and (post
+  Step-8 F3 fix) the Phase-2 LSTM checkpoint
+  `artifacts/generator/phase2/attack_sequence_generator.pth`** — see
+  `scripts/benchmark/run_test_eval.py:494` (`schema_version: 1.1`).
+  Pre-Step-8 the LSTM pin was implicit (the env consumed the
+  Phase-2 generator dir at runtime but the SHA was not surfaced in
+  `eval_manifest.json::input_hashes`); the producer-script fix lands
+  the explicit pin so future re-runs ship a self-contained Phase-6
+  hash chain. The currently locked F5/F6/F7/F8 manifests pin the
+  pre-Step-8 `eval_manifest.json` (SHA `c4a60a8f...`) which is
+  byte-perfect on disk; re-running the Phase-6 sweep would produce
+  a new `eval_manifest.json` with the LSTM pin and a new SHA, which
+  the four figure manifests would re-pin atomically on the next
+  `make phase-6-figures` invocation.
 - Git SHA at production time.
 
 To regenerate from scratch on a fresh checkout:
@@ -305,4 +318,11 @@ all derived figures + summaries + manifests live under
 ## 9 — Test count history
 
 Phase 0 254 → Phase 1 266 → Phase 2 283 → Phase 3 296 → Phase 4 329
-→ Phase 5 376 → **Phase 6 420** (+44).
+→ Phase 5 376 → **Phase 6 420** (+44) → Phase 7 442 (+22) →
+Phase 10 cleanup commit `281860a` (D10.2) deleted 43 dead-code
+tests for the retired `src/benchmarking/` package → **Phase 7
+audit at HEAD: 411 / 411 passed**. The Phase-6 lock value (420) is
+preserved verbatim above as the audit-trail record at
+`G6_scoreboard.json` lock time; the post-Phase-10 count is
+documented in the Step-7 mentor memo (§9 footnote) and in this
+RESULTS.md G6.1 row (Step-8 F1 doc-fix).

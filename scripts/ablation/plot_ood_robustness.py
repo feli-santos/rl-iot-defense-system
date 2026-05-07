@@ -415,6 +415,14 @@ def _build_argparser() -> argparse.ArgumentParser:
         "--phase5-sweep-manifest",
         default="runs/phase5/sweep_manifest.json",
     )
+    # Step-8 F2 (07_HANDOFF.md §5): explicit upstream-manifest SHA pin
+    # for the Phase-1 splits manifest so the F15 hash chain is
+    # self-contained (matches the F9/F10/F12 pattern landed in Step 8).
+    p.add_argument(
+        "--phase1-splits-manifest",
+        default="docs/results/01_dataset/manifest.json",
+        help="Phase-1 splits manifest.json (post-3cd2fb9; SHA 1e99d596...).",
+    )
     return p
 
 
@@ -501,6 +509,12 @@ def main(argv: Optional[List[str]] = None) -> int:
             "phase5_sweep_manifest": {
                 "path": str(args.phase5_sweep_manifest),
                 "sha256": _sha256(Path(args.phase5_sweep_manifest)),
+            },
+            # Step-8 F2: explicit Phase-1 splits manifest pin so the
+            # F15 hash chain is self-contained (matches F9/F10/F12).
+            "phase1_splits_manifest": {
+                "path": str(args.phase1_splits_manifest),
+                "sha256": _sha256(Path(args.phase1_splits_manifest)),
             },
             "eval_jsonls_sha256": sha_collector,
         },

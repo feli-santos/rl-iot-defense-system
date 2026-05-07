@@ -102,9 +102,22 @@ def run_policy(
             policy call's wall duration (``time.perf_counter_ns``) is
             logged as one row. ``None`` disables latency capture (the
             default for the F5/F6/F8 sweeps; F7 turns it on).
-        seed: Optional seed forwarded to ``env.reset(seed=...)`` on
-            episode 0 only — subsequent resets reuse SB3 VecEnv's
-            internal RNG. ``None`` leaves the env to seed itself.
+        seed: **No-op at the env layer (Step-6 F4 / Step-8 doc-fix).**
+            Pre-Step-8 the docstring claimed this was forwarded to
+            ``env.reset(seed=...)``; in fact both branches of the
+            implementation below call identical ``env.reset()`` (SB3
+            ``DummyVecEnv`` 1.x's ``reset()`` does not accept a
+            ``seed`` kwarg; the seed plumbing was never wired through).
+            The parameter is preserved for backwards compatibility but
+            has zero effect on rollout behaviour at this layer.
+            Reproducibility is delivered by *caller-side* env-construction
+            seeding — see ``scripts.benchmark.run_test_eval`` which
+            constructs each per-run env with an explicit seed via
+            ``make_eval_env(spec=..., seed=seed)``. Phase-6 numbers
+            are deterministic on a given checkpoint × split because
+            the agent runs ``deterministic=True`` and the random
+            baseline is seeded externally; this parameter does not
+            influence either path.
 
     Returns:
         Dict with bookkeeping totals: ``{"n_episodes_written",

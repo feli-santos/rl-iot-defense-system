@@ -15,6 +15,14 @@
       "path": "runs/phase6/eval_manifest.json",
       "sha256": "c4a60a8f51d65095af339eca5bee7e2faa2aa75461efe69e0e37813e342b8f10"
     },
+    "phase5_sweep_manifest": {
+      "path": "runs/phase5/sweep_manifest.json",
+      "sha256": "cc7454320d9acca8830f71c8d63a56f07934dc7f9563ceb089332b14f995592e"
+    },
+    "phase1_splits_manifest": {
+      "path": "docs/results/01_dataset/manifest.json",
+      "sha256": "c8574094e7b914fdf5ecb16e107facbf2f073ac3f4ec1b80b5284c49f96e19e5"
+    },
     "eval_jsonls_sha256": {
       "runs/phase7/reward_sweep/baseline_phase5_defaults/seed_0/eval_test.jsonl": "369f85e94b582a46107ef37b70166a73494813638e9966967312d374fbb73acd",
       "runs/phase7/reward_sweep/baseline_phase5_defaults/seed_1/eval_test.jsonl": "b86573ca18a5d59b63dfe26a87e839f6144d98a42e7cae52a6abf4011d3a1f39",

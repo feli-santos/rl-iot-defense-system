@@ -8,9 +8,14 @@ Two public functions:
   :class:`Monitor` and a :class:`DummyVecEnv` so the SB3 algorithms see
   the canonical vectorised interface.
 - :func:`make_eval_env` — same plumbing but pointed at a different
-  split (default ``val_balanced``) and *without* a ``Monitor`` log
+  split (caller-supplied via ``spec.split`` — typically
+  ``"val_balanced"`` for Phase-5 eval, ``"test_balanced"`` for
+  Phase-6 / Phase-7 evaluation) and *without* a ``Monitor`` log
   file. Used both by SB3's eval rollouts and by Phase-5's
-  :class:`PhaseFiveEvalCallback`.
+  :class:`PhaseFiveEvalCallback`. **Step-5 F4 / Step-8 doc-fix:**
+  earlier docstrings claimed "default `val_balanced`"; the function
+  imposes no default, the split is always caller-supplied via the
+  ``spec: EnvConfigSerializable`` argument.
 
 Both factories accept a ``BlueTeamRunConfig.env`` /
 ``BlueTeamRunConfig.eval_env`` :class:`EnvConfigSerializable` and the

@@ -236,6 +236,22 @@ def _build_argparser() -> argparse.ArgumentParser:
         "--p-values", nargs="+", type=float,
         default=[0.0, 0.2, 0.4, 0.6, 0.8, 1.0],
     )
+    # Step-8 F2 (07_HANDOFF.md §5): explicit upstream-manifest SHA pins.
+    p.add_argument(
+        "--phase5-sweep-manifest",
+        default="runs/phase5/sweep_manifest.json",
+        help="Phase-5 sweep_manifest.json (warm-start trained checkpoints).",
+    )
+    p.add_argument(
+        "--phase6-eval-manifest",
+        default="runs/phase6/eval_manifest.json",
+        help="Phase-6 eval_manifest.json (oracle-rule reference rolls).",
+    )
+    p.add_argument(
+        "--phase1-splits-manifest",
+        default="docs/results/01_dataset/manifest.json",
+        help="Phase-1 splits manifest.json (post-3cd2fb9; SHA 1e99d596...).",
+    )
     return p
 
 
@@ -291,6 +307,20 @@ def main(argv: Optional[List[str]] = None) -> int:
             "phase7_aggressiveness_sweep_manifest": {
                 "path": str(sweep_manifest_path),
                 "sha256": _sha256(sweep_manifest_path),
+            },
+            # Step-8 F2: explicit upstream-manifest SHA pins so the
+            # F10 hash chain is self-contained (no transitive lookups).
+            "phase5_sweep_manifest": {
+                "path": str(args.phase5_sweep_manifest),
+                "sha256": _sha256(Path(args.phase5_sweep_manifest)),
+            },
+            "phase6_eval_manifest": {
+                "path": str(args.phase6_eval_manifest),
+                "sha256": _sha256(Path(args.phase6_eval_manifest)),
+            },
+            "phase1_splits_manifest": {
+                "path": str(args.phase1_splits_manifest),
+                "sha256": _sha256(Path(args.phase1_splits_manifest)),
             },
             "eval_jsonls_sha256": sha_collector,
         },

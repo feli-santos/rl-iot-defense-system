@@ -27,6 +27,35 @@
 
 ## 3 — Lifecycle & reward formulae (as-built)
 
+> **Reward-decomposition clarification (Step-5 F6 / Step-3 F3, Step-8 doc-fix).**
+> The reward function below has **six independent reward signals**:
+> (1) action cost ``- C_action``;
+> (2) per-step proportionality bonus ``+ reward_proportional`` /
+>     ``- penalty_disproportionate``;
+> (3) terminal-IMPACT penalty ``- impact_penalty``;
+> (4) terminal-IMPACT mitigation bonus ``+ defense_success_bonus`` (also
+>     awarded mid-episode on defender-driven de-escalation in B3);
+> (5) terminal-IMPACT miss penalty ``- penalty_missed_impact`` (action ≤ LOG);
+> (6) ``+ reward_benign_passive`` for OBSERVE/LOG on truly BENIGN traffic.
+>
+> Plus **three asymmetric guardrails** for cocked-trigger policies:
+> ``penalty_overreact_benign`` (action ≥ THROTTLE on BENIGN),
+> ``penalty_block_benign`` (additional, action ≥ BLOCK on BENIGN),
+> ``penalty_block_recon`` (action ≥ BLOCK on RECON). The Phase-5
+> wiring at ``src/blue_team/env_factory.py:53-73`` plumbs nine reward
+> fields plus ``action_cost_scale`` because the three guardrails are
+> exposed as independent CLI / sweep targets, not because they are
+> *additional* terms — Step-5 F6 surfaced this count divergence (six
+> logical terms collapse the three sub-modulators).
+>
+> **MTTC is a metric, not a reward term (Step-3 F3 clarification).**
+> ``info["mttc_steps"]`` is a per-episode telemetry field exposed by
+> ``_build_info`` (B5 fix); it does NOT enter ``_calculate_reward``.
+> Earlier mentor-review prompts that listed "MTTC" alongside
+> "proportionality reward" / "mitigation" / "disproportionate-penalty"
+> as a fourth reward component were wrong — MTTC is reported in
+> Phase 5/6/7 as a security KPI, not optimised against by the agent.
+
 ### Episode lifecycle
 
 ```

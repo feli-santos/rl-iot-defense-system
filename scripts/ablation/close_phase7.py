@@ -352,42 +352,183 @@ def _evaluate_gates(
 # ---------------------------------------------------------------- writers
 
 
+# Canonical scoreboard-status enum, matching Phase-6 G6_scoreboard.json.
+# See docs/mentor_review/07_HANDOFF.md L196.
+_STATUS_PASS = "PASS"
+_STATUS_PASS_WITH_FINDING = "PASS-WITH-FINDING"
+_STATUS_PASS_WITHOUT_STRETCH = "PASS-WITHOUT-STRETCH"
+_STATUS_FAIL_WITH_FINDING = "FAIL-WITH-FINDING"
+_STATUS_FAIL = "FAIL"
+_STATUS_SKIP = "SKIP"
+_STATUS_ENUM = frozenset({
+    _STATUS_PASS,
+    _STATUS_PASS_WITH_FINDING,
+    _STATUS_PASS_WITHOUT_STRETCH,
+    _STATUS_FAIL_WITH_FINDING,
+    _STATUS_FAIL,
+    _STATUS_SKIP,
+})
+
+# Per-gate (gate_id → finding_id) override table for G7.x. Keeps the
+# free-text `interpretation` field readable while ensuring the
+# scoreboard exposes the same finding_id Phase-6 ships natively
+# (see docs/results/06_benchmark/G6_scoreboard.json::gates.G6.2).
+# Step-8 task #2 (07_HANDOFF.md §5 F3) acceptance: jq '.gates[].status'
+# returns enum members and finding_id is present where status is
+# {PASS-WITH-FINDING, PASS-WITHOUT-STRETCH, FAIL-WITH-FINDING}.
+_GATE_FINDING_ID: Dict[str, str] = {
+    "G7.2": "D7.1.1",   # reward-comparable strand relaxation per D7.1.1
+    "G7.4": "R7.3",     # Pareto-frontier-collapse risk realised
+    "G7.9": "D7.9.1",   # OOD headline: "robust to, not better at"
+}
+
+
+def _resolve_status_finding(gate: Dict[str, Any]) -> Dict[str, Any]:
+    """Map the gate's `passes`+`interpretation`+`audit_finding` triple
+    into a Phase-6-native ``(status, finding_id)`` pair.
+
+    Rules (in order of precedence):
+
+    - ``passes is None``               → ``SKIP``
+    - ``passes is True``  + interpretation starts with ``PASS-WITHOUT-STRETCH`` → ``PASS-WITHOUT-STRETCH``
+    - ``passes is True``  + interpretation starts with ``PASS-WITH-FINDING``    → ``PASS-WITH-FINDING``
+    - ``passes is True``                                                        → ``PASS``
+    - ``passes is False`` + interpretation starts with ``FAIL-WITH-FINDING``    → ``FAIL-WITH-FINDING``
+    - ``passes is False``                                                       → ``FAIL``
+
+    The ``finding_id`` is sourced from the ``_GATE_FINDING_ID``
+    table (gate_id-keyed) when status ∈ {PASS-WITH-FINDING,
+    PASS-WITHOUT-STRETCH, FAIL-WITH-FINDING}; ``None`` otherwise.
+    """
+    passes = gate.get("passes")
+    interp = gate.get("interpretation") or ""
+
+    if passes is None:
+        status = _STATUS_SKIP
+    elif passes is True:
+        if interp.startswith(_STATUS_PASS_WITHOUT_STRETCH):
+            status = _STATUS_PASS_WITHOUT_STRETCH
+        elif interp.startswith(_STATUS_PASS_WITH_FINDING):
+            status = _STATUS_PASS_WITH_FINDING
+        else:
+            status = _STATUS_PASS
+    else:  # passes is False
+        if interp.startswith(_STATUS_FAIL_WITH_FINDING):
+            status = _STATUS_FAIL_WITH_FINDING
+        else:
+            status = _STATUS_FAIL
+
+    out: Dict[str, Any] = {"status": status}
+    finding_id = _GATE_FINDING_ID.get(gate.get("id", ""))
+    if status in {
+        _STATUS_PASS_WITH_FINDING,
+        _STATUS_PASS_WITHOUT_STRETCH,
+        _STATUS_FAIL_WITH_FINDING,
+    } and finding_id is not None:
+        out["finding_id"] = finding_id
+    return out
+
+
 def _write_scoreboard(
     out_dir: Path, gates: List[Dict[str, Any]],
 ) -> Path:
-    n_pass = sum(1 for g in gates if g.get("passes") is True)
-    n_fail = sum(1 for g in gates if g.get("passes") is False)
-    n_skip = sum(1 for g in gates if g.get("passes") is None)
+    """Emit ``G7_scoreboard.json`` in the Phase-6-native schema.
+
+    Each gate carries a ``status`` enum + (where applicable) a
+    ``finding_id`` cross-link, mirroring Phase 6's
+    ``G6_scoreboard.json``. The legacy ``passes:bool`` field is
+    dropped (Step-8 F3, 07_HANDOFF.md §5 acceptance: "no `passes`
+    key remains"). All other gate fields (threshold, value,
+    interpretation, kind, audit_finding, security_kpi_strand_passes,
+    note_post_lock_*) are preserved verbatim.
+    """
+    enriched_gates: List[Dict[str, Any]] = []
+    for g in gates:
+        sf = _resolve_status_finding(g)
+        new_g = {k: v for k, v in g.items() if k != "passes"}
+        # Insert status (and finding_id) immediately after id+threshold+value
+        # for human readability; final dict order is for cosmetics only.
+        ordered: Dict[str, Any] = {}
+        for k in ("id", "threshold", "value"):
+            if k in new_g:
+                ordered[k] = new_g.pop(k)
+        ordered["status"] = sf["status"]
+        if "finding_id" in sf:
+            ordered["finding_id"] = sf["finding_id"]
+        ordered.update(new_g)
+        enriched_gates.append(ordered)
+
+    n_pass = sum(1 for g in enriched_gates if g["status"] == _STATUS_PASS)
+    n_pass_with_finding = sum(
+        1 for g in enriched_gates if g["status"] == _STATUS_PASS_WITH_FINDING
+    )
+    n_pass_without_stretch = sum(
+        1 for g in enriched_gates if g["status"] == _STATUS_PASS_WITHOUT_STRETCH
+    )
+    n_fail_with_finding = sum(
+        1 for g in enriched_gates if g["status"] == _STATUS_FAIL_WITH_FINDING
+    )
+    n_fail = sum(1 for g in enriched_gates if g["status"] == _STATUS_FAIL)
+    n_skip = sum(1 for g in enriched_gates if g["status"] == _STATUS_SKIP)
+
     payload = {
-        "schema_version": "1.0",
+        "schema_version": "2.0",
         "phase": 7,
         "git_sha": _git_sha(),
         "completed_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
-        "n_pass": n_pass,
-        "n_fail": n_fail,
-        "n_skip": n_skip,
-        "gates": gates,
+        "summary": {
+            "total_gates": len(enriched_gates),
+            "pass": n_pass,
+            "pass_with_finding": n_pass_with_finding,
+            "pass_without_stretch": n_pass_without_stretch,
+            "fail_with_finding": n_fail_with_finding,
+            "fail": n_fail,
+            "skip": n_skip,
+        },
+        "gates": enriched_gates,
     }
     path = out_dir / "G7_scoreboard.json"
     path.write_text(json.dumps(payload, indent=2))
-    logger.info("wrote %s (pass=%d fail=%d skip=%d)", path, n_pass, n_fail, n_skip)
+    logger.info(
+        "wrote %s (pass=%d pwf=%d pws=%d fwf=%d fail=%d skip=%d)",
+        path, n_pass, n_pass_with_finding, n_pass_without_stretch,
+        n_fail_with_finding, n_fail, n_skip,
+    )
     return path
 
 
 def _summary_table(gates: List[Dict[str, Any]]) -> str:
-    """Markdown table: gate / threshold / status / value."""
+    """Markdown table: gate / threshold / status / value.
+
+    Renders the unified Phase-6-native ``status`` enum. Falls back
+    to the legacy ``passes:bool`` field if a caller passes an
+    un-enriched gate dict (defensive — close_phase7.py itself always
+    enriches via ``_resolve_status_finding`` before this function is
+    invoked indirectly through ``_write_results_md``).
+    """
     rows = [
         "| Gate | Threshold | Status | Value / Notes |",
         "|---|---|:---:|---|",
     ]
     for g in gates:
-        status = (
-            "**PASS**" if g.get("passes") is True
-            else "FAIL-WITH-FINDING" if g.get("passes") is False
-            else "SKIP"
+        status = g.get("status")
+        if status is None:
+            # legacy fallback (should not happen on the production code
+            # path; preserved for backwards-compat in case of direct
+            # callers).
+            status = (
+                _STATUS_PASS if g.get("passes") is True
+                else _STATUS_FAIL_WITH_FINDING if g.get("passes") is False
+                else _STATUS_SKIP
+            )
+        finding = g.get("finding_id")
+        status_cell = (
+            f"**{status}**" if status == _STATUS_PASS else status
         )
+        if finding:
+            status_cell = f"{status_cell} ({finding})"
         rows.append(
-            f"| **{g['id']}** | {g['threshold']} | {status} | {g.get('value', '?')} |"
+            f"| **{g['id']}** | {g['threshold']} | {status_cell} | {g.get('value', '?')} |"
         )
     return "\n".join(rows)
 

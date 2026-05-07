@@ -1,13 +1,49 @@
 # Experiments & MLflow
 
+> **Scope (Step-5 F5 / Step-8 doc-fix).** This document describes the
+> MLflow setup that was *available* during the early-Phase exploratory
+> work. **Phase 5 onwards intentionally does NOT use MLflow** —
+> Phase-5 D5.6 locks the per-run logging format as schema-v1.0
+> JSONL files (``runs/phase5/<algo>/seed_<k>/{episodes,eval}.jsonl``)
+> with side-car ``run_manifest.json`` records, and Phase 6 / Phase 7
+> follow the same convention via
+> ``scripts.benchmark.run_test_eval`` and the ``run_*`` ablation
+> drivers. The rationale is reproducibility-by-hash-chain (see
+> ``docs/results/<phase>/manifest.json::input_hashes``) — the JSONL
+> format is what the per-figure manifest SHA-pins, not the
+> MLflow-tracking-server URI.
+>
+> The earlier Step-4 mentor handoff (`04_HANDOFF.md`) incorrectly
+> forecast Phase 5 as "the first phase with MLflow runs". That
+> forecast was retired by the actual Phase-5 implementation; this
+> document should not be read as a current-Phase mandate.
+> Step 9 (LaTeX rebuild) reads its run telemetry from the JSONL
+> records + per-figure manifests, not from MLflow.
+>
+> **What is actually tracked under `mlruns/`** today: only the
+> generator-trainer (`scripts/red_team/train_lstm.py` via
+> `src.training.generator_trainer.GeneratorTrainer`) emits MLflow
+> entries; the runs are local-only, not committed, and Phase 2's
+> canonical numerical record is `F1_summary.json` (see
+> `docs/results/02_red_team/RESULTS.md` §2). The RL-side
+> `MLflowCallback` described below is unused in Phase 5 — the
+> Phase-5 callback chain is defined in `src.blue_team.callbacks`
+> with `EpisodeJSONLCallback` as the canonical log.
+
 ## Overview
 
-Both generator training and RL training can be tracked in MLflow.
+Both generator training and RL training **can** be tracked in MLflow
+in principle, but the production phases (5/6/7) use JSONL +
+manifest-based logging instead.
 
 - **Generator** uses `GeneratorTrainer` with MLflow logging.
-- **RL training** uses `TrainingManager` with `MLflowCallback`.
+  *(Active in Phase 2, but the canonical numerical record for the
+  defense is `F1_summary.json`, not the MLflow run.)*
+- **RL training** could use `TrainingManager` with `MLflowCallback`.
+  *(Phase 5 chose `EpisodeJSONLCallback` instead — see Phase-5
+  RESULTS.md and PLAN D5.6 for the rationale.)*
 
-Tracking directory defaults to `mlruns/`.
+Tracking directory defaults to `mlruns/` (local-only, not committed).
 
 ## Generator MLflow logging
 
