@@ -1,133 +1,164 @@
 % ====================================================================
-% Section: Proposed Methodology (Revised)
+% Section: Methodology
 % ====================================================================
 \section{Methodology}\label{sec:methodology}
 
-This section details the methodology employed to design, implement, and evaluate the proposed adaptive IoT defense system. The framework is architected as a multi-stage, closed-loop process that synergizes predictive modeling with autonomous decision-making to create a proactive security posture. Section \ref{subsec:framework_architecture} provides a high-level overview of this architecture. Section \ref{subsec:data_source} describes the real-world dataset and preprocessing pipeline that form the empirical foundation of the system. The subsequent sections detail the design of the proactive attack prediction module (Section \ref{subsec:lstm_module}), the reinforcement learning environment (Section \ref{subsec:rl_environment}), and the training and benchmarking of the DRL defense agents (Section \ref{subsec:drl_training}).
+This section details the methodology used to design, implement, and evaluate the proposed adaptive IoT defense system. The framework is a multi-stage closed-loop pipeline that synergises predictive modelling with autonomous decision-making to produce a proactive security posture. Section~\ref{subsec:framework_architecture} presents the high-level architecture. Section~\ref{subsec:data_source} describes the CICIoT2023 dataset and the kill-chain projection that turns per-flow labels into episode trajectories. Section~\ref{subsec:red_team} introduces the LSTM-based red-team episode generator, and Section~\ref{subsec:stage_detector} the supervised stage-detection module. Section~\ref{subsec:rl_environment} formally specifies the Markov Decision Process underlying the custom Gymnasium environment, including the as-built reward function. Section~\ref{subsec:drl_training} details the blue-team training protocol, and Section~\ref{subsec:baselines} defines the deployable baselines and the oracle reference. Section~\ref{subsec:ablations} describes the reward-component and out-of-distribution ablations. Section~\ref{subsec:repro_framework} introduces the audit-first reproducibility framework that pins every figure to the SHA-256 hash chain of its inputs.
 
 % --- Subsection 3.1 ---
 \subsection{Framework Architecture Overview}\label{subsec:framework_architecture}
-The proposed framework is designed to transition IoT security from a reactive to a proactive paradigm. This is achieved through the architecture illustrated in Figure \ref{fig:framework_overview}, which can be understood through three primary stages.
+The proposed framework is designed to transition IoT security from a reactive to a proactive paradigm. This is achieved through the architecture illustrated in Figure~\ref{fig:framework_overview}, which can be understood as a closed-loop pipeline of two offline preparation stages and one online learning loop.
 
 \begin{figure}[h!]
     \centering
     \includegraphics[width=0.85\textwidth]{figs/iot_rl_defense_system_diagram_mermaid.png}
-    \caption{High-Level Architecture of the Proactive-Adaptive Defense System.}
+    \caption{High-level architecture of the proactive-adaptive defense system. The dashed boxes are offline (Phase 1 dataset preparation, Phase 2 red-team LSTM training, Phase 4 stage-detector training); the solid box is the online RL loop (Phase 3 environment, Phase 5 agent training, Phase 6/7 evaluation).}
     \label{fig:framework_overview}
 \end{figure}
 
-The three stages are:
+The pipeline has three stages:
 \begin{enumerate}
-    \item \textbf{Stage I: Predictive Foundation.} In this initial, offline stage, a Long Short-Term Memory (LSTM) based neural network is trained on a comprehensive, real-world IoT dataset. The objective is to develop a robust predictive model capable of identifying temporal patterns in network traffic that are indicative of imminent or ongoing cyberattacks. This pre-trained model serves as the system's "intelligence core," providing proactive threat assessments.
-    
-    \item \textbf{Stage II: Core Adaptive Defense System.} The second stage involves the primary training process for the defense agent. A DRL agent is trained within a custom-built simulation environment that models an IoT network. Crucially, this environment is informed by the predictions of the LSTM model from Stage I, which are integrated directly into the agent's observations.
-    
-    \item \textbf{Stage III: The Learning Loop.} This stage represents the fundamental reinforcement learning cycle that governs the adaptive defense system in Stage II. At each step of the simulation, the RL agent selects a defensive action, which is applied to the IoT environment. The environment, in turn, returns a new state and a corresponding reward signal. This continuous feedback loop is the mechanism through which the agent learns an optimal defense policy via trial and error.
+    \item \textbf{Stage I --- Predictive Foundation (offline).} The CICIoT2023 dataset is projected onto a five-stage kill chain (Section~\ref{subsec:data_source}). Two LSTM-based components are trained on the resulting stage-labelled splits: a \emph{red-team episode generator} that samples next-stage transitions for episode roll-outs (Section~\ref{subsec:red_team}), and a \emph{stage detector} that classifies a per-flow feature vector into one of the five kill-chain stages (Section~\ref{subsec:stage_detector}). A supervised RandomForest classifier is also trained as a deployable baseline (Section~\ref{subsec:baselines}).
+    \item \textbf{Stage II --- Adaptive Defense System (online training).} A custom Gymnasium environment instantiates the kill-chain MDP (Section~\ref{subsec:rl_environment}); the red-team LSTM drives stage transitions and a split-aware feature realiser samples observed feature vectors from the appropriate dataset partition. Three DRL algorithms (DQN, PPO, A2C) are trained against this environment (Section~\ref{subsec:drl_training}).
+    \item \textbf{Stage III --- Benchmarking and Ablation.} The trained checkpoints are evaluated on the held-out \texttt{test\_balanced} split against four deployable baselines and an oracle reference (Section~\ref{subsec:baselines}); reward-component and out-of-distribution ablations characterise the policy's sensitivity to environment design (Section~\ref{subsec:ablations}).
 \end{enumerate}
-This decoupled architecture allows the system to ground its understanding of threats in real-world data (Stage I) while learning to apply that understanding to execute effective, autonomous defensive maneuvers through a formal learning process (Stages II and III).
+
+The pipeline is decoupled by phase, with each phase emitting an immutable record under \texttt{docs/results/<phase>/} that pins the SHA-256 hash of every input artefact (Section~\ref{subsec:repro_framework}). This discipline allows the empirical record to be re-verified end-to-end on a fresh checkout in seconds, without retraining any model.
 
 % --- Subsection 3.2 ---
-\subsection{Data Source and Preprocessing}\label{subsec:data_source}
-The empirical validity of any AI-driven security system is fundamentally dependent on the quality and realism of its training data. This research utilizes the \textbf{CICIoT2023 dataset}, a contemporary and extensive resource for IoT security research \cite{Neto2023}.
+\subsection{Data Source and Kill-Chain Projection}\label{subsec:data_source}
+The empirical validity of any AI-driven security system depends critically on the quality and realism of its training data. This research uses the \textbf{CICIoT2023 dataset} \cite{Neto2023}, a contemporary and extensive resource for IoT security research that addresses the limitations of older synthetic benchmarks.
 
 \subsubsection{The CICIoT2023 Dataset}\label{subsubsec:dataset_desc}
-The CICIoT2023 dataset was developed by the Canadian Institute for Cybersecurity (CIC) to address the need for a realistic benchmark reflecting modern IoT network traffic. Its key characteristics make it uniquely suited for this work:
+CICIoT2023 was developed by the Canadian Institute for Cybersecurity to provide a realistic benchmark reflecting modern IoT network traffic. Its key characteristics are:
 \begin{itemize}
-    \item \textbf{Realistic Testbed:} The data was captured from a physical topology of 105 real IoT devices, including smart cameras, speakers, sensors, and hubs \cite{Neto2023}.
-    \item \textbf{Comprehensive Attack Coverage:} It contains benign traffic alongside labeled data for 33 distinct attack types, which are grouped into seven major categories: DDoS, DoS, Reconnaissance, Web-based, Brute Force, Spoofing, and Mirai variants \cite{Neto2023}.
-    \item \textbf{Modern Attack Vectors:} A key feature of the dataset is that attacks were executed \textit{by} other compromised IoT devices within the testbed, simulating realistic botnet and device-to-device attack scenarios \cite{Neto2023}.
+    \item \textbf{Realistic testbed:} traffic was captured from a physical topology of 105 real IoT devices, including smart cameras, speakers, sensors, and hubs \cite{Neto2023}.
+    \item \textbf{Comprehensive attack coverage:} the dataset contains benign traffic alongside labelled data for 33 distinct attack types, grouped into seven major categories: DDoS, DoS, Reconnaissance, Web-based, Brute Force, Spoofing, and Mirai variants.
+    \item \textbf{Modern attack vectors:} attacks were executed \emph{by} other compromised IoT devices within the testbed, simulating realistic botnet and device-to-device attack scenarios.
 \end{itemize}
 
-%\subsubsection{Data Preprocessing Pipeline}\label{subsubsec:preprocessing}
-%To prepare the dataset for model training, a multi-step preprocessing pipeline was implemented. The raw network flow data, provided in CSV format, undergoes the following transformations:
-%\begin{enumerate}
-%    \item \textbf{Data Cleaning:} Rows with missing or infinite values are removed to ensure data integrity.
-%    \item \textbf{Feature Scaling:} All numerical features are standardized using a `StandardScaler`. This process removes the mean and scales the data to unit variance, which is critical for the stable training of neural networks.
-%    \item \textbf{Label Encoding:} The categorical attack labels are converted into a numerical format using a `LabelEncoder`.
-%    \item \textbf{Data Splitting:} The dataset is divided into training (70\%), validation (15\%), and test (15\%) sets to ensure robust model evaluation and prevent overfitting.
-%    \item \textbf{Sequence Generation:} For the LSTM model, the time-series data is transformed into sequences of a fixed length. Each sequence consists of a series of consecutive network flow feature vectors, with the label corresponding to the final time step in the sequence.
-%\end{enumerate}
-%The scaler and label encoder from this process are saved as artifacts to ensure consistent data transformation during both training and inference.
+\subsubsection{Kill-Chain Projection}\label{subsubsec:kc_projection}
+A per-class mapping projects each of the 34 CICIoT2023 labels (33 attack classes plus benign) onto exactly one of the five kill-chain stages (\textsc{benign}, \textsc{recon}, \textsc{access}, \textsc{maneuver}, \textsc{impact}) introduced in Section~\ref{subsec:kill_chain}. The full table is provided in Appendix~B; the design principle is that classes describing scanning or fingerprinting (e.g.\ \texttt{Recon-OSScan}, \texttt{Recon-PortScan}) map to \textsc{recon}, classes describing exploit-driven foothold establishment (\texttt{BrowserHijacking}, \texttt{CommandInjection}, brute-force variants) map to \textsc{access}, lateral-movement and spoofing classes map to \textsc{maneuver}, and direct denial-of-service or data-loss classes (most DDoS, DoS, and Mirai variants) map to \textsc{impact}. The kill-chain stage is the only label the downstream RL pipeline consumes; the original 34-class label is retained only for the supervised stage-detector evaluation.
+
+\subsubsection{Splits Protocol and Out-of-Distribution Reservation}\label{subsubsec:splits}
+Four attack classes are reserved as held-out \emph{out-of-distribution} (OOD) classes that the supervised models and RL agents never see during training: \texttt{DDoS-HTTP\_Flood} (\textsc{impact}), \texttt{Mirai-udpplain} (\textsc{impact}), \texttt{XSS} (\textsc{access}), and \texttt{VulnerabilityScan} (\textsc{recon}). The remaining 30 classes are stratified-split into \texttt{train} (70\,\%), \texttt{val\_balanced} (15\,\%), and \texttt{test\_balanced} (15\,\%) partitions with disjoint indices. The disjointness of the four sets (\texttt{train}, \texttt{val\_balanced}, \texttt{test\_balanced}, \texttt{ood}) is locked behind explicit assertions in \texttt{tests/test\_build\_split\_indices.py}.
+
+A subtle leakage bug in the original splits-construction script was discovered during stage-detector training: the OOD classes were correctly identified as held-out but were not removed from the \texttt{train}/\texttt{val}/\texttt{test} index pools, so 70\,\% of every ``held-out'' class was simultaneously a training row. The fix (commit \texttt{3cd2fb9}) computes the OOD indices first, masks them out of the index pool, and only then performs the stratified split; the disjointness assertions above were added in the same commit. The leakage bug and its fix are presented honestly in the results chapter (Section~\ref{sec:results}, §4.2) as a teachable example of the audit-first protocol catching a real bug before it could contaminate downstream phases.
 
 % --- Subsection 3.3 ---
-\subsection{Proactive Attack Prediction Module}\label{subsec:lstm_module}
-The proactive core of the framework is the attack prediction module, which is implemented as a Long Short-Term Memory (LSTM) network. LSTMs are a type of Recurrent Neural Network (RNN) specifically designed to learn long-term dependencies in sequential data, making them highly effective for time-series analysis of network traffic \cite{Hochreiter1997}.
+\subsection{Red-Team Episode Generator}\label{subsec:red_team}
+The training-time environment requires a generative model of attacker behaviour that produces realistic stage-to-stage transitions. The red-team component is a single-layer Long Short-Term Memory (LSTM) network with hidden size 128 trained for 15 epochs with early stopping on the validation cross-entropy loss \cite{Hochreiter1997}. The network is conditioned on a prefix of past stages and predicts the next stage as a softmax distribution over the five kill-chain stages.
 
-\subsubsection{LSTM Model Architecture}
-The attack prediction model consists of the following layers:
-\begin{itemize}
-    \item An \textbf{LSTM layer} that processes the input sequences of network features to capture temporal patterns.
-    \item A \textbf{Dropout layer} for regularization to prevent overfitting.
-    \item A series of \textbf{Fully Connected (Dense) layers} with ReLU activation functions to process the output from the LSTM layer.
-    \item A final \textbf{Softmax output layer} that produces a probability distribution over all possible attack classes (including benign), representing the model's prediction.
-\end{itemize}
-The model is trained using the Adam optimizer and the Cross-Entropy Loss function, which are standard for multi-class classification tasks. The training process aims to minimize this loss, thereby learning an accurate mapping from a sequence of network data to a specific attack label.
+The training data are stage-token sequences derived from per-attack-class sequence priors built from the \texttt{train} split: each attack class contributes its empirical attacker behaviour to a class-conditional transition matrix, and episodes are generated by composing those priors. The resulting LSTM is upper-triangular by construction --- once the chain advances to a more compromising stage, it does not return absent defender intervention --- which is consistent with the IoTWarden threat model. Section~\ref{sec:results}, §4.1 presents the validation curves and the empirical $5\times5$ transition matrix the trained LSTM generates.
 
 % --- Subsection 3.4 ---
-\subsection{Reinforcement Learning Environment Design}\label{subsec:rl_environment}
-To train the DRL agents, a custom simulation environment was developed using the Gymnasium toolkit. This environment models the MDP described in Section \ref{subsubsec:mdp} and serves as the interactive training ground for the defense agents. Its core components are the state space, action space, and reward function.
+\subsection{Supervised Stage Detector}\label{subsec:stage_detector}
+The supervised stage detector classifies a 29-feature CICIoT2023 vector into one of the five kill-chain stages. It is a small multi-layer perceptron with approximately $4{,}357$ parameters (20\,KB on disk) and a median per-sample CPU inference latency of $0.039$\,ms. A 100-tree RandomForest is trained on the same data as a complementary baseline; the RandomForest achieves a higher in-distribution macro-F1 (0.90 vs.\ 0.79 for the production detector) but is approximately three orders of magnitude larger on disk and is therefore retained primarily as the supervised classifier underlying the deployable RF-Acting baseline (Section~\ref{subsec:baselines}). A 1D-CNN baseline trained on the same data is retained for completeness.
 
-\subsubsection{State and Action Spaces}
-The environment is defined by a `Dict` observation space to provide the agent with a rich, multi-faceted view of the network's status.
-\begin{itemize}
-    \item \textbf{State Space ($S$):} The observation given to the agent at each timestep is a dictionary containing:
-    \begin{itemize}
-        \item \texttt{current\_state}: A vector of real-time network telemetry features.
-        \item \texttt{state\_history}: A matrix containing a history of the last $N$ network states, allowing the agent to perceive temporal trends.
-        \item \texttt{action\_history}: A vector of the last $M$ actions taken by the agent, providing it with self-awareness of its recent behavior.
-        \item \texttt{attack\_prediction}: A vector of probabilities from the pre-trained LSTM model, representing the proactive assessment of the current threat level. This is the key link between the predictive and adaptive stages of the framework.
-    \end{itemize}
-    \item \textbf{Action Space ($A$):} The agent can select one of four discrete defensive actions:
-    \begin{enumerate}
-        \item \textbf{Monitor:} Take no action and continue observing.
-        \item \textbf{Rate-Limit:} Restrict the traffic flow from suspicious sources.
-        \item \textbf{Block IP:} Completely block traffic from identified malicious IPs.
-        \item \textbf{Shutdown Service:} Temporarily disable a non-essential service under severe attack.
-    \end{enumerate}
-\end{itemize}
-
-\subsubsection{Reward Function}
-The design of the reward function is critical for guiding the agent toward the desired security posture. The function is engineered to balance threat mitigation with operational continuity. The composite reward at each timestep $t$, denoted $R_t$, is calculated as the sum of a prediction-based reward ($R_{pred}$) and an action-based reward ($R_{action}$):
-$$ R_t = R_{pred} + R_{action} $$
-Let $y_t \in \{0, 1\}$ be the true state of the network at timestep $t$ (where $1$ signifies an attack and $0$ signifies benign traffic), let $\hat{y}_t \in \{0, 1\}$ be the LSTM model's prediction, and let $\rho_t$ be the predicted risk score. The components are defined as follows:
-
-\begin{itemize}
-    \item \textbf{Prediction Reward ($R_{pred}$):} This component provides feedback based on the correctness of the LSTM's threat assessment. The reward is scaled by the model's confidence ($\rho_t$):
-    \begin{equation}
-    R_{pred} = 
-    \begin{cases} 
-        +10 \cdot \rho_t & \text{if } y_t=1 \text{ and } \hat{y}_t=1 \text{ (True Positive)} \\
-        +5.0 & \text{if } y_t=0 \text{ and } \hat{y}_t=0 \text{ (True Negative)} \\
-        -15 \cdot \rho_t & \text{if } y_t=1 \text{ and } \hat{y}_t=0 \text{ (False Negative)} \\
-        -5 \cdot (1 - \rho_t) & \text{if } y_t=0 \text{ and } \hat{y}_t=1 \text{ (False Positive)}
-    \end{cases}
-    \end{equation}
-
-    \item \textbf{Action Reward ($R_{action}$):} This component evaluates the suitability of the agent's action $a_t$ given the true state of the network. Actions are rewarded for effective mitigation during an attack and penalized for unnecessary disruption during benign traffic. Let $E(a_t)$ be an action's effectiveness bonus and $C(a_t)$ be its disruption cost, defined as:
-    \begin{itemize}
-        \item Action Effectiveness $E(a_t)$: Bonus values of $\{0.8, 0.9, 0.7, 0.6\}$ for actions \{`monitor`, `rate-limit`, `block IP`, `shutdown service`\}, respectively.
-        \item Action Cost $C(a_t)$: Penalty values of $\{0.0, -1.0, -2.0, -3.0\}$ for the same actions.
-    \end{itemize}
-    The action reward is then:
-    \begin{equation}
-    R_{action} = 
-    \begin{cases} 
-        +5 \cdot E(a_t) & \text{if } y_t=1 \text{ (Attack ongoing)} \\
-        C(a_t) & \text{if } y_t=0 \text{ (Benign traffic)}
-    \end{cases}
-    \end{equation}
-\end{itemize}
-This composite structure incentivizes the agent to learn a nuanced policy that trusts the predictor but also considers the operational impact of its actions, thereby balancing security with service continuity.
+The detector is trained on the post-leakage-fix \texttt{train} split (281{,}420 rows after OOD reservation; pre-fix the figure was 309{,}566 rows) and evaluated on the held-out \texttt{test\_balanced} split. Per-stage recall is reported as the principal in-distribution metric and per-class recall as the principal out-of-distribution metric. The detector's behaviour on the four held-out OOD classes is the upstream input to the RL-level robustness story (Section~\ref{subsec:ablations}, F15 ablation): the same OOD-asymmetry pattern (one class with recall $0.001$ and three classes with recall $\geq 0.79$) recurs in the RL evaluation in a way that is best understood through the supervised result first.
 
 % --- Subsection 3.5 ---
-\subsection{DRL Agent Training and Benchmarking}\label{subsec:drl_training}
-The final component of the methodology is the training and evaluation of the DRL defense agents. To ensure robust and reproducible results, this work leverages the Stable Baselines3 library, a standard for high-quality DRL algorithm implementations.
+\subsection{Reinforcement Learning Environment}\label{subsec:rl_environment}
+The RL environment is a custom Gymnasium task that instantiates the kill-chain MDP. Its core components are the state space, the five-action defender, and the as-built piecewise reward function. Together they implement the formal MDP $(S, A, P, R, \gamma)$ introduced in Section~\ref{subsubsec:mdp}.
 
-\paragraph{Algorithm Selection}
-Three prominent DRL algorithms were chosen to benchmark performance across different learning paradigms:
+\subsubsection{State and Action Spaces}\label{subsubsec:state_action}
+The environment uses a \texttt{Dict} observation space that gives the agent a multi-modal view of the network state. At each step the observation contains:
+\begin{itemize}
+    \item \texttt{current\_state}: the 29-dimensional CICIoT2023 traffic feature vector at the current step, sampled by a split-aware realisation engine that draws from the named partition (\texttt{train} during training; \texttt{test\_balanced} during evaluation) and never from any OOD-reserved row.
+    \item \texttt{state\_history}: a $w$-step buffer of recent feature vectors, allowing the agent to perceive temporal trends.
+    \item \texttt{action\_history}: a buffer of the agent's most recent actions, providing self-awareness of recent behaviour.
+    \item \texttt{stage\_pred} (optional, evaluation-time only): the discrete predicted stage from a frozen supervised classifier, used by the deployable RF-Acting baseline; the trained DRL agents do not consume this field during training.
+\end{itemize}
+The action space is the ordered five-action defender menu introduced in Section~\ref{subsec:rl_concepts}: $A = \{\textsc{observe}=0, \textsc{log}=1, \textsc{throttle}=2, \textsc{block}=3, \textsc{isolate}=4\}$. The ordering matters because the reward function below penalises actions outside a $\pm 1$ band of the recommended action for the current stage.
+
+\subsubsection{Episode Lifecycle}\label{subsubsec:lifecycle}
+The episode begins at $t = 0$ in the \textsc{benign} stage. At each step, the agent observes the state and chooses an action; the environment then advances the attacker stage according to one of three rules:
 \begin{enumerate}
-    \item \textbf{Deep Q-Network (DQN):} A classic value-based, off-policy algorithm that excels in discrete action spaces and serves as a strong baseline \cite{Mnih2015}.
-    \item \textbf{Proximal Policy Optimization (PPO):} A state-of-the-art on-policy, actor-critic algorithm known for its stability and reliable performance \cite{Schulman2017}.
-    \item \textbf{Advantage Actor-Critic (A2C):} A synchronous, on-policy actor-critic method that is often faster than PPO and provides another point of comparison \cite{Mnih2016}.
+    \item \textbf{Defender-driven de-escalation} (probability $p_{\textrm{de-esc}} = 0.6$). If the agent picks \textsc{block} or \textsc{isolate} on an active \textsc{access} or \textsc{maneuver} stage, with probability $p_{\textrm{de-esc}}$ the env resets the stage to \textsc{benign} and grants the agent a \texttt{defense\_success\_bonus} of $+250$.
+    \item \textbf{Natural LSTM transition} (otherwise). The red-team LSTM samples the next stage from its conditional distribution given the recent transition history.
+    \item \textbf{Lifecycle-floor IMPACT clamp.} If the natural transition produces \textsc{impact} before $t = \texttt{min\_episode\_length} = 20$, the stage is clamped to \textsc{maneuver} for that step. This reflects the threat-model assumption that real-world \textsc{impact} requires time-to-execute and is not an instantaneous jump from \textsc{recon}.
 \end{enumerate}
-All agents use a `MultiInputPolicy` architecture, which is specifically designed to process the `Dict` observation space from the custom IoT environment.
+The episode terminates when the chain reaches \textsc{impact} (default Phase-3 contract; this can be flipped by the \texttt{impact\_is\_terminal} flag exercised in the F9 ablation, see Section~\ref{subsec:ablations}) or is truncated at \texttt{max\_steps} $= 500$.
+
+\subsubsection{Reward Function}\label{subsubsec:reward}
+The reward at step $t$ is a piecewise composition of \textbf{six independent reward signals} plus three asymmetric guardrails for cocked-trigger benign-stage policies. Let $a_t$ denote the action chosen at step $t$, $s_t$ the decision-time stage (i.e.\ the stage the agent saw when it chose $a_t$, not the next stage), and $\textit{rec}(s)$ the recommended-action mapping (\textsc{benign}~$\to$~\textsc{observe}, \textsc{recon}~$\to$~\textsc{log}, \textsc{access}~$\to$~\textsc{throttle}, \textsc{maneuver}~$\to$~\textsc{block}, \textsc{impact}~$\to$~\textsc{isolate}). The per-step reward is:
+\begin{align}\label{eq:reward}
+R_t \;=\; & -C_{\textrm{action}}(a_t) \cdot \alpha \\
+        & + r_{\textrm{prop}} \cdot \mathbb{1}\!\left[ |a_t - \textit{rec}(s_t)| \leq 1 \right]
+        - p_{\textrm{disp}} \cdot \mathbb{1}\!\left[ |a_t - \textit{rec}(s_t)| \geq 2 \right] \nonumber \\
+        & + r_{\textrm{benign}} \cdot \mathbb{1}\!\left[ s_t = \textsc{benign} \;\wedge\; a_t \leq \textsc{log} \right] \nonumber \\
+        & - p_{\textrm{over}} \cdot \mathbb{1}\!\left[ s_t = \textsc{benign} \;\wedge\; a_t \geq \textsc{throttle} \right] \nonumber \\
+        & - p_{\textrm{block-benign}} \cdot \mathbb{1}\!\left[ s_t = \textsc{benign} \;\wedge\; a_t \geq \textsc{block} \right] \nonumber \\
+        & - p_{\textrm{block-recon}} \cdot \mathbb{1}\!\left[ s_t = \textsc{recon} \;\wedge\; a_t \geq \textsc{block} \right] \nonumber
+\end{align}
+At terminal-IMPACT, an additional accounting block fires:
+\begin{equation}\label{eq:reward_terminal}
+R^{\textrm{term}} \;=\; -p_{\textrm{impact}} \;+\; \begin{cases} +b_{\textrm{success}} & \text{if } a_t \geq \textsc{block} \\ -p_{\textrm{missed}} & \text{if } a_t \leq \textsc{log} \\ 0 & \text{otherwise} \end{cases}
+\end{equation}
+Defender-driven de-escalations award $+b_{\textrm{success}}$ mid-episode when they fire (independent of the terminal-IMPACT step).
+
+The Phase-3 default constants used throughout the dissertation (\texttt{AdversarialEnvConfig}) are listed in Table~\ref{tab:reward_constants}. They were calibrated so that the recommended-action policy is net-positive in expectation across an episode (gate G3.4) while the always-\textsc{observe} policy is net-negative (gate G3.5), with all 13 calibration tests in \texttt{tests/test\_phase3\_env\_gates.py} green at the locking commit \texttt{36fec22}.
+
+\begin{table}[h!]
+\centering
+\caption{Phase-3 default reward constants (\texttt{AdversarialEnvConfig}). Symbols match Equations~\eqref{eq:reward}--\eqref{eq:reward_terminal}.}
+\label{tab:reward_constants}
+\begin{tabular}{lrl}
+\hline
+Symbol & Value & Description \\
+\hline
+$\alpha$              & 1.0   & action-cost scale \\
+$r_{\textrm{prop}}$   & 5.0   & per-step proportionality bonus ($|a - \textit{rec}(s)| \leq 1$) \\
+$p_{\textrm{disp}}$   & 5.0   & per-step disproportionate-action penalty ($|a - \textit{rec}(s)| \geq 2$) \\
+$r_{\textrm{benign}}$ & 10.0  & benign-passive bonus (\textsc{benign} + \textsc{observe}/\textsc{log}) \\
+$p_{\textrm{over}}$   & 50.0  & overreact-on-benign penalty (\textsc{benign} + $a \geq$ \textsc{throttle}) \\
+$p_{\textrm{block-benign}}$ & 100.0 & additional block-on-benign penalty \\
+$p_{\textrm{block-recon}}$  & 50.0  & block-on-recon penalty \\
+$p_{\textrm{impact}}$ & 200.0 & terminal-IMPACT penalty (always applied) \\
+$b_{\textrm{success}}$ & 250.0 & defense-success bonus (terminal \textsc{block}/\textsc{isolate} or de-esc) \\
+$p_{\textrm{missed}}$ & 150.0 & terminal-IMPACT miss penalty (action $\leq$ \textsc{log}) \\
+$p_{\textrm{de-esc}}$ & 0.6 & defender-driven de-escalation success probability \\
+\hline
+\end{tabular}
+\end{table}
+
+The reward is evaluated against the \emph{decision-time} stage $s_t$, not against the next stage; this preserves causal credit assignment. Mean Time To Compromise (MTTC), defined as the number of steps from episode start to the first \textsc{impact} transition (with the lifecycle-floor clamp described above), is exposed as a per-episode telemetry signal but is \emph{not} part of the reward function.\footnote{Because the lifecycle-floor IMPACT clamp downgrades pre-step-20 \textsc{impact} transitions to \textsc{maneuver}, the empirical MTTC distribution is biased toward exactly $\texttt{min\_episode\_length} = 20$ when compromise occurs at all. Mean MTTC values reported in this dissertation should be read as ``lifecycle-floor-bounded'' rather than ``unconstrained natural'' MTTC; see \texttt{docs/results/03\_env/RESULTS.md} \S7 R2 for the full caveat.}
+
+% --- Subsection 3.6 ---
+\subsection{Blue-Team Training Protocol}\label{subsec:drl_training}
+The trained-RL component of the framework consists of three DRL algorithms (DQN, PPO, A2C; Section~\ref{subsubsec:drl_algorithms}) trained against the Phase-3 environment. The implementation uses Stable Baselines3 with the \texttt{MultiInputPolicy} architecture, which natively handles the \texttt{Dict} observation space.
+
+Each algorithm is trained for $250{,}000$ environment steps over five random seeds (one subprocess per (algorithm, seed) pair, total 15 runs). The choice of $250{,}000$ rather than $500{,}000$ was made on the basis of a probe-driven scaling study during Phase~5: PPO mean reward climbed from $497$ to $1071$ across five $10{,}000$-step buckets and the marginal return became negligible past the $250{,}000$-step horizon, while seed-confidence-interval bands at $250{,}000$ were already publication-tight ($\pm 50$ reward). Total wallclock for the 15-run sweep is approximately 109 minutes on a single CPU core. Hyperparameters per algorithm (learning rate, batch size, update horizon, network architecture) are listed in Appendix~C.
+
+Training is driven against the \texttt{train} split with \texttt{exclude\_ood=True} hardcoded (preventing OOD-reserved rows from leaking into training); evaluation is on the \texttt{val\_balanced} split during training and on \texttt{test\_balanced} for the final benchmark in Section~\ref{subsec:baselines}. The eval-distribution contract is verified end-to-end in code; see Section~\ref{subsec:repro_framework}.
+
+% --- Subsection 3.7 ---
+\subsection{Baseline Policies and the Oracle Reference}\label{subsec:baselines}
+The trained DRL agents are evaluated against four reference policies that span the achievable performance under the kill-chain decision frame, plus an oracle reference that bounds the value of perfect stage detection. All five run on the same evaluation harness as the trained RL policies (deterministic 150-episode roll-outs on \texttt{test\_balanced}).
+
+\begin{itemize}
+    \item \textbf{Random.} Uniform sampling from the five-action menu at every step. The lower bound on any non-trivial policy.
+    \item \textbf{Always-\textsc{observe}.} A purely passive policy that picks \textsc{observe} at every step regardless of stage. The cost-only baseline: zero defensive force, maximum operational throughput, every IMPACT lands.
+    \item \textbf{Always-\textsc{block}.} A policy that picks \textsc{block} at every step. The reverse of always-\textsc{observe}: maximum defensive force at the cost of guaranteed operational disruption.
+    \item \textbf{RF-Acting (deployable).} The composite policy that uses a frozen supervised RandomForest classifier to predict the current stage from the observed feature vector and then maps the predicted stage to an action via the recommended-action mapping. RF-Acting is fully deployable; its strength is bounded by the supervised classifier's accuracy.
+    \item \textbf{Recommended-Action rule (oracle reference, \emph{not} a competing baseline).} The same action-selection rule but consuming the \emph{true} attack stage from the simulator's privileged \texttt{info["attack\_stage"]} field. This is an oracle: a real defender cannot read the simulator's state. Reported throughout this dissertation as an upper bound on the value of perfect stage detection under the chosen reward function.
+\end{itemize}
+
+% --- Subsection 3.8 ---
+\subsection{Reward-Component and Out-of-Distribution Ablations}\label{subsec:ablations}
+Two ablation strands characterise the trained policy's sensitivity to environment design.
+
+\subsubsection{Reward-Component Sweep (F9)}\label{subsubsec:f9}
+A sparse one-at-a-time sweep perturbs each of the five principal reward coefficients (\texttt{defense\_success\_bonus}, \texttt{penalty\_missed\_impact}, \texttt{reward\_proportional}, \texttt{reward\_benign\_passive}, \texttt{penalty\_disproportionate}) by $0.5\times$ and $2.0\times$ around its Phase-3 default, holding all other coefficients fixed. A separate cell perturbs the binary \texttt{impact\_is\_terminal} flag, which controls whether the IMPACT-stage transition immediately ends the episode (default \emph{True}) or grants the agent one final mitigation turn (\emph{False}). Each cell trains PPO over five seeds for $250{,}000$ steps under the perturbed environment and reports mean test reward + bootstrap CI on \texttt{test\_balanced}.
+
+The verdict logic for the sweep is two-strand to remain apples-to-apples (Phase-7 §5.2 \texttt{D7.1.1}): cells that scale a reward coefficient also scale the absolute reward number, so they are not directly comparable to the Phase-6 unscaled baseline; only cells that preserve the Phase-3 reward function (the centre baseline and the two \texttt{impact\_is\_terminal} cells) are eligible for the apples-to-apples raw-reward gate. Reward-coefficient cells are scored on the \texttt{mitigated\_impact\_rate} security KPI, which is unaffected by reward-coefficient scaling.
+
+\subsubsection{Aggressiveness Sweep (F10)}\label{subsubsec:f10}
+A six-point sweep over the defender de-escalation probability $p_{\textrm{de-esc}} \in \{0.0, 0.2, 0.4, 0.6, 0.8, 1.0\}$ characterises the trained policy's response to attacker aggressiveness, with the oracle recommended-action rule run as a reference at every $p$ value.
+
+\subsubsection{Out-of-Distribution Robustness (F15)}\label{subsubsec:f15}
+The four held-out OOD attack classes (\texttt{DDoS-HTTP\_Flood}, \texttt{Mirai-udpplain}, \texttt{XSS}, \texttt{VulnerabilityScan}) are evaluated against every Phase-6 policy (DQN, PPO, A2C $\times$ 5 seeds, plus the four baselines and the oracle rule). The evaluation uses a \emph{hybrid realiser}: an in-distribution feature pool drawn from the post-leakage-fix \texttt{train} split is overlaid with the OOD class's rows only at the kill-chain stage that class belongs to (e.g.\ \texttt{VulnerabilityScan} rows replace the \textsc{recon} stage's natural in-distribution feature realiser; the other four stages are unchanged). This design isolates the OOD signal to the one stage where it matters and avoids forcing $\texttt{env.reset}()$ to fail on stages the OOD class does not occupy. The pre-registered finding-activation rule \texttt{D7.9.1} narrows the thesis claim if the trained RL policies do not beat the deployable RF-Acting baseline on the hardest OOD class; this finding does activate empirically and is presented in Section~\ref{sec:results}, §4.6.
+
+% --- Subsection 3.9 ---
+\subsection{Reproducibility Framework}\label{subsec:repro_framework}
+Every figure under \texttt{docs/results/<phase>/} ships with a \texttt{manifest.json} that records (a) the SHA-256 hash of every input artefact (data splits, trained models, scaler, episode roll-outs, upstream phase manifests), (b) the producing Git commit, and (c) the producing-script invocation. A smoke-reproducibility harness, \texttt{python -m scripts.reproducibility\_smoke}, walks the full hash chain in approximately five seconds on a fresh checkout and reports a per-input verdict bucketed into \textbf{OK} (hash matches on disk), \textbf{FAIL} (hash mismatches; reproducibility broken), \textbf{KNOWN-DIVERGENCE} (a documented and audited mismatch, e.g.\ the pre-leakage-fix splits-manifest SHA recorded by Phase 1 and Phase 2 before the \texttt{3cd2fb9} fix; documented in \texttt{docs/results/02\_red\_team/RESULTS.md} \S5.3), and \textbf{SKIP} (a gitignored input not on disk). The harness's verdict at the head of the dissertation's evaluation chain is \textbf{PASS} (458 OK, 0 FAIL, 2 KNOWN-DIVERGENCE, 6 SKIP). The full reproducibility recipe is documented in Appendix~A.
