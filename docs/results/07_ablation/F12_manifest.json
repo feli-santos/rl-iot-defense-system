@@ -7,10 +7,6 @@
     "json": "docs/results/07_ablation/F12_summary.json"
   },
   "inputs": {
-    "phase6_eval_manifest": {
-      "path": "runs/phase6/eval_manifest.json",
-      "sha256": "c4a60a8f51d65095af339eca5bee7e2faa2aa75461efe69e0e37813e342b8f10"
-    },
     "phase7_f9_sweep_manifest": {
       "path": "runs/phase7/reward_sweep/sweep_manifest.json",
       "sha256": "19f35074f76ecf104ab9bb710c7bc5027e1f6f3d8307ee1935895015c145b758"
@@ -18,6 +14,18 @@
     "phase7_f10_sweep_manifest": {
       "path": "runs/phase7/aggressiveness/sweep_manifest.json",
       "sha256": "3d67e039d4ffc02a1df0d7b5602cbed7276dca1df9c231b13fe72be9920d49a4"
+    },
+    "phase6_eval_manifest": {
+      "path": "runs/phase6/eval_manifest.json",
+      "sha256": "c4a60a8f51d65095af339eca5bee7e2faa2aa75461efe69e0e37813e342b8f10"
+    },
+    "phase5_sweep_manifest": {
+      "path": "runs/phase5/sweep_manifest.json",
+      "sha256": "cc7454320d9acca8830f71c8d63a56f07934dc7f9563ceb089332b14f995592e"
+    },
+    "phase1_splits_manifest": {
+      "path": "docs/results/01_dataset/manifest.json",
+      "sha256": "c8574094e7b914fdf5ecb16e107facbf2f073ac3f4ec1b80b5284c49f96e19e5"
     },
     "eval_jsonls_sha256": {
       "runs/phase6/a2c/seed_0/eval_test.jsonl": "163cc95e1e81597e58fd4a4ce6e4a82bf2dcecd201a623572c0c0f30746d9450",

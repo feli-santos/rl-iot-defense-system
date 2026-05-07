@@ -377,6 +377,17 @@ def _build_argparser() -> argparse.ArgumentParser:
     p.add_argument("--phase7-f9-runs",  default="runs/phase7/reward_sweep")
     p.add_argument("--phase7-f10-runs", default="runs/phase7/aggressiveness")
     p.add_argument("--out-dir",         default="docs/results/07_ablation")
+    # Step-8 F2 (07_HANDOFF.md §5): explicit upstream-manifest SHA pins.
+    p.add_argument(
+        "--phase5-sweep-manifest",
+        default="runs/phase5/sweep_manifest.json",
+        help="Phase-5 sweep_manifest.json (warm-start trained checkpoints).",
+    )
+    p.add_argument(
+        "--phase1-splits-manifest",
+        default="docs/results/01_dataset/manifest.json",
+        help="Phase-1 splits manifest.json (post-3cd2fb9; SHA 1e99d596...).",
+    )
     return p
 
 
@@ -442,6 +453,16 @@ def main(argv: Optional[List[str]] = None) -> int:
             "phase7_f10_sweep_manifest": {
                 "path": str(Path(args.phase7_f10_runs) / "sweep_manifest.json"),
                 "sha256": _sha256(Path(args.phase7_f10_runs) / "sweep_manifest.json"),
+            },
+            # Step-8 F2: explicit upstream-manifest SHA pins so the F12
+            # hash chain is self-contained (no transitive lookups).
+            "phase5_sweep_manifest": {
+                "path": str(args.phase5_sweep_manifest),
+                "sha256": _sha256(Path(args.phase5_sweep_manifest)),
+            },
+            "phase1_splits_manifest": {
+                "path": str(args.phase1_splits_manifest),
+                "sha256": _sha256(Path(args.phase1_splits_manifest)),
             },
             "eval_jsonls_sha256": sha_collector,
         },
