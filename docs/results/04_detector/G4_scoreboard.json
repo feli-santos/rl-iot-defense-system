@@ -1,0 +1,73 @@
+{
+  "schema_version": "2.0",
+  "phase": 4,
+  "git_sha": "99b2452b0602734aabd20841f04526f4341b8a5b",
+  "completed_at": "2026-05-07T13:37:32Z",
+  "evaluated_against": {
+    "split": "test_balanced",
+    "manifest_git_sha": "3cd2fb90ac7a",
+    "manifest_generated_at": "2026-04-29T16:56:35Z",
+    "input_hashes_in": "manifest.json"
+  },
+  "summary": {
+    "total_gates": 5,
+    "pass": 3,
+    "pass_with_finding": 1,
+    "pass_without_stretch": 0,
+    "fail_with_finding": 0,
+    "fail": 0,
+    "skip": 1
+  },
+  "gates": [
+    {
+      "id": "G4.1",
+      "description": "full pytest suite green",
+      "threshold": "all tests green",
+      "value": "329 / 329 (Phase-4 lock; post-Phase-10 cleanup: 411/411 at HEAD; see Step-7 \u00a79 footnote)",
+      "status": "SKIP",
+      "evaluated": false,
+      "note": "evaluated separately by `pytest -q`; locked Phase-4 value preserved verbatim from RESULTS.md \u00a72"
+    },
+    {
+      "id": "G4.2",
+      "description": "Detector head macro-F1 on test_balanced >= 0.75",
+      "threshold": 0.75,
+      "observed": 0.785462,
+      "status": "PASS"
+    },
+    {
+      "id": "G4.3",
+      "description": "Detector head per-stage recall >= 0.50 on every stage",
+      "threshold": 0.5,
+      "observed_worst": 0.539,
+      "observed_worst_at": "StageDetector/RECON",
+      "diagnostic_cross_baseline_worst": 0.497,
+      "diagnostic_cross_baseline_worst_at": "CNN1D/RECON",
+      "status": "PASS"
+    },
+    {
+      "id": "G4.4",
+      "description": "At least one held-out OOD class fails to generalise (recall <= 0.30)",
+      "threshold_min_recall": 0.3,
+      "observed_min": 0.000825,
+      "observed_max": 0.998597,
+      "observed_gap": 0.997772,
+      "per_class": {
+        "DDoS-HTTP_Flood": 0.998597,
+        "Mirai-udpplain": 0.786074,
+        "VulnerabilityScan": 0.000825,
+        "XSS": 0.919917
+      },
+      "note": "Asymmetric OOD generalisation observed (max=0.999, min=0.001, gap=0.998). At least one held-out class falls within the ambitious threshold; the detector has a genuine blind spot for the RL agent to compensate for. Recorded as a thesis finding (PLAN \u00a78.D2 revised step 4.5).",
+      "status": "PASS-WITH-FINDING",
+      "finding_id": "D2.1"
+    },
+    {
+      "id": "G4.5",
+      "description": "StageDetector per-sample inference <= 1 ms",
+      "threshold_ms": 1.0,
+      "observed_ms": 0.0392,
+      "status": "PASS"
+    }
+  ]
+}

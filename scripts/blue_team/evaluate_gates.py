@@ -125,14 +125,58 @@ def evaluate(runs_root: Path, out_dir: Path, fraction: float = 0.10) -> Dict[str
     if f4_summary_path.exists():
         f4 = json.loads(f4_summary_path.read_text())
         g5_5_passes = bool(f4.get("g5_5_passes", False))
-        g5_5_per_stage = f4.get("g5_5_per_stage", {})
+        # F4_summary.json::g5_5_per_stage ships per-stage `passes:bool|null`
+        # entries (producer: scripts/blue_team/plot_action_dist.py). For
+        # the unified scoreboard schema (Step-8 F3 acceptance: "no `passes`
+        # key remains"), we normalise every nested `passes` to `status:enum`
+        # in-place when copying. The producer (locked F4 artefact) is left
+        # untouched; only G5_scoreboard.json reflects the unified shape.
+        raw_per_stage = f4.get("g5_5_per_stage", {})
+        g5_5_per_stage = {}
+        for stage, entry in (raw_per_stage or {}).items():
+            if not isinstance(entry, dict):
+                g5_5_per_stage[stage] = entry
+                continue
+            new_entry = {k: v for k, v in entry.items() if k != "passes"}
+            ps = entry.get("passes")
+            if ps is None:
+                new_entry["status"] = "SKIP"
+            elif ps is True:
+                new_entry["status"] = "PASS"
+            else:
+                new_entry["status"] = "FAIL"
+            g5_5_per_stage[stage] = new_entry
     else:
         logger.warning("F4_summary.json not found; G5.5 marked as UNKNOWN")
         g5_5_passes = None
         g5_5_per_stage = None
 
+    # Status-enum derivation (Step-8 F3, schema v2.0). Mirrors the
+    # Phase-6 G6_scoreboard.json shape.
+    g5_7_passes = all([
+        (out_dir / "F3_manifest.json").exists(),
+        (out_dir / "F4_manifest.json").exists(),
+        (out_dir / "T1_hparams.json").exists(),
+    ])
+
+    def _status(passes: Optional[bool], evaluated: bool = True) -> str:
+        if not evaluated or passes is None:
+            return "SKIP"
+        return "PASS" if passes else "FAIL"
+
+    # G5.4 is the headline narrative-PASS-WITH-FINDING gate per
+    # Step-5 F1: mechanically below the 0.5 threshold (D5.4.1
+    # de-escalation-farming behaviour) but consistent with the
+    # documented thesis claim that the agent learned the policy
+    # the reward incentivised. Encoded as FAIL-WITH-FINDING +
+    # finding_id D5.4.1 to preserve the audit trail.
+    g5_4_status = (
+        "PASS" if g5_4_passes else "FAIL-WITH-FINDING"
+    )
+
     scoreboard = {
-        "version": "1.0",
+        "schema_version": "2.0",
+        "phase": 5,
         "runs_root": str(runs_root),
         "fraction": fraction,
         "best_algo": best_algo,
@@ -140,6 +184,7 @@ def evaluate(runs_root: Path, out_dir: Path, fraction: float = 0.10) -> Dict[str
         "gates": {
             "G5.1": {
                 "description": "full pytest suite green",
+                "status": "SKIP",
                 "evaluated": False,
                 "note": "evaluated separately by `pytest -q`",
             },
@@ -147,7 +192,7 @@ def evaluate(runs_root: Path, out_dir: Path, fraction: float = 0.10) -> Dict[str
                 "description": "at least one algo eval reward > 0 over last 10% × 5 seeds",
                 "threshold": 0.0,
                 "observed": g5_2_observed,
-                "passes": bool(g5_2_passes),
+                "status": _status(g5_2_passes),
             },
             "G5.3": {
                 "description": (
@@ -157,56 +202,66 @@ def evaluate(runs_root: Path, out_dir: Path, fraction: float = 0.10) -> Dict[str
                 "threshold": _MIN_EPISODE_LENGTH - 1,
                 "observed": g5_3_observed,
                 "best_algo": best_algo,
-                "passes": bool(g5_3_passes),
+                "status": _status(g5_3_passes),
             },
             "G5.4": {
                 "description": "best algo mitigated-impact rate >= 0.5 (D5.4.1)",
                 "threshold": 0.5,
                 "observed": g5_4_observed,
                 "best_algo": best_algo,
-                "passes": bool(g5_4_passes),
+                "status": g5_4_status,
+                **({"finding_id": "D5.4.1"} if g5_4_status == "FAIL-WITH-FINDING" else {}),
             },
             "G5.5": {
                 "description": "no per-stage action share > 70% at late checkpoint",
                 "threshold": 0.70,
-                "passes": g5_5_passes,
+                "status": _status(g5_5_passes),
                 "per_stage": g5_5_per_stage,
             },
             "G5.6": {
                 "description": "no regression on Phase-3 frozen tests",
+                "status": "SKIP",
                 "evaluated": False,
                 "note": "evaluated separately by `pytest -q tests/test_phase3_env_gates.py tests/test_adversarial_env.py`",
             },
             "G5.7": {
                 "description": "F3/F4/T1 manifests exist & hash-pin inputs",
-                "passes": all([
-                    (out_dir / "F3_manifest.json").exists(),
-                    (out_dir / "F4_manifest.json").exists(),
-                    (out_dir / "T1_hparams.json").exists(),
-                ]),
+                "status": _status(g5_7_passes),
             },
         },
+    }
+    # Top-level summary{} (Phase-6-native shape).
+    statuses = [g["status"] for g in scoreboard["gates"].values()]
+    scoreboard["summary"] = {
+        "total_gates": len(statuses),
+        "pass": statuses.count("PASS"),
+        "pass_with_finding": statuses.count("PASS-WITH-FINDING"),
+        "pass_without_stretch": statuses.count("PASS-WITHOUT-STRETCH"),
+        "fail_with_finding": statuses.count("FAIL-WITH-FINDING"),
+        "fail": statuses.count("FAIL"),
+        "skip": statuses.count("SKIP"),
     }
     score_path = out_dir / "G5_scoreboard.json"
     score_path.write_text(json.dumps(scoreboard, indent=2))
     logger.info("wrote %s", score_path)
 
-    # Pretty print to stdout.
+    # Pretty print to stdout. Reads `status` (Phase-6-native schema).
     print("=== Phase-5 gate scoreboard ===")
+    _MARK = {
+        "PASS": "PASS", "PASS-WITH-FINDING": "PASS+",
+        "PASS-WITHOUT-STRETCH": "PASS-",
+        "FAIL-WITH-FINDING": "FAIL+", "FAIL": "FAIL", "SKIP": "----",
+    }
     for gid, g in scoreboard["gates"].items():
-        passes = g.get("passes")
-        if passes is True:
-            mark = "PASS"
-        elif passes is False:
-            mark = "FAIL"
-        else:
-            mark = "----"
+        mark = _MARK.get(g.get("status", ""), "----")
         observed = g.get("observed")
         obs_str = (
             f"  observed={observed:.3f}" if isinstance(observed, (int, float))
             and not _isnan(observed) else ""
         )
-        print(f"  {gid:5} [{mark}] {g['description']}{obs_str}")
+        finding = g.get("finding_id")
+        fid_str = f"  [{finding}]" if finding else ""
+        print(f"  {gid:5} [{mark:5}] {g['description']}{obs_str}{fid_str}")
     print(f"\nbest algo (by eval reward): {best_algo}")
     print("\nper-algo eval summary (last %.0f%%):" % (fraction * 100))
     for algo, v in per_algo.items():

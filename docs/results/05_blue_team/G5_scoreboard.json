@@ -1,5 +1,6 @@
 {
-  "version": "1.0",
+  "schema_version": "2.0",
+  "phase": 5,
   "runs_root": "runs/phase5",
   "fraction": 0.1,
   "best_algo": "ppo",
@@ -188,6 +189,7 @@
   "gates": {
     "G5.1": {
       "description": "full pytest suite green",
+      "status": "SKIP",
       "evaluated": false,
       "note": "evaluated separately by `pytest -q`"
     },
@@ -195,66 +197,77 @@
       "description": "at least one algo eval reward > 0 over last 10% \u00d7 5 seeds",
       "threshold": 0.0,
       "observed": 1350.6819862508773,
-      "passes": true
+      "status": "PASS"
     },
     "G5.3": {
       "description": "best algo mean MTTC >= 19 (D5.4.1)",
       "threshold": 19,
       "observed": 19.23666666666667,
       "best_algo": "ppo",
-      "passes": true
+      "status": "PASS"
     },
     "G5.4": {
       "description": "best algo mitigated-impact rate >= 0.5 (D5.4.1)",
       "threshold": 0.5,
       "observed": 0.2633333333333333,
       "best_algo": "ppo",
-      "passes": false
+      "status": "FAIL-WITH-FINDING",
+      "finding_id": "D5.4.1"
     },
     "G5.5": {
       "description": "no per-stage action share > 70% at late checkpoint",
       "threshold": 0.7,
-      "passes": true,
+      "status": "PASS",
       "per_stage": {
         "BENIGN": {
           "max_share": 0.45130345960829593,
           "argmax_action": 1,
           "argmax_action_name": "LOG",
-          "passes": true
+          "status": "PASS"
         },
         "RECON": {
           "max_share": 0.3395709721588316,
           "argmax_action": 1,
           "argmax_action_name": "LOG",
-          "passes": true
+          "status": "PASS"
         },
         "ACCESS": {
           "max_share": 0.3013653013653014,
           "argmax_action": 1,
           "argmax_action_name": "LOG",
-          "passes": true
+          "status": "PASS"
         },
         "MANEUVER": {
           "max_share": 0.3983466053907003,
           "argmax_action": 3,
           "argmax_action_name": "BLOCK",
-          "passes": true
+          "status": "PASS"
         },
         "IMPACT": {
           "max_share": null,
-          "passes": null,
-          "note": "no decisions in late window"
+          "note": "no decisions in late window",
+          "status": "SKIP"
         }
       }
     },
     "G5.6": {
       "description": "no regression on Phase-3 frozen tests",
+      "status": "SKIP",
       "evaluated": false,
       "note": "evaluated separately by `pytest -q tests/test_phase3_env_gates.py tests/test_adversarial_env.py`"
     },
     "G5.7": {
       "description": "F3/F4/T1 manifests exist & hash-pin inputs",
-      "passes": true
+      "status": "PASS"
     }
+  },
+  "summary": {
+    "total_gates": 7,
+    "pass": 4,
+    "pass_with_finding": 0,
+    "pass_without_stretch": 0,
+    "fail_with_finding": 1,
+    "fail": 0,
+    "skip": 2
   }
 }
