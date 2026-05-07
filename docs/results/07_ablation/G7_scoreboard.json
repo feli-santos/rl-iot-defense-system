@@ -12,7 +12,8 @@
       "threshold": "pytest -q \u2265 430 passed; zero new skips",
       "value": "================== 454 passed, 2 warnings in 63.07s (0:01:03) ==================",
       "passes": true,
-      "kind": "tests"
+      "kind": "tests",
+      "note_post_lock_2026-05-06": "Recorded value (454) is correct at Phase-7 lock (commit 396f827). Phase-10 hygiene cleanup commit 281860a (D10.2) subsequently deleted tests/test_benchmark_runner.py and tests/test_metrics_collector.py (43 tests testing a Phase-10-retired dead src/benchmarking/ package). Current count at HEAD is 411 passed; threshold (>= 430) was met at lock. See RESULTS.md S9 footnote and docs/mentor_review/07_ablation.md F1 for the full forensic."
     },
     {
       "id": "G7.2",
@@ -51,7 +52,8 @@
       "threshold": "No regression on Phase-3/4/5/6 frozen tests overall",
       "passes": true,
       "value": "G7.1 carries this through",
-      "kind": "regression"
+      "kind": "regression",
+      "note_post_lock_2026-05-06": "411/411 passed at HEAD (post-Phase-10 cleanup); see G7.1 note. Phase-3/4/5/6 test files all collected and green; no regression in any frozen test."
     },
     {
       "id": "G7.7",
