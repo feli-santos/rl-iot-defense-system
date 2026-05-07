@@ -16,7 +16,13 @@ apples winner: PPO mean test reward **+1542 (CI 1524–1573)** beats
 the Phase-6 deployable best DQN +1336 by **+205.6**, partially
 closing the +288 gap to the oracle ceiling +1624 (`Δ = −82.5`).
 The same cell also dominates on the security KPI: mitigated-impact
-rate **0.900** vs the DQN baseline **0.153** (5.9× improvement). No
+rate **0.900** vs the **Phase-6 DQN deployable baseline 0.153**
+(5.9× improvement). The 5.9× ratio is computed against the Phase-6
+DQN deployable best (RESULTS §6.1; `G7_scoreboard.json#G7.2.deployable_best_mitigated`),
+**not** the F9 PPO@defaults row in `F9_summary.json`
+(`baseline_phase5_defaults.mitigated_impact_rate = 0.273`), which
+is a Phase-7-resampled comparison cell, not the headline anchor.
+No
 reward-coefficient cell beats the apples-to-apples bar — the
 linear sweep characterised the limit of one-at-a-time Phase-3-
 style reward *coefficient* shaping; the move that closes most of
@@ -250,6 +256,19 @@ semantics change (`impact_is_terminal=False`), which recovers
 preserving the Phase-3 reward function. The remaining ~30 % of
 the gap is the cost of operating without oracle stage knowledge."
 
+**Caveat — what `compromise_rate = 1.0` means here.** Every F9
+cell, every F12 candidate, and every Phase-6 anchor reports
+`compromise_rate = 1.0` on `test_balanced` (`F9_summary.json`
+rows). Even the `impact_is_terminal=False` win does not move
+`compromise_rate` off 1.0. The F9 +1542 / mit-rate=0.900 result
+must therefore be read as **post-IMPACT mitigation** ("the agent
+lets one IMPACT row happen, then defends it"), not pre-IMPACT
+**prevention**. The +205-reward win is real and the
+`mitigated_impact_rate` 0.153 → 0.900 jump is real; both are
+properties of how the agent reacts to the IMPACT step rather
+than properties of preventing it. Step-9 LaTeX framing must
+state this explicitly to be defensible.
+
 ### 6.2 The OOD-class robustness result — D7.9.1 ACTIVATED; G7.9 FAIL-WITH-FINDING (audit-AF1 HEADLINE)
 
 **Headline:** On the eval-time OOD class `VulnerabilityScan` —
@@ -358,6 +377,19 @@ qualitative behaviour as the source paper's even though the
 underlying environment is real-traffic-derived rather than
 synthetic."
 
+**Caveat — F10 high-`p` cells operate in a strictly easier MDP
+than the Phase-6 oracle ceiling.** PPO at `p=1.0` reaches +2047
+(`F10_summary.json#ppo_rows[5]`), exceeding the Phase-6 oracle
+ceiling +1624 reported in `docs/results/06_benchmark/RESULTS.md`
+§6.1. This is **not** a comparison: the Phase-6 ceiling is
+computed at the Phase-3 default `p_defender_deescalation = 0.0`,
+i.e. an environment in which the defender never de-escalates and
+every IMPACT lands. F10's high-`p` cells perturb the MDP itself
+(easier attacker dynamics), so the absolute reward levels are
+not directly commensurable with §6.1's ceiling. The figure's
+qualitative claim is **monotonicity in `p`**, not absolute
+level.
+
 ### 6.4 The operating-point Pareto contribution (G7.4 FAIL-WITH-FINDING / R7.3)
 
 PLAN §6 R7.3 anticipated this exact failure: "F12 Pareto frontier
@@ -383,6 +415,27 @@ its 1-point-on-frontier annotation; the chapter paragraph
 explains why a flat trade-off surface is the correct
 characterisation of the Phase-3 reward function rather than a
 methodological failure.
+
+**Sharper characterisation of the F12 degeneracy (mentor audit
+2026-05-06).** Inspecting `F12_summary.json#points` reveals every
+one of the 32 points carries `security_gain = 0.0` exactly,
+because `security_gain ≡ 1 − compromise_rate` and
+`compromise_rate = 1.0` for every Phase-7 cell and every Phase-6
+anchor on `test_balanced` (see §6.1 caveat). The "trade-off
+surface is approximately linear" framing is therefore a polite
+understatement — the y-axis is identically zero, the only
+non-trivial dimension is `availability_cost`, and the Pareto
+frontier reduces to the `availability_cost = 0.0` corner
+(`always_observe`). The R7.3 pre-registration captured this
+qualitatively; the literal artefact is a *one-dimensional* scatter,
+not a Pareto plot. A future revision that wants F12 to land in
+the thesis as a 2-D figure should re-emit it with
+`mitigated_impact_rate` (which **does** vary 0.153 → 0.900 across
+F9 cells) on the y-axis instead of `security_gain`. Mentor
+recommends this as a Step-8 candidate decision; until then,
+F12's claim is "the Phase-3 reward function does not produce a
+non-trivial 2-D operating-point trade-off on `test_balanced`",
+which is true but tighter than the original caption suggests.
 
 ## 7 — Phase-8 hand-offs
 
@@ -412,6 +465,22 @@ Phase 7 does NOT defer:
   RF-Acting on it. Future work to *exceed* RF-Acting OOD belongs
   in Phase 8 F14.
 
+Phase 7 surfaced (mentor audit 2026-05-06) but did not address:
+
+- **MANEUVER-stage de-escalation farming.** Phase-6 F6 inspection
+  flagged DQN at 58 % ISOLATE on MANEUVER (kill-chain stage 3) —
+  the same de-escalation-farming pattern that motivated the
+  IMPACT-stage `impact_is_terminal=False` flip. F9's reward
+  sweep flips IMPACT semantics only; no `maneuver_is_terminal`
+  axis exists in `AdversarialEnvConfig` and no F9 cell exercises
+  MANEUVER-specific structure
+  (`grep -rn "maneuver\|stage_3" scripts/ablation/run_reward_sweep.py`
+  returns no matches). A parallel `maneuver_is_terminal` flag
+  would extend the env-semantics ablation to stage 3 and
+  potentially close more of the −82.5 residual gap; this is
+  Phase-8 / future-work territory and **not** part of the
+  Phase-7 deliverable.
+
 ## 8 — Reproducibility
 
 Every Phase-7 figure ships a `manifest.json` with:
@@ -434,9 +503,52 @@ The `runs/phase5/`, `runs/phase6/`, `runs/phase7/` dirs are all
 gitignored; all derived figures + summaries + manifests live
 under `docs/results/0[5-7]_*/`.
 
+### 8.1 — Eval contract (mentor audit 2026-05-06)
+
+All Phase-7 headline test rewards (F9, F10, F12, F15-aggregated)
+evaluate on `split="test_balanced"` with `exclude_ood=True` per
+the PLAN §3 exit-gate definitions and the Phase-6 contract that
+carries forward unchanged. Verified end-to-end in code:
+
+- `scripts/ablation/run_reward_sweep.py:299` overrides the saved
+  manifest's eval split to `"test_balanced"` before running
+  evaluation (exclude_ood inherited from manifest, which is
+  built with `exclude_ood=True`); the fallback path at line 301
+  is explicit: `EnvConfigSerializable(split="test_balanced", exclude_ood=True)`.
+- `scripts/ablation/run_aggressiveness_sweep.py` and
+  `scripts/ablation/run_ood_eval.py` use the same eval idiom.
+- The TRAIN halves of all three drivers delegate to
+  `scripts/blue_team/train_agent.py`, which hardcodes
+  `split="train", exclude_ood=True` per the Phase-3 contract.
+- F15's hybrid realiser (commit `87b80dc`, see §5.1) preserves
+  the contract: the in-distribution background pool comes from
+  the `exclude_ood=True` train set, and the four OOD classes
+  are overlaid only at each class's own kill-chain stage.
+
+This means every Phase-7 reward-vs-action curve and every CI
+band reported in this document is computed against the
+identical evaluation distribution as Phase 6 §6.1's
++1336 / +1624 anchors — directly comparable, by construction.
+
 ## 9 — Test count history
 
 Phase 0 254 → Phase 1 266 → Phase 2 283 → Phase 3 296 → Phase 4
 329 → Phase 5 376 → Phase 6 420 → Phase 7 442 (+22 from C3 + C4)
 → **Phase 7 closer fix 454** (+12 from
 `tests/test_close_phase7_parsers.py`, 2026-05-01 audit fix).
+
+> **Footnote (post-locking, mentor audit 2026-05-06).** The "454"
+> figure above is the count at Phase-7 lock (commit `396f827`,
+> 2026-05-01). After Phase-7 closed, Phase-10 hygiene cleanup
+> commit `281860a` (`fix(phase-10,§3.2): delete dead
+> src/benchmarking/ package + tests (D10.2)`) deleted
+> `tests/test_benchmark_runner.py` and
+> `tests/test_metrics_collector.py` — exactly 43 tests, all
+> testing a Phase-10-retired dead `src/benchmarking/` package.
+> The current count at HEAD is therefore **411 passed**
+> (verified via `pytest --collect-only -q` ⇒ 411 tests
+> collected; `pytest -q` ⇒ 411 passed). The PLAN §3.4 G7.1
+> threshold (≥ 430) was met at lock; the current 411 reflects
+> legitimate downstream cleanup of dead code, not a regression.
+> See `docs/mentor_review/07_ablation.md` Finding F1 for the
+> full forensic.
