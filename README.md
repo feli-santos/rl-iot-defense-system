@@ -79,7 +79,7 @@ rl-iot-defense-system/
 │   └── (each chapter has PLAN.md + RESULTS.md + G<N>_scoreboard.json
 │        + manifests + figures)
 ├── docs/                     # Method/architecture/decisions docs
-│   ├── HANDOFF.md            # Living state-of-the-project doc
+│   ├── archive/HANDOFF.md    # Historical Phase-7→10 handoff (archived)
 │   ├── thesis_results_map.md # F0..F15 + T1 → phase mapping
 │   ├── reproducibility.md    # Manifest hash chain protocol
 │   └── …
@@ -334,7 +334,7 @@ seeds our oracle baseline policy.
 The eight closed phases share a common protocol that the codebase enforces.
 The current state-of-the-thesis review is tracked in
 [`docs/mentor_review/`](docs/mentor_review/); see also
-[`docs/HANDOFF.md`](docs/HANDOFF.md) for the historical Phase-7→10
+[`docs/archive/HANDOFF.md`](docs/archive/HANDOFF.md) for the historical Phase-7→10
 handoff record.
 
 1. **Audit-first.** Every new phase opens with a `PLAN.md` that contains
