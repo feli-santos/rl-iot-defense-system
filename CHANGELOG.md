@@ -1,3 +1,59 @@
+## [0.1.0] — 2026-05-12 (release tag v0.1.0)
+
+This is the first formal release of the thesis codebase, tagging the
+culmination of the eight-step mentor-review walkthrough
+(`docs/mentor_review/`) against the Phase-0..7 empirical results.
+The release tag is `v0.1.0`, consistent with the `CITATION.cff`
+`version` field and the historical Phase-10 `[v0.1.0]` CHANGELOG
+entry below.
+
+### Mentor-review walkthrough — Steps 1–10
+
+| Step | Merge commit | Scope | Verdict |
+|---|---|---|---|
+| Step 1 — dataset | `d4acfca` | Phase 0/1 dataset, splits, kill-chain map (F0a, F0b) | PASS |
+| Step 2 — red team | (branch merge) | Phase 2 LSTM convergence (F1, F2) | PASS-WITH-FIXES |
+| Step 3 — environment | `193ded3` | MDP correctness, reward shape, Phase-3 gates | PASS-WITH-FIXES |
+| Step 4 — detector | `81804cc` | F11 per-stage recall; VulnerabilityScan AF1 surface | PASS-WITH-FIXES |
+| Step 5 — blue team | `014a7e3` | F3 reward curves, F4 action distribution, T1 hparams | PASS-WITH-FIXES |
+| Step 6 — benchmarks | `1d78fec` | F5/F6/F7/F8; oracle-ceiling reframe D6.2.1 (AF2) | PASS-WITH-FIXES |
+| Step 7 — ablations | `99b2452` | F9/F10/F12/F15; 82%-of-ceiling; D7.9.1 OOD reframe | PASS-WITH-FIXES |
+| Step 8 — cross-cutting | `26b8df2` | Stat tests, oracle, threats; R1 reproducibility harness | PASS-WITH-FIXES |
+| Step 9 — LaTeX rebuild | `b5306d3` | Full dissertation rewrite against locked RESULTS files | PASS |
+| Step 10 — release | *(this merge)* | Hygiene cleanup + CHANGELOG + annotated tag v0.1.0 | PASS |
+
+### Headline empirical findings (authoritative sources: docs/results/)
+
+- **82 % of oracle ceiling** — DQN normalised score 0.785 (mean reward
+  +1336) vs Recommended-Action ceiling +1624. Source: G6.2/G6.3
+  (`docs/results/06_benchmark/G6_scoreboard.json`).
+- **F9 — `impact_is_terminal=False` structural fix** — raises mitigated-
+  impact rate from 0.153 → 0.900 (5.9×) with +1542 mean reward.
+  Source: G7.1 (`docs/results/07_ablation/G7_scoreboard.json`).
+- **D7.9.1 — OOD robustness reframe** — DQN OOD reward +1313 is within
+  seed-noise of in-distribution +1336; RF-acting OOD "advantage" is
+  explained by `recall=0.001` (near-zero true detection).
+  Source: G7.9 (`docs/results/07_ablation/G7_scoreboard.json`).
+- **Sub-millisecond inference** — DQN p50 = 0.068 ms. Source: G6.4.
+- **R1 reproducibility harness** — VERDICT PASS, 458 OK / 0 FAIL /
+  2 KNOWN-DIVERGENCE / 6 SKIP.
+  Source: `python -m scripts.reproducibility_smoke`.
+
+### Step-10 hygiene commits
+
+- `01ec1c4` — `chore(tex,figs): delete 6 unreferenced pre-Step-3 PNGs (~1.5 MB)`
+- `34b9399` — `chore(docs): archive 3 superseded pre-mentor-review docs`
+- *(this commit)* — `docs(changelog): [0.1.0] release block + LaTeX gitignore`
+- *(forthcoming)* — LaTeX compile gate (Docker texlive/texlive:latest)
+- *(forthcoming)* — `docs/mentor_review/10_release.md` + `10_HANDOFF.md`
+
+### Tests (invariant throughout Step 10)
+
+`pytest -q` → **411 passed**. `python -m scripts.reproducibility_smoke`
+→ **VERDICT PASS** (458 / 0 / 2 / 6). No test-suite changes in Step 10.
+
+---
+
 ## [Unreleased] — Mentor-review Step 0c framing pass (2026-05-05)
 
 Audience and IoTWarden-role lock-in for the MSc defense at
