@@ -1,86 +1,116 @@
 % ====================================================================
-% Section: Background and Related Work (Revised)
+% Section: Background and Related Work
 % ====================================================================
 \section{Background and Related Work}\label{sec:background}
 
-This section establishes the theoretical groundwork and contextualizes the contributions of this thesis. Section \ref{subsec:rl_concepts} first introduces the foundational principles of Reinforcement Learning (RL) and the specific Deep Reinforcement Learning (DRL) algorithms central to this work. Section \ref{subsec:related_work_iot} then provides a review of related research in IoT security, situating this project within the broader academic landscape and highlighting its novel contributions.
+This section establishes the theoretical groundwork and contextualises the contributions of this thesis. Section~\ref{subsec:kill_chain} introduces the Cyber Kill Chain abstraction adopted as the unit of analysis throughout the dissertation. Section~\ref{subsec:rl_concepts} reviews the foundational principles of Reinforcement Learning and the specific Deep Reinforcement Learning algorithms central to this work. Section~\ref{subsec:baselines_taxonomy} introduces the deployable-baseline taxonomy and the role of the rule-based oracle as a measurement instrument. Section~\ref{subsec:related_work_iot} provides a review of related research in IoT security and DRL-based defense and positions this thesis within that literature.
 
-% --- Subsection 2.1 ---
+% --- Subsection 2.1 — kill-chain primer ---
+\subsection{The Cyber Kill Chain as a Defender's Decision Frame}\label{subsec:kill_chain}
+The \textbf{Cyber Kill Chain} \cite{Mavroeidis2023} is a conceptual model that decomposes a sustained intrusion into a sequence of progressively more compromising stages. Originally formulated by industrial threat-intelligence practitioners and refined by the academic community, it organises adversary behaviour as an ordered chain in which earlier stages prepare for the success of later stages and where defender opportunity costs grow monotonically with stage progression: it is much cheaper to interrupt an attack at \textsc{recon} than at \textsc{impact}.
+
+Following the formulation adopted in this thesis (and consistent with the IoTWarden recommended-action mapping \cite{Alam2024}), traffic on an IoT network is projected onto a five-stage kill chain:
+
+\begin{enumerate}
+    \item \textbf{\textsc{benign}} --- routine, non-malicious traffic. The defender's correct posture is observational.
+    \item \textbf{\textsc{recon}} --- the adversary scans, fingerprints, or otherwise enumerates the network and its assets. Behaviour is malicious but the network is not yet compromised; the defender's correct posture is to log and continue monitoring.
+    \item \textbf{\textsc{access}} --- the adversary establishes an initial foothold (e.g.\ exploit-driven authentication bypass, brute-force, command injection). The defender should throttle the implicated traffic and prepare to escalate.
+    \item \textbf{\textsc{maneuver}} --- the adversary performs lateral movement, privilege escalation, or other in-network manipulation to position for a final action. The defender should block.
+    \item \textbf{\textsc{impact}} --- the adversary's terminal action: data exfiltration, denial-of-service, ransomware detonation. The defender's last opportunity to prevent loss is to isolate the affected segment.
+\end{enumerate}
+
+The kill chain is more than narrative scaffolding: it provides a discrete decision frame in which (i) the attacker's evolving state is summarised by a single ordered variable and (ii) the defender's action menu can be aligned to that variable through a recommended-action mapping (\textsc{benign}~$\to$~\textsc{observe}, \textsc{recon}~$\to$~\textsc{log}, \textsc{access}~$\to$~\textsc{throttle}, \textsc{maneuver}~$\to$~\textsc{block}, \textsc{impact}~$\to$~\textsc{isolate}). This alignment is the basis of the stage-action proportionality reward used in Section~\ref{subsec:rl_environment}, and it is what makes the rule-based recommended-action policy a meaningful upper bound (Section~\ref{subsec:baselines_taxonomy}).
+
+% --- Subsection 2.2 — RL primer (preserved with one targeted fix) ---
 \subsection{Reinforcement Learning for Autonomous Systems}\label{subsec:rl_concepts}
-Reinforcement Learning is a computational paradigm focused on goal-directed learning from interaction. An intelligent agent learns to make optimal decisions not by being shown labeled examples, but by exploring an environment and discovering which sequences of actions yield the greatest cumulative reward \cite{Sutton2018}. This learning process is formalized through the mathematical framework of Markov Decision Processes (MDPs).
+Reinforcement Learning (RL) is a computational paradigm focused on goal-directed learning from interaction. An intelligent agent learns to make optimal decisions not by being shown labeled examples, but by exploring an environment and discovering which sequences of actions yield the greatest cumulative reward \cite{Sutton2018}. This learning process is formalised through the mathematical framework of Markov Decision Processes (MDPs).
 
 \subsubsection{Markov Decision Processes}\label{subsubsec:mdp}
 An MDP provides a formal model for sequential decision-making under uncertainty. The core principle is the \textbf{Markov Property}, which asserts that the current state provides all necessary information to make an optimal decision, rendering the history of prior states irrelevant \cite{Sutton2018}. An MDP is defined as a five-tuple $(S, A, P, R, \gamma)$:
 \begin{itemize}
-    \item \textbf{S}: A finite set of states, representing all possible configurations of the environment. In this thesis, a state $s \in S$ is a complex observation composed of current network traffic features, a history of recent states and actions, and predictions from the LSTM attack model.
-    \item \textbf{A}: A finite set of actions. For this work, $A$ consists of four discrete defensive actions: \{`monitor`, `rate-limit`, `block IP`, `shutdown service`\}.
-    \item \textbf{P}: The state transition probability function, $P(s' | s, a) = P(S_{t+1}=s' | S_t=s, A_t=a)$, defining the dynamics of the environment.
-    \item \textbf{R}: The reward function, $R(s, a, s')$, which provides the immediate numerical feedback for transitioning from $s$ to $s'$ via action $a$.
-    \item \textbf{$\gamma$}: The discount factor ($0 \leq \gamma \leq 1$), which prioritizes immediate rewards over future ones.
+    \item $\boldsymbol{S}$: A finite set of states, representing all possible configurations of the environment. In this thesis, a state $s \in S$ is a multi-modal observation composed of a vector of CICIoT2023 traffic features, a history of recent states and actions, and (optionally) the discrete predicted attack stage produced by the LSTM stage detector.
+    \item $\boldsymbol{A}$: A finite set of actions. For this work, $A$ is the five-action defender menu derived from the kill chain in Section~\ref{subsec:kill_chain}: $A = \{\textsc{observe}, \textsc{log}, \textsc{throttle}, \textsc{block}, \textsc{isolate}\}$, ordered by escalating defensive force and operational disruption.
+    \item $\boldsymbol{P}$: The state transition probability function, $P(s' \mid s, a) = \Pr(S_{t+1}=s' \mid S_t=s, A_t=a)$, defining the dynamics of the environment.
+    \item $\boldsymbol{R}$: The reward function, $R(s, a, s')$, which provides the immediate numerical feedback for transitioning from $s$ to $s'$ via action $a$. The full as-built reward used in this thesis is detailed in Section~\ref{subsec:rl_environment}.
+    \item $\boldsymbol{\gamma}$: The discount factor ($0 \leq \gamma \leq 1$), which prioritises immediate rewards over future ones.
 \end{itemize}
-The agent's objective is to learn a \textbf{policy}, $\pi(a|s)$, which maps states to a probability distribution over actions, to maximize the expected discounted return.
+The agent's objective is to learn a \textbf{policy}, $\pi(a \mid s)$, which maps states to a probability distribution over actions, to maximise the expected discounted return.
 
 \subsubsection{Value Functions and Bellman Equations}\label{subsubsec:bellman}
 To determine the quality of states and actions, RL uses value functions. The \textbf{state-value function}, $V^\pi(s)$, is the expected return from state $s$ while following policy $\pi$:
 \begin{equation}\label{eq:state_value_function}
-V^\pi(s) = \mathbb{E}_\pi \left[ \sum_{k=0}^{\infty} \gamma^k R_{t+k+1} \Big| S_t = s \right]
+V^\pi(s) = \mathbb{E}_\pi \left[ \sum_{k=0}^{\infty} \gamma^k R_{t+k+1} \;\Big|\; S_t = s \right]
 \end{equation}
 The \textbf{action-value function} (or Q-function), $Q^\pi(s, a)$, is the expected return after taking action $a$ from state $s$ and then following policy $\pi$:
 \begin{equation}\label{eq:action_value_function}
-Q^\pi(s,a) = \mathbb{E}_\pi \left[ \sum_{k=0}^{\infty} \gamma^k R_{t+k+1} \Big| S_t = s, A_t = a \right]
+Q^\pi(s,a) = \mathbb{E}_\pi \left[ \sum_{k=0}^{\infty} \gamma^k R_{t+k+1} \;\Big|\; S_t = s, A_t = a \right]
 \end{equation}
 These functions adhere to the recursive relationships defined by the Bellman equations. The \textbf{Bellman optimality equation} for the Q-function is central to many RL algorithms and is expressed as:
 \begin{equation}\label{eq:bellman_optimality}
-Q^*(s, a) = \mathbb{E}_{s' \sim P(\cdot|s,a)} \left[ R(s,a,s') + \gamma \max_{a' \in A} Q^*(s', a') \right]
+Q^*(s, a) = \mathbb{E}_{s' \sim P(\cdot \mid s,a)} \left[ R(s,a,s') + \gamma \max_{a' \in A} Q^*(s', a') \right]
 \end{equation}
 Solving this equation yields the optimal Q-function, $Q^*(s, a)$, from which the optimal policy can be derived by selecting the action with the highest value in each state.
 
 \subsubsection{Deep Reinforcement Learning Algorithms}\label{subsubsec:drl_algorithms}
-For environments with large or continuous state spaces, like an IoT network, tabular methods are intractable. Deep Reinforcement Learning (DRL) overcomes this by using deep neural networks to approximate the value functions or policies \cite{Chen2021}. This thesis implements and benchmarks three seminal DRL algorithms that represent the primary families of RL.
+For environments with large or continuous state spaces, like an IoT network, tabular methods are intractable. Deep Reinforcement Learning (DRL) overcomes this by using deep neural networks to approximate the value functions or policies \cite{Chen2021}. This thesis implements and benchmarks three seminal DRL algorithms that represent the primary families of model-free RL.
 
-\paragraph{Deep Q-Networks (DQN)}
-DQN is a value-based algorithm that uses a neural network to approximate the action-value function, $Q(s, a; \theta) \approx Q^*(s, a)$ \cite{Mnih2015}. To stabilize learning, DQN introduces two critical mechanisms:
+\paragraph{Deep Q-Networks (DQN).}
+DQN is a value-based, off-policy algorithm that uses a neural network to approximate the action-value function, $Q(s, a; \theta) \approx Q^*(s, a)$ \cite{Mnih2015}. To stabilise learning, DQN introduces two critical mechanisms:
 \begin{itemize}
     \item \textbf{Experience Replay:} Experiences $(s_t, a_t, r_t, s_{t+1})$ are stored in a large replay buffer. The network is trained on mini-batches randomly sampled from this buffer, which breaks temporal correlations in the data.
-    \item \textbf{Fixed Target Network:} A separate, periodically updated target network is used to generate stable target values for the Bellman equation, preventing oscillations during training. The loss function is typically the Mean Squared Bellman Error (MSBE):
+    \item \textbf{Fixed Target Network:} A separate, periodically updated target network is used to generate stable target values for the Bellman equation, preventing oscillations during training. The loss function is the Mean Squared Bellman Error:
     \begin{equation}\label{eq:dqn_loss}
-    L(\theta) = \mathbb{E}_{(s,a,r,s') \sim D} \left[ \left( \underbrace{(r + \gamma \max_{a'} Q(s', a'; \theta^-))}_{\text{Target Q-value}} - \underbrace{Q(s, a; \theta)}_{\text{Predicted Q-value}} \right)^2 \right]
+    L(\theta) = \mathbb{E}_{(s,a,r,s') \sim \mathcal{D}} \left[ \left( \underbrace{r + \gamma \max_{a'} Q(s', a'; \theta^-)}_{\text{Target Q-value}} - \underbrace{Q(s, a; \theta)}_{\text{Predicted Q-value}} \right)^2 \right]
     \end{equation}
-    where $\theta^-$ are the parameters of the fixed target network.
+    where $\theta^-$ are the parameters of the fixed target network and $\mathcal{D}$ is the replay buffer.
 \end{itemize}
 
-\paragraph{Proximal Policy Optimization (PPO)}
-PPO is a state-of-the-art actor-critic algorithm that directly optimizes a parameterized policy (the actor) while using a value function (the critic) to reduce variance \cite{Schulman2017}. Its key innovation is a clipped surrogate objective function that constrains the size of policy updates, ensuring greater training stability. The objective function is:
+\paragraph{Proximal Policy Optimization (PPO).}
+PPO is a state-of-the-art on-policy actor-critic algorithm that directly optimises a parameterised policy (the actor) while using a value function (the critic) to reduce variance \cite{Schulman2017}. Its key innovation is a clipped surrogate objective function that constrains the size of policy updates, ensuring greater training stability:
 \begin{equation}\label{eq:ppo_clip}
-L^{CLIP}(\theta) = \hat{\mathbb{E}}_t \left[ \min \left( r_t(\theta)\hat{A}_t, \text{clip}(r_t(\theta), 1-\epsilon, 1+\epsilon)\hat{A}_t \right) \right]
+L^{\mathrm{CLIP}}(\theta) = \hat{\mathbb{E}}_t \left[ \min \left( r_t(\theta)\hat{A}_t,\; \mathrm{clip}\!\left(r_t(\theta), 1-\epsilon, 1+\epsilon\right)\hat{A}_t \right) \right]
 \end{equation}
 where $r_t(\theta)$ is the probability ratio between the new and old policies, $\hat{A}_t$ is the estimated advantage, and $\epsilon$ is a hyperparameter that constrains the policy change. This approach prevents destructive policy updates and is known for its reliability and performance.
 
-\paragraph{Advantage Actor-Critic (A2C)}
-A2C is a synchronous variant of the foundational Asynchronous Advantage Actor-Critic (A3C) algorithm \cite{Mnih2016}. Like PPO, it is an actor-critic method, but it uses a simpler, unconstrained policy update mechanism. It typically employs multiple parallel workers to collect experience simultaneously. These experiences are then aggregated to compute a single, stable gradient update for both the actor (policy) and the critic (value function). While often faster to converge than PPO on simpler problems, it can be less stable.
+\paragraph{Advantage Actor-Critic (A2C).}
+A2C is a synchronous variant of the foundational Asynchronous Advantage Actor-Critic (A3C) algorithm \cite{Mnih2016}. Like PPO, it is an actor-critic method, but it uses a simpler, unconstrained policy update mechanism. It typically employs multiple parallel workers to collect experience simultaneously; these experiences are then aggregated to compute a single stable gradient update for both the actor (policy) and the critic (value function). While often faster to converge than PPO on simpler problems, it can be less stable.
 
-All three algorithms are implemented in this thesis using Stable Baselines3's `MultiInputPolicy`, which is designed to handle the `Dict` observation space provided by our custom IoT environment.
+All three algorithms are implemented in this thesis using Stable~Baselines3 \texttt{MultiInputPolicy}, which is designed to handle the dictionary-shaped observation space exposed by the custom IoT environment described in Section~\ref{subsec:rl_environment}.
 
-% --- Subsection 2.2 ---
+% --- Subsection 2.3 — baselines taxonomy primer ---
+\subsection{Deployable Baselines and the Role of an Oracle Reference}\label{subsec:baselines_taxonomy}
+A defining methodological choice of this work is to evaluate the trained DRL agents not only against \emph{trivial} baselines (random, always-\textsc{observe}, always-\textsc{block}) but also against two stronger references that bracket the achievable performance under the kill-chain decision frame:
+
+\begin{itemize}
+    \item \textbf{RF-Acting (deployable supervised + rule).} A composite policy that uses a supervised RandomForest classifier (trained in the stage-detection phase) to predict the current attack stage from the observed feature vector, then maps the predicted stage to an action via the recommended-action mapping. RF-Acting is fully deployable: it consumes only what a real defender can observe and produces a defensive action at every step.
+    \item \textbf{Recommended-Action rule (oracle reference, \emph{not} a competing baseline).} An identical action-selection rule that, instead of consuming a learned classifier's output, reads the \emph{true} attack stage directly from the simulator's privileged information. This oracle is therefore a measurement instrument that quantifies the value of perfect stage detection under the chosen reward function. It is reported as an \emph{upper bound} on what any deployable policy could achieve under the recommended-action mapping; it is \emph{not} reported as a method this work claims to outperform, because the oracle does not run on observable inputs and cannot be deployed.
+\end{itemize}
+
+The trained DRL agents are deployable in the same sense as RF-Acting --- they observe a vector of CICIoT2023 traffic features and (optionally) the predicted stage, and produce an action --- and are scored against both deployable baselines and against the oracle ceiling. Reporting the oracle as a measurement instrument rather than a competing baseline is a methodological commitment that frames the headline thesis claim as ``trained RL captures $X\,\%$ of the value of perfect stage detection'' rather than the weaker and potentially misleading ``trained RL beats the recommended-action policy''. This choice was retroactively endorsed by the audit-first review protocol in this work and is documented in detail in Section~\ref{sec:results}.
+
+% --- Subsection 2.4 ---
 \subsection{Related Work in AI-Driven IoT Security}\label{subsec:related_work_iot}
 The application of artificial intelligence to IoT security is an active and rapidly evolving field of research. Early work focused on applying classical machine learning models to intrusion detection, which has since paved the way for more sophisticated, adaptive systems based on Deep Reinforcement Learning.
 
 \subsubsection{Machine Learning Approaches for Intrusion Detection}
-Early approaches to intelligent IoT security leveraged supervised and unsupervised machine learning for building Intrusion Detection Systems (IDS). Supervised models, such as Support Vector Machines (SVM) and Random Forests, were trained on labeled datasets to classify network flows as either benign or malicious \cite{AlGaradi2020}. While effective at identifying known attack patterns, these models struggle with novel or \textbf{zero-day attacks} not seen during training, a limitation they share with traditional signature-based IDS \cite{Khraisat2019}. Furthermore, they typically operate as passive classifiers, identifying threats without the capacity for automated, sequential defensive actions.
+Early approaches to intelligent IoT security leveraged supervised and unsupervised machine learning for building Intrusion Detection Systems (IDS). Supervised models, such as Support Vector Machines and Random Forests, were trained on labeled datasets to classify network flows as either benign or malicious \cite{AlGaradi2020}. While effective at identifying known attack patterns, these models struggle with novel or \textbf{zero-day attacks} not seen during training, a limitation they share with traditional signature-based IDS \cite{Khraisat2019}. Furthermore, they typically operate as passive classifiers, identifying threats without the capacity for automated, sequential defensive actions --- a limitation this thesis addresses directly by composing the supervised classifier with a recommended-action rule (RF-Acting) and using it as a deployable baseline against which the DRL agents are scored.
 
 \subsubsection{The Shift to Active Defense with DRL}
-The limitations of static ML models motivated a shift towards DRL to create autonomous agents capable of active, closed-loop cyber-defense. Several notable works have explored this domain, providing a foundation upon which this thesis builds.
+The limitations of static ML models motivated a shift towards DRL to create autonomous agents capable of active, closed-loop cyber-defense. Several notable works have explored this domain and provide the foundation upon which this thesis builds.
 
-Some research has focused on using RL for deception and intelligence gathering. The work of Guan et al. (2023) in \textbf{HoneyIoT}, for example, presents an adaptive high-interaction honeypot that uses RL to learn an attacker's behavior and dynamically alter its services to keep the attacker engaged and reveal their methods \cite{Guan2023}. While this is a powerful application of RL, its primary purpose is reconnaissance, whereas our system is designed as a direct defense mechanism for a live network.
+Some research has focused on using RL for deception and intelligence gathering. The work of Guan et al.\ in \textbf{HoneyIoT} \cite{Guan2023} presents an adaptive high-interaction honeypot that uses RL to learn an attacker's behavior and dynamically alter its services to keep the attacker engaged and reveal their methods. While this is a powerful application of RL, its primary purpose is reconnaissance, whereas the system presented in this thesis is designed as a direct defense mechanism for a live network.
 
-Other works have targeted specific layers of the IoT ecosystem. \textbf{IoTWarden}, proposed by Alam et al. (2024), uses a DQN agent to mitigate attacks in trigger-action IoT platforms (like IFTTT) by identifying and disabling malicious rules or "applets" in real-time \cite{Alam2024}. This approach is highly effective for its targeted domain but is confined to the application layer. Similarly, the work by Nguyen et al. (2021) proposes a Federated DRL system for traffic monitoring in Software-Defined Networks (SDN) for IoT, focusing on efficient data collection and analysis rather than active defense \cite{Nguyen2021}. Our research addresses a more fundamental challenge by operating at the \textbf{network layer}, analyzing features derived from raw traffic to defend against a broad range of network-level attacks such as DDoS, DoS, and Spoofing, which are prevalent in the CICIoT2023 dataset.
+Other works have targeted specific layers of the IoT ecosystem. \textbf{IoTWarden}, proposed by Alam et al.\ \cite{Alam2024}, uses a DQN agent to mitigate attacks in trigger-action IoT platforms (e.g.\ IFTTT) by identifying and disabling malicious rules or ``applets'' in real time. This thesis adopts the IoTWarden \emph{recommended-action mapping} (\textsc{benign}~$\to$~\textsc{observe}, \textsc{recon}~$\to$~\textsc{log}, \ldots, \textsc{impact}~$\to$~\textsc{isolate}) as a design choice for the environment's reward function, and treats IoTWarden as an inspiration rather than a head-to-head baseline: IoTWarden was evaluated on a different (synthetic, trigger-action) environment with a different action space, so direct numerical comparison is not methodologically sound. The headline numerical claim of this thesis is therefore framed against the in-domain oracle ceiling described in Section~\ref{subsec:baselines_taxonomy}, never against an external IoTWarden number.
+
+The work by Nguyen et al.\ \cite{Nguyen2021} proposes a Federated DRL system for traffic monitoring in Software-Defined Networks for IoT, focusing on efficient data collection and analysis rather than active defense. Tharewal et al.\ \cite{Tharewal2022} apply DRL to industrial IoT intrusion detection but treat the agent as a classifier rather than a sequential decision-maker. The research in this thesis addresses a more fundamental challenge by operating at the \textbf{network layer}, analysing features derived from raw traffic to defend against a broad range of network-level attacks such as DDoS, DoS, and Spoofing, which are prevalent in the CICIoT2023 dataset, and by structuring the policy as a kill-chain-aware sequential decision-maker.
 
 \subsubsection{Positioning the Thesis: Bridging the Research Gap}
 While previous works have successfully applied DRL to specific aspects of IoT security, a gap remains for a comprehensive, network-level defense system that is simultaneously:
 \begin{itemize}
-    \item \textbf{Proactive and Adaptive:} Uniquely combining a data-driven predictive model (an LSTM) with a DRL-based agent to create a closed loop from threat anticipation to autonomous action.
-    \item \textbf{Grounded in Realistic, Modern Data:} Validated on the large-scale and contemporary \textbf{CICIoT2023 dataset}, ensuring that the learned policies are relevant to modern, real-world attack vectors.
-    \item \textbf{Network-Layer Focused:} Designed to defend against a broad range of fundamental network attacks by analyzing traffic-flow features.
-    \item \textbf{Rigorously Benchmarked:} Providing a thorough, empirical comparison of modern value-based (DQN) and actor-critic (PPO, A2C) algorithms for this specific proactive defense task.
+    \item \textbf{Proactive and Adaptive:} combining a supervised stage detector and an LSTM-based red-team episode generator with a DRL-based agent in a closed loop from threat anticipation to autonomous action.
+    \item \textbf{Grounded in Realistic, Modern Data:} validated on the large-scale and contemporary \textbf{CICIoT2023 dataset}, with documented kill-chain projections and a fully audited splits protocol that closes a subtle out-of-distribution leakage bug found during model training.
+    \item \textbf{Network-Layer Focused:} designed to defend against a broad range of fundamental network attacks by analysing traffic-flow features.
+    \item \textbf{Rigorously Benchmarked:} providing a thorough empirical comparison of modern value-based (DQN) and actor-critic (PPO, A2C) algorithms against three trivial baselines, a deployable supervised + rule baseline (RF-Acting), and an oracle reference --- with non-overlapping bootstrap confidence intervals as the statistical-separation criterion.
+    \item \textbf{Reproducible by Construction:} every figure ships with a SHA-256 hash chain over its inputs and a smoke-reproducibility harness verifies the chain end-to-end on a fresh checkout.
 \end{itemize}
-This thesis directly addresses this gap by designing, implementing, and evaluating a complete framework that integrates these critical components, thereby advancing the development of resilient, intelligent systems capable of defending the vast and ever-expanding IoT landscape.
+This thesis directly addresses these gaps by designing, implementing, and evaluating a complete framework that integrates these critical components, thereby advancing the development of resilient, intelligent systems capable of defending the vast and ever-expanding IoT landscape.

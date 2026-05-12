@@ -1,32 +1,149 @@
-\section{Appendix}
-\subsection{Proposed Timeline}
-\label{appendix:timeline}
+% ====================================================================
+% Appendices
+% ====================================================================
+% After \appendix in thesis.tex, each \section here renders as
+% Appendix A, B, C, ...
 
-This appendix outlines the proposed timeline for the completion of the research described in this thesis. The schedule is structured to ensure all remaining tasks are addressed systematically, leading to the final submission and defense in early 2026.
+% ====================================================================
+\section{Reproducibility Protocol, Manifest Hash Chain, and Verification Recipe}\label{app:repro}
+% ====================================================================
+
+This appendix documents the audit-first reproducibility protocol that underpins every numerical claim in this dissertation, following a model-card-style template inspired by the documentation discipline introduced for machine-learning artefacts \cite{Mitchell2019}. The protocol is implemented as a SHA-256 hash chain pinning every figure, table, and benchmark number to its inputs and the producing Git commit, and as a smoke-reproducibility harness that verifies the chain end-to-end on a fresh checkout in approximately five seconds.
+
+\subsection{Per-Phase Manifest Pattern}\label{app:manifest_pattern}
+Every phase of the framework emits one or more \texttt{manifest.json} files under \texttt{docs/results/<phase>/} that record (a) the SHA-256 hash of every input artefact (data splits, trained models, scaler, episode roll-outs, upstream phase manifests), (b) the producing Git commit (\texttt{git\_sha}), and (c) the producing-script invocation (\texttt{produced\_by}). Each manifest also records the SHA-256 hash of every output artefact (figure, summary JSON, scoreboard) so that downstream phases can pin the upstream output by hash, not by filename alone. The per-phase artefact inventory is summarised in Table~\ref{tab:manifest_inventory}.
 
 \begin{table}[h!]
 \centering
-\caption{Gantt Chart of Remaining Research Activities}
-\label{tab:gantt_chart}
-\renewcommand{\arraystretch}{1.5} % Add space between rows
-\begin{tabular}{|p{5.5cm}|c|c|c|c|c|c|c|c|c|}
+\caption{Per-phase reproducibility-artefact inventory under \texttt{docs/results/}. \texttt{F<k>} entries are figures or tables, \texttt{G<n>\_scoreboard.json} are gate-evaluation scoreboards. Run-time roll-out JSONLs (under \texttt{runs/<phase>/}) are gitignored but their SHA-256 hashes are pinned by the phase manifest.}
+\label{tab:manifest_inventory}
+\begin{tabular}{l l l}
 \hline
-\textbf{Activity} & \multicolumn{6}{c|}{\textbf{2025}} & \multicolumn{3}{c|}{\textbf{2026}} \\
-\cline{2-10}
- & \textbf{Jul} & \textbf{Aug} & \textbf{Sep} & \textbf{Oct} & \textbf{Nov} & \textbf{Dec} & \textbf{Jan} & \textbf{Feb} & \textbf{Mar} \\
+Phase & Path & Key artefacts \\
 \hline
-\hline
-\textbf{1. In-Depth Performance Analysis} \newline \textit{\small (Per-class LSTM \& DRL policy logic evaluation)} & \blacksquare & \blacksquare & & & & & & & \\
-\hline
-\textbf{2. Hyperparameter Optimization} \newline \textit{\small (Tuning of LSTM \& DRL agents with Optuna)} & & \blacksquare & \blacksquare & & & & & & \\
-\hline
-\textbf{3. Robustness \& Sensitivity Testing} \newline \textit{\small (Varying environment parameters)} & & & & \blacksquare & \blacksquare & & & & \\
-\hline
-\textbf{4. Final Model Training \& Benchmarking} \newline \textit{\small (Execute final, optimized comparisons)} & & & & & \blacksquare & \blacksquare & & & \\
-\hline
-\textbf{5. Thesis Writing} \newline \textit{\small (Drafting chapters, generating final plots)} & & & & & & \blacksquare & \blacksquare & \blacksquare & \\
-\hline
-\textbf{6. Final Review \& Defense Preparation} \newline \textit{\small (Review with advisor, final revisions)} & & & & & & & & \blacksquare & \blacksquare \\
+1 & \texttt{01\_dataset/} & \texttt{F0\_class\_distribution.png}, \texttt{F0\_stage\_distribution.png}, \texttt{F0\_summary.json}, \texttt{manifest.json} \\
+2 & \texttt{02\_red\_team/} & \texttt{F1\_learning\_curves.png}, \texttt{F2\_transition\_matrix\_comparison.png}, \texttt{F1/F2\_summary.json}, \texttt{manifest.json}, \texttt{RESULTS.md} \\
+3 & \texttt{03\_env/} & \texttt{PLAN.md}, \texttt{RESULTS.md} (no figures; environment is infrastructure) \\
+4 & \texttt{04\_detector/} & \texttt{F11\_per\_stage\_recall.png}, \texttt{F11\_summary.json}, \texttt{G4\_scoreboard.json}, \texttt{manifest.json}, \texttt{RESULTS.md} \\
+5 & \texttt{05\_blue\_team/} & \texttt{F3/F4\_*.png}, \texttt{F3/F4\_summary.json}, \texttt{F3/F4\_manifest.json}, \texttt{T1\_hparams.\{json,md\}}, \texttt{G5\_scoreboard.json}, \texttt{RESULTS.md} \\
+6 & \texttt{06\_benchmark/} & \texttt{F5/F6/F7/F8\_*.png}, per-figure \texttt{summary.json} + \texttt{manifest.json} + \texttt{caption.md}, \texttt{G6\_scoreboard.json}, \texttt{RESULTS.md} \\
+7 & \texttt{07\_ablation/} & \texttt{F9/F10/F12/F15\_*.png}, per-figure \texttt{summary.json} + \texttt{manifest.json} + \texttt{caption.md}, \texttt{G7\_scoreboard.json}, \texttt{RESULTS.md} \\
 \hline
 \end{tabular}
 \end{table}
+
+\subsection{Gate Scoreboards}\label{app:scoreboards}
+Four \texttt{G<n>\_scoreboard.json} files (one per gated phase) record the threshold-vs.-observed value for every exit gate, the verdict bucketed into \textsc{pass} / \textsc{pass-with-finding} / \textsc{pass-without-stretch} / \textsc{fail-with-finding} / \textsc{fail} / \textsc{skip}, and a finding-id cross-reference where the verdict is contingent on a pre-registered finding-activation rule. Schema version 2.0 (Step-8 unification) is used uniformly across G4/G5/G6/G7. The verdict tally at the head of the dissertation's evaluation chain (commit \texttt{26b8df2}, the post-Step-8 \texttt{main}) is summarised in Table~\ref{tab:scoreboard_summary}.
+
+\begin{table}[h!]
+\centering
+\caption{Gate-scoreboard summary across the four gated phases. Verdicts are reported per-gate; the dissertation's headline-finding gates (G6.2 audit-AF2 reframe, G5.4 reward-hacking, G7.2 reward-component sweep, G7.9 OOD finding-activation) are highlighted.}
+\label{tab:scoreboard_summary}
+\begin{tabular}{l c c c c l}
+\hline
+Phase & \textsc{pass} & \textsc{pass-w/-finding} & \textsc{pass-w/o-stretch} & \textsc{fail-w/-finding} & Headline-gate ID \\
+\hline
+4 (\texttt{G4}) & 4 & 1 & --- & --- & G4.4 (OOD recall asymmetry, $\Delta = 0.998$) \\
+5 (\texttt{G5}) & 6 & 1 & --- & --- & G5.4 (reward-hacking, mit-rate $0.263$) \\
+6 (\texttt{G6}) & 4 & 1 & --- & 1 & G6.2 (audit-AF2 reframe, 82\,\% of oracle ceiling) \\
+7 (\texttt{G7}) & 7 & --- & 1 & 2 & G7.2 (F9 \texttt{impact\_is\_terminal}=False), G7.9 (D7.9.1 OOD) \\
+\hline
+\end{tabular}
+\end{table}
+
+\subsection{Smoke-Reproducibility Harness}\label{app:r1}
+The harness \texttt{scripts/reproducibility\_smoke.py} is the canonical end-to-end verification recipe. It walks every committed \texttt{manifest.json} file under \texttt{docs/results/} and verifies, for every recorded input SHA-256, that the on-disk SHA-256 of that input \emph{right now} matches the recorded one. Output is bucketed into four categories:
+
+\begin{description}
+    \item[\textsc{ok}] The recorded input SHA matches the on-disk SHA. The expected case for every input.
+    \item[\textsc{fail}] The recorded input SHA does \emph{not} match the on-disk SHA, and the divergence is not on the harness's pre-registered known-divergences list. This indicates that an input artefact has changed since the producing manifest was emitted, and the figure or scoreboard pinned by that manifest is no longer reproducible-by-hash from the inputs on disk. \textsc{fail} verdicts must be triaged.
+    \item[\textsc{known-divergence}] The recorded SHA does not match on-disk \emph{and} the divergence is documented and audited. The harness ships with a \texttt{\_KNOWN\_DIVERGENCES} table that explicitly enumerates every such case with its finding-id and explanatory note. The two pre-registered divergences in this dissertation are the Phase-1 and Phase-2 manifests' recorded splits-manifest SHA (\texttt{82aa1214\ldots}, the pre-leakage-fix manifest) versus the on-disk post-fix SHA (\texttt{1e99d596\ldots}); both are documented in \texttt{docs/results/02\_red\_team/RESULTS.md} \S5.3.
+    \item[\textsc{skip}] An input declared by the manifest is gitignored and not on disk on this checkout. Typical case: large feature arrays (\texttt{features.npy}, \texttt{stages.npy}) and split index files that are derived from the raw CICIoT2023 dataset and therefore not committed.
+\end{description}
+
+The harness's verdict at the head of the dissertation's evaluation chain (commit \texttt{26b8df2}) is \textbf{\textsc{pass}}: \textbf{458 \textsc{ok} / 0 \textsc{fail} / 2 \textsc{known-divergence} / 6 \textsc{skip}}. A non-zero \textsc{fail} count would block merge of any commit that introduces it.
+
+\subsection{Verification Recipe (Fresh-Checkout Reproduction)}\label{app:recipe}
+On a fresh checkout, the empirical record can be re-verified end-to-end without retraining any model:
+
+\begin{verbatim}
+git clone <repo-url> rl-iot-defense-system
+cd rl-iot-defense-system
+python -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+pytest -q                                        # expect: 411 passed
+python -m scripts.reproducibility_smoke         # expect: VERDICT PASS
+                                                 #         458 OK / 0 FAIL
+                                                 #         2 KNOWN-DIVERGENCE / 6 SKIP
+\end{verbatim}
+
+A full re-train of every phase from scratch (preserving the audited reproducibility contract) is also supported via \texttt{make}:
+
+\begin{verbatim}
+make phase-1                       # CICIoT2023 splits + F0a/F0b
+                                   # (requires raw dataset on disk)
+make phase-2                       # LSTM red team + F1/F2
+make phase-4                       # supervised stage detector + F11
+make phase-5-sweep PHASE5_TIMESTEPS=250000   # ~108 min CPU
+make phase-6                       # held-out benchmark + F5/F6/F7/F8
+make phase-7                       # ablations + F9/F10/F12/F15 (~7.5 h CPU)
+make phase-7-close                 # G7 scoreboard + RESULTS.md
+\end{verbatim}
+
+After a full re-train the per-phase \texttt{manifest.json} files are re-emitted with new input SHAs corresponding to the freshly trained checkpoints; the harness will then verify the new chain end-to-end.
+
+\subsection{Hardware and Environment}\label{app:hardware}
+All experiments reported in this dissertation were run on a single CPU core. No GPU is required for any phase (the LSTM red team, the MLP stage detector, and the three DRL agents all train within minutes-to-hours on commodity CPU). Software environment: Python 3.9, PyTorch (CPU build), scikit-learn, Stable~Baselines3, Gymnasium. Total wallclock for the full audited evaluation chain (Phases 1--7) is approximately 8.5~h on a single CPU core, dominated by the Phase-7 ablation sweeps; the held-out benchmark (Phase 6) and the smoke-reproducibility harness together take less than 11~minutes.
+
+% ====================================================================
+\section{CICIoT2023 Label to Kill Chain Stage Mapping}\label{app:kc_mapping}
+% ====================================================================
+
+The 34 CICIoT2023 labels (33 attack classes plus \texttt{BenignTraffic}) are projected onto the five Kill Chain stages defined in Section~\ref{subsec:kill_chain} via the closed mapping in Table~\ref{tab:kc_mapping}. The mapping is implemented in \texttt{src/utils/label\_mapper.py::AbstractStateLabelMapper}; an unknown label encountered at processing time raises an explicit \texttt{KeyError} so that any new attack class added to the dataset cannot silently leak into an existing stage. The full design rationale, including why the Lockheed Martin seven-step chain is coarsened to five stages here and why the $\textsc{benign} \to \textsc{recon} \to \textsc{access} \to \textsc{maneuver} \to \textsc{impact}$ ordering is monotone in attacker progress, is provided in \texttt{docs/kill-chain-mapping.md}.
+
+\begin{table}[h!]
+\centering
+\caption{Per-class CICIoT2023 to Kill Chain stage mapping. Classes marked $^\star$ are reserved as held-out out-of-distribution attack classes (Section~\ref{subsubsec:splits}) and are never seen during training of either the supervised stage detector or the DRL agents.}
+\label{tab:kc_mapping}
+\begin{tabular}{l p{10cm}}
+\hline
+Stage & CICIoT2023 labels \\
+\hline
+\textsc{benign}  & \texttt{BenignTraffic} \\
+\hline
+\textsc{recon}   & \texttt{Recon-PortScan}, \texttt{Recon-OSScan}, \texttt{Recon-HostDiscovery}, \texttt{Recon-PingSweep}, \texttt{VulnerabilityScan}$^\star$ \\
+\hline
+\textsc{access}  & \texttt{BrowserHijacking}, \texttt{CommandInjection}, \texttt{SqlInjection}, \texttt{Backdoor\_Malware}, \texttt{Uploading\_Attack}, \texttt{XSS}$^\star$, \texttt{DictionaryBruteForce} \\
+\hline
+\textsc{maneuver} & \texttt{MITM-ArpSpoofing}, \texttt{DNS\_Spoofing}, \texttt{Mirai-greeth\_flood}, \texttt{Mirai-greip\_flood} \\
+\hline
+\textsc{impact}  & DoS variants (\texttt{DoS-TCP\_Flood}, \texttt{DoS-UDP\_Flood}, \texttt{DoS-SYN\_Flood}, \texttt{DoS-HTTP\_Flood}); DDoS variants (\texttt{DDoS-TCP\_Flood}, \texttt{DDoS-UDP\_Flood}, \texttt{DDoS-SYN\_Flood}, \texttt{DDoS-RSTFINFlood}, \texttt{DDoS-PSHACK\_Flood}, \texttt{DDoS-SynonymousIP\_Flood}, \texttt{DDoS-ICMP\_Flood}, \texttt{DDoS-ICMP\_Fragmentation}, \texttt{DDoS-UDP\_Fragmentation}, \texttt{DDoS-ACK\_Fragmentation}, \texttt{DDoS-SlowLoris}, \texttt{DDoS-HTTP\_Flood}$^\star$); Mirai impact (\texttt{Mirai-udpplain}$^\star$) \\
+\hline
+\end{tabular}
+\end{table}
+
+% ====================================================================
+\section{Hyperparameters per Algorithm}\label{app:hparams}
+% ====================================================================
+
+The Phase-5 hyperparameter table (T1) for DQN, PPO, and A2C is reproduced in Table~\ref{tab:hparams} from \texttt{docs/results/05\_blue\_team/T1\_hparams.json}, which is the canonical hash-pinned source. All values are Stable~Baselines3 defaults, frozen for the thesis at PLAN \S8 D5.4; the same values are used across the five seeds (\texttt{seed} $\in \{0, 1, 2, 3, 4\}$) and the 250{,}000 environment steps per run. Empty cells indicate hyperparameters that do not apply to the algorithm (e.g.\ off-policy DQN-only fields are blank for the on-policy PPO and A2C rows).
+
+\begin{table}[h!]
+\centering
+\caption{Phase-5 per-algorithm hyperparameters. Values are frozen at PLAN \S8 D5.4 and used across all five seeds and 250{,}000 environment steps per run. Empty cells indicate hyperparameters that are not defined for the algorithm.}
+\label{tab:hparams}
+\small
+\begin{tabular}{l r r r r r r r r}
+\hline
+algo & lr & $n_{\text{steps}}$ & $\gamma$ & $\lambda_{\text{GAE}}$ & ent\_coef & vf\_coef & batch\_size & $n_{\text{epochs}}$ \\
+\hline
+A2C & $7\!\cdot\!10^{-4}$ & 5    & 0.99 & 1.00 & 0.000 & 0.50 & ---  & ---  \\
+DQN & $1\!\cdot\!10^{-3}$ & ---  & 0.99 & ---  & ---   & ---  & 32   & ---  \\
+PPO & $3\!\cdot\!10^{-4}$ & 2048 & 0.99 & 0.95 & 0.010 & 0.50 & 64   & 10   \\
+\hline
+\end{tabular}
+\end{table}
+
+For DQN-specific off-policy hyperparameters (replay buffer, exploration schedule, target-network update interval), the values used were: \texttt{buffer\_size} $= 50{,}000$, \texttt{learning\_starts} $= 1000$, \texttt{tau} $= 1.0$, \texttt{target\_update\_interval} $= 1000$, \texttt{exploration\_fraction} $= 0.10$, \texttt{exploration\_initial\_eps} $= 1.0$, \texttt{exploration\_final\_eps} $= 0.05$, \texttt{max\_grad\_norm} $= 0.5$. The complete machine-readable record is at \texttt{docs/results/05\_blue\_team/T1\_hparams.json}.
+
+The Phase-7 ablations re-use the PPO hyperparameters above unchanged --- only the environment (\texttt{impact\_is\_terminal}, \texttt{p\_defender\_deescalation}) and the reward coefficients (\texttt{defense\_success\_bonus}, \texttt{penalty\_missed\_impact}, \texttt{reward\_proportional}, \texttt{reward\_benign\_passive}, \texttt{penalty\_disproportionate}) are perturbed.
