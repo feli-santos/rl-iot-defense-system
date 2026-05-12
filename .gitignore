@@ -122,3 +122,19 @@ docs/build/
 build/
 dist/
 *.egg-info/
+
+# LaTeX build artefacts (tex/ compile output; thesis.pdf committed separately)
+tex/*.aux
+tex/*.log
+tex/*.bbl
+tex/*.bcf
+tex/*.blg
+tex/*.fdb_latexmk
+tex/*.fls
+tex/*.out
+tex/*.toc
+tex/*.nlo
+tex/*.run.xml
+tex/*.synctex.gz
+tex/*.lof
+tex/*.lot
