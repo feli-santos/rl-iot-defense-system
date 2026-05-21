@@ -68,6 +68,21 @@ def _build_argparser() -> argparse.ArgumentParser:
         "--continue-on-failure", action="store_true",
         help="If a run crashes, log it and keep going. Default: stop.",
     )
+    # Phase-3 revision: allow passing impact_is_terminal and reward overrides
+    # to the per-run train_agent subprocess so the sweep driver can launch the
+    # primary (impact_is_terminal=False) contract without code duplication.
+    p.add_argument(
+        "--impact-is-terminal", type=str, default=None,
+        help=(
+            "Forwarded to train_agent --impact-is-terminal. "
+            "Use 'false' for the primary Phase-3 revision contract. "
+            "Default None preserves Phase-5 frozen contract (True)."
+        ),
+    )
+    p.add_argument(
+        "--reward-overrides", type=str, default=None,
+        help="JSON object forwarded to train_agent --reward-overrides.",
+    )
     return p
 
 
@@ -92,6 +107,11 @@ def _run_one(args: argparse.Namespace, algo: str, seed: int) -> Dict:
     ]
     if args.smoke:
         cmd.append("--smoke")
+    # Forward optional Phase-3 revision overrides to the subprocess
+    if getattr(args, "impact_is_terminal", None) is not None:
+        cmd.extend(["--impact-is-terminal", args.impact_is_terminal])
+    if getattr(args, "reward_overrides", None) is not None:
+        cmd.extend(["--reward-overrides", args.reward_overrides])
 
     logger.info("starting algo=%s seed=%d -> %s", algo, seed, out_dir)
     t0 = time.time()
