@@ -93,6 +93,9 @@ benchmark_results/
 benchmark_analysis/
 benchmark_plots/
 
+# Memory Bank (project knowledge base for AI)
+memory-bank/
+
 # Configuration Overrides (keep main config.yml)
 config_*.yml
 local_config.yml
@@ -113,6 +116,9 @@ temp/
 # Documentation Build
 docs/_build/
 docs/build/
+
+# Reference PDFs (use docs/papers/REFERENCES.md with DOIs instead)
+docs/papers/*.pdf
 
 # Profiling
 *.prof
@@ -138,3 +144,6 @@ tex/*.run.xml
 tex/*.synctex.gz
 tex/*.lof
 tex/*.lot
+
+# Cline
+.clineignore
