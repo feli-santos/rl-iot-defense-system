@@ -246,6 +246,65 @@ def _render(
     plt.close(fig)
 
 
+def _benign_fpr(
+    cm: np.ndarray,
+    *,
+    aggressive_actions: Tuple[int, ...] = (3, 4),
+    warn_threshold: float = 0.01,
+    policy_name: str = "unknown",
+) -> Dict[str, Any]:
+    """Compute false-positive rate on BENIGN traffic (thesis review issue C17).
+
+    The BENIGN row (index 0) of the stage×action matrix gives the fraction of
+    decisions made when the true stage is BENIGN. An aggressive action (BLOCK=3
+    or ISOLATE=4) on a BENIGN step is a false positive: it disrupts legitimate
+    IoT traffic without any security justification.
+
+    FPR = P(BLOCK or ISOLATE | stage=BENIGN)
+        = sum(cm[0, 3], cm[0, 4])
+
+    Args:
+        cm: 5×5 row-normalised confusion matrix (rows=stages, cols=actions).
+            Rows should sum to 1.0; NaN rows indicate no data for that stage.
+        aggressive_actions: Action indices considered false positives on BENIGN.
+            Default: (3=BLOCK, 4=ISOLATE). LOG and THROTTLE on BENIGN may
+            be debatable but are not counted here.
+        warn_threshold: Emit a warning if FPR exceeds this value (default 1%).
+        policy_name: For logging only.
+
+    Returns:
+        Dict with:
+            - ``benign_fpr``: P(aggressive | BENIGN), or null if no BENIGN data
+            - ``benign_fpr_pct``: same × 100
+            - ``exceeds_threshold``: bool, True if FPR > warn_threshold
+            - ``n_benign_decisions``: raw count or null
+            - ``aggressive_actions``: which action indices counted as FP
+    """
+    benign_row = cm[0, :]  # shape (5,)
+    if not np.any(np.isfinite(benign_row)):
+        return {
+            "benign_fpr": None,
+            "benign_fpr_pct": None,
+            "exceeds_threshold": None,
+            "n_benign_decisions": None,
+            "aggressive_actions": list(aggressive_actions),
+        }
+    fpr = float(np.nansum([benign_row[a] for a in aggressive_actions]))
+    if fpr > warn_threshold:
+        logger.warning(
+            "⚠  BENIGN FPR = %.3f (%.1f%%) for policy %r — exceeds "
+            "%.1f%% threshold. Consider tuning the reward's "
+            "disproportionate-action penalty.",
+            fpr, fpr * 100, policy_name, warn_threshold * 100,
+        )
+    return {
+        "benign_fpr": fpr,
+        "benign_fpr_pct": fpr * 100,
+        "exceeds_threshold": bool(fpr > warn_threshold),
+        "aggressive_actions": list(aggressive_actions),
+    }
+
+
 def _build_argparser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(description="Phase-6 F6 — stage × action CMs.")
     p.add_argument("--runs-root", default="runs/phase6")
@@ -350,6 +409,41 @@ def main(argv: Optional[List[str]] = None) -> int:
         },
     }
     (out_dir / "F6_manifest.json").write_text(json.dumps(manifest, indent=2))
+
+    # ---- Benign FPR analysis (thesis review issue C17) ----
+    fpr_results: Dict[str, Any] = {}
+    any_exceeds = False
+    for pol, cm in matrices.items():
+        fpr_result = _benign_fpr(cm, warn_threshold=0.01, policy_name=pol)
+        fpr_results[pol] = fpr_result
+        if fpr_result.get("exceeds_threshold"):
+            any_exceeds = True
+        fpr_val = fpr_result.get("benign_fpr_pct")
+        logger.info(
+            "%s: BENIGN FPR = %s",
+            pol,
+            "N/A" if fpr_val is None else f"{fpr_val:.2f}%",
+        )
+
+    fpr_summary = {
+        "schema_version": "1.0",
+        "phase": 6,
+        "description": (
+            "Benign-traffic false-positive rate per policy. "
+            "FPR = P(BLOCK or ISOLATE | true stage=BENIGN). "
+            "Computed from the phase-6 stage×action confusion matrices (F6). "
+            "Threshold for flagging: 1% (aggressive_actions=[3=BLOCK, 4=ISOLATE])."
+        ),
+        "fpr_threshold_pct": 1.0,
+        "any_policy_exceeds_threshold": any_exceeds,
+        "policies": fpr_results,
+    }
+    fpr_path = out_dir / "benign_fpr.json"
+    fpr_path.write_text(json.dumps(fpr_summary, indent=2))
+    logger.info(
+        "Benign FPR summary written to %s  [any_exceeds=%s]",
+        fpr_path, any_exceeds,
+    )
 
     logger.info("F6 written to %s", out_dir)
     return 0
