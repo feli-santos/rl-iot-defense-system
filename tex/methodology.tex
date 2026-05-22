@@ -116,16 +116,16 @@ The episode terminates when the chain reaches \textsc{impact} (default Phase-3 c
 The reward at step $t$ is a piecewise composition of \textbf{six independent reward signals} plus three asymmetric guardrails for cocked-trigger benign-stage policies. Let $a_t$ denote the action chosen at step $t$, $s_t$ the decision-time stage (i.e.\ the stage the agent saw when it chose $a_t$, not the next stage), and $\mathit{rec}(s)$ the recommended-action mapping (\textsc{benign}~$\to$~\textsc{observe}, \textsc{recon}~$\to$~\textsc{log}, \textsc{access}~$\to$~\textsc{throttle}, \textsc{maneuver}~$\to$~\textsc{block}, \textsc{impact}~$\to$~\textsc{isolate}). The per-step reward is:
 \begin{align}\label{eq:reward}
 R_t \;=\; & -C_{\mathrm{action}}(a_t) \cdot \alpha \\
-        & + r_{\mathrm{prop}} \cdot \mathbf{1}\!\left[ |a_t - \mathit{rec}(s_t)| \leq 1 \right]
-        - p_{\mathrm{disp}} \cdot \mathbf{1}\!\left[ |a_t - \mathit{rec}(s_t)| \geq 2 \right] \nonumber \\
-        & + r_{\mathrm{benign}} \cdot \mathbf{1}\!\left[ s_t = \textsc{benign} \;\wedge\; a_t \leq \textsc{log} \right] \nonumber \\
-        & - p_{\mathrm{over}} \cdot \mathbf{1}\!\left[ s_t = \textsc{benign} \;\wedge\; a_t \geq \textsc{throttle} \right] \nonumber \\
-        & - p_{\mathrm{block\text{-}benign}} \cdot \mathbf{1}\!\left[ s_t = \textsc{benign} \;\wedge\; a_t \geq \textsc{block} \right] \nonumber \\
-        & - p_{\mathrm{block\text{-}recon}} \cdot \mathbf{1}\!\left[ s_t = \textsc{recon} \;\wedge\; a_t \geq \textsc{block} \right] \nonumber
+        & + r_{\mathrm{prop}} \cdot \mathbb{1}\!\left[ |a_t - \mathit{rec}(s_t)| \leq 1 \right]
+        - p_{\mathrm{disp}} \cdot \mathbb{1}\!\left[ |a_t - \mathit{rec}(s_t)| \geq 2 \right] \nonumber \\
+        & + r_{\mathrm{benign}} \cdot \mathbb{1}\!\left[ s_t = \text{\textsc{benign}} \;\wedge\; a_t \leq \text{\textsc{log}} \right] \nonumber \\
+        & - p_{\mathrm{over}} \cdot \mathbb{1}\!\left[ s_t = \text{\textsc{benign}} \;\wedge\; a_t \geq \text{\textsc{throttle}} \right] \nonumber \\
+        & - p_{\mathrm{block\text{-}benign}} \cdot \mathbb{1}\!\left[ s_t = \text{\textsc{benign}} \;\wedge\; a_t \geq \text{\textsc{block}} \right] \nonumber \\
+        & - p_{\mathrm{block\text{-}recon}} \cdot \mathbb{1}\!\left[ s_t = \text{\textsc{recon}} \;\wedge\; a_t \geq \text{\textsc{block}} \right] \nonumber
 \end{align}
 At terminal-\textsc{impact}, an additional accounting block fires:
 \begin{equation}\label{eq:reward_terminal}
-R^{\mathrm{term}} \;=\; -p_{\mathrm{impact}} \;+\; \begin{cases} +b_{\mathrm{success}} & \text{if } a_t \geq \textsc{block} \\ -p_{\mathrm{missed}} & \text{if } a_t \leq \textsc{log} \\ 0 & \text{otherwise} \end{cases}
+R^{\mathrm{term}} \;=\; -p_{\mathrm{impact}} \;+\; \begin{cases} +b_{\mathrm{success}} & \text{if } a_t \geq \text{\textsc{block}} \\ -p_{\mathrm{missed}} & \text{if } a_t \leq \text{\textsc{log}} \\ 0 & \text{otherwise} \end{cases}
 \end{equation}
 Defender-driven de-escalations award $+b_{\mathrm{success}}$ mid-episode when they fire (independent of the terminal-\textsc{impact} step).
 
