@@ -4,7 +4,7 @@
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
 [![Tests: 411 passed](https://img.shields.io/badge/tests-411%20passed-brightgreen.svg)](#)
 [![Phases: 0–7 closed](https://img.shields.io/badge/phases-0--7%20closed-brightgreen.svg)](#phases-as-chapters)
-[![Release: v0.1.0](https://img.shields.io/badge/release-v0.1.0-blue.svg)](#)
+[![Release: v0.2.0](https://img.shields.io/badge/release-v0.2.0-blue.svg)](#)
 
 > **TL;DR.** A reproducible MSc-thesis codebase: an adversarial
 > reinforcement-learning framework for kill-chain-aware defense on
@@ -22,13 +22,14 @@ The thesis chapter rests on **three primary claims** plus one
 pre-registered finding, all backed by gate-passing artefacts under
 [`docs/results/`](docs/results/):
 
-1. **(Phase 6, G6.2)** On `test_balanced` (CICIoT2023, 5-stage kill chain
-   abstraction), trained RL defenders earn **DQN +1336 / PPO +1312 /
-   A2C +1296 mean reward** vs. an oracle recommended-action ceiling of
-   **+1624** that has free access to the hidden `attack_stage` — i.e.
-   the best deployable RL agent captures **82 %** of the oracle ceiling.
-   Non-RL baselines (random, always-OBSERVE, always-BLOCK, RF-acting)
-   never come within 1 σ. *See [`docs/results/06_benchmark/RESULTS.md`](docs/results/06_benchmark/RESULTS.md).*
+1. **(Phase 6, G6.2 — v0.2.0 primary, 10 seeds)** On `test_balanced` (CICIoT2023, 5-stage kill chain
+   abstraction), trained RL defenders earn **PPO +1334.5 (CI [1317.3, 1352.3]) / A2C +1296.7 /
+   DQN +1218.9 mean reward** vs. an oracle recommended-action ceiling of
+   **+1647.6** (CI [1593.0, 1700.5]) that has free access to the hidden `attack_stage` — i.e.
+   the best deployable RL agent (PPO) captures **81 %** of the oracle ceiling.
+   Among deployable policies, PPO achieves **141× faster inference** than RF-Acting (0.098 ms vs 13.85 ms p50).
+   Non-RL trivial baselines (random, always-OBSERVE, always-BLOCK) never come within 1 σ.
+   *See [`docs/results/06_benchmark/RESULTS.md`](docs/results/06_benchmark/RESULTS.md) and `tex/figs/F5_summary.json`.*
 
 2. **(Phase 7, G7.3)** With the Phase-3 reward function held fixed, PPO
    mean reward grows **monotonically** with the

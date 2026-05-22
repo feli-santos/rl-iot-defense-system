@@ -1,3 +1,49 @@
+## [0.2.0] — 2026-05-22 (release tag v0.2.0)
+
+Major revision closing all 22 reviewer issues (C1–C22). Primary results
+promoted to `impact_is_terminal=False` with 10-seed headline run.
+
+### Issues closed
+C1 (primary contract), C2 (abstract/benchmark framing), C3 (PPO-primary/A2C robustness),
+C4 (statistical tests table), C5 (LaTeX math formatting), C6 (SWE jargon removed),
+C7 (p_deesc justification via F10), C8 (action-cost sweep via FA figure),
+C9 (reward mis-specification framing), C10 (detector comparison table),
+C11 (single-stage OOD-feature injection terminology), C12 (threat-model §3.0 + MITRE ATT&CK),
+C13 (latency-reward trade-off table), C14 (degenerate Pareto replaced by Table 5),
+C15 (repo bloat — Phase 1), C16 (10 seeds — Phase 3), C17 (benign-FPR 9.4–12.7% limitation),
+C18 (future work expanded: non-monotonic attacker, edge hardware, MARL, federated, FPR-constrained),
+C19 (IoT/cybercrime citations in abstract), C20 (caption fixes: shaded=CI, log-scale, IMPACT note),
+C21 (booktabs Table 8 + N/A cells + footnote), C22 (window-size justification via FA ablation)
+
+### Phases completed this release
+| Phase | Scope | Status | Commits |
+|-------|-------|--------|---------|
+| 0 | Memory-bank setup | ✅ Done | — |
+| 1 | Codebase cleanup | ✅ Done | fdee464, 1226df0, efd7f91 |
+| 2 | Instrumentation (stat tests, model stats, benign FPR) | ✅ Done | c5e376d |
+| 3 | Re-train 10 seeds × impact_is_terminal=False + eval + figures | ✅ Done | 46424f8, 6ad569d |
+| 4 | Sensitivity sweeps (FA_action_cost, FA_window) | ✅ Done | e96c821, 7a0e69d |
+| 5 | LaTeX full manuscript rewrite | ✅ Done | 8d80636 |
+| 6 | Final QA + v0.2.0 release | ✅ Done | this commit |
+
+### Headline empirical findings (v0.2.0 primary — 10 seeds, impact_is_terminal=False)
+
+- **81% of oracle ceiling** — PPO (best deployable DRL) mean reward +1334.5
+  (CI [1317.3, 1352.3]) vs oracle ceiling +1647.6 (CI [1593.0, 1700.5]).
+  Source: F5_summary.json, F8_summary.json.
+- **141× latency advantage** — PPO p50 inference 0.098 ms vs RF-Acting
+  13.852 ms. Trained RL is deployable at network line rates.
+- **Reward mis-specification: structurally fixed** — impact_is_terminal=False
+  lifts mitigated-impact rate from 0.153 → 0.900 (5.9× improvement) and
+  closes 71% of residual gap to oracle ceiling (F9 ablation).
+- **Benign FPR limitation** — PPO 9.6%, A2C 9.4%, DQN 12.7% (above 1%
+  operational threshold; documented as limitation requiring future redesign).
+- **Statistical separation** — DQN vs PPO p=0.0002 d=-0.306; DQN vs
+  RF-Acting p<0.0001 d=-0.755 (Welch's t-test, 10 seeds).
+- **Reproducibility** — VERDICT PASS: 458 OK / 0 FAIL / 2 KNOWN-DIVERGENCE / 6 SKIP.
+
+---
+
 ## [0.1.0] — 2026-05-12 (release tag v0.1.0)
 
 This is the first formal release of the thesis codebase, tagging the

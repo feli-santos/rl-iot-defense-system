@@ -143,7 +143,7 @@ PPO & $3\!\cdot\!10^{-4}$ & 2048 & 0.99 & 0.95 & 0.010 & 0.50 & 64   & 10   \\
 \bottomrule
 \end{tabular}
 \end{table}
-\footnotetext{N/A: hyperparameter is not defined for this algorithm family. $n_{\text{steps}}$ applies only to on-policy methods (PPO/A2C); batch\_size and $n_{\text{epochs}}$ apply only to PPO; $\lambda_{\text{GAE}}$, ent\_coef, vf\_coef apply only to actor-critic methods (PPO/A2C). DQN off-policy fields are listed separately below.}
+\par\smallskip\noindent{\small\textit{Note: N/A = hyperparameter not defined for that algorithm family. $n_{\text{steps}}$ applies only to on-policy methods (PPO/A2C); batch\_size and $n_{\text{epochs}}$ apply only to PPO; $\lambda_{\text{GAE}}$, ent\_coef, vf\_coef apply only to actor-critic methods. DQN off-policy fields listed below.}}
 
 For DQN-specific off-policy hyperparameters (replay buffer, exploration schedule, target-network update interval), the values used were: \texttt{buffer\_size} $= 50{,}000$, \texttt{learning\_starts} $= 1000$, \texttt{tau} $= 1.0$, \texttt{target\_update\_interval} $= 1000$, \texttt{exploration\_fraction} $= 0.10$, \texttt{exploration\_initial\_eps} $= 1.0$, \texttt{exploration\_final\_eps} $= 0.05$, \texttt{max\_grad\_norm} $= 0.5$. The complete machine-readable record is at \texttt{docs/results/05\_blue\_team/T1\_hparams.json}.
 
