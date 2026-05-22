@@ -1,0 +1,19 @@
+{
+  "schema_version": "1.0",
+  "figure": "F8",
+  "git_sha": "469d91c7fe4926026b5b72bcac5d64a4b863e75e",
+  "outputs": {
+    "png": "tex/figs/F8_baselines.png",
+    "json": "tex/figs/F8_summary.json"
+  },
+  "inputs": {
+    "f5_summary": {
+      "path": "docs/results/06_benchmark/F5_summary.json",
+      "sha256": "9c9ea26f259712334fc22000c0639ca28caad0939a8ddde3c35660c0a8229ede"
+    },
+    "phase6_eval_manifest": {
+      "path": "runs/phase6_primary/eval_manifest.json",
+      "sha256": "393202e232cfe730f4c9ce45c3b6bfe76bec6d8d86c09755d530c383a169b060"
+    }
+  }
+}

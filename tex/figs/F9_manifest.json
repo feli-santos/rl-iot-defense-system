@@ -1,0 +1,89 @@
+{
+  "schema_version": "1.0",
+  "figure": "F9",
+  "git_sha": "469d91c7fe4926026b5b72bcac5d64a4b863e75e",
+  "outputs": {
+    "png": "tex/figs/F9_reward_ablation.png",
+    "json": "tex/figs/F9_summary.json"
+  },
+  "inputs": {
+    "phase7_reward_sweep_manifest": {
+      "path": "runs/phase7/reward_sweep/sweep_manifest.json",
+      "sha256": "19f35074f76ecf104ab9bb710c7bc5027e1f6f3d8307ee1935895015c145b758"
+    },
+    "phase6_eval_manifest": {
+      "path": "runs/phase6_primary/eval_manifest.json",
+      "sha256": "393202e232cfe730f4c9ce45c3b6bfe76bec6d8d86c09755d530c383a169b060"
+    },
+    "phase5_sweep_manifest": {
+      "path": "runs/phase5_primary/sweep_manifest.json",
+      "sha256": "736d42fdb563a53d60fc9e0b412deab75514ef3f28e6ef0fcfe6e7fd050fd968"
+    },
+    "phase1_splits_manifest": {
+      "path": "docs/results/01_dataset/manifest.json",
+      "sha256": "c8574094e7b914fdf5ecb16e107facbf2f073ac3f4ec1b80b5284c49f96e19e5"
+    },
+    "eval_jsonls_sha256": {
+      "runs/phase7/reward_sweep/baseline_phase5_defaults/seed_0/eval_test.jsonl": "369f85e94b582a46107ef37b70166a73494813638e9966967312d374fbb73acd",
+      "runs/phase7/reward_sweep/baseline_phase5_defaults/seed_1/eval_test.jsonl": "b86573ca18a5d59b63dfe26a87e839f6144d98a42e7cae52a6abf4011d3a1f39",
+      "runs/phase7/reward_sweep/baseline_phase5_defaults/seed_2/eval_test.jsonl": "31c8143b3c9bad1116b8ec806bce87553bbd49385930eaacca3ed404d21b4430",
+      "runs/phase7/reward_sweep/baseline_phase5_defaults/seed_3/eval_test.jsonl": "3711e686f2441848a3dfed53d3ec6df1ede7aea7c71ebcee23dbf5b92cb4a1ad",
+      "runs/phase7/reward_sweep/baseline_phase5_defaults/seed_4/eval_test.jsonl": "2b825a39b98060f40e80577cf4f39d01cd6f8743fd26550b387f29baf4935bc4",
+      "runs/phase7/reward_sweep/defense_success_bonus_x0p5/seed_0/eval_test.jsonl": "df193febfa4f255957105e695e7951fb88246d62355c86e6ba69905c0e934988",
+      "runs/phase7/reward_sweep/defense_success_bonus_x0p5/seed_1/eval_test.jsonl": "a509b75c32fd656211a2d65ab520074de0b04c10fbff18141a96b3e6eaf7b8ad",
+      "runs/phase7/reward_sweep/defense_success_bonus_x0p5/seed_2/eval_test.jsonl": "0dc05398c6d1487bf39c4bf538b6e4e84ad00cda33dc4af0fca83800cd44f536",
+      "runs/phase7/reward_sweep/defense_success_bonus_x0p5/seed_3/eval_test.jsonl": "cf1510ca310a394e95fd86cc1bd7204ed231f21da42050471d52213b568d7ed7",
+      "runs/phase7/reward_sweep/defense_success_bonus_x0p5/seed_4/eval_test.jsonl": "5611af87e47ce3cb6a42eabbb622470cd98416dd4c8928dab02fc8d924781c82",
+      "runs/phase7/reward_sweep/defense_success_bonus_x2p0/seed_0/eval_test.jsonl": "4cc0715916e7686b670082c48b9afad6288a2ac7218b24f13752b186e4323d93",
+      "runs/phase7/reward_sweep/defense_success_bonus_x2p0/seed_1/eval_test.jsonl": "913a783fd4eb30a745beb5e016283d1e7b73a56e46ba4047df586d11e4ff6479",
+      "runs/phase7/reward_sweep/defense_success_bonus_x2p0/seed_2/eval_test.jsonl": "24451e1cfcf1c8cf74b0c88237a6cc99112a7287065a77ff0b6b850f25b924e3",
+      "runs/phase7/reward_sweep/defense_success_bonus_x2p0/seed_3/eval_test.jsonl": "bb41bbea63d30260f2efea580eee0df1464f54ac77cc297f2eda0a612a75d794",
+      "runs/phase7/reward_sweep/defense_success_bonus_x2p0/seed_4/eval_test.jsonl": "66baa4b5023093f1b5f5824f11209338657af9c4a6b67684cd6bebff951e2e5b",
+      "runs/phase7/reward_sweep/impact_is_terminal_false/seed_0/eval_test.jsonl": "c0240f35890291b23c8f369211fdf604791ed3c6be0d724cdab55fd1d4fd082f",
+      "runs/phase7/reward_sweep/impact_is_terminal_false/seed_1/eval_test.jsonl": "911e3d6d9b628ebf222d283262832b83b6560b8192dbcdbf412c814be5243fe6",
+      "runs/phase7/reward_sweep/impact_is_terminal_false/seed_2/eval_test.jsonl": "74e91c2da18b3c0ed17f2eafc7da8a15ad9902f084234cbb93db6ddd1d8dc3b5",
+      "runs/phase7/reward_sweep/impact_is_terminal_false/seed_3/eval_test.jsonl": "6e4dedd33d354ebe93b36c85613719299d0cd506487fc62bb03ebeae9e690b69",
+      "runs/phase7/reward_sweep/impact_is_terminal_false/seed_4/eval_test.jsonl": "58636fbf72eb8e613dd7a2116e31c73daac79488d295a4077274a2e26dc5fb34",
+      "runs/phase7/reward_sweep/penalty_disproportionate_x0p5/seed_0/eval_test.jsonl": "a582708240747e234b491d5c1f2cf0ea7c768c71df9ae58db9db35ecf35f3c7e",
+      "runs/phase7/reward_sweep/penalty_disproportionate_x0p5/seed_1/eval_test.jsonl": "6b29c046a2adbdbf0b0624f658422081f4be795dfba6d92841404e446cdf431b",
+      "runs/phase7/reward_sweep/penalty_disproportionate_x0p5/seed_2/eval_test.jsonl": "c11735efd680c0a4f94ae1ea9b29fbc7f98f41b13ba45636f9709ce01ff43574",
+      "runs/phase7/reward_sweep/penalty_disproportionate_x0p5/seed_3/eval_test.jsonl": "daddb40e084cbb06848cf66ed8ff27621b1a8983f107687992125c03f1ffe80f",
+      "runs/phase7/reward_sweep/penalty_disproportionate_x0p5/seed_4/eval_test.jsonl": "92af139a91d90b2d836ef740a8d8932f152ed4314e181b1ec7813c08f6409ed2",
+      "runs/phase7/reward_sweep/penalty_disproportionate_x2p0/seed_0/eval_test.jsonl": "309c59a9018dd6819b3074e275bda0a1bd6f3cbbb6688fe28b634a0f53f66932",
+      "runs/phase7/reward_sweep/penalty_disproportionate_x2p0/seed_1/eval_test.jsonl": "d99f7394c659679e1d83843c0a52d40adf74d7ccbee7e8bef5dbda00d5452c0a",
+      "runs/phase7/reward_sweep/penalty_disproportionate_x2p0/seed_2/eval_test.jsonl": "d101bd465cf4f1df6a95a2ce95111589abaadb4edd564a0ec2a77b35efa0db5c",
+      "runs/phase7/reward_sweep/penalty_disproportionate_x2p0/seed_3/eval_test.jsonl": "67a89f1625cf5240151417615e5a93ccd3bb28d18bc7270b7979651e08278c31",
+      "runs/phase7/reward_sweep/penalty_disproportionate_x2p0/seed_4/eval_test.jsonl": "04edc5c478e5bf12f1358ff572caadb96a20f24e911ed145b5aa6d08869b1f2e",
+      "runs/phase7/reward_sweep/penalty_missed_impact_x0p5/seed_0/eval_test.jsonl": "af4d7ffbe5d7496c2dd12e83ad3a8ca11b04cf897d8ff2b20130097fe71102e0",
+      "runs/phase7/reward_sweep/penalty_missed_impact_x0p5/seed_1/eval_test.jsonl": "b5b63c377e62023a471483a8afd7c03a7bf448f6d0447eb86024f1ac4b93a3cf",
+      "runs/phase7/reward_sweep/penalty_missed_impact_x0p5/seed_2/eval_test.jsonl": "a5631e1289a76e2e4b8a6c766c985c51c0740bc2af8fce8b157531bcc70a0e9b",
+      "runs/phase7/reward_sweep/penalty_missed_impact_x0p5/seed_3/eval_test.jsonl": "e3d55e14f0169be38e88dd6a945111baadd38e7c436ac41dfc922f9f49759ec3",
+      "runs/phase7/reward_sweep/penalty_missed_impact_x0p5/seed_4/eval_test.jsonl": "5ff900216a792f223f970ac019590858c8423320f65a196b55f0e1a3b71b9d46",
+      "runs/phase7/reward_sweep/penalty_missed_impact_x2p0/seed_0/eval_test.jsonl": "2946e130369df59c23caeca6f3563b37adcb1d19fa7e5115a67847c513871ed1",
+      "runs/phase7/reward_sweep/penalty_missed_impact_x2p0/seed_1/eval_test.jsonl": "87abda4d6e138d157631c7943f76e17e1b64fe86431db763ec9078ec7211a08b",
+      "runs/phase7/reward_sweep/penalty_missed_impact_x2p0/seed_2/eval_test.jsonl": "8dd63c587031a64d0a306b9973cfa9253e4466269f9abdcc27f2504acf968b4a",
+      "runs/phase7/reward_sweep/penalty_missed_impact_x2p0/seed_3/eval_test.jsonl": "5076746059927fbf1baf50b1bbe2690c819c312e7493f4341105003a1fb746e3",
+      "runs/phase7/reward_sweep/penalty_missed_impact_x2p0/seed_4/eval_test.jsonl": "854570104532fd4595beb21696b6ed0805e7ba2faf36ba8fe73e372dab5b02d0",
+      "runs/phase7/reward_sweep/reward_benign_passive_x0p5/seed_0/eval_test.jsonl": "94bf9ae506161d1a0c4121183a21b2af466e86fda2036656ec561d5ffd63fc0d",
+      "runs/phase7/reward_sweep/reward_benign_passive_x0p5/seed_1/eval_test.jsonl": "0fae0aeb1066226a012d74c1bb797e226daaa4c08738b80fd8d2feb3a0a1576d",
+      "runs/phase7/reward_sweep/reward_benign_passive_x0p5/seed_2/eval_test.jsonl": "44fb9e2b644ed477d294d2c8bbdb4fbcefd4ce9b2149a2e774fc03f2a59f431f",
+      "runs/phase7/reward_sweep/reward_benign_passive_x0p5/seed_3/eval_test.jsonl": "3767ce6a7c4dfe11f1b808ac203219f3ae92b6626a9ba6674707bdc6586d58fc",
+      "runs/phase7/reward_sweep/reward_benign_passive_x0p5/seed_4/eval_test.jsonl": "12f4634bedbfc6cfcd284bf42219cd790b89e37458e17f92596846a5ce900026",
+      "runs/phase7/reward_sweep/reward_benign_passive_x2p0/seed_0/eval_test.jsonl": "26e5a4d403c29b224c0e850dae17e9219e35005cade8958c15ea13bfd731376b",
+      "runs/phase7/reward_sweep/reward_benign_passive_x2p0/seed_1/eval_test.jsonl": "b6178b84d310c29421bb4f0bcd3efebc2bdf37352ed17ae7c1e8fce4fda7ebfb",
+      "runs/phase7/reward_sweep/reward_benign_passive_x2p0/seed_2/eval_test.jsonl": "37322d820a6460d164d0952fea5d46f805b24801d5d4a3994c92b8b2252a713f",
+      "runs/phase7/reward_sweep/reward_benign_passive_x2p0/seed_3/eval_test.jsonl": "2f886a670e1a6b4d6eb9ca25052eb0e7110cde9a774a8b195e700d690ef379aa",
+      "runs/phase7/reward_sweep/reward_benign_passive_x2p0/seed_4/eval_test.jsonl": "84b85597e5f5e8838109a00329f97056a890c45c8ea74a8a69cda99c8e43dda1",
+      "runs/phase7/reward_sweep/reward_proportional_x0p5/seed_0/eval_test.jsonl": "4e263ba5d325e9981e7d02d4d3dae61b3d7cdf868dfbab5ebc2fe418c5afcaa1",
+      "runs/phase7/reward_sweep/reward_proportional_x0p5/seed_1/eval_test.jsonl": "2bd9b896841ab7034b41def252a1eaef5402df170d55ac0c9782ba2bb99f9f7c",
+      "runs/phase7/reward_sweep/reward_proportional_x0p5/seed_2/eval_test.jsonl": "827c000ca5f9cd793103a24589d9b3c68e54b20493ef7d2ed3c82bd798155c2a",
+      "runs/phase7/reward_sweep/reward_proportional_x0p5/seed_3/eval_test.jsonl": "cc1dfd755cd5b77546fc5b720c0f19c5307b0b23a2d040cc53124f076e5342e3",
+      "runs/phase7/reward_sweep/reward_proportional_x0p5/seed_4/eval_test.jsonl": "583ef5e861fe72ed096bbb1d48331a626de3ae5aba7f6964c4c4f8ce4f87621d",
+      "runs/phase7/reward_sweep/reward_proportional_x2p0/seed_0/eval_test.jsonl": "6dc3f2043ccf84dcc4d41415a414af3fe9fe2ea12193b953b5bf47df82fff55b",
+      "runs/phase7/reward_sweep/reward_proportional_x2p0/seed_1/eval_test.jsonl": "2570f93fd0e35caa0f0225f254f97e459fdbba20b95377a03f75e76787e075af",
+      "runs/phase7/reward_sweep/reward_proportional_x2p0/seed_2/eval_test.jsonl": "40e83cd2d60803e1a8c078f1b2c7a5c1a19798cf9ffc4598e058301855cd9999",
+      "runs/phase7/reward_sweep/reward_proportional_x2p0/seed_3/eval_test.jsonl": "606e4fcf33ca0f794f6c130d55b99b4445067351d81985c06bd795db5eb6a62a",
+      "runs/phase7/reward_sweep/reward_proportional_x2p0/seed_4/eval_test.jsonl": "8ff1d6a0e68986024e8a0d8e3a1e6072a532e7800a9c0d298470d7c2ce9038ff"
+    }
+  }
+}

@@ -1,0 +1,65 @@
+{
+  "schema_version": "1.0",
+  "figure": "F7",
+  "git_sha": "469d91c7fe4926026b5b72bcac5d64a4b863e75e",
+  "outputs": {
+    "png": "tex/figs/F7_overhead.png",
+    "json": "tex/figs/F7_summary.json"
+  },
+  "inputs": {
+    "phase6_eval_manifest": {
+      "path": "runs/phase6_primary/eval_manifest.json",
+      "sha256": "393202e232cfe730f4c9ce45c3b6bfe76bec6d8d86c09755d530c383a169b060"
+    },
+    "phase5_sweep_manifest": {
+      "path": "runs/phase5_primary/sweep_manifest.json",
+      "sha256": "736d42fdb563a53d60fc9e0b412deab75514ef3f28e6ef0fcfe6e7fd050fd968"
+    },
+    "latency_jsonl_sha256": {
+      "runs/phase6_primary/always_observe/seed_0/latency.jsonl": "e0eb4e78b2eeed2424dd428b8e36d6854567b147e92a52eb1883c337f93aedf4",
+      "runs/phase6_primary/always_block/seed_0/latency.jsonl": "6a1bf10eae8df9cf7c236315dae68e4cbfa2d8507879bb2ba6cd8dd10079a25b",
+      "runs/phase6_primary/recommended_action/seed_0/latency.jsonl": "6f2e70250a9c1c4636c45a939162ddd86069f182e381805e94ffb116e3b6a1d6",
+      "runs/phase6_primary/random/seed_0/latency.jsonl": "350763201f9205c3c29a8e550017fbeeb4138f23f6fd43e4389401e44125e848",
+      "runs/phase6_primary/random/seed_1/latency.jsonl": "0d8f2d1388bca9a13183358a13f6ee50e3919f59fe9d53ac4ea3643262fba6bd",
+      "runs/phase6_primary/random/seed_2/latency.jsonl": "7cbb5651ffa0e80c29f3d957e4a03981a87d34409572a287f4d4a60abc31fe28",
+      "runs/phase6_primary/random/seed_3/latency.jsonl": "f3a8dd9b77bdba579da5db033131d8908e2e3c3569d651884c88679117d50571",
+      "runs/phase6_primary/random/seed_4/latency.jsonl": "5fbcba8d5cfc0a9750149efb966e3b62480b31374970ea8f5534b10c6a296c05",
+      "runs/phase6_primary/random/seed_5/latency.jsonl": "624d1aaa017e08e82e3c3c20ac599cf85e6ce2f0f141ee3d81d3a486ac0ab2cb",
+      "runs/phase6_primary/random/seed_6/latency.jsonl": "13c8a37e345abe5ee5ff1d87d11aba34f8bd667152a2a86dd7d0c5dadd0cf885",
+      "runs/phase6_primary/random/seed_7/latency.jsonl": "96eb4daebd5658eaac38813a436e7399c28e02214d3259c50f1144bb7e5aa63f",
+      "runs/phase6_primary/random/seed_8/latency.jsonl": "bf6ad133da6018cdbc774d31be83b97cf156d6facc3a2c0b1c56378c5429063d",
+      "runs/phase6_primary/random/seed_9/latency.jsonl": "878b6f00aa64ac14864541193061a08a51785d2edf637168fcb05a19d4366165",
+      "runs/phase6_primary/dqn/seed_0/latency.jsonl": "396fa9c7c52d94f0e048d109b6bc648db9c00e411b1bb0ae58d99ee67fbf890f",
+      "runs/phase6_primary/dqn/seed_1/latency.jsonl": "ce31ca79a5914eb0d602f8012f88849b7af516628d3243dead08f004833de73b",
+      "runs/phase6_primary/dqn/seed_2/latency.jsonl": "86fbb1bb345ba57e50ebd82e9d59ed9c8d876f7a6e78838f6992f06a730552b1",
+      "runs/phase6_primary/dqn/seed_3/latency.jsonl": "c75ee28ec217c2995f0868ed2b619651dfc884cceab116d6faae8227fe1de8c6",
+      "runs/phase6_primary/dqn/seed_4/latency.jsonl": "fbed05794a05b75f74d499457a0b43a7338daf8bc046e42c8c584a75792e6ae5",
+      "runs/phase6_primary/dqn/seed_5/latency.jsonl": "6507563f289dbb97e83c2c3d1d83b54ab9b77a58bb4dc9d9d3e9ef38afa5c6ed",
+      "runs/phase6_primary/dqn/seed_6/latency.jsonl": "427a6dca552299143de58c20cd28747183fec3ebd46885e557d2d2ea68643de6",
+      "runs/phase6_primary/dqn/seed_7/latency.jsonl": "c9f23b5a28005fb1b56bddc50e5149d0276b63dd2b0e0b9431288f763bc9e18e",
+      "runs/phase6_primary/dqn/seed_8/latency.jsonl": "3879656588f619ed691c74c43193f7c5846f2cde52a2a15dbdfb1e78b70e7a3d",
+      "runs/phase6_primary/dqn/seed_9/latency.jsonl": "c557354bfd51fe3ac0f5dd66163cf3bd238c8cdaa4187d3013ae804c08e7c587",
+      "runs/phase6_primary/a2c/seed_0/latency.jsonl": "0da000c52981b41699685e3dd1817ca1a7e23d50e530f79db9f86ec06a43ff04",
+      "runs/phase6_primary/a2c/seed_1/latency.jsonl": "261d68c0b3d97327219eeb9f96143ea99c4399d03e341695c504d89f893490b8",
+      "runs/phase6_primary/a2c/seed_2/latency.jsonl": "42c7e74c68004141bbf0b7bf0fecdfe9efee5f6de72ab9ba1b63789cfad19e77",
+      "runs/phase6_primary/a2c/seed_3/latency.jsonl": "30637be6c3c810fc8dbf9afa116a00afa6f2763352faf5df9480d5fdaf4c9367",
+      "runs/phase6_primary/a2c/seed_4/latency.jsonl": "b5fa8fc5678b95c24318b9e99c1e4781cff756e4c3f56780b1ac92b8c231d37b",
+      "runs/phase6_primary/a2c/seed_5/latency.jsonl": "e94b0fff49a069df3f54a112bf0ec6e5260ccf89494c644a1b6d95215c493b8f",
+      "runs/phase6_primary/a2c/seed_6/latency.jsonl": "175dd0be84c005db86a81e6eceb24524d1fc3abc03dfdb77cd4f561d4c1ea241",
+      "runs/phase6_primary/a2c/seed_7/latency.jsonl": "e9f0e0e52044494ab9a3ef128b6f68f5b29386dea5f6074744f1714b2aafb43f",
+      "runs/phase6_primary/a2c/seed_8/latency.jsonl": "88e3b90f7467c6417dda206c6cf034f338a86e7026e420fe08f362d352cf9834",
+      "runs/phase6_primary/a2c/seed_9/latency.jsonl": "e00bc6366e7a98d395d8495ed1e8c0a763226652c7f2f332cf37f32ae7830612",
+      "runs/phase6_primary/ppo/seed_0/latency.jsonl": "f0c6b302adcf5854c527283de6a60db6a8194f8bc75d06fdf49b82e5c2c4fb5f",
+      "runs/phase6_primary/ppo/seed_1/latency.jsonl": "85a0454d9e26fa93581d8fd55e90481dc5f8fe9a1a713ce07789cabde9f3e522",
+      "runs/phase6_primary/ppo/seed_2/latency.jsonl": "ee1958eba759b17338cccac797a21ee54a06b9590eac22b0e5ea3bb1f37a1878",
+      "runs/phase6_primary/ppo/seed_3/latency.jsonl": "87d3a59ace1e6f748afed8259592b79271bd6bb4e3f62d9586eede556a9351a8",
+      "runs/phase6_primary/ppo/seed_4/latency.jsonl": "f882a1bac5cfd1b476d9eda5fdec23bdb4ece5feef490c24abff8b75d3ee5dd8",
+      "runs/phase6_primary/ppo/seed_5/latency.jsonl": "051a43f09da245be8fbfd596ce073fa63704e388f0d95fdc879177458b4d4d74",
+      "runs/phase6_primary/ppo/seed_6/latency.jsonl": "0a626a162322c75f884e94a11ca438802008c46f5e21a95bdcb555751f08200e",
+      "runs/phase6_primary/ppo/seed_7/latency.jsonl": "c699d83f1d79f414fb3dbae90aa4ea5525a03d449c612eca5f347161008e21de",
+      "runs/phase6_primary/ppo/seed_8/latency.jsonl": "48574800d234d92b681a3a1f1f2b4170cbe028f0ca94fa9c81e44d0c4994248e",
+      "runs/phase6_primary/ppo/seed_9/latency.jsonl": "99af4e3fe0fd3239c6ca50d0f71c6c1d66499df19617b7c4c5a24b100791707f",
+      "runs/phase6_primary/rf_acting/seed_0/latency.jsonl": "860dfe3922d076cedb9709d5c8e1332e6cbb019848bd8ed2d9d11f3514124505"
+    }
+  }
+}
