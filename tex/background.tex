@@ -104,6 +104,31 @@ Other works have targeted specific layers of the IoT ecosystem. \textbf{IoTWarde
 
 The work by Nguyen et al.\ \cite{Nguyen2021} proposes a Federated DRL system for traffic monitoring in Software-Defined Networks for IoT, focusing on efficient data collection and analysis rather than active defense. Tharewal et al.\ \cite{Tharewal2022} apply DRL to industrial IoT intrusion detection but treat the agent as a classifier rather than a sequential decision-maker. The research in this thesis addresses a more fundamental challenge by operating at the \textbf{network layer}, analysing features derived from raw traffic to defend against a broad range of network-level attacks such as DDoS, DoS, and Spoofing, which are prevalent in the CICIoT2023 dataset, and by structuring the policy as a kill-chain-aware sequential decision-maker.
 
+\subsubsection{Comparison of Closely Related DRL-Based IoT Defense Systems}
+Table~\ref{tab:related_work_comparison} positions the three most closely related prior works --- IoTWarden \cite{Alam2024}, HoneyIoT \cite{Guan2023}, and Nguyen et al.\ \cite{Nguyen2021} --- against this thesis along the key dimensions that determine deployability and empirical rigour.
+
+\begin{table}[h!]
+\centering
+\caption{Comparison of DRL-based IoT security systems. ``Deployable'' means the policy runs on observable network inputs without simulator-privileged state. ``Head-to-head benchmark'' means the paper reports numerical comparisons against at least one deployable non-RL baseline under a shared evaluation contract.}
+\label{tab:related_work_comparison}
+\small
+\begin{tabular}{p{2.8cm} p{2.2cm} p{2.0cm} p{2.0cm} p{2.0cm} p{2.0cm}}
+\toprule
+\textbf{System} & \textbf{Environment} & \textbf{Action space} & \textbf{Dataset} & \textbf{Deployable?} & \textbf{Head-to-head benchmark?} \\
+\midrule
+IoTWarden \cite{Alam2024} & Synthetic trigger-action (IFTTT applets) & Disable/enable applet rules & Synthetic rule logs & Yes & No (no non-RL baseline) \\
+\addlinespace
+HoneyIoT \cite{Guan2023} & Simulated honeypot & Alter service offerings & Synthetic attacker model & Reconnaissance only & No (no reward comparison) \\
+\addlinespace
+Nguyen et al.\ \cite{Nguyen2021} & Software-Defined Network (IoT) & Traffic monitoring actions & Custom SDN traces & Passive classifier & No (accuracy only) \\
+\addlinespace
+\textbf{This work} & \textbf{Real CICIoT2023 traffic (105 IoT devices)} & \textbf{5-action kill-chain defender} & \textbf{CICIoT2023 \cite{Neto2023}} & \textbf{Yes} & \textbf{Yes (oracle, RF-Acting, 3 trivials; 10 seeds; bootstrap CIs)} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The key differentiators are (i) training and evaluation on a large-scale, real-capture dataset rather than a synthetic or simulated environment; (ii) an explicit oracle-ceiling measurement instrument that quantifies the value of perfect stage detection; and (iii) head-to-head reward comparisons against deployable baselines under a unified evaluation contract.
+
 \subsubsection{Positioning the Thesis: Bridging the Research Gap}
 While previous works have successfully applied DRL to specific aspects of IoT security, a gap remains for a comprehensive, network-level defense system that is simultaneously:
 \begin{itemize}
