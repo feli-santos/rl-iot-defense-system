@@ -360,15 +360,6 @@ _STATUS_PASS_WITHOUT_STRETCH = "PASS-WITHOUT-STRETCH"
 _STATUS_FAIL_WITH_FINDING = "FAIL-WITH-FINDING"
 _STATUS_FAIL = "FAIL"
 _STATUS_SKIP = "SKIP"
-_STATUS_ENUM = frozenset({
-    _STATUS_PASS,
-    _STATUS_PASS_WITH_FINDING,
-    _STATUS_PASS_WITHOUT_STRETCH,
-    _STATUS_FAIL_WITH_FINDING,
-    _STATUS_FAIL,
-    _STATUS_SKIP,
-})
-
 # Per-gate (gate_id → finding_id) override table for G7.x. Keeps the
 # free-text `interpretation` field readable while ensuring the
 # scoreboard exposes the same finding_id Phase-6 ships natively

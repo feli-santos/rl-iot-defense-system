@@ -200,59 +200,6 @@ class CICIoTProcessor:
         combined_data = pd.concat(dataframes, ignore_index=True)
         return combined_data
     
-    def _preprocess_data(self, data: pd.DataFrame) -> pd.DataFrame:
-        """Preprocess the raw data with class balancing and feature selection."""
-        logger.info("Preprocessing data...")
-        
-        # Drop rows with missing values
-        data = data.dropna()
-        
-        # Identify feature and target columns
-        target_column = data.columns[-1]
-        feature_columns = data.columns[:-1].tolist()
-        
-        # Separate features and targets
-        X = data[feature_columns].copy()
-        y = data[target_column].copy()
-        
-        # Handle categorical features
-        categorical_columns = X.select_dtypes(include=['object']).columns
-        for col in categorical_columns:
-            X[col] = X[col].astype('category').cat.codes
-        
-        # Clean inf/NaN values before scaling (critical for numerical stability)
-        X = self._clean_numerical_data(X)
-        
-        # Feature selection - remove zero/low variance features and correlations
-        if hasattr(self.config, 'feature_selection') and self.config.feature_selection:
-            X = self._apply_feature_selection(X)
-            logger.info(f"After feature selection: {X.shape[1]} features")
-        
-        # Scale numerical features
-        self.scaler = StandardScaler()
-        X_scaled = self.scaler.fit_transform(X)
-        X = pd.DataFrame(X_scaled, columns=X.columns, index=X.index)
-        
-        # Encode target labels
-        self.label_encoder = LabelEncoder()
-        y_encoded = self.label_encoder.fit_transform(y)
-        
-        # Store class names and feature columns
-        self.class_names = self.label_encoder.classes_.tolist()
-        self.feature_columns = X.columns.tolist()
-        
-        # Apply class balancing if configured
-        if hasattr(self.config, 'sampling_strategy') and self.config.sampling_strategy == 'balanced':
-            X, y_encoded = self._apply_class_balancing(X, y_encoded)
-            logger.info(f"After class balancing: {len(X)} samples")
-        
-        # Combine features and targets
-        processed_data = X.copy()
-        processed_data['target'] = y_encoded
-        
-        logger.info(f"Final preprocessing: {len(self.feature_columns)} features, {len(self.class_names)} classes")
-        return processed_data
-
     def _preprocess_split(
         self,
         split_data: pd.DataFrame,

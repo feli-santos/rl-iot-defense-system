@@ -891,17 +891,6 @@ class GeneratorTrainer:
         except Exception as e:
             logger.warning(f"Failed to log dataset stats: {e}")
     
-    def _log_epoch_metrics(
-        self, 
-        epoch: int, 
-        train_loss: float, 
-        val_loss: float,
-        patience_counter: int
-    ) -> None:
-        """Log per-epoch metrics to MLflow (legacy, deprecated)."""
-        # Use _log_epoch_metrics_extended instead
-        pass
-    
     def _log_epoch_metrics_extended(
         self, 
         epoch: int, 
