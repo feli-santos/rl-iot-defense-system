@@ -147,3 +147,4 @@ tex/*.lot
 
 # Cline
 .clineignore
+.cline/
