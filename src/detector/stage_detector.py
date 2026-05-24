@@ -1,7 +1,7 @@
 """StageDetector — the production MLP head used by the RL agent.
 
-Phase 4 (PLAN §A3).  29-D feature vector -> 5-class stage logits via a
-small fully-connected network. This is the model the Phase-7 evaluation
+detector (PLAN §A3).  29-D feature vector -> 5-class stage logits via a
+small fully-connected network. This is the model the ablation evaluation
 calls on every step of every episode, so latency matters: the design
 target in PLAN §G4.5 is ≤ 1 ms / sample on CPU.
 

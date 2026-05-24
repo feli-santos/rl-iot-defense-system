@@ -1,8 +1,8 @@
-"""SB3 callbacks for Phase-5 Blue-Team training.
+"""SB3 callbacks for blue-team Blue-Team training.
 
 The single point of integration with stable-baselines3 is
 :class:`EpisodeJSONLCallback`, which writes one JSON line per terminated
-or truncated episode, capturing the Phase-3 ``info`` telemetry plus a
+or truncated episode, capturing the environment-design ``info`` telemetry plus a
 per-episode action histogram. The schema is intentionally flat so that
 ``aggregation.read_episodes_jsonl`` can deserialise it with a single
 pandas call.
@@ -39,9 +39,9 @@ callback's ``_on_training_start`` hook.
 
 Note that SB3 may run ``n_envs > 1`` (when wrapped in a VecEnv); the
 callback iterates over each sub-env's ``infos[i]`` / ``dones[i]`` and
-maintains one accumulator per sub-env. Phase-5 only uses a single
+maintains one accumulator per sub-env. blue-team only uses a single
 DummyVecEnv (one env), but the implementation is correct for the
-multi-env case so the same callback survives Phase 7.
+multi-env case so the same callback survives ablation.
 """
 
 from __future__ import annotations
@@ -61,7 +61,7 @@ from src.utils.label_mapper import KillChainStage
 logger = logging.getLogger(__name__)
 
 
-# Phase-5 callback schema version. Bump whenever a field is added,
+# blue-team callback schema version. Bump whenever a field is added,
 # removed, or renamed; aggregation.read_episodes_jsonl asserts on this
 # so silent schema drift cannot poison the F3/F4 figures.
 _SCHEMA_VERSION = "1.0"
@@ -360,7 +360,7 @@ class EvalToJSONLCallback(BaseCallback):
       value).
 
     Why a custom class and not SB3's :class:`EvalCallback`? We need
-    Phase-3 telemetry (mttc_steps, compromised, defender_deescalations,
+    environment-design telemetry (mttc_steps, compromised, defender_deescalations,
     per-stage action counts) on the eval side too, and SB3's eval log
     only stores reward + length + success-rate. Writing our own keeps
     aggregation symmetric.

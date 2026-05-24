@@ -1,4 +1,4 @@
-"""Synthetic tests for the Phase-7 closer parsers (audit fix 2026-05-01).
+"""Synthetic tests for the ablation closer parsers (audit fix 2026-05-01).
 
 These pin the regression where the auto-finalizer reported G7.1
 ``passes: false`` despite "442 passed, 2 warnings", which then
@@ -21,7 +21,7 @@ from __future__ import annotations
 
 import math
 
-from scripts.ablation.close_phase7 import _parse_pytest_summary
+from scripts.ablation.close_ablation import _parse_pytest_summary
 from scripts.ablation.plot_reward_ablation import _evaluate_g72
 
 
@@ -198,7 +198,7 @@ def test_g72_no_finite_rows_returns_failure():
 
 def test_g72_reward_coefficient_cell_does_not_count_for_strand1():
     """Even if a reward-coefficient cell has a huge mean reward,
-    it does NOT make strand-1 pass; only Phase-3-reward-fn-
+    it does NOT make strand-1 pass; only environment-design-reward-fn-
     preserving cells qualify (axis baseline / impact_terminal)."""
     rows = [
         _row("baseline", "baseline", 1100.0, mit=0.20),

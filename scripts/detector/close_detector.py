@@ -1,14 +1,11 @@
-"""Phase-4 closer: assemble ``G4_scoreboard.json`` from locked Phase-4 artefacts.
+"""Detector closer: assemble ``G4_scoreboard.json`` from locked detector artefacts.
 
-This is a derived-only emitter. It reads the locked Phase-4 artefacts —
+This is a derived-only emitter. It reads the locked detector artefacts —
 ``F11_summary.json`` (per-gate evaluation produced by
 ``scripts/detector/train_detector.py``) and ``manifest.json`` (input/output
-hash chain) — and writes ``G4_scoreboard.json`` in the Phase-6-native
+hash chain) — and writes ``G4_scoreboard.json`` in the benchmark-native
 schema (``status`` enum + ``finding_id``), mirroring
 ``docs/results/06_benchmark/G6_scoreboard.json``.
-
-Step-8 closes Step-4 finding F2 (no Phase-4 scoreboard on disk) and the
-F3 schema-unification ask (07_HANDOFF.md §5 / Step-8 task #2).
 
 This script does NOT retrain anything. It does NOT touch
 ``F11_summary.json`` (the producer of the gate verdicts is
@@ -17,7 +14,7 @@ are the canonical numerical record).
 
 Usage::
 
-    python -m scripts.detector.close_phase4 [--out-dir docs/results/04_detector]
+    python -m scripts.detector.close_detector [--out-dir docs/results/04_detector]
 """
 
 from __future__ import annotations
@@ -31,12 +28,12 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-logger = logging.getLogger("scripts.detector.close_phase4")
+logger = logging.getLogger("scripts.detector.close_detector")
 
 _ROOT = Path(__file__).resolve().parents[2]
 
 
-# Canonical scoreboard-status enum (Phase-6-native; see
+# Canonical scoreboard-status enum (benchmark-native; see
 # docs/results/06_benchmark/G6_scoreboard.json + 07_HANDOFF.md L196).
 _STATUS_PASS = "PASS"
 _STATUS_PASS_WITH_FINDING = "PASS-WITH-FINDING"
@@ -47,8 +44,8 @@ _STATUS_SKIP = "SKIP"
 
 
 # Per-gate finding-id table. The OOD-recall G4.4 result is the canonical
-# Phase-4 thesis-finding entry (revised D2 / step 4.5 PLAN locking),
-# carried into Phase 7 as the F15 / D7.9.1 headline.
+# detector thesis-finding entry (revised D2 / step 4.5 PLAN locking),
+# carried into the ablation evaluation as the F15 / D7.9.1 headline.
 _GATE_FINDING_ID: Dict[str, str] = {
     "G4.4": "D2.1",   # OOD-recall blind spot: VulnerabilityScan recall = 0.001
 }
@@ -56,7 +53,7 @@ _GATE_FINDING_ID: Dict[str, str] = {
 
 # Canonical legacy-status normaliser. F11_summary.json::gates.G4.4 currently
 # ships "PASS-with-finding" (lowercase suffix); the unified schema spells
-# the enum members all-uppercase to match Phase-6 G6_scoreboard.json. The
+# the enum members all-uppercase to match G6_scoreboard.json. The
 # normaliser is permissive on input casing.
 def _canon_status(raw: Optional[str]) -> str:
     if raw is None:
@@ -86,23 +83,23 @@ def _git_sha() -> str:
 
 
 def _build_g4_1(out_dir: Path) -> Dict[str, Any]:
-    """G4.1 — full pytest suite green. Phase-4 docs/results/04_detector/RESULTS.md
-    L20 records ``329 / 329 PASS`` at the Phase-4 lock. Step-7 audit
-    confirmed the post-Phase-10 dead-code cleanup (commit 281860a) reduced
-    the count to 411 by deleting tests for a retired src/benchmarking/
-    package; the Phase-4 frozen tests remain green. We mark this gate
-    SKIP at the closer level (the producer is ``pytest -q``, not this
-    script) and reference the locked RESULTS.md value in the note.
+    """G4.1 — full pytest suite green. docs/results/04_detector/RESULTS.md
+    L20 records ``329 / 329 PASS`` at the detector lock. A later dead-code
+    cleanup (commit 281860a) reduced the count to 411 by deleting tests for
+    a retired src/benchmarking/ package; the detector frozen tests remain
+    green. We mark this gate SKIP at the closer level (the producer is
+    ``pytest -q``, not this script) and reference the locked RESULTS.md
+    value in the note.
     """
     return {
         "id": "G4.1",
         "description": "full pytest suite green",
         "threshold": "all tests green",
-        "value": "329 / 329 (Phase-4 lock; post-Phase-10 cleanup: 411/411 at HEAD; see Step-7 §9 footnote)",
+        "value": "329 / 329 (detector lock; post-cleanup: 411/411 at HEAD; see RESULTS.md §9 footnote)",
         "status": _STATUS_SKIP,
         "evaluated": False,
         "note": (
-            "evaluated separately by `pytest -q`; locked Phase-4 value "
+            "evaluated separately by `pytest -q`; locked detector value "
             "preserved verbatim from RESULTS.md §2"
         ),
     }
@@ -117,7 +114,7 @@ def _g4_2_to_g4_5(summary: Dict[str, Any]) -> List[Dict[str, Any]]:
         if s is None:
             rows.append({
                 "id": gid,
-                "description": f"missing in F11_summary.json (Phase-4 not yet sealed?)",
+                "description": f"missing in F11_summary.json (detector not yet sealed?)",
                 "status": _STATUS_FAIL,
                 "value": "F11_summary.json missing this gate",
             })
@@ -156,7 +153,7 @@ def build_scoreboard(out_dir: Path) -> Dict[str, Any]:
     summary_path = out_dir / "F11_summary.json"
     if not summary_path.exists():
         raise FileNotFoundError(
-            f"missing {summary_path} — Phase 4 has not been sealed yet"
+            f"missing {summary_path} — detector step has not been sealed yet"
         )
     summary = json.loads(summary_path.read_text())
 
@@ -195,7 +192,7 @@ def build_scoreboard(out_dir: Path) -> Dict[str, Any]:
 
 
 def main(argv: Optional[List[str]] = None) -> int:
-    p = argparse.ArgumentParser(description="Phase-4 closer: G4_scoreboard.json")
+    p = argparse.ArgumentParser(description="Detector closer: G4_scoreboard.json")
     p.add_argument("--out-dir", default="docs/results/04_detector")
     args = p.parse_args(argv)
     logging.basicConfig(
@@ -211,7 +208,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     logger.info("wrote %s", score_path)
     s = payload["summary"]
     print(
-        f"=== Phase-4 gate scoreboard ===\n"
+        f"=== Detector gate scoreboard ===\n"
         f"  total={s['total_gates']}  "
         f"pass={s['pass']}  pass_with_finding={s['pass_with_finding']}  "
         f"fail_with_finding={s['fail_with_finding']}  fail={s['fail']}  "

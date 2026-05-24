@@ -1,9 +1,9 @@
-"""Phase-3 environment exit-gate regression suite (G3.1-G3.7).
+"""Environment-design exit-gate regression suite (G3.1-G3.7).
 
 Runs ~6-8 s on a laptop. Every gate corresponds to a numbered line in
-``docs/results/03_env/PLAN.md`` §3.2; if a gate fails here, the rewrite
-in commit 2a526af must be revisited before Phase 4 (detector head) is
-allowed to consume the new env.
+``docs/results/03_env/PLAN.md`` §3.2; if a gate fails here, the
+environment-design rewrite in commit 2a526af must be revisited before
+the detector training step is allowed to consume the new env.
 
 Per-gate budgets (set conservatively to avoid flakiness):
     - G3.2 / G3.3:  100 episodes  (PLAN said 200; 100 is enough for the median)
@@ -79,7 +79,7 @@ def _build_env(tmp_path: Path, *, config_overrides: Iterable[tuple] = ()) -> Adv
 @pytest.fixture(scope="module")
 def env_factory(tmp_path_factory: pytest.TempPathFactory):
     """Return a callable that builds a fresh env on demand."""
-    base_tmp = tmp_path_factory.mktemp("phase3_gates")
+    base_tmp = tmp_path_factory.mktemp("env_design_gates")
 
     def _make(**overrides) -> AdversarialIoTEnv:
         return _build_env(
@@ -164,7 +164,7 @@ def _rollout_recommended(env: AdversarialIoTEnv, *, seed: int) -> dict:
 
 
 class TestG3_1_RegressionTests:
-    """G3.1: targeted unit tests for each Phase-3 behaviour change."""
+    """G3.1: targeted unit tests for each environment-design behaviour change."""
 
     def test_recommended_action_yields_positive_reward_per_step(self, env_factory):
         """B2 fix: picking the recommended action earns net-positive reward."""

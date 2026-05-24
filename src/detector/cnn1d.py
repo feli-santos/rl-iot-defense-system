@@ -1,9 +1,9 @@
-"""CNN1D — Tharewal-style 1-D convolutional baseline for Phase 4.
+"""CNN1D — Tharewal-style 1-D convolutional baseline for detector.
 
 The 29-D feature vector is treated as a length-29 signal with a single
 channel; the network is meant to capture local correlations between
 adjacent features that an MLP cannot. The architecture is *deliberately*
-small (~2 K params) because a) Phase 4 is about *fair baselines* not
+small (~2 K params) because a) detector is about *fair baselines* not
 SOTA, and b) the comparison against StageDetector is most informative
 when both models are similar size.
 

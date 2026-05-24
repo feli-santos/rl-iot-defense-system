@@ -1,4 +1,4 @@
-"""Phase-5 sweep driver: run 3 algos x N seeds via subprocess.
+"""Blue-team sweep driver: run 3 algos x N seeds via subprocess.
 
 PLAN §3.1.7. Why subprocess and not VecEnv:
 - Each (algo, seed) gets a clean Python process, which means a clean
@@ -13,12 +13,12 @@ this is ~3-7 h depending on the timestep budget.
 
 Usage::
 
-    python -m scripts.blue_team.run_phase5 \\
+    python -m scripts.blue_team.run_sweep \\
         [--algos dqn ppo a2c] [--seeds 0 1 2 3 4] \\
-        [--total-timesteps 250000] [--out-root runs/phase5] \\
+        [--total-timesteps 250000] [--out-root runs/blue_team] \\
         [--parallel 1] [--smoke]
 
-The driver writes ``runs/phase5/sweep_manifest.json`` with one entry
+The driver writes ``runs/blue_team/sweep_manifest.json`` with one entry
 per run referencing its ``run_manifest.json``; the figure scripts
 consume the sweep manifest as the canonical "what was run".
 """
@@ -36,25 +36,25 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, List
 
-logger = logging.getLogger("scripts.blue_team.run_phase5")
+logger = logging.getLogger("scripts.blue_team.run_sweep")
 
 _ROOT = Path(__file__).resolve().parents[2]
 
 
 def _build_argparser() -> argparse.ArgumentParser:
-    p = argparse.ArgumentParser(description="Phase-5 algo x seed sweep driver.")
+    p = argparse.ArgumentParser(description="Blue-team algo x seed sweep driver.")
     p.add_argument("--algos", nargs="+", default=["dqn", "ppo", "a2c"])
     p.add_argument("--seeds", nargs="+", type=int, default=[0, 1, 2, 3, 4])
     p.add_argument("--total-timesteps", type=int, default=250_000)
     p.add_argument("--eval-freq", type=int, default=25_000)
     p.add_argument("--n-eval-episodes", type=int, default=30)
-    p.add_argument("--out-root", default="runs/phase5")
+    p.add_argument("--out-root", default="runs/blue_team")
     p.add_argument(
         "--parallel", type=int, default=1,
         help="Number of concurrent subprocesses (default 1 = serial).",
     )
     p.add_argument(
-        "--generator-path", default="artifacts/generator/phase2",
+        "--generator-path", default="artifacts/generator/red_team",
     )
     p.add_argument(
         "--dataset-path", default="data/processed/ciciot2023",
@@ -68,15 +68,15 @@ def _build_argparser() -> argparse.ArgumentParser:
         "--continue-on-failure", action="store_true",
         help="If a run crashes, log it and keep going. Default: stop.",
     )
-    # Phase-3 revision: allow passing impact_is_terminal and reward overrides
-    # to the per-run train_agent subprocess so the sweep driver can launch the
-    # primary (impact_is_terminal=False) contract without code duplication.
+    # Allow passing impact_is_terminal and reward overrides to the per-run
+    # train_agent subprocess so the sweep driver can launch the primary
+    # (impact_is_terminal=False) contract without code duplication.
     p.add_argument(
         "--impact-is-terminal", type=str, default=None,
         help=(
             "Forwarded to train_agent --impact-is-terminal. "
-            "Use 'false' for the primary Phase-3 revision contract. "
-            "Default None preserves Phase-5 frozen contract (True)."
+            "Use 'false' to enable the explicit IMPACT-row decision step. "
+            "Default None preserves the environment-design frozen contract (True)."
         ),
     )
     p.add_argument(
@@ -107,7 +107,7 @@ def _run_one(args: argparse.Namespace, algo: str, seed: int) -> Dict:
     ]
     if args.smoke:
         cmd.append("--smoke")
-    # Forward optional Phase-3 revision overrides to the subprocess
+    # Forward optional reward/env overrides to the subprocess
     if getattr(args, "impact_is_terminal", None) is not None:
         cmd.extend(["--impact-is-terminal", args.impact_is_terminal])
     if getattr(args, "reward_overrides", None) is not None:
@@ -147,7 +147,7 @@ def main(argv: list[str] | None = None) -> int:
     out_root.mkdir(parents=True, exist_ok=True)
 
     grid = [(a, s) for a in args.algos for s in args.seeds]
-    logger.info("phase-5 sweep: %d runs (%s) x (%s) on %d worker(s)",
+    logger.info("blue-team sweep: %d runs (%s) x (%s) on %d worker(s)",
                 len(grid), args.algos, args.seeds, args.parallel)
     t_start = time.time()
     results: List[Dict] = []
@@ -178,7 +178,7 @@ def main(argv: list[str] | None = None) -> int:
     sweep_manifest_path.write_text(json.dumps(sweep_manifest, indent=2))
 
     logger.info(
-        "sweep done: %d ok / %d failed in %.1fs; manifest -> %s",
+        "blue-team sweep done: %d ok / %d failed in %.1fs; manifest -> %s",
         sweep_manifest["n_ok"], sweep_manifest["n_failed"],
         sweep_manifest["wallclock_seconds"], sweep_manifest_path,
     )

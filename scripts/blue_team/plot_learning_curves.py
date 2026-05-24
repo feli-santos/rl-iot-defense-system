@@ -8,7 +8,7 @@ algo. The eval reward is overlaid as a dotted line.
 Usage::
 
     python -m scripts.blue_team.plot_learning_curves \\
-        --runs-root runs/phase5 \\
+        --runs-root runs/blue_team \\
         --out-dir docs/results/05_blue_team \\
         [--n-bins 25] [--bootstrap 1000]
 """

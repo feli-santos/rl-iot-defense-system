@@ -12,7 +12,10 @@ Modes:
 - train-rl: Train single RL defense agent (Blue Team)
 - train-all-rl: Train all RL algorithms (DQN, PPO, A2C)
 - train-all: Run complete training pipeline
-- evaluate: Evaluate trained models (single or comparison)
+
+For benchmark evaluation and ablation sweeps, use the canonical
+Makefile targets: ``make benchmark-eval``, ``make ablation-ood-eval``,
+or the scripts directly: ``python -m scripts.benchmark.run_test_eval``.
 """
 
 import argparse
@@ -117,19 +120,17 @@ Examples:
   
   # Full pipeline
   python main.py --mode train-all
-  
-  # Evaluate single model (detailed metrics)
-  python main.py --mode evaluate --model-path artifacts/rl/ppo_*.zip
-  
-  # Compare algorithms (auto-discover models)
-  python main.py --mode evaluate --algorithms dqn ppo a2c
+
+  # For benchmark/ablation evaluation, use the Makefile:
+  #   make benchmark-eval
+  #   make ablation-ood-eval
         """
     )
     
     # Mode selection
     parser.add_argument(
         '--mode',
-        choices=['process-data', 'train-generator', 'train-rl', 'train-all-rl', 'train-all', 'evaluate'],
+        choices=['process-data', 'train-generator', 'train-rl', 'train-all-rl', 'train-all'],
         default='train-all',
         help='Training mode'
     )
@@ -162,29 +163,6 @@ Examples:
         type=str,
         default='artifacts/rl',
         help='Path to RL model directory'
-    )
-    
-    # Evaluation options
-    parser.add_argument(
-        '--model-path',
-        type=str,
-        default=None,
-        help='Path to specific model file for single-model evaluation'
-    )
-    
-    parser.add_argument(
-        '--algorithms',
-        nargs='+',
-        choices=['dqn', 'ppo', 'a2c'],
-        default=None,
-        help='Algorithms to evaluate/compare (auto-discovers models)'
-    )
-    
-    parser.add_argument(
-        '--eval-episodes',
-        type=int,
-        default=20,
-        help='Number of evaluation episodes per model'
     )
     
     # Generator training options
@@ -654,47 +632,6 @@ def train_all_rl(config: dict, args: argparse.Namespace) -> bool:
     return all_success
 
 
-def run_evaluate(config: dict, args: argparse.Namespace) -> bool:
-    """[DEPRECATED — Phase 10, D10.1] ``main.py --mode evaluate`` is retired.
-
-    The pre-restart ``src/benchmarking/`` package this entry point used to
-    import was deleted in Phase 10 (audit AF4). The canonical evaluation
-    paths that produced the thesis-cited Phase 6 / Phase 7 RESULTS are:
-
-      - ``make phase-6-eval`` — RL × baselines on test_balanced (Phase 6).
-      - ``make phase-7-ood-eval`` — held-out OOD-class robustness (Phase 7).
-      - ``python -m scripts.benchmark.run_test_eval`` — direct invocation.
-      - ``python -m scripts.ablation.run_ood_eval`` — direct invocation.
-
-    See ``docs/results/06_benchmark/RESULTS.md`` and
-    ``docs/results/07_ablation/RESULTS.md`` for the produced artefacts.
-
-    This function intentionally returns ``False`` so the process exits
-    non-zero, surfacing the deprecation to any shell script that still
-    invokes the legacy mode. The CLI flag itself is retained for one
-    release; future phases (Phase 11+) may delete it entirely.
-    """
-    del config, args  # unused — preserved for signature compatibility
-
-    print("\n⚠️  --mode evaluate is DEPRECATED (Phase 10, D10.1)")
-    print("=" * 60)
-    print("The src/benchmarking/ package this mode used was deleted")
-    print("in Phase 10. Use the canonical Phase-6 / Phase-7 paths:")
-    print("")
-    print("  RL × baselines benchmark:")
-    print("    make phase-6-eval && make phase-6-figures")
-    print("")
-    print("  Held-out OOD-class robustness:")
-    print("    make phase-7-ood")
-    print("")
-    print("  Direct invocations (no Make):")
-    print("    python -m scripts.benchmark.run_test_eval --help")
-    print("    python -m scripts.ablation.run_ood_eval     --help")
-    print("")
-    print("See docs/results/06_benchmark/RESULTS.md +")
-    print("    docs/results/07_ablation/RESULTS.md for produced artefacts.")
-    print("=" * 60)
-    return False
 
 
 def main() -> None:
@@ -743,9 +680,6 @@ def main() -> None:
             if not train_rl(config, args):
                 return
             
-        elif args.mode == 'evaluate':
-            run_evaluate(config, args)
-        
         print("\n🎉 Pipeline completed successfully!")
         
     except Exception as e:

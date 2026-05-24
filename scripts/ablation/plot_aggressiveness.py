@@ -1,6 +1,6 @@
-"""Phase-7 F10 — Attack-aggressiveness sensitivity plot (PLAN §3.1.5).
+"""ablation F10 — Attack-aggressiveness sensitivity plot (PLAN §3.1.5).
 
-Reads ``runs/phase7/aggressiveness/{ppo,rule}_p<p>/seed_<k>/eval_test.jsonl``
+Reads ``runs/ablation/aggressiveness/{ppo,rule}_p<p>/seed_<k>/eval_test.jsonl``
 and renders the two-line sensitivity curve aligned with IoTWarden
 Fig. 6 (Bhattacharjee et al., 2023):
 
@@ -228,9 +228,9 @@ def _render(
 
 def _build_argparser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
-        description="Phase-7 F10 — attack-aggressiveness plot + summary.",
+        description="ablation F10 — attack-aggressiveness plot + summary.",
     )
-    p.add_argument("--runs-root", default="runs/phase7/aggressiveness")
+    p.add_argument("--runs-root", default="runs/ablation/aggressiveness")
     p.add_argument("--out-dir", default="docs/results/07_ablation")
     p.add_argument(
         "--p-values", nargs="+", type=float,
@@ -239,18 +239,18 @@ def _build_argparser() -> argparse.ArgumentParser:
     # Step-8 F2 (07_HANDOFF.md §5): explicit upstream-manifest SHA pins.
     p.add_argument(
         "--phase5-sweep-manifest",
-        default="runs/phase5/sweep_manifest.json",
-        help="Phase-5 sweep_manifest.json (warm-start trained checkpoints).",
+        default="runs/blue_team/sweep_manifest.json",
+        help="blue-team sweep_manifest.json (warm-start trained checkpoints).",
     )
     p.add_argument(
         "--phase6-eval-manifest",
-        default="runs/phase6/eval_manifest.json",
-        help="Phase-6 eval_manifest.json (oracle-rule reference rolls).",
+        default="runs/benchmark/eval_manifest.json",
+        help="benchmark eval_manifest.json (oracle-rule reference rolls).",
     )
     p.add_argument(
         "--phase1-splits-manifest",
         default="docs/results/01_dataset/manifest.json",
-        help="Phase-1 splits manifest.json (post-3cd2fb9; SHA 1e99d596...).",
+        help="dataset-prep splits manifest.json (post-3cd2fb9; SHA 1e99d596...).",
     )
     return p
 
@@ -304,19 +304,19 @@ def main(argv: Optional[List[str]] = None) -> int:
             "json": str(out_dir / "F10_summary.json"),
         },
         "inputs": {
-            "phase7_aggressiveness_sweep_manifest": {
+            "ablation_aggressiveness_sweep_manifest": {
                 "path": str(sweep_manifest_path),
                 "sha256": _sha256(sweep_manifest_path),
             },
             # Step-8 F2: explicit upstream-manifest SHA pins so the
             # F10 hash chain is self-contained (no transitive lookups).
-            "phase5_sweep_manifest": {
-                "path": str(args.phase5_sweep_manifest),
-                "sha256": _sha256(Path(args.phase5_sweep_manifest)),
+            "blue_team_sweep_manifest": {
+                "path": str(args.blue_team_sweep_manifest),
+                "sha256": _sha256(Path(args.blue_team_sweep_manifest)),
             },
-            "phase6_eval_manifest": {
-                "path": str(args.phase6_eval_manifest),
-                "sha256": _sha256(Path(args.phase6_eval_manifest)),
+            "benchmark_eval_manifest": {
+                "path": str(args.benchmark_eval_manifest),
+                "sha256": _sha256(Path(args.benchmark_eval_manifest)),
             },
             "phase1_splits_manifest": {
                 "path": str(args.phase1_splits_manifest),

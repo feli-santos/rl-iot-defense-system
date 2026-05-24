@@ -1,5 +1,5 @@
 """
-Phase 2 — train the LSTM Red Team episode generator and produce F1 + F2.
+red-team — train the LSTM Red Team episode generator and produce F1 + F2.
 
 Pipeline
 --------
@@ -67,7 +67,7 @@ from src.training.generator_trainer import (  # noqa: E402
 LOG = logging.getLogger("train_lstm")
 NUM_STAGES = 5
 
-# Phase-2 exit gates (from docs/results/02_red_team/PLAN.md §3.2)
+# red-team exit gates (from docs/results/02_red_team/PLAN.md §3.2)
 DEFAULT_GATES = {
     "G1_max_train_val_gap": 0.25,    # max abs(train-val)/val per epoch
     "G2_min_token_accuracy": 0.55,   # token-level top-1 on synthetic val
@@ -262,7 +262,7 @@ def _parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
     )
     p.add_argument("--processed-dir", type=Path, default=Path("data/processed/ciciot2023"))
     p.add_argument("--out-dir", type=Path, default=Path("docs/results/02_red_team"))
-    p.add_argument("--artifact-dir", type=Path, default=Path("artifacts/generator/phase2"))
+    p.add_argument("--artifact-dir", type=Path, default=Path("artifacts/generator/red_team"))
     p.add_argument("--seed", type=int, default=42)
     p.add_argument("--epochs", type=int, default=15)
     p.add_argument("--batch-size", type=int, default=256)
@@ -294,7 +294,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     if not splits_manifest.exists():
         LOG.error(
             "splits/manifest.json not found at %s. Run `make build-split-indices` "
-            "first (Phase 1).", splits_manifest,
+            "first (dataset-prep).", splits_manifest,
         )
         return 1
 
@@ -436,7 +436,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         "G3": kl_div <= DEFAULT_GATES["G3_max_kl_divergence"],
         "G4": cos_sim >= DEFAULT_GATES["G4_min_cosine_similarity"],
     }
-    LOG.info("Phase-2 exit gates: %s", gates_passed)
+    LOG.info("red-team exit gates: %s", gates_passed)
 
     # --- 6) Figures + summary -------------------------------------------------------
     args.out_dir.mkdir(parents=True, exist_ok=True)
@@ -478,7 +478,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     # Per-figure manifest pinning every input + output
     manifest = {
         "figure_id": "F1+F2",
-        "title": "Phase-2 Red Team v2 (LSTM episode generator)",
+        "title": "red-team Red Team v2 (LSTM episode generator)",
         "produced_by": "scripts/red_team/train_lstm.py",
         "git_sha": _git_sha(),
         "phase": 2,
@@ -499,7 +499,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     # Surface a one-line PASS/FAIL banner so CI / shell users see it immediately.
     banner = "✅ ALL GATES PASSED" if summary["all_gates_passed"] else "❌ ONE OR MORE GATES FAILED"
     print("=" * 72)
-    print(f"Phase-2 Red Team v2 :: {banner}")
+    print(f"red-team Red Team v2 :: {banner}")
     for gate, passed in gates_passed.items():
         threshold = DEFAULT_GATES[
             {"G1": "G1_max_train_val_gap", "G2": "G2_min_token_accuracy",

@@ -1,8 +1,8 @@
-"""Phase-8 FA_action_cost — action_cost_scale sensitivity sweep (C8).
+"""sensitivity-sweep FA_action_cost — action_cost_scale sensitivity sweep (C8).
 
 Trains PPO × 3 seeds × action_cost_scale ∈ {0.5, 1.0, 2.0}.
 Scale 1.0 is the primary-contract baseline; its runs are REUSED from
-``runs/phase5_primary/ppo/seed_{0,1,2}`` if they exist.
+``runs/blue_team_primary/ppo/seed_{0,1,2}`` if they exist.
 
 Usage::
 
@@ -10,7 +10,7 @@ Usage::
     python -m scripts.ablation.run_action_cost_sweep \\
         --seeds 0 1 2 \\
         --scales 0.5 1.0 2.0 \\
-        --out-root runs/phase8_action_cost \\
+        --out-root runs/ablation_action_cost \\
         --parallel 3
 
     # Smoke test
@@ -18,7 +18,7 @@ Usage::
 
 Outputs::
 
-    runs/phase8_action_cost/
+    runs/ablation_action_cost/
         x0p5/ppo/seed_0/   ...  (new training runs)
         x1p0/ppo/seed_0/   ...  (symlink or copy from phase5_primary, or re-train)
         x2p0/ppo/seed_0/   ...  (new training runs)
@@ -70,15 +70,15 @@ def _run_cell(
     dataset_path: str,
     splits_manifest: str,
     smoke: bool,
-    phase5_primary_root: Optional[str],
+    blue_team_primary_root: Optional[str],
 ) -> Dict[str, Any]:
     """Train one (scale, seed) cell. Returns a result dict."""
     tag = _scale_to_tag(scale)
     out_dir = str(Path(out_root) / tag / "ppo" / f"seed_{seed}")
 
     # Reuse phase5_primary baseline for scale=1.0 if available
-    if abs(scale - 1.0) < 1e-9 and phase5_primary_root:
-        primary_run = Path(phase5_primary_root) / "ppo" / f"seed_{seed}"
+    if abs(scale - 1.0) < 1e-9 and blue_team_primary_root:
+        primary_run = Path(blue_team_primary_root) / "ppo" / f"seed_{seed}"
         manifest_path = primary_run / "run_manifest.json"
         if manifest_path.exists():
             logger.info(
@@ -170,7 +170,7 @@ def run_sweep(
     splits_manifest: str,
     parallel: int,
     smoke: bool,
-    phase5_primary_root: Optional[str],
+    blue_team_primary_root: Optional[str],
 ) -> Dict[str, Any]:
     cells = [(sc, sd) for sc in scales for sd in seeds]
     logger.info(
@@ -192,7 +192,7 @@ def run_sweep(
                 dataset_path=dataset_path,
                 splits_manifest=splits_manifest,
                 smoke=smoke,
-                phase5_primary_root=phase5_primary_root,
+                blue_team_primary_root=blue_team_primary_root,
             ): (sc, sd)
             for sc, sd in cells
         }
@@ -223,15 +223,15 @@ def run_sweep(
 
 def main(argv: Optional[list] = None) -> int:  # type: ignore[type-arg]
     p = argparse.ArgumentParser(
-        description="Phase-8 FA_action_cost — action_cost_scale sensitivity sweep (C8).",
+        description="sensitivity-sweep FA_action_cost — action_cost_scale sensitivity sweep (C8).",
     )
     p.add_argument("--scales", nargs="+", type=float, default=[0.5, 1.0, 2.0])
     p.add_argument("--seeds", nargs="+", type=int, default=[0, 1, 2])
-    p.add_argument("--out-root", default="runs/phase8_action_cost")
+    p.add_argument("--out-root", default="runs/ablation_action_cost")
     p.add_argument("--total-timesteps", type=int, default=500_000)
     p.add_argument("--eval-freq", type=int, default=25_000)
     p.add_argument("--n-eval-episodes", type=int, default=30)
-    p.add_argument("--generator-path", default="artifacts/generator/phase2")
+    p.add_argument("--generator-path", default="artifacts/generator/red_team")
     p.add_argument("--dataset-path", default="data/processed/ciciot2023")
     p.add_argument(
         "--splits-manifest",
@@ -239,8 +239,8 @@ def main(argv: Optional[list] = None) -> int:  # type: ignore[type-arg]
     )
     p.add_argument("--parallel", type=int, default=3)
     p.add_argument(
-        "--phase5-primary-root", default="runs/phase5_primary",
-        help="Root of the primary Phase-5 training runs (for scale=1.0 reuse).",
+        "--phase5-primary-root", default="runs/blue_team_primary",
+        help="Root of the primary blue-team training runs (for scale=1.0 reuse).",
     )
     p.add_argument("--smoke", action="store_true")
     args = p.parse_args(argv)
@@ -266,7 +266,7 @@ def main(argv: Optional[list] = None) -> int:  # type: ignore[type-arg]
         splits_manifest=args.splits_manifest,
         parallel=args.parallel,
         smoke=args.smoke,
-        phase5_primary_root=args.phase5_primary_root,
+        blue_team_primary_root=args.blue_team_primary_root,
     )
     print(f"OK: {manifest['n_ok']} / Failed: {manifest['n_failed']} / Reused: {manifest['n_reused']}")
     return 0 if manifest["n_failed"] == 0 else 1

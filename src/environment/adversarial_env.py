@@ -20,7 +20,7 @@ Key Design
 
   This replaces the previous action-vs-previous-action heuristic; see
   ``docs/results/03_env/PLAN.md`` (B2 fix).
-- **Lifecycle (Phase-3 v2).**
+- **Lifecycle (environment-design v2).**
     - The episode runs for **at least** ``min_episode_length`` steps and at
       most ``max_steps`` (truncation). Choosing BLOCK or ISOLATE on an
       active attack does *not* end the episode anymore.
@@ -131,7 +131,7 @@ class AdversarialEnvConfig:
 
     See ``docs/results/03_env/PLAN.md`` for the rationale behind every reward
     constant. Most fields are tunable in Phase 8 (sensitivity ablation); the
-    defaults below are the values used to lock the Phase-3 exit gates.
+    defaults below are the values used to lock the environment-design exit gates.
 
     Lifecycle attributes
     --------------------
@@ -141,7 +141,7 @@ class AdversarialEnvConfig:
     min_episode_length:
         The episode is *guaranteed* to run for at least this many steps. The
         agent cannot end the episode early via BLOCK/ISOLATE; only IMPACT can
-        terminate before this many steps. Phase-3 exit gate G3.2 requires
+        terminate before this many steps. environment-design exit gate G3.2 requires
         median episode length ≥ 15 with random actions.
     p_defender_deescalation:
         On any step where the agent picks BLOCK or ISOLATE *and* the attack
@@ -174,20 +174,20 @@ class AdversarialEnvConfig:
         and (b) when the env de-escalates from MANEUVER/IMPACT to BENIGN
         because of an agent-driven defense action.
     impact_is_terminal:
-        If ``True`` (default, Phase-3 frozen contract), the episode
+        If ``True`` (default, environment-design frozen contract), the episode
         terminates the same step the env transitions to IMPACT, and the
         terminal reward is applied inline against whatever action the
         agent took *that same step* (which was chosen at the previous,
         non-IMPACT stage).
 
-        If ``False`` (Phase-7 D7.3, F9 ablation axis), the env transitions
+        If ``False`` (ablation D7.3, F9 ablation axis), the env transitions
         to IMPACT but does NOT terminate that step. The agent's *next*
         action is taken as the explicit IMPACT-row decision, then
         :meth:`_step_at_impact` runs with that action and the env
         terminates. This decouples "the step where IMPACT arrives" from
         "the step where the agent picks an IMPACT response", giving the
         agent an unconfounded IMPACT-row decision. Default ``True``
-        preserves the Phase-3/4/5/6 frozen contract byte-for-byte.
+        preserves the environment-design/4/5/6 frozen contract byte-for-byte.
     """
 
     # Lifecycle
@@ -262,7 +262,7 @@ class AdversarialIoTEnv(gym.Env):
        constructor at L305-ish below instantiates ``RealizationEngine(
        dataset_path)`` with no ``split_manifest`` / ``allowed_indices``
        argument). This means the engine samples from the *full* row
-       pool — it does NOT honour the Phase-1 OOD-exclusion or
+       pool — it does NOT honour the dataset-prep OOD-exclusion or
        ``split="train"`` invariants Phases 4–7 depend on.
 
        **Production callers must use one of**:
@@ -273,7 +273,7 @@ class AdversarialIoTEnv(gym.Env):
          engine``); or
        - ``src.blue_team.env_factory.make_eval_env(...)`` (caller
          supplies the eval split — typically ``"val_balanced"`` for
-         Phase-5 eval or ``"test_balanced"`` for Phase-6 / Phase-7).
+         blue-team eval or ``"test_balanced"`` for benchmark / ablation).
 
        Direct ``AdversarialIoTEnv(...)`` construction is reserved for
        synthetic-data unit tests (see ``tests/test_adversarial_env.py``)
@@ -357,7 +357,7 @@ class AdversarialIoTEnv(gym.Env):
         self._observation_window: List[np.ndarray] = []
         self._last_action: int = 0
         self._rng: Optional[np.random.Generator] = None
-        # Phase-3: MTTC tracking & defender-driven de-escalation
+        # environment-design: MTTC tracking & defender-driven de-escalation
         self._first_attack_step: Optional[int] = None
         self._compromise_step: Optional[int] = None
         self._defender_deescalations: int = 0
@@ -433,7 +433,7 @@ class AdversarialIoTEnv(gym.Env):
     ) -> Tuple[np.ndarray, float, bool, bool, Dict[str, Any]]:
         """Execute one environment step.
 
-        Lifecycle (Phase-3 v2):
+        Lifecycle (environment-design v2):
 
         1. **IMPACT step.** If we entered this step already at IMPACT, this is
            the agent's final mitigation turn. Reward depends on action choice;
@@ -525,7 +525,7 @@ class AdversarialIoTEnv(gym.Env):
             and self._step_count >= self._config.min_episode_length
         )
         if impact_arrived and self._config.impact_is_terminal:
-            # Phase-3 frozen contract (default).
+            # environment-design frozen contract (default).
             # Apply the terminal IMPACT penalty inline. The kill chain has
             # consummated this step; we do *not* hand the agent a separate
             # "_step_at_impact" turn for OBSERVE/LOG -> the missed defense
@@ -650,9 +650,9 @@ class AdversarialIoTEnv(gym.Env):
         return observation
     
     def _build_info(self) -> Dict[str, Any]:
-        """Build info dictionary including Phase-3 telemetry.
+        """Build info dictionary including environment-design telemetry.
 
-        New keys (Phase-3):
+        New keys (environment-design):
 
         - ``compromised`` (bool): True iff the attack reached IMPACT this
           episode.
@@ -689,7 +689,7 @@ class AdversarialIoTEnv(gym.Env):
     def _calculate_reward(self, action: int, previous_stage: int) -> float:
         """Reward for one non-IMPACT step.
 
-        New formulation (Phase-3, B2 fix). The reward depends *only* on the
+        New formulation (environment-design, B2 fix). The reward depends *only* on the
         decision-time stage and the action — not on the agent's previous
         action. Components:
 

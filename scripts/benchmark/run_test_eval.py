@@ -1,16 +1,16 @@
-"""Phase-6 test-split evaluation sweeper (PLAN §3.1.4, C3).
+"""benchmark test-split evaluation sweeper (PLAN §3.1.4, C3).
 
-Rolls every Phase-5 trained checkpoint and every non-RL baseline on the
+Rolls every blue-team trained checkpoint and every non-RL baseline on the
 **held-out ``test_balanced`` split** (D6.2) and writes:
 
-- ``runs/phase6/<policy>/seed_<k>/eval_test.jsonl``  — schema-v1.0
+- ``runs/benchmark/<policy>/seed_<k>/eval_test.jsonl``  — schema-v1.0
   EpisodeRecord JSONL (one line per deterministic eval episode).
-- ``runs/phase6/<policy>/seed_<k>/latency.jsonl``    — sidecar per-step
+- ``runs/benchmark/<policy>/seed_<k>/latency.jsonl``    — sidecar per-step
   inference duration in nanoseconds (used by F7).
-- ``runs/phase6/eval_manifest.json`` — top-level manifest with
-  SHA-256 hashes of every Phase-5 checkpoint, the RF model, the
+- ``runs/benchmark/eval_manifest.json`` — top-level manifest with
+  SHA-256 hashes of every blue-team checkpoint, the RF model, the
   scaler, the splits manifest, plus the git SHA at production time.
-  This is the input artefact every Phase-6 figure manifest will hash
+  This is the input artefact every benchmark figure manifest will hash
   by reference (G6.7 / D6.9).
 
 Usage::
@@ -18,8 +18,8 @@ Usage::
     python -m scripts.benchmark.run_test_eval \\
         [--algos dqn ppo a2c] [--seeds 0 1 2 3 4] \\
         [--n-episodes 30] \\
-        [--phase5-runs-root runs/phase5] \\
-        [--out-root runs/phase6] \\
+        [--phase5-runs-root runs/blue_team] \\
+        [--out-root runs/benchmark] \\
         [--rf-path artifacts/detector/random_forest.joblib] \\
         [--smoke]
 
@@ -34,10 +34,10 @@ Per D6.3 the default sweep is:
 Total: ~1200 episodes, expected wallclock < 10 minutes on Apple silicon
 CPU with the production env (max_steps=100).
 
-The sweeper deliberately does NOT use subprocesses (cf. Phase 5's
+The sweeper deliberately does NOT use subprocesses (cf. blue-team's
 ``run_phase5.py``): we do not need clean PyTorch state per run because
 no training happens, and a single-process sweep produces hashable
-``runs/phase6/eval_manifest.json`` in one atomic write.
+``runs/benchmark/eval_manifest.json`` in one atomic write.
 
 If ``--smoke`` is passed, the sweep shrinks to 1 algo × 1 seed × 2
 episodes (and 2 episodes for each baseline) so CI / smoke runs verify
@@ -116,7 +116,7 @@ def _git_sha() -> str:
 def _load_sb3_model(algo: str, model_path: Path, env: Any) -> Any:
     """Dispatch ``DQN/PPO/A2C.load(model_path, env=env)``.
 
-    Phase 5 saves with the matching algo's ``.save()``; loading must
+    blue-team saves with the matching algo's ``.save()``; loading must
     round-trip with the same class. Importing inside the function
     keeps stable_baselines3 out of the module-import cost when
     callers only want the baseline-policy entrypoints.
@@ -135,10 +135,10 @@ def _load_sb3_model(algo: str, model_path: Path, env: Any) -> Any:
 
 
 def _eval_env_spec() -> EnvConfigSerializable:
-    """Phase-6 eval env spec: held-out test_balanced split (D6.2).
+    """benchmark eval env spec: held-out test_balanced split (D6.2).
 
-    Reward-shaping fields stay at the Phase-3 frozen defaults; only the
-    split changes vs. Phase 5's ``val_balanced`` eval.
+    Reward-shaping fields stay at the environment-design frozen defaults; only the
+    split changes vs. blue-team's ``val_balanced`` eval.
     """
     return EnvConfigSerializable(split="test_balanced", exclude_ood=True)
 
@@ -159,7 +159,7 @@ def _build_eval_env(args: argparse.Namespace, seed: Optional[int] = None) -> Any
 
 def _build_argparser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
-        description="Phase-6 RL benchmark — roll trained Phase-5 checkpoints "
+        description="benchmark RL benchmark — roll trained blue-team checkpoints "
                     "and non-RL baselines on test_balanced.",
     )
     p.add_argument("--algos", nargs="+", default=["dqn", "ppo", "a2c"])
@@ -173,12 +173,12 @@ def _build_argparser() -> argparse.ArgumentParser:
         help="Episodes per deterministic baseline (D6.3); single seed.",
     )
     p.add_argument(
-        "--phase5-runs-root", default="runs/phase5",
-        help="Where the trained Phase-5 model.zip files live.",
+        "--phase5-runs-root", default="runs/blue_team",
+        help="Where the trained blue-team model.zip files live.",
     )
-    p.add_argument("--out-root", default="runs/phase6")
+    p.add_argument("--out-root", default="runs/benchmark")
     p.add_argument(
-        "--generator-path", default="artifacts/generator/phase2",
+        "--generator-path", default="artifacts/generator/red_team",
     )
     p.add_argument(
         "--dataset-path", default="data/processed/ciciot2023",
@@ -202,7 +202,7 @@ def _build_argparser() -> argparse.ArgumentParser:
     )
     p.add_argument(
         "--skip-trained", action="store_true",
-        help="Skip the Phase-5 trained checkpoints. Useful for "
+        help="Skip the blue-team trained checkpoints. Useful for "
              "iterating on baselines only.",
     )
     p.add_argument("--smoke", action="store_true",
@@ -219,12 +219,12 @@ def _roll_trained(
     algo: str,
     seed: int,
 ) -> Dict[str, Any]:
-    """Roll one Phase-5 (algo, seed) checkpoint on test_balanced.
+    """Roll one blue-team (algo, seed) checkpoint on test_balanced.
 
     The function is the inner loop's worker; it owns env construction
     and tear-down so a per-run failure can never leak resources.
     """
-    model_path = Path(args.phase5_runs_root) / algo / f"seed_{seed}" / "model.zip"
+    model_path = Path(args.blue_team_runs_root) / algo / f"seed_{seed}" / "model.zip"
     out_dir = Path(args.out_root) / algo / f"seed_{seed}"
     out_dir.mkdir(parents=True, exist_ok=True)
     eval_jsonl = out_dir / "eval_test.jsonl"
@@ -232,7 +232,7 @@ def _roll_trained(
     run_id = f"{algo}_seed_{seed}_test"
 
     if not model_path.exists():
-        msg = f"missing Phase-5 checkpoint at {model_path}"
+        msg = f"missing blue-team checkpoint at {model_path}"
         logger.error(msg)
         return {
             "kind": "trained", "algo": algo, "seed": seed,
@@ -364,7 +364,7 @@ def _roll_deterministic(
                 "rf_path": str(rf_path),
                 "rf_sha256": None,
             }
-        # Default env spec: window=5, F=29, deltas=True (Phase-3 frozen).
+        # Default env spec: window=5, F=29, deltas=True (environment-design frozen).
         spec = _eval_env_spec()
         # F is whatever the env reports at construction; use a probe
         # rollout instead of hard-coding 29 to stay robust to a
@@ -463,7 +463,7 @@ def main(argv: Optional[List[str]] = None) -> int:
                     results[-1].get("wallclock_seconds", 0.0),
                 )
     else:
-        logger.info("--skip-trained set; skipping Phase-5 checkpoints")
+        logger.info("--skip-trained set; skipping blue-team checkpoints")
 
     # ---- baselines ----
     for name in args.baselines:
@@ -490,10 +490,10 @@ def main(argv: Optional[List[str]] = None) -> int:
     splits_manifest = Path(args.splits_manifest)
     scaler_path = Path(args.dataset_path) / "scaler.joblib"
     rf_path = Path(args.rf_path)
-    # Step-6 F3 + Step-8 task #3 (07_HANDOFF.md §5): pin the Phase-2
+    # Step-6 F3 + Step-8 task #3 (07_HANDOFF.md §5): pin the red-team
     # LSTM checkpoint that drives the env's attack-sequence generator.
     # Path is `<generator_path>/attack_sequence_generator.pth` per the
-    # default `--generator-path artifacts/generator/phase2`.
+    # default `--generator-path artifacts/generator/red_team`.
     lstm_pth = Path(args.generator_path) / "attack_sequence_generator.pth"
 
     eval_manifest = {
@@ -511,8 +511,8 @@ def main(argv: Optional[List[str]] = None) -> int:
             "splits_manifest": _sha256(splits_manifest),
             "scaler": _sha256(scaler_path),
             "rf_model": _sha256(rf_path),
-            # Step-6 F3 fix: pin the Phase-2 LSTM checkpoint so the
-            # Phase-6 hash chain explicitly chains back to the
+            # Step-6 F3 fix: pin the red-team LSTM checkpoint so the
+            # benchmark hash chain explicitly chains back to the
             # red-team artefact (was implicit pre-Step-8).
             "phase2_lstm": _sha256(lstm_pth) if lstm_pth.exists() else None,
             "phase2_lstm_path": str(lstm_pth),

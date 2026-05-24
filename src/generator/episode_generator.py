@@ -72,7 +72,7 @@ def stage_distribution_from_split_manifest(
 ) -> Dict[int, int]:
     """Load the per-stage row counts for *split_name* from the splits manifest.
 
-    The Phase-1 manifest at ``data/processed/ciciot2023/splits/manifest.json``
+    The dataset-prep manifest at ``data/processed/ciciot2023/splits/manifest.json``
     records stage counts for every split (``all``, ``train``, ``val``, etc.).
     Loading the prior from there means the Red Team is *guaranteed* to be
     trained on a stage distribution that matches the train split exactly,

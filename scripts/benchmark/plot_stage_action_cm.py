@@ -1,4 +1,4 @@
-"""Phase-6 F6 — per-algo stage × action confusion matrices (PLAN §3.1.6, C5).
+"""benchmark F6 — per-algo stage × action confusion matrices (PLAN §3.1.6, C5).
 
 Builds one 5×5 row-normalised heatmap per algorithm (DQN/PPO/A2C) and,
 for context, three reference panels (random / always-OBSERVE /
@@ -17,7 +17,7 @@ Outputs:
 - ``F6_manifest.json``          — SHA-256 hash chain.
 - ``F6_caption.md``             — thesis caption.
 
-Inputs come from the same ``runs/phase6/<policy>/seed_*/eval_test.jsonl``
+Inputs come from the same ``runs/benchmark/<policy>/seed_*/eval_test.jsonl``
 files F5 already consumed (using
 :func:`src.blue_team.aggregation.per_stage_action_distribution` directly
 to keep the F5-vs-F6 numbers consistent by construction).
@@ -83,7 +83,7 @@ def _nan_to_none(o: Any) -> Any:
     structure round-trips through ``json.dumps(..., allow_nan=False)``
     without exception. Step-6 F5 / Step-8 doc-fix.
 
-    Phase-6 F6 emits per-policy 5×5 matrices whose IMPACT row is
+    benchmark F6 emits per-policy 5×5 matrices whose IMPACT row is
     intentionally NaN-filled (D6.7 excludes IMPACT from the
     proportionality scoring); the RFC-7159 representation is JSON
     null, not the bare token ``NaN``. This helper is a pre-pass
@@ -306,8 +306,8 @@ def _benign_fpr(
 
 
 def _build_argparser() -> argparse.ArgumentParser:
-    p = argparse.ArgumentParser(description="Phase-6 F6 — stage × action CMs.")
-    p.add_argument("--runs-root", default="runs/phase6")
+    p = argparse.ArgumentParser(description="benchmark F6 — stage × action CMs.")
+    p.add_argument("--runs-root", default="runs/benchmark")
     p.add_argument("--out-dir", default="docs/results/06_benchmark")
     p.add_argument("--policies", nargs="+", default=_PANEL_ORDER)
     return p

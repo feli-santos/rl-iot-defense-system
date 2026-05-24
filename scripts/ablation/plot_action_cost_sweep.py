@@ -1,4 +1,4 @@
-"""Phase-8 FA_action_cost — plot action_cost_scale sensitivity sweep (C8).
+"""sensitivity-sweep FA_action_cost — plot action_cost_scale sensitivity sweep (C8).
 
 Reads per-seed eval.jsonl files from the sweep output directories and
 produces a grouped bar chart ``tex/figs/FA_action_cost_sweep.png`` plus
@@ -7,7 +7,7 @@ a JSON summary.
 Usage::
 
     python -m scripts.ablation.plot_action_cost_sweep \\
-        --sweep-root runs/phase8_action_cost \\
+        --sweep-root runs/ablation_action_cost \\
         --out-dir tex/figs/
 
 The script loads the sweep manifest to discover all (scale, seed) cells,
@@ -178,9 +178,9 @@ def plot(summary: Dict[str, Any], out_dir: str) -> Path:
 
 def main(argv: Optional[List[str]] = None) -> int:
     p = argparse.ArgumentParser(
-        description="Phase-8 FA_action_cost — plot action_cost_scale sensitivity sweep (C8).",
+        description="sensitivity-sweep FA_action_cost — plot action_cost_scale sensitivity sweep (C8).",
     )
-    p.add_argument("--sweep-root", default="runs/phase8_action_cost")
+    p.add_argument("--sweep-root", default="runs/ablation_action_cost")
     p.add_argument("--out-dir", default="tex/figs/")
     p.add_argument("--fraction", type=float, default=0.1,
                    help="Fraction of eval episodes to use as final reward (default 0.1).")

@@ -1,8 +1,8 @@
-"""Phase-8 FA_window — window_size ablation (C22).
+"""sensitivity-sweep FA_window — window_size ablation (C22).
 
 Trains PPO × 3 seeds × window_size ∈ {1, 3, 5, 10}.
 Window size 5 is the primary-contract baseline; its runs are REUSED from
-``runs/phase5_primary/ppo/seed_{0,1,2}`` if they exist.
+``runs/blue_team_primary/ppo/seed_{0,1,2}`` if they exist.
 
 NOTE on obs_shape:
     window_size × features × 2 (with deltas) = window_size × 29 × 2
@@ -17,7 +17,7 @@ Usage::
     python -m scripts.ablation.run_window_ablation \\
         --seeds 0 1 2 \\
         --window-sizes 1 3 5 10 \\
-        --out-root runs/phase8_window \\
+        --out-root runs/ablation_window \\
         --parallel 3
 
     # Smoke test
@@ -25,7 +25,7 @@ Usage::
 
 Outputs::
 
-    runs/phase8_window/
+    runs/ablation_window/
         w1/ppo/seed_0/   ...  (new training runs)
         w3/ppo/seed_0/   ...  (new training runs)
         w5/ppo/seed_0/   ...  (symlink to phase5_primary or re-train)
@@ -54,7 +54,7 @@ logger = logging.getLogger(__name__)
 _PYTHON = sys.executable
 _TRAIN_MODULE = "scripts.blue_team.train_agent"
 
-_PRIMARY_WINDOW_SIZE = 5  # matches Phase-5 default
+_PRIMARY_WINDOW_SIZE = 5  # matches blue-team default
 
 
 def _window_to_tag(w: int) -> str:
@@ -73,15 +73,15 @@ def _run_cell(
     dataset_path: str,
     splits_manifest: str,
     smoke: bool,
-    phase5_primary_root: Optional[str],
+    blue_team_primary_root: Optional[str],
 ) -> Dict[str, Any]:
     """Train one (window_size, seed) cell. Returns a result dict."""
     tag = _window_to_tag(window_size)
     out_dir = str(Path(out_root) / tag / "ppo" / f"seed_{seed}")
 
     # Reuse phase5_primary baseline for window_size=5 if available
-    if window_size == _PRIMARY_WINDOW_SIZE and phase5_primary_root:
-        primary_run = Path(phase5_primary_root) / "ppo" / f"seed_{seed}"
+    if window_size == _PRIMARY_WINDOW_SIZE and blue_team_primary_root:
+        primary_run = Path(blue_team_primary_root) / "ppo" / f"seed_{seed}"
         manifest_path = primary_run / "run_manifest.json"
         if manifest_path.exists():
             logger.info(
@@ -171,7 +171,7 @@ def run_sweep(
     splits_manifest: str,
     parallel: int,
     smoke: bool,
-    phase5_primary_root: Optional[str],
+    blue_team_primary_root: Optional[str],
 ) -> Dict[str, Any]:
     cells = [(w, sd) for w in window_sizes for sd in seeds]
     logger.info(
@@ -193,7 +193,7 @@ def run_sweep(
                 dataset_path=dataset_path,
                 splits_manifest=splits_manifest,
                 smoke=smoke,
-                phase5_primary_root=phase5_primary_root,
+                blue_team_primary_root=blue_team_primary_root,
             ): (w, sd)
             for w, sd in cells
         }
@@ -224,15 +224,15 @@ def run_sweep(
 
 def main(argv: Optional[list] = None) -> int:  # type: ignore[type-arg]
     p = argparse.ArgumentParser(
-        description="Phase-8 FA_window — window_size ablation (C22).",
+        description="sensitivity-sweep FA_window — window_size ablation (C22).",
     )
     p.add_argument("--window-sizes", nargs="+", type=int, default=[1, 3, 5, 10])
     p.add_argument("--seeds", nargs="+", type=int, default=[0, 1, 2])
-    p.add_argument("--out-root", default="runs/phase8_window")
+    p.add_argument("--out-root", default="runs/ablation_window")
     p.add_argument("--total-timesteps", type=int, default=500_000)
     p.add_argument("--eval-freq", type=int, default=25_000)
     p.add_argument("--n-eval-episodes", type=int, default=30)
-    p.add_argument("--generator-path", default="artifacts/generator/phase2")
+    p.add_argument("--generator-path", default="artifacts/generator/red_team")
     p.add_argument("--dataset-path", default="data/processed/ciciot2023")
     p.add_argument(
         "--splits-manifest",
@@ -240,8 +240,8 @@ def main(argv: Optional[list] = None) -> int:  # type: ignore[type-arg]
     )
     p.add_argument("--parallel", type=int, default=3)
     p.add_argument(
-        "--phase5-primary-root", default="runs/phase5_primary",
-        help="Root of the primary Phase-5 runs (for window_size=5 reuse).",
+        "--phase5-primary-root", default="runs/blue_team_primary",
+        help="Root of the primary blue-team runs (for window_size=5 reuse).",
     )
     p.add_argument("--smoke", action="store_true")
     args = p.parse_args(argv)
@@ -267,7 +267,7 @@ def main(argv: Optional[list] = None) -> int:  # type: ignore[type-arg]
         splits_manifest=args.splits_manifest,
         parallel=args.parallel,
         smoke=args.smoke,
-        phase5_primary_root=args.phase5_primary_root,
+        blue_team_primary_root=args.blue_team_primary_root,
     )
     print(f"OK: {manifest['n_ok']} / Failed: {manifest['n_failed']} / Reused: {manifest['n_reused']}")
     return 0 if manifest["n_failed"] == 0 else 1

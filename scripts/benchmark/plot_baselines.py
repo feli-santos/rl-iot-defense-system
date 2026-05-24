@@ -1,4 +1,4 @@
-"""Phase-6 F8 — RL vs non-RL baselines bar chart (PLAN §3.1.8, C7).
+"""benchmark F8 — RL vs non-RL baselines bar chart (PLAN §3.1.8, C7).
 
 Horizontal bar chart of per-policy ``mean_reward`` with 95 % bootstrap
 CIs, sorted descending. A horizontal reference line marks the
@@ -6,7 +6,7 @@ recommended-action floor (the IoTWarden hand-crafted rule baseline).
 
 Reads the F5 summary JSON directly so F8's numbers are
 **guaranteed identical** to the F5 table — there is one source of
-per-policy aggregation in Phase 6, and that is
+per-policy aggregation in benchmark, and that is
 :mod:`scripts.benchmark.build_summary_table`. F8 simply re-renders
 the same numbers in a different visual idiom.
 
@@ -187,8 +187,8 @@ def _render(
 
 
 def _build_argparser() -> argparse.ArgumentParser:
-    p = argparse.ArgumentParser(description="Phase-6 F8 — baselines bar chart.")
-    p.add_argument("--runs-root", default="runs/phase6")
+    p = argparse.ArgumentParser(description="benchmark F8 — baselines bar chart.")
+    p.add_argument("--runs-root", default="runs/benchmark")
     p.add_argument("--out-dir", default="docs/results/06_benchmark")
     p.add_argument(
         "--f5-summary",
@@ -266,7 +266,7 @@ def main(argv: Optional[List[str]] = None) -> int:
                 "path": str(f5_path),
                 "sha256": _sha256(f5_path),
             },
-            "phase6_eval_manifest": {
+            "benchmark_eval_manifest": {
                 "path": str(eval_manifest_path),
                 "sha256": _sha256(eval_manifest_path),
             },

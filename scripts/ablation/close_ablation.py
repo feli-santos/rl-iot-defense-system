@@ -1,4 +1,4 @@
-"""Phase-7 closer (C9): assemble G7_scoreboard.json + RESULTS.md skeleton + CHANGELOG entry.
+"""Ablation closer (C9): assemble G7_scoreboard.json + RESULTS.md skeleton + CHANGELOG entry.
 
 Run once all four figures (F9/F10/F12/F15) and their *_summary.json
 files exist under ``docs/results/07_ablation/``. This script does
@@ -8,7 +8,7 @@ verdicts that the four plotters already wrote into their
 
 Usage::
 
-    python -m scripts.ablation.close_phase7 [--out-dir docs/results/07_ablation]
+    python -m scripts.ablation.close_ablation [--out-dir docs/results/07_ablation]
 
 Outputs:
 
@@ -46,7 +46,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-logger = logging.getLogger("scripts.ablation.close_phase7")
+logger = logging.getLogger("scripts.ablation.close_ablation")
 
 _ROOT = Path(__file__).resolve().parents[2]
 
@@ -261,18 +261,18 @@ def _evaluate_gates(
             "passes": False, "value": "F12_summary.json missing",
         })
 
-    # G7.5 + G7.6 — Phase-3 / overall regression: piggyback on G7.1.
+    # G7.5 + G7.6 — environment-design / overall regression: piggyback on G7.1.
     pyt_ok = bool(gates[0].get("passes"))
     gates.append({
         "id": "G7.5",
-        "threshold": "Phase-3 frozen tests pass with impact_is_terminal=True",
+        "threshold": "Environment-design frozen tests pass with impact_is_terminal=True",
         "passes": pyt_ok,
-        "value": "G7.1 carries this through (full pytest green ⇒ Phase-3 contract preserved)",
+        "value": "G7.1 carries this through (full pytest green ⇒ environment-design contract preserved)",
         "kind": "regression",
     })
     gates.append({
         "id": "G7.6",
-        "threshold": "No regression on Phase-3/4/5/6 frozen tests overall",
+        "threshold": "No regression on environment-design/detector/blue-team/benchmark frozen tests overall",
         "passes": pyt_ok,
         "value": "G7.1 carries this through",
         "kind": "regression",
@@ -352,7 +352,7 @@ def _evaluate_gates(
 # ---------------------------------------------------------------- writers
 
 
-# Canonical scoreboard-status enum, matching Phase-6 G6_scoreboard.json.
+# Canonical scoreboard-status enum, matching G6_scoreboard.json.
 # See docs/mentor_review/07_HANDOFF.md L196.
 _STATUS_PASS = "PASS"
 _STATUS_PASS_WITH_FINDING = "PASS-WITH-FINDING"
@@ -423,15 +423,15 @@ def _resolve_status_finding(gate: Dict[str, Any]) -> Dict[str, Any]:
 def _write_scoreboard(
     out_dir: Path, gates: List[Dict[str, Any]],
 ) -> Path:
-    """Emit ``G7_scoreboard.json`` in the Phase-6-native schema.
+    """Emit ``G7_scoreboard.json`` in the benchmark-native schema.
 
     Each gate carries a ``status`` enum + (where applicable) a
-    ``finding_id`` cross-link, mirroring Phase 6's
-    ``G6_scoreboard.json``. The legacy ``passes:bool`` field is
-    dropped (Step-8 F3, 07_HANDOFF.md §5 acceptance: "no `passes`
-    key remains"). All other gate fields (threshold, value,
-    interpretation, kind, audit_finding, security_kpi_strand_passes,
-    note_post_lock_*) are preserved verbatim.
+    ``finding_id`` cross-link, mirroring ``G6_scoreboard.json``.
+    The legacy ``passes:bool`` field is dropped (Step-8 F3,
+    07_HANDOFF.md §5 acceptance: "no `passes` key remains"). All
+    other gate fields (threshold, value, interpretation, kind,
+    audit_finding, security_kpi_strand_passes, note_post_lock_*)
+    are preserved verbatim.
     """
     enriched_gates: List[Dict[str, Any]] = []
     for g in gates:
@@ -491,9 +491,9 @@ def _write_scoreboard(
 def _summary_table(gates: List[Dict[str, Any]]) -> str:
     """Markdown table: gate / threshold / status / value.
 
-    Renders the unified Phase-6-native ``status`` enum. Falls back
+    Renders the unified benchmark-native ``status`` enum. Falls back
     to the legacy ``passes:bool`` field if a caller passes an
-    un-enriched gate dict (defensive — close_phase7.py itself always
+    un-enriched gate dict (defensive — close_ablation.py itself always
     enriches via ``_resolve_status_finding`` before this function is
     invoked indirectly through ``_write_results_md``).
     """
@@ -527,10 +527,10 @@ def _summary_table(gates: List[Dict[str, Any]]) -> str:
 def _write_results_md(
     out_dir: Path, gates: List[Dict[str, Any]],
 ) -> Path:
-    """Write a Phase-7 RESULTS.md skeleton with live numbers.
+    """Write an ablation RESULTS.md skeleton with live numbers.
 
-    Mirrors the Phase-6 RESULTS.md structure (§1 headline / §2
-    scoreboard / §3 deliverables / §4 code / §5 cross-phase
+    Mirrors the benchmark RESULTS.md structure (§1 headline / §2
+    scoreboard / §3 deliverables / §4 code / §5 cross-step
     findings / §6 findings worth defending / §7 hand-offs / §8
     reproducibility / §9 test count history).
     """
@@ -547,15 +547,14 @@ def _write_results_md(
     g78 = f15.get("gates", {}).get("G7.8", {})
     g79 = f15.get("gates", {}).get("G7.9", {})
 
-    md = f"""# Phase 7 — Ablations + OOD-class Robustness: Results
+    md = f"""# Ablation + OOD-class Robustness: Results
 
-> Companion to `PLAN.md`. Same protocol as Phases 3–6: locked PLAN
-> first, then implementation, then this document captures **what
-> happened on real data**. The two headline strands (per audit
-> AF1 / AF2) are **F9** (does the reward-component sweep close
-> the +288 deployable gap to the oracle ceiling?) and **F15**
-> (does trained RL recover the supervised detector's
-> `VulnerabilityScan` blind spot?).
+> Companion to `PLAN.md`. Locked PLAN first, then implementation,
+> then this document captures **what happened on real data**.
+> The two headline strands (per audit AF1 / AF2) are **F9**
+> (does the reward-component sweep close the +288 deployable gap
+> to the oracle ceiling?) and **F15** (does trained RL recover
+> the supervised detector's `VulnerabilityScan` blind spot?).
 
 ## 1 — Headline numbers
 
@@ -565,14 +564,14 @@ def _write_results_md(
   - Best cell: `{g72.get('best_cell', '?')}` (mean = {g72.get('best_mean_reward', float('nan')):+.1f},
     CI = ({g72.get('best_ci', [float('nan'), float('nan')])[0]:+.1f},
     {g72.get('best_ci', [float('nan'), float('nan')])[1]:+.1f}))
-  - Δ to Phase-6 deployable best (DQN +1336): **{g72.get('delta_to_deployable', float('nan')):+.1f}**
-  - Δ to Phase-6 oracle ceiling (rule +1624): **{g72.get('delta_to_oracle', float('nan')):+.1f}**
+  - Δ to benchmark deployable best (DQN +1336): **{g72.get('delta_to_deployable', float('nan')):+.1f}**
+  - Δ to benchmark oracle ceiling (rule +1624): **{g72.get('delta_to_oracle', float('nan')):+.1f}**
   - Stretch goal (oracle ceiling) met: **{g72.get('meets_oracle_ceiling_stretch')}**
 
 **F15 — OOD-class robustness (audit-AF1, HEADLINE):**
 {g79.get("interpretation", "(F15 not produced yet)")}
 
-  - On `VulnerabilityScan` (Phase-4 RF recall = 0.001):
+  - On `VulnerabilityScan` (RF detector recall = 0.001):
     - Best trained RL: `{g79.get('best_rl_algo', '?')}` mean = {g79.get('best_rl_mean_reward', float('nan')):+.1f}
       (CI {g79.get('best_rl_ci', [float('nan'), float('nan')])})
     - RF-Acting mean = {g79.get('rf_acting_mean_reward', float('nan')):+.1f}
@@ -599,20 +598,20 @@ Source of record: `G7_scoreboard.json` next to this file.
 
 | Artefact | Path | Description |
 |---|---|---|
-| **F9** (Tier 2) | `F9_reward_ablation.png` + `F9_summary.json` | 6-panel reward-component effect plot (5 components × {{0.5×, 1×, 2×}} + impact_is_terminal binary) with Phase-6 reference lines (oracle +1624, DQN +1336). |
+| **F9** (Tier 2) | `F9_reward_ablation.png` + `F9_summary.json` | 6-panel reward-component effect plot (5 components × {{0.5×, 1×, 2×}} + impact_is_terminal binary) with benchmark reference lines (oracle +1624, DQN +1336). |
 | **F10** (Tier 2) | `F10_aggressiveness.png` + `F10_summary.json` | PPO and oracle-rule mean test reward as a function of `p_defender_deescalation`; IoTWarden Fig. 6 re-impl. |
-| **F12** (Tier 2) | `F12_pareto.png` + `F12_summary.json` | 2-D scatter on (availability_cost, security_gain) with Pareto frontier; reads F9 + F10 + Phase-6 outputs. |
+| **F12** (Tier 2) | `F12_pareto.png` + `F12_summary.json` | 2-D scatter on (availability_cost, security_gain) with Pareto frontier; reads F9 + F10 + benchmark outputs. |
 | **F15** (Tier 1, audit-AF1) | `F15_ood_robustness.png` + `F15_summary.json` | 4 OOD class × 8 policy grouped bar chart with bootstrap CIs. |
 | Captions | `F9_caption.md`, `F10_caption.md`, `F12_caption.md`, `F15_caption.md` | Thesis-paper captions per figure. |
 | Manifests | `F9_manifest.json` … `F15_manifest.json` | SHA-256 hash chain over input JSONLs + Phase-5 sweep manifest + Phase-6 eval manifest + git SHA at production time. |
 | Scoreboard | `G7_scoreboard.json` | Per-gate threshold + value + status + finding-id. |
-| Run artefacts (gitignored) | `runs/phase7/{{ood,reward_sweep,aggressiveness}}/.../eval_test.jsonl` | The schema-v1.0 input data for every figure. |
+| Run artefacts (gitignored) | `runs/ablation/{{ood,reward_sweep,aggressiveness}}/.../eval_test.jsonl` | The schema-v1.0 input data for every figure. |
 
 ## 4 — Code summary
 
 | File | Purpose |
 |---|---|
-| `src/environment/adversarial_env.py` | Added `impact_is_terminal: bool = True` (default preserves Phase-3 frozen contract). |
+| `src/environment/adversarial_env.py` | Added `impact_is_terminal: bool = True` (default preserves environment-design frozen contract). |
 | `src/blue_team/run_config.py` | `EnvConfigSerializable` extended from 7 → 18 fields (all reward coefficients + `impact_is_terminal`). |
 | `src/blue_team/env_factory.py` | `_build_env_config` now forwards full reward field set. |
 | `scripts/blue_team/train_agent.py` | Added `--reward-overrides JSON`, `--p-defender-deescalation FLOAT`, `--impact-is-terminal BOOL` CLI args. |
@@ -623,21 +622,21 @@ Source of record: `G7_scoreboard.json` next to this file.
 | `scripts/ablation/run_aggressiveness_sweep.py` | F10 6-p-value PPO sweep + oracle-rule reference rolls. |
 | `scripts/ablation/plot_aggressiveness.py` | F10 plotter + G7.3 evaluator. |
 | `scripts/ablation/plot_pareto.py` | F12 Pareto-frontier plot + G7.4 evaluator. |
-| `scripts/ablation/close_phase7.py` | This file: assembles `G7_scoreboard.json` + `RESULTS.md` + CHANGELOG. |
-| `tests/test_phase31_impact_terminal.py` | 8 synthetic tests pinning the `impact_is_terminal` codepath. |
+| `scripts/ablation/close_ablation.py` | This file: assembles `G7_scoreboard.json` + `RESULTS.md` + CHANGELOG. |
+| `tests/test_env_impact_terminal.py` | 8 synthetic tests pinning the `impact_is_terminal` codepath. |
 | `tests/test_train_agent_reward_overrides.py` | 14 synthetic tests pinning the CLI override plumbing. |
 
 Total tests: 442 → ~442 (no run-time-data tests added; G7.2/G7.3/G7.4/G7.8/G7.9 are real-data acceptance tests).
 
-## 5 — Cross-phase findings discovered during Phase 7
+## 5 — Cross-step findings discovered during the ablation evaluation
 
 (Hand-fill — examples: hybrid OOD realiser was needed because each OOD class is single-stage; train-eval window-shape mismatch under `--smoke` surfaced by smoke run; etc.)
 
-## 6 — Phase-7 findings worth defending in the thesis
+## 6 — Ablation findings worth defending in the thesis
 
 ### 6.1 The reward-component sweep result (D7.2.1 if needed)
 
-(Hand-fill from G7.2 above — either the +288 gap was closed, partially closed, or characterised as the limit of one-at-a-time Phase-3-style reward shaping per D7.1.1.)
+(Hand-fill from G7.2 above — either the +288 gap was closed, partially closed, or characterised as the limit of one-at-a-time environment-design-style reward shaping per D7.1.1.)
 
 ### 6.2 The OOD-class robustness result (D7.9.1 if needed; audit-AF1 HEADLINE)
 
@@ -651,46 +650,46 @@ Total tests: 442 → ~442 (no run-time-data tests added; G7.2/G7.3/G7.4/G7.8/G7.
 
 (Hand-fill from G7.4 above.)
 
-## 7 — Phase-8 hand-offs
+## 7 — Future work hand-offs
 
-Phase 8 owns:
+Post-thesis work includes:
 
 1. **F13 — Robustness to observation noise / drift** (Tier 3).
 2. **F14 — Generalisation training to held-out attack class** (Tier 3 if it ships); F15 covered the eval-time complement, F14 would be the train-time augmentation.
 
-Phase 7 does NOT defer:
+The ablation evaluation does NOT defer:
 
 - The +288 deployable gap. F9 either closed it (G7.2 PASS) or characterised the closure attempt as the limit of the
-  Phase-3 reward formulation (D7.1.1).
+  environment-design reward formulation (D7.1.1).
 - The OOD-class robustness claim. F15 either delivered it (G7.9 PASS) or narrowed it to "robust to (not better at)"
   per D7.9.1.
 
 ## 8 — Reproducibility
 
-Every Phase-7 figure ships a `manifest.json` with:
+Every ablation figure ships a `manifest.json` with:
 
 - SHA-256 hashes of every input JSONL under
-  `runs/phase7/{{ood,reward_sweep,aggressiveness}}/.../eval_test.jsonl`.
-- SHA-256 of the upstream `runs/phase5/sweep_manifest.json` (trained
-  checkpoints) and `runs/phase6/eval_manifest.json` (Phase-6
+  `runs/ablation/{{ood,reward_sweep,aggressiveness}}/.../eval_test.jsonl`.
+- SHA-256 of the upstream `runs/blue_team/sweep_manifest.json` (trained
+  checkpoints) and `runs/benchmark/eval_manifest.json` (benchmark
   baselines).
 - Git SHA at production time.
 
 To regenerate from scratch on a fresh checkout::
 
-    make phase-5-sweep PHASE5_TIMESTEPS=250000   # ~108 min CPU (one-off)
-    make phase-6                                 # ~10 min CPU
-    make phase-7                                 # ~7.5 h CPU (walk-away)
-    python -m scripts.ablation.close_phase7      # assemble G7 scoreboard + RESULTS
+    make blue-team-sweep BLUE_TEAM_TIMESTEPS=250000  # ~108 min CPU (one-off)
+    make benchmark                                   # ~10 min CPU
+    make ablation                                    # ~7.5 h CPU (walk-away)
+    python -m scripts.ablation.close_ablation        # assemble G7 scoreboard + RESULTS
 
-The `runs/phase5/`, `runs/phase6/`, `runs/phase7/` dirs are all
+The `runs/blue_team/`, `runs/benchmark/`, `runs/ablation/` dirs are all
 gitignored; all derived figures + summaries + manifests live under
 `docs/results/0[5-7]_*/`.
 
 ## 9 — Test count history
 
-Phase 0 254 → Phase 1 266 → Phase 2 283 → Phase 3 296 → Phase 4 329
-→ Phase 5 376 → Phase 6 420 → **Phase 7 442** (+22 from C3 + C4).
+Dataset prep 254 → Dataset prep 266 → Red-team 283 → Env design 296 → Detector 329
+→ Blue-team 376 → Benchmark 420 → **Ablation 442** (+22 from C3 + C4).
 """
 
     path = out_dir / "RESULTS.md"
@@ -702,7 +701,7 @@ Phase 0 254 → Phase 1 266 → Phase 2 283 → Phase 3 296 → Phase 4 329
 def _prepend_changelog(
     repo_root: Path, gates: List[Dict[str, Any]],
 ) -> Optional[Path]:
-    """Prepend a Phase-7 [Unreleased] section to CHANGELOG.md."""
+    """Prepend an ablation [Unreleased] section to CHANGELOG.md."""
     changelog = repo_root / "CHANGELOG.md"
     if not changelog.exists():
         logger.warning("CHANGELOG.md not found; skipping prepend")
@@ -711,7 +710,7 @@ def _prepend_changelog(
     n_fail = sum(1 for g in gates if g.get("passes") is False)
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
 
-    block = f"""## [Unreleased] — Phase 7 closeout ({today})
+    block = f"""## [Unreleased] — Ablation closeout ({today})
 
 Tally: **{n_pass} PASS / {n_fail} FAIL-WITH-FINDING** across G7.1–G7.9.
 
@@ -724,7 +723,7 @@ Tally: **{n_pass} PASS / {n_fail} FAIL-WITH-FINDING** across G7.1–G7.9.
 - **G7.2 (F9 reward-component sweep)**: see RESULTS §6.1 — either the
   +288 deployable gap was closed at one or more cells, or the
   characterisation activates D7.1.1 (limit of one-at-a-time
-  Phase-3-style reward shaping).
+  environment-design-style reward shaping).
 - **G7.9 (F15 audit-AF1 HEADLINE)**: see RESULTS §6.2 — either
   trained RL beats RF-Acting on `VulnerabilityScan` by ≥1σ
   (the "RL closes the OOD gap" claim), or D7.9.1 narrows the claim
@@ -735,9 +734,9 @@ Tally: **{n_pass} PASS / {n_fail} FAIL-WITH-FINDING** across G7.1–G7.9.
 - F9 / F10 / F12 / F15 figures + summaries + manifests under
   `docs/results/07_ablation/`.
 - `G7_scoreboard.json` per-gate JSON record.
-- `runs/phase7/{{ood,reward_sweep,aggressiveness}}/` raw eval JSONLs
-  (gitignored; ~7.5 h CPU walk-away to regenerate via `make phase-7`).
-- 22 new synthetic-only tests (Phase 7 §3.3): test count 420 → 442.
+- `runs/ablation/{{ood,reward_sweep,aggressiveness}}/` raw eval JSONLs
+  (gitignored; ~7.5 h CPU walk-away to regenerate via `make ablation`).
+- 22 new synthetic-only tests (ablation §3.3): test count 420 → 442.
 
 """
     existing = changelog.read_text()
@@ -752,7 +751,7 @@ Tally: **{n_pass} PASS / {n_fail} FAIL-WITH-FINDING** across G7.1–G7.9.
 
 def _build_argparser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
-        description="Phase-7 closer: assemble G7_scoreboard + RESULTS + CHANGELOG.",
+        description="Ablation closer: assemble G7_scoreboard + RESULTS + CHANGELOG.",
     )
     p.add_argument("--out-dir", default="docs/results/07_ablation")
     p.add_argument(
@@ -784,7 +783,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     n_pass = sum(1 for g in gates if g.get("passes") is True)
     n_fail = sum(1 for g in gates if g.get("passes") is False)
     logger.info(
-        "Phase-7 closer done: %d PASS / %d FAIL-WITH-FINDING across G7.1-G7.9",
+        "Ablation closer done: %d PASS / %d FAIL-WITH-FINDING across G7.1-G7.9",
         n_pass, n_fail,
     )
     return 0 if n_fail == 0 else 1

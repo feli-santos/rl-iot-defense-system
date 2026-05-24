@@ -1,6 +1,6 @@
-"""Phase-6 statistical significance tests (thesis review issue C4).
+"""benchmark statistical significance tests (thesis review issue C4).
 
-Loads per-seed episodic reward arrays from Phase-6 JSONL outputs and runs:
+Loads per-seed episodic reward arrays from benchmark JSONL outputs and runs:
 
 1. Paired Wilcoxon signed-rank test (scipy) across seeds for key comparisons.
 2. Welch's t-test for independent-samples comparisons.
@@ -19,7 +19,7 @@ Outputs:
 Usage::
 
     python -m scripts.benchmark.run_statistical_tests \\
-        [--phase6-root runs/phase6] \\
+        [--phase6-root runs/benchmark] \\
         [--out-path results/06_benchmark/statistical_tests.json] \\
         [--alpha 0.05]
 """
@@ -44,7 +44,7 @@ logger = logging.getLogger(__name__)
 def _load_episode_rewards(
     jsonl_path: Path,
 ) -> List[float]:
-    """Load episodic rewards from a Phase-6 JSONL file."""
+    """Load episodic rewards from a benchmark JSONL file."""
     rewards: List[float] = []
     if not jsonl_path.exists():
         logger.warning("JSONL not found: %s", jsonl_path)
@@ -63,14 +63,14 @@ def _load_episode_rewards(
 
 
 def _collect_algo_rewards(
-    phase6_root: Path,
+    benchmark_root: Path,
     algo: str,
     seeds: List[int],
 ) -> Dict[int, List[float]]:
     """Collect per-seed reward arrays for a given algorithm."""
     per_seed: Dict[int, List[float]] = {}
     for seed in seeds:
-        jsonl = phase6_root / algo / f"seed_{seed}" / "eval_test.jsonl"
+        jsonl = benchmark_root / algo / f"seed_{seed}" / "eval_test.jsonl"
         rewards = _load_episode_rewards(jsonl)
         if rewards:
             per_seed[seed] = rewards
@@ -208,7 +208,7 @@ def _bootstrap_ci(
 
 
 def run_tests(
-    phase6_root: Path,
+    benchmark_root: Path,
     seeds: List[int],
     alpha: float = 0.05,
     ablation_path: Optional[Path] = None,
@@ -220,7 +220,7 @@ def run_tests(
     # Load per-algo rewards
     algo_rewards: Dict[str, np.ndarray] = {}
     for algo in ["dqn", "ppo", "a2c"]:
-        per_seed = _collect_algo_rewards(phase6_root, algo, seeds)
+        per_seed = _collect_algo_rewards(benchmark_root, algo, seeds)
         if per_seed:
             algo_rewards[algo] = _flatten(per_seed)
             lo, hi = _bootstrap_ci(algo_rewards[algo])
@@ -235,7 +235,7 @@ def run_tests(
             logger.warning("No data for %s — skipping", algo)
 
     # Load RF-Acting rewards (single seed=0, 150 episodes)
-    rf_jsonl = phase6_root / "rf_acting" / "seed_0" / "eval_test.jsonl"
+    rf_jsonl = benchmark_root / "rf_acting" / "seed_0" / "eval_test.jsonl"
     rf_rewards_list = _load_episode_rewards(rf_jsonl)
     if rf_rewards_list:
         algo_rewards["rf_acting"] = np.array(rf_rewards_list, dtype=float)
@@ -329,9 +329,9 @@ def run_tests(
 
 def _build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
-        description="Phase-6 statistical significance tests (C4).",
+        description="benchmark statistical significance tests (C4).",
     )
-    p.add_argument("--phase6-root", default="runs/phase6")
+    p.add_argument("--phase6-root", default="runs/benchmark")
     p.add_argument(
         "--seeds", nargs="+", type=int, default=[0, 1, 2, 3, 4],
         help="Seeds to include in the DRL comparisons.",
@@ -358,14 +358,14 @@ def main(argv=None) -> int:
         format="%(asctime)s %(levelname)s %(name)s %(message)s",
     )
 
-    phase6_root = Path(args.phase6_root)
+    benchmark_root = Path(args.benchmark_root)
     out_path = Path(args.out_path)
     out_path.parent.mkdir(parents=True, exist_ok=True)
 
     ablation_path = Path(args.ablation_path) if args.ablation_path else None
 
     results = run_tests(
-        phase6_root=phase6_root,
+        benchmark_root=benchmark_root,
         seeds=args.seeds,
         alpha=args.alpha,
         ablation_path=ablation_path,

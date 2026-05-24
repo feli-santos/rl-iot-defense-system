@@ -1,4 +1,4 @@
-"""Phase-5 single (algo, seed) training entrypoint.
+"""blue-team single (algo, seed) training entrypoint.
 
 PLAN §3.1.6.
 
@@ -13,7 +13,7 @@ Usage:
 
 The ``--smoke`` flag drops the run to 50 K timesteps with eval every
 10 K — useful for the smoke test in ``tests/test_blue_team_train_agent.py``
-and for the Phase-5 step 5.4 audit (run a smoke before committing the
+and for the blue-team step 5.4 audit (run a smoke before committing the
 full sweep).
 
 Outputs (per run):
@@ -22,7 +22,7 @@ Outputs (per run):
         episodes.jsonl     — one line per training episode
         eval.jsonl         — one line per eval episode (every eval_freq)
         run_manifest.json  — frozen config + post-run telemetry
-        model.zip          — saved SB3 model (loadable by Phase 7)
+        model.zip          — saved SB3 model (loadable by ablation)
         train.log          — stdout/stderr (when run via the sweep driver)
 """
 
@@ -43,7 +43,7 @@ from typing import Any, Dict, Optional
 import numpy as np
 
 # Ensure the project root is on sys.path when invoked as a script (not
-# `python -m`). This lets the Phase-2 scripts/red_team/train_lstm.py
+# `python -m`). This lets the red-team scripts/red_team/train_lstm.py
 # pattern continue to work.
 _ROOT = Path(__file__).resolve().parents[2]
 if str(_ROOT) not in sys.path:
@@ -69,7 +69,7 @@ logger = logging.getLogger("scripts.blue_team.train_agent")
 
 
 # Default per-algo hyperparameters locked in PLAN §8 D5.4. Phase 8
-# may sweep these, but Phase 5 ships exactly these values.
+# may sweep these, but blue-team ships exactly these values.
 DEFAULT_HPARAMS: Dict[str, Dict[str, Any]] = {
     "ppo": {
         "learning_rate": 3e-4,
@@ -141,7 +141,7 @@ def _apply_env_overrides(
 ) -> EnvConfigSerializable:
     """Return a copy of ``spec`` with per-field overrides applied.
 
-    Phase-7 §3.1.2 / D7.3. Validates that every key in
+    ablation §3.1.2 / D7.3. Validates that every key in
     ``reward_overrides`` is a valid :class:`EnvConfigSerializable`
     field name; raises ``ValueError`` with the bad key otherwise.
 
@@ -203,9 +203,9 @@ def build_run_config(args: argparse.Namespace) -> BlueTeamRunConfig:
             window_size=5, include_deltas=True,
         )
 
-    # Phase-7 §3.1.2 / D7.3: apply per-field overrides from
+    # ablation §3.1.2 / D7.3: apply per-field overrides from
     # --reward-overrides / --p-defender-deescalation / --impact-is-terminal.
-    # Defaults preserve byte-for-byte Phase-5 behaviour.
+    # Defaults preserve byte-for-byte blue-team behaviour.
     reward_overrides_obj: Optional[Dict[str, Any]] = None
     if getattr(args, "reward_overrides", None):
         reward_overrides_obj = json.loads(args.reward_overrides)
@@ -367,7 +367,7 @@ def _count_jsonl_lines(path: Path) -> int:
 
 def _build_argparser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
-        description="Phase-5 single (algo, seed) RL Blue-Team training run."
+        description="blue-team single (algo, seed) RL Blue-Team training run."
     )
     p.add_argument("--algo", required=True, choices=("ppo", "dqn", "a2c"))
     p.add_argument("--seed", type=int, required=True)
@@ -388,8 +388,8 @@ def _build_argparser() -> argparse.ArgumentParser:
         help="Output dir (default runs/<algo>/seed_<seed>).",
     )
     p.add_argument(
-        "--generator-path", default="artifacts/generator/phase2",
-        help="Path to Phase-2 generator artefact directory.",
+        "--generator-path", default="artifacts/generator/red_team",
+        help="Path to red-team generator artefact directory.",
     )
     p.add_argument(
         "--dataset-path", default="data/processed/ciciot2023",
@@ -399,7 +399,7 @@ def _build_argparser() -> argparse.ArgumentParser:
         "--splits-manifest",
         default="data/processed/ciciot2023/splits/manifest.json",
         help=(
-            "Path to Phase-1 splits manifest. Use empty string to disable "
+            "Path to dataset-prep splits manifest. Use empty string to disable "
             "split-aware sampling (synthetic tests only)."
         ),
     )
@@ -411,14 +411,14 @@ def _build_argparser() -> argparse.ArgumentParser:
         "--verbose", type=int, default=0, choices=(0, 1, 2),
         help="SB3 verbosity (0/1/2).",
     )
-    # ----- Phase-7 §3.1.2 / D7.3 overrides (default off; preserve Phase-5) -----
+    # ----- ablation §3.1.2 / D7.3 overrides (default off; preserve blue-team) -----
     p.add_argument(
         "--reward-overrides", type=str, default=None,
         help=(
             "JSON object overriding individual EnvConfigSerializable fields "
             "(reward coefficients, lifecycle, impact_is_terminal). Example: "
             "'{\"defense_success_bonus\": 500}'. Applied to BOTH training "
-            "and eval env specs. Default None preserves Phase-5 behaviour."
+            "and eval env specs. Default None preserves blue-team behaviour."
         ),
     )
     p.add_argument(
@@ -427,7 +427,7 @@ def _build_argparser() -> argparse.ArgumentParser:
             "Override AdversarialEnvConfig.p_defender_deescalation. "
             "Convenience knob for the F10 attack-aggressiveness sweep "
             "(takes precedence over the same field in --reward-overrides "
-            "if both are supplied). Default None preserves Phase-5 0.6."
+            "if both are supplied). Default None preserves blue-team 0.6."
         ),
     )
     p.add_argument(
@@ -435,7 +435,7 @@ def _build_argparser() -> argparse.ArgumentParser:
         default=None,
         help=(
             "Override AdversarialEnvConfig.impact_is_terminal "
-            "(true/false). Default None preserves Phase-3/4/5/6 "
+            "(true/false). Default None preserves environment-design/4/5/6 "
             "frozen contract (True). When False, the agent gets an "
             "explicit IMPACT-row decision step before termination "
             "(F9 binary axis, D7.3)."

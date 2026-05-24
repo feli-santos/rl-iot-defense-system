@@ -1,13 +1,13 @@
-"""Phase-7 ablation: ``impact_is_terminal`` env-config flag (D7.3).
+"""Ablation: ``impact_is_terminal`` env-config flag (D7.3).
 
-Pins the new ``AdversarialEnvConfig.impact_is_terminal`` codepath added in
-Phase 7 §3.1.1. The default value is ``True``, which preserves the
-Phase-3/4/5/6 frozen contract byte-for-byte; ``False`` enables a separate
-explicit IMPACT-row decision step before termination, used as one binary
-axis of the F9 reward-component sweep (PLAN §3.1.4 / D7.3).
+Pins the ``AdversarialEnvConfig.impact_is_terminal`` codepath. The default
+value is ``True``, which preserves the environment-design frozen contract
+byte-for-byte; ``False`` enables a separate explicit IMPACT-row decision
+step before termination, used as one binary axis of the F9 reward-component
+sweep (PLAN §3.1.4 / D7.3).
 
 Synthetic-only — uses the same tiny untrained LSTM + 100-row dataset
-fixture as ``tests/test_phase3_env_gates.py``. No real-data dependency.
+fixture as ``tests/test_env_design_gates.py``. No real-data dependency.
 """
 
 from __future__ import annotations
@@ -33,7 +33,7 @@ from src.utils.label_mapper import KillChainStage
 
 
 # ---------------------------------------------------------------------------
-# Fixture (mirrors tests/test_phase3_env_gates.py:_build_env)
+# Fixture (mirrors tests/test_env_design_gates.py:_build_env)
 # ---------------------------------------------------------------------------
 
 
@@ -165,27 +165,27 @@ def _force_into_impact(
 
 
 class TestImpactIsTerminalDefault:
-    """Default ``impact_is_terminal=True`` preserves the Phase-3 frozen
-    contract byte-for-byte."""
+    """Default ``impact_is_terminal=True`` preserves the environment-design
+    frozen contract byte-for-byte."""
 
     def test_default_value_is_true(self, env_factory):
         """A bare ``AdversarialEnvConfig()`` has ``impact_is_terminal=True``."""
         cfg = AdversarialEnvConfig()
         assert cfg.impact_is_terminal is True, (
             "Default impact_is_terminal must be True to preserve the "
-            "Phase-3/4/5/6 frozen contract. Changing the default would "
-            "invalidate Phase-5 and Phase-6 trained checkpoints."
+            "environment-design frozen contract. Changing the default would "
+            "invalidate blue-team and benchmark trained checkpoints."
         )
 
     def test_default_terminates_at_impact_arrival(self, env_factory):
         """With the default config, the step that lands on IMPACT
-        terminates the episode (Phase-3 frozen lifecycle)."""
+        terminates the episode (environment-design frozen lifecycle)."""
         env = env_factory()  # impact_is_terminal=True by default
         obs, reward, terminated, truncated, info = _force_into_impact(
             env, action_into_impact=4  # ISOLATE
         )
         assert terminated is True, (
-            "Phase-3 frozen contract: episode must terminate the same "
+            "Environment-design frozen contract: episode must terminate the same "
             "step IMPACT arrives when impact_is_terminal=True (default)."
         )
         assert info["attack_stage"] == KillChainStage.IMPACT.value

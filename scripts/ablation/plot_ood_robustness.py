@@ -1,21 +1,21 @@
-"""Phase-7 F15 — OOD-class robustness plotter (audit-AF1, headline).
+"""ablation F15 — OOD-class robustness plotter (audit-AF1, headline).
 
-Reads ``runs/phase7/ood/<class>/<policy>/seed_<k>/eval_test.jsonl``
+Reads ``runs/ablation/ood/<class>/<policy>/seed_<k>/eval_test.jsonl``
 files (produced by :mod:`scripts.ablation.run_ood_eval`), aggregates
-per (class, policy) with the same bootstrap-CI protocol Phase-6 used
+per (class, policy) with the same bootstrap-CI protocol benchmark used
 in :mod:`scripts.benchmark.build_summary_table`, and emits:
 
 - ``F15_ood_robustness.png`` — 4-class × 8-policy grouped horizontal
   bar chart with 95 % bootstrap CI whiskers, one panel per OOD class.
-  Same visual idiom as Phase-6 F8.
+  Same visual idiom as benchmark F8.
 - ``F15_summary.json`` — per (class, policy) row + a ``headline`` block
   reporting whether trained RL beat RF-Acting on each class (G7.9
   evaluator).
 - ``F15_caption.md`` — thesis caption (separate, hand-written; this
   script writes a placeholder).
 - ``F15_manifest.json`` — SHA-256 hash chain over every input JSONL,
-  the upstream Phase-7 ``eval_manifest.json``, the Phase-6
-  ``eval_manifest.json``, and the Phase-5 ``sweep_manifest.json``.
+  the upstream ablation ``eval_manifest.json``, the benchmark
+  ``eval_manifest.json``, and the blue-team ``sweep_manifest.json``.
 
 Gate evaluation:
 
@@ -30,7 +30,7 @@ Gate evaluation:
   thesis claim narrows from "RL closes the OOD gap" to "RL is
   *robust to* (not *better at*) the OOD class".
 
-Phase-4 reminder: Phase 4 RESULTS §3.2 reported the supervised RF
+detector reminder: detector RESULTS §3.2 reported the supervised RF
 stage detector has **0.001 recall on `VulnerabilityScan`**. F15
 quantifies how much of that blind spot the trained RL policy
 recovers by acting on raw features rather than the detector's
@@ -57,7 +57,7 @@ logger = logging.getLogger("scripts.ablation.plot_ood_robustness")
 _ROOT = Path(__file__).resolve().parents[2]
 
 
-# Display ordering — same as Phase-6 F8, plus rule baseline as the
+# Display ordering — same as benchmark F8, plus rule baseline as the
 # oracle ceiling marker.
 _POLICY_ORDER: List[str] = [
     "recommended_action",  # oracle ceiling
@@ -133,7 +133,7 @@ def _summarise_cell(
 ) -> Dict[str, Any]:
     """Compute one (ood_class, policy) row.
 
-    Same bootstrap protocol as Phase-6 F5: when n_seeds ≥ 3, bootstrap
+    Same bootstrap protocol as benchmark F5: when n_seeds ≥ 3, bootstrap
     across per-seed means; else bootstrap across all episodes.
     """
     all_records: List[Dict] = []
@@ -377,7 +377,7 @@ def _render(
     fig.text(
         0.5, -0.01,
         "audit-AF1 · trained-RL recovery of supervised-detector OOD blind spots · "
-        "Phase-4 RF recall on VulnerabilityScan = 0.001",
+        "detector RF recall on VulnerabilityScan = 0.001",
         ha="center", fontsize=8, style="italic",
     )
     fig.tight_layout()
@@ -390,11 +390,11 @@ def _render(
 
 def _build_argparser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
-        description="Phase-7 F15 — OOD-class robustness plot + summary "
+        description="ablation F15 — OOD-class robustness plot + summary "
                     "(audit-AF1, headline G7.9 evaluator).",
     )
     p.add_argument(
-        "--runs-root", default="runs/phase7/ood",
+        "--runs-root", default="runs/ablation/ood",
         help="Where run_ood_eval.py wrote its outputs.",
     )
     p.add_argument(
@@ -409,19 +409,19 @@ def _build_argparser() -> argparse.ArgumentParser:
     )
     p.add_argument(
         "--phase6-eval-manifest",
-        default="runs/phase6/eval_manifest.json",
+        default="runs/benchmark/eval_manifest.json",
     )
     p.add_argument(
         "--phase5-sweep-manifest",
-        default="runs/phase5/sweep_manifest.json",
+        default="runs/blue_team/sweep_manifest.json",
     )
     # Step-8 F2 (07_HANDOFF.md §5): explicit upstream-manifest SHA pin
-    # for the Phase-1 splits manifest so the F15 hash chain is
+    # for the dataset-prep splits manifest so the F15 hash chain is
     # self-contained (matches the F9/F10/F12 pattern landed in Step 8).
     p.add_argument(
         "--phase1-splits-manifest",
         default="docs/results/01_dataset/manifest.json",
-        help="Phase-1 splits manifest.json (post-3cd2fb9; SHA 1e99d596...).",
+        help="dataset-prep splits manifest.json (post-3cd2fb9; SHA 1e99d596...).",
     )
     return p
 
@@ -498,19 +498,19 @@ def main(argv: Optional[List[str]] = None) -> int:
             "json": str(out_dir / "F15_summary.json"),
         },
         "inputs": {
-            "phase7_ood_eval_manifest": {
+            "ablation_ood_eval_manifest": {
                 "path": str(eval_manifest_path),
                 "sha256": _sha256(eval_manifest_path),
             },
-            "phase6_eval_manifest": {
-                "path": str(args.phase6_eval_manifest),
-                "sha256": _sha256(Path(args.phase6_eval_manifest)),
+            "benchmark_eval_manifest": {
+                "path": str(args.benchmark_eval_manifest),
+                "sha256": _sha256(Path(args.benchmark_eval_manifest)),
             },
-            "phase5_sweep_manifest": {
-                "path": str(args.phase5_sweep_manifest),
-                "sha256": _sha256(Path(args.phase5_sweep_manifest)),
+            "blue_team_sweep_manifest": {
+                "path": str(args.blue_team_sweep_manifest),
+                "sha256": _sha256(Path(args.blue_team_sweep_manifest)),
             },
-            # Step-8 F2: explicit Phase-1 splits manifest pin so the
+            # Step-8 F2: explicit dataset-prep splits manifest pin so the
             # F15 hash chain is self-contained (matches F9/F10/F12).
             "phase1_splits_manifest": {
                 "path": str(args.phase1_splits_manifest),
@@ -526,11 +526,11 @@ def main(argv: Optional[List[str]] = None) -> int:
     if not caption_path.exists():
         caption_path.write_text(
             "**F15 — OOD-class robustness.** Mean episodic reward of every "
-            "Phase-6 policy under each held-out attack class "
+            "benchmark policy under each held-out attack class "
             "(DDoS-HTTP_Flood, Mirai-udpplain, VulnerabilityScan, XSS), "
             "with the env's `RealizationEngine.allowed_indices` restricted "
             "to that class's row indices. The supervised RF baseline collapses "
-            "on `VulnerabilityScan` (Phase-4 F11 recall = 0.001); F15 "
+            "on `VulnerabilityScan` (detector F11 recall = 0.001); F15 "
             "quantifies how much of that blind spot trained RL recovers by "
             "acting on raw features rather than the detector's "
             "classification. Error bars are 95 % bootstrap CIs. "

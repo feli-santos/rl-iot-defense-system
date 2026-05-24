@@ -96,14 +96,14 @@ bash tex/build.sh
 A full re-train of every stage from scratch (preserving the audited reproducibility contract) is also supported via \texttt{make}:
 
 \begin{verbatim}
-make phase-1                       # CICIoT2023 splits + F0a/F0b
-                                   # (requires raw dataset on disk)
-make phase-2                       # LSTM red team + F1/F2
-make phase-4                       # supervised stage detector + F11
-make phase-5-sweep PHASE5_TIMESTEPS=250000   # ~108 min CPU
-make phase-6                       # held-out benchmark + F5/F6/F7/F8
-make phase-7                       # ablations + F9/F10/F12/F15 (~7.5 h CPU)
-make phase-7-close                 # G7 scoreboard + RESULTS.md
+make dataset                              # CICIoT2023 splits + F0a/F0b
+                                          # (requires raw dataset on disk)
+make red-team                             # LSTM red team + F1/F2
+make detector                             # supervised stage detector + F11
+make blue-team-sweep BLUE_TEAM_TIMESTEPS=250000   # ~108 min CPU
+make benchmark                            # held-out benchmark + F5/F6/F7/F8
+make ablation                             # ablations + F9/F10/F12/F15 (~7.5 h CPU)
+make ablation-close                       # G7 scoreboard + RESULTS.md
 \end{verbatim}
 
 After a full re-train the per-stage \texttt{manifest.json} files are re-emitted with new input SHAs corresponding to the freshly trained checkpoints; the harness will then verify the new chain end-to-end.

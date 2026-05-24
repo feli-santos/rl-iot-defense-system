@@ -83,7 +83,7 @@ class TestTrainAgentSmoke:
             out_dir=str(out_dir),
             generator_path=str(gen_dir),
             dataset_path=str(ds_dir),
-            splits_manifest="",  # synthetic — no Phase-1 manifest
+            splits_manifest="",  # synthetic — no dataset-prep manifest
             env=env,
             eval_env=eval_env,
             algo_hparams={
@@ -142,7 +142,7 @@ class TestTrainAgentSmoke:
         self, synthetic_paths: Tuple[Path, Path], tmp_path: Path
     ) -> None:
         """Same-as :func:`test_save_load_model` regression in
-        :class:`TestAdversarialAlgorithm`, but for the Phase-5 entrypoint."""
+        :class:`TestAdversarialAlgorithm`, but for the blue-team entrypoint."""
         from scripts.blue_team.train_agent import train
         from stable_baselines3 import PPO
 

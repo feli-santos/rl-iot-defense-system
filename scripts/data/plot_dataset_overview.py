@@ -1,5 +1,5 @@
 """
-Phase-1 figure F0 — Dataset overview.
+dataset-prep figure F0 — Dataset overview.
 
 Reads the processed CICIoT2023 snapshot and the splits manifest, and produces:
 

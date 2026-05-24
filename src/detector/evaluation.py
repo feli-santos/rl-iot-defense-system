@@ -1,11 +1,11 @@
-"""Shared evaluation helpers for the Phase-4 stage detector + baselines.
+"""Shared evaluation helpers for the detector stage detector + baselines.
 
 Every helper takes raw 1-D ``y_true`` / ``y_pred`` arrays of integer stage
 labels and returns NumPy arrays (or floats / dicts of floats). No
 randomness, no model dependencies — deliberately sklearn-compatible so
 existing tests can cross-check results with ``sklearn.metrics``.
 
-The ``summarize_run`` aggregator is what each Phase-4 baseline returns
+The ``summarize_run`` aggregator is what each detector baseline returns
 to the entrypoint script in ``scripts/detector/train_detector.py``.
 """
 
@@ -161,7 +161,7 @@ def summarize_run(
 
 
 # ---------------------------------------------------------------------------
-# OOD eval helpers (Phase-4 G4.4)
+# OOD eval helpers (detector G4.4)
 # ---------------------------------------------------------------------------
 
 

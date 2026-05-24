@@ -1,8 +1,8 @@
-"""Phase-4 entrypoint: train StageDetector + RF + CNN1D, render F11.
+"""detector entrypoint: train StageDetector + RF + CNN1D, render F11.
 
 Pipeline (deterministic given --seed):
 
-    1. Load features.npy + stages.npy + Phase-1 split indices.
+    1. Load features.npy + stages.npy + dataset-prep split indices.
     2. Train RandomForest (cheap), then StageDetector MLP, then CNN1D.
        Each model selects on val_balanced when applicable.
     3. Evaluate every model on:
@@ -16,7 +16,7 @@ Pipeline (deterministic given --seed):
        - docs/results/04_detector/F11_summary.json
        - docs/results/04_detector/manifest.json (hash chain)
        - artifacts/detector/{stage_detector.pt, random_forest.joblib,
-         cnn1d.pt} (consumed by Phase 5+)
+         cnn1d.pt} (consumed by blue-team+)
 
 Usage
 -----
@@ -59,7 +59,7 @@ from src.detector.evaluation import (
 
 logger = logging.getLogger(__name__)
 
-# Stage assignments for the four held-out OOD classes (Phase-1 fixed list).
+# Stage assignments for the four held-out OOD classes (dataset-prep fixed list).
 # Used to compute G4.4 per-class recall; these classes are NEVER in the
 # train / val / test splits.
 _OOD_EXPECTED_STAGE: Dict[str, int] = {
@@ -277,7 +277,7 @@ def _check_gates(
     #
     # That asymmetry is itself the thesis finding: per-attack-class OOD
     # detection has a structural blind spot, and the RL agent's job in
-    # Phase 7 is to act correctly *despite* the detector's failure modes.
+    # ablation is to act correctly *despite* the detector's failure modes.
     # Updated gate: PASS-with-finding iff at least one OOD class scores
     # <= 0.30 (proving the detector has a real blind spot to defend
     # against). FAIL only if *every* OOD class is trivially detected
@@ -304,7 +304,7 @@ def _check_gates(
             note = (
                 "every OOD class recall >0.30 — the detector trivially "
                 "generalises and the splits are not effectively held out. "
-                "Re-open Phase 1 with stricter OOD selection."
+                "Re-open dataset-prep with stricter OOD selection."
             )
     gates["G4.4"] = {
         "name": "At least one held-out OOD class fails to generalise (recall <= 0.30)",
@@ -605,7 +605,7 @@ def main(argv: List[str] | None = None) -> int:
     }
     (args.out_dir / "manifest.json").write_text(json.dumps(manifest, indent=2))
     logger.info("Wrote %s", args.out_dir / "manifest.json")
-    logger.info("Phase-4 done. Gates: %s", manifest["gates_status"])
+    logger.info("detector done. Gates: %s", manifest["gates_status"])
 
     # Non-zero exit if any non-relaxed gate failed.
     failed = [gid for gid, g in gates.items() if g["status"] == "FAIL"]

@@ -258,8 +258,8 @@ def build_splits(cfg: BuilderConfig) -> dict:
     # ---- OOD-attack indices: computed FIRST so we can exclude them from
     # train/val/test before splitting. The held-out attack classes must
     # never appear in any in-distribution split — otherwise the detector
-    # silently trains on them and Phase-7 OOD evaluation is meaningless.
-    # (Bug discovered in Phase 4 step 4.5 by the train_detector.py
+    # silently trains on them and ablation OOD evaluation is meaningless.
+    # (Bug discovered in detector step 4.5 by the train_detector.py
     # leakage check; documented in `docs/results/04_detector/RESULTS.md`.)
     ood_indices = _ood_attack_indices(
         string_labels=string_labels, ood_classes=cfg.ood_attack_classes

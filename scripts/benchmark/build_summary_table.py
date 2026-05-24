@@ -1,6 +1,6 @@
-"""Phase-6 F5 — final security metrics table (PLAN §3.1.5, C4).
+"""benchmark F5 — final security metrics table (PLAN §3.1.5, C4).
 
-Reads ``runs/phase6/<policy>/seed_<k>/eval_test.jsonl`` (and the matching
+Reads ``runs/benchmark/<policy>/seed_<k>/eval_test.jsonl`` (and the matching
 ``latency.jsonl`` sidecars) for every policy, aggregates per-policy
 metrics across seeds, and writes:
 
@@ -10,7 +10,7 @@ metrics across seeds, and writes:
 - ``docs/results/06_benchmark/F5_summary.csv``  — same data, flat.
 - ``docs/results/06_benchmark/F5_table.png``    — rendered table figure.
 - ``docs/results/06_benchmark/F5_manifest.json`` — SHA-256 hash chain
-  over every input JSONL + the upstream Phase-6 eval manifest + the
+  over every input JSONL + the upstream benchmark eval manifest + the
   git SHA at production time (G6.7 / D6.9).
 
 Columns reported per row (per PLAN §3.1):
@@ -158,7 +158,7 @@ def _summarise_policy(
     non-deterministic vs deterministic baselines:
 
     - **non-deterministic** (DQN/PPO/A2C/random): one mean-per-seed,
-      bootstrap across 5 seeds. This matches Phase-5's seed-level
+      bootstrap across 5 seeds. This matches blue-team's seed-level
       uncertainty narrative.
     - **deterministic** (always-X / recommended / RF-acting): one
       mean per *episode*; bootstrap across all 150 episodes. Otherwise
@@ -387,8 +387,8 @@ def _write_csv(rows: List[Dict[str, Any]], out_path: Path) -> None:
 
 
 def _build_argparser() -> argparse.ArgumentParser:
-    p = argparse.ArgumentParser(description="Phase-6 F5 — security metrics table.")
-    p.add_argument("--runs-root", default="runs/phase6")
+    p = argparse.ArgumentParser(description="benchmark F5 — security metrics table.")
+    p.add_argument("--runs-root", default="runs/benchmark")
     p.add_argument("--out-dir", default="docs/results/06_benchmark")
     p.add_argument(
         "--policies", nargs="+", default=_POLICY_ORDER,

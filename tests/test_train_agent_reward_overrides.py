@@ -1,15 +1,15 @@
-"""Phase-7 ablation: ``--reward-overrides`` + ``--p-defender-deescalation``
+"""ablation ablation: ``--reward-overrides`` + ``--p-defender-deescalation``
 + ``--impact-is-terminal`` plumbing in ``scripts.blue_team.train_agent``.
 
 PLAN §3.1.2 / D7.3. Pins the per-field override mechanism that the F9
 reward-component sweep uses to fan out one ``train_agent.py`` invocation
 per cell. Default behaviour (no overrides) is byte-for-byte identical to
-Phase 5; this test file is what enforces that invariant going forward.
+blue-team; this test file is what enforces that invariant going forward.
 
 Synthetic-only — no real-data dependency. Tests only the CLI parsing +
 override plumbing into ``EnvConfigSerializable``; the actual training
 smoke is already covered by ``tests/test_blue_team_train_agent.py`` and
-the Phase-3 frozen tests cover the env-side semantics.
+the environment-design frozen tests cover the env-side semantics.
 """
 
 from __future__ import annotations
@@ -43,8 +43,8 @@ class TestApplyEnvOverrides:
         assert dataclasses.asdict(out) == dataclasses.asdict(spec), (
             "Default behaviour (no overrides) must be byte-for-byte "
             "identical to the input spec — this is what guarantees "
-            "Phase-7 retraining without --reward-overrides matches "
-            "Phase-5 behaviour."
+            "ablation retraining without --reward-overrides matches "
+            "blue-team behaviour."
         )
 
     def test_reward_overrides_dict_applied(self) -> None:
@@ -125,17 +125,17 @@ class TestBuildRunConfigOverrides:
         return ["--algo", "ppo", "--seed", "0", "--splits-manifest", ""]
 
     def test_no_overrides_matches_phase5_baseline(self) -> None:
-        """No flags → env spec uses Phase-5 defaults verbatim.
+        """No flags → env spec uses blue-team defaults verbatim.
 
-        This is the **invariant that lets Phase-5 trained checkpoints
-        and Phase-7 untrained-cell checkpoints be compared apples-to-
-        apples**. If this test ever flips, Phase-5 numbers and Phase-7
+        This is the **invariant that lets blue-team trained checkpoints
+        and ablation untrained-cell checkpoints be compared apples-to-
+        apples**. If this test ever flips, blue-team numbers and ablation
         baselines are no longer directly comparable.
         """
         args = _parse(self._base_argv())
         cfg = build_run_config(args)
 
-        # Every reward field at the Phase-3 / Phase-5 default.
+        # Every reward field at the environment-design / blue-team default.
         assert cfg.env.defense_success_bonus == 250.0
         assert cfg.env.penalty_missed_impact == 150.0
         assert cfg.env.reward_proportional == 5.0
@@ -201,7 +201,7 @@ class TestBuildRunConfigOverrides:
         self, tmp_path: Path
     ) -> None:
         """The serialised ``run_manifest.json`` includes the merged
-        env config, so downstream Phase-7 sweep manifests can SHA-pin
+        env config, so downstream ablation sweep manifests can SHA-pin
         the per-cell config without re-parsing the CLI."""
         args = _parse(
             self._base_argv()
@@ -254,13 +254,13 @@ class TestBuildRunConfigOverrides:
 
 
 class TestBackwardCompatibility:
-    """Deserialising a pre-Phase-7 ``run_manifest.json`` (which lacks the
+    """Deserialising a pre-ablation ``run_manifest.json`` (which lacks the
     new reward-shaping fields) must still round-trip cleanly."""
 
     def test_old_manifest_deserialises_with_defaults(
         self, tmp_path: Path
     ) -> None:
-        """A Phase-5-era manifest (only the original 7 env fields) must
+        """A blue-team-era manifest (only the original 7 env fields) must
         deserialise into a config whose new fields are at default."""
         from src.blue_team import BlueTeamRunConfig
 
@@ -304,11 +304,11 @@ class TestBackwardCompatibility:
 
         cfg = BlueTeamRunConfig.from_manifest(manifest_path)
 
-        # Pre-Phase-7 fields preserved.
+        # Pre-ablation fields preserved.
         assert cfg.env.p_defender_deescalation == 0.6
-        # New Phase-7 fields default to AdversarialEnvConfig defaults
-        # (== Phase-3 frozen contract). This is what makes Phase-5
-        # checkpoints loadable + comparable under Phase-7 evaluation.
+        # New ablation fields default to AdversarialEnvConfig defaults
+        # (== environment-design frozen contract). This is what makes blue-team
+        # checkpoints loadable + comparable under ablation evaluation.
         assert cfg.env.defense_success_bonus == 250.0
         assert cfg.env.penalty_missed_impact == 150.0
         assert cfg.env.reward_proportional == 5.0

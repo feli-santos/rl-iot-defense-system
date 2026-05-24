@@ -1,19 +1,19 @@
-"""Phase-7 F15 — OOD-class robustness evaluator (audit-AF1).
+"""ablation F15 — OOD-class robustness evaluator (audit-AF1).
 
-Evaluates every Phase-6 policy (rule oracle, RF-Acting, trained
+Evaluates every benchmark policy (rule oracle, RF-Acting, trained
 DQN/PPO/A2C, random, always-OBSERVE, always-BLOCK) on each of the
 four held-out OOD attack classes (DDoS-HTTP_Flood, Mirai-udpplain,
 VulnerabilityScan, XSS) by restricting the env's
 ``RealizationEngine.allowed_indices`` to that class's row indices.
 
 This is the audit-AF1-promoted Tier-1 deliverable that supplies the
-Phase-4-to-thesis-claim payoff: Phase 4 RESULTS §3.2 reported the
+detector-to-thesis-claim payoff: detector RESULTS §3.2 reported the
 supervised RF stage detector has 0.001 recall on ``VulnerabilityScan``;
 F15 quantifies how much of that blind spot the trained RL policy
 recovers.
 
-**No retraining**. F15 reuses the frozen Phase-5 trained checkpoints
-(D7.6) and the Phase-6 ``eval_runner`` harness unchanged. Only the
+**No retraining**. F15 reuses the frozen blue-team trained checkpoints
+(D7.6) and the benchmark ``eval_runner`` harness unchanged. Only the
 RealizationEngine constraint changes per outer loop.
 
 Usage::
@@ -22,7 +22,7 @@ Usage::
         [--ood-classes DDoS-HTTP_Flood Mirai-udpplain VulnerabilityScan XSS] \\
         [--policies rule rf_acting dqn ppo a2c random always_observe always_block] \\
         [--n-episodes 30] [--seeds 0 1 2 3 4] \\
-        [--phase5-runs runs/phase5] [--out-root runs/phase7/ood] \\
+        [--phase5-runs runs/blue_team] [--out-root runs/ablation/ood] \\
         [--rf-path artifacts/detector/random_forest.joblib] \\
         [--smoke]
 
@@ -35,15 +35,15 @@ Per PLAN §3.1.3 / D7.6 the default sweep is:
   = 4 × (450 + 150 + 600) = 4 × 1 200 = **4 800 episodes**.
 
 Expected wallclock < 1 hour CPU on Apple silicon (no model load
-repeated; episodes short post-Phase-3 lifecycle fix).
+repeated; episodes short post-environment-design lifecycle fix).
 
 Output layout::
 
-    runs/phase7/ood/
+    runs/ablation/ood/
         eval_manifest.json                 — top-level F15 manifest
         <ood_class>/<policy>/seed_<k>/
             eval_test.jsonl                — schema-v1.0 EpisodeRecord
-            (no latency.jsonl — F15 inherits Phase-6 F7's latency claim)
+            (no latency.jsonl — F15 inherits benchmark F7's latency claim)
 """
 
 from __future__ import annotations
@@ -89,7 +89,7 @@ _ROOT = Path(__file__).resolve().parents[2]
 _OOD_STAGE_BY_CLASS: Dict[str, int] = {
     "DDoS-HTTP_Flood":   4,  # IMPACT
     "Mirai-udpplain":    3,  # MANEUVER
-    "VulnerabilityScan": 1,  # RECON  ← Phase-4 F11 0.001-recall blind spot
+    "VulnerabilityScan": 1,  # RECON  ← detector F11 0.001-recall blind spot
     "XSS":               2,  # ACCESS
 }
 
@@ -132,7 +132,7 @@ def _load_sb3_model(algo: str, model_path: Path, env: Any) -> Any:
 
 
 def _ood_eval_env_spec() -> EnvConfigSerializable:
-    """Phase-3-frozen reward config (D7.4) on the *train* split.
+    """environment-design-frozen reward config (D7.4) on the *train* split.
 
     Why train (not test_balanced)? F15's hybrid realiser pattern
     (see _build_ood_env) keeps the *non-OOD-stage* feature pool from
@@ -264,8 +264,8 @@ def _build_ood_env(
 
 def _build_argparser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
-        description="Phase-7 F15 — OOD-class robustness eval (audit-AF1). "
-                    "Rolls every Phase-6 policy on each held-out OOD attack class.",
+        description="ablation F15 — OOD-class robustness eval (audit-AF1). "
+                    "Rolls every benchmark policy on each held-out OOD attack class.",
     )
     p.add_argument(
         "--ood-classes", nargs="+",
@@ -279,7 +279,7 @@ def _build_argparser() -> argparse.ArgumentParser:
             "dqn", "ppo", "a2c",
             "random", "always_observe", "always_block",
         ],
-        help="Subset of the 8 Phase-6 policies to evaluate.",
+        help="Subset of the 8 benchmark policies to evaluate.",
     )
     p.add_argument(
         "--seeds", nargs="+", type=int, default=[0, 1, 2, 3, 4],
@@ -296,10 +296,10 @@ def _build_argparser() -> argparse.ArgumentParser:
         help="Episodes per (ood_class, deterministic_baseline) cell "
              "(single seed=0).",
     )
-    p.add_argument("--phase5-runs", default="runs/phase5",
-                   help="Where the trained Phase-5 model.zip files live.")
-    p.add_argument("--out-root", default="runs/phase7/ood")
-    p.add_argument("--generator-path", default="artifacts/generator/phase2")
+    p.add_argument("--phase5-runs", default="runs/blue_team",
+                   help="Where the trained blue-team model.zip files live.")
+    p.add_argument("--out-root", default="runs/ablation/ood")
+    p.add_argument("--generator-path", default="artifacts/generator/red_team")
     p.add_argument("--dataset-path", default="data/processed/ciciot2023")
     p.add_argument(
         "--splits-manifest",
@@ -310,8 +310,8 @@ def _build_argparser() -> argparse.ArgumentParser:
     )
     p.add_argument(
         "--phase6-eval-manifest",
-        default="runs/phase6/eval_manifest.json",
-        help="Upstream Phase-6 eval manifest, hash-pinned in the F15 manifest "
+        default="runs/benchmark/eval_manifest.json",
+        help="Upstream benchmark eval manifest, hash-pinned in the F15 manifest "
              "for the SHA-256 reproducibility chain (D7.7).",
     )
     p.add_argument("--smoke", action="store_true",
@@ -336,14 +336,14 @@ def _roll_rl(
     seed: int,
 ) -> Dict[str, Any]:
     """One (ood_class, RL_algo, seed) cell."""
-    model_path = Path(args.phase5_runs) / algo / f"seed_{seed}" / "model.zip"
+    model_path = Path(args.blue_team_runs) / algo / f"seed_{seed}" / "model.zip"
     out_dir = Path(args.out_root) / ood_class / algo / f"seed_{seed}"
     out_dir.mkdir(parents=True, exist_ok=True)
     eval_jsonl = out_dir / "eval_test.jsonl"
     run_id = f"f15_{ood_class}_{algo}_seed_{seed}"
 
     if not model_path.exists():
-        msg = f"missing Phase-5 checkpoint at {model_path}"
+        msg = f"missing blue-team checkpoint at {model_path}"
         logger.error(msg)
         return {
             "kind": "trained", "ood_class": ood_class, "algo": algo, "seed": seed,
@@ -470,7 +470,7 @@ def _roll_deterministic(
                 "rf_path": str(rf_path), "rf_sha256": None,
             }
         # Probe the env to discover the obs dim, then compute num_features
-        # the same way scripts/benchmark/run_test_eval.py does (Phase-3
+        # the same way scripts/benchmark/run_test_eval.py does (environment-design
         # frozen contract).
         spec = _ood_eval_env_spec()
         probe_env = _build_ood_env(args, ood_class, seed=0)
@@ -585,12 +585,12 @@ def main(argv: Optional[List[str]] = None) -> int:
             else:
                 logger.warning("unknown policy %r; skipping", policy_name)
 
-    # ---- F15 manifest (D7.7: hash-pin the upstream Phase-5 + Phase-6 manifests) ----
+    # ---- F15 manifest (D7.7: hash-pin the upstream blue-team + benchmark manifests) ----
     splits_manifest = Path(args.splits_manifest)
     scaler_path = Path(args.dataset_path) / "scaler.joblib"
     rf_path = Path(args.rf_path)
-    phase5_sweep_manifest = Path(args.phase5_runs) / "sweep_manifest.json"
-    phase6_eval_manifest = Path(args.phase6_eval_manifest)
+    blue_team_sweep_manifest = Path(args.blue_team_runs) / "sweep_manifest.json"
+    benchmark_eval_manifest = Path(args.benchmark_eval_manifest)
 
     eval_manifest = {
         "schema_version": "1.0",
@@ -609,8 +609,8 @@ def main(argv: Optional[List[str]] = None) -> int:
             "splits_manifest": _sha256(splits_manifest),
             "scaler": _sha256(scaler_path),
             "rf_model": _sha256(rf_path),
-            "phase5_sweep_manifest": _sha256(phase5_sweep_manifest),
-            "phase6_eval_manifest": _sha256(phase6_eval_manifest),
+            "blue_team_sweep_manifest": _sha256(blue_team_sweep_manifest),
+            "benchmark_eval_manifest": _sha256(benchmark_eval_manifest),
         },
         "ood_classes": list(args.ood_classes),
         "policies": list(args.policies),
@@ -622,7 +622,7 @@ def main(argv: Optional[List[str]] = None) -> int:
             "min_episode_length": _ood_eval_env_spec().min_episode_length,
             "p_defender_deescalation": _ood_eval_env_spec().p_defender_deescalation,
             "impact_is_terminal": _ood_eval_env_spec().impact_is_terminal,
-            "_note": "Phase-3 frozen reward config (D7.4) — F15 isolates "
+            "_note": "environment-design frozen reward config (D7.4) — F15 isolates "
                       "the generalisation axis from the reward-shaping axis.",
         },
         "runs": results,

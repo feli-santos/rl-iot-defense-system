@@ -129,7 +129,7 @@ R^{\mathrm{term}} \;=\; -p_{\mathrm{impact}} \;+\; \begin{cases} +b_{\mathrm{suc
 \end{equation}
 Defender-driven de-escalations award $+b_{\mathrm{success}}$ mid-episode when they fire (independent of the terminal-\textsc{impact} step).
 
-The environment-design default constants used throughout the dissertation (\texttt{AdversarialEnvConfig}) are listed in Table~\ref{tab:reward_constants}. They were calibrated so that the recommended-action policy is net-positive in expectation across an episode (gate G3.4) while the always-\textsc{observe} policy is net-negative (gate G3.5), with all 13 calibration tests in \texttt{tests/test\_phase3\_env\_gates.py} green at the locking commit \texttt{36fec22}.
+The environment-design default constants used throughout the dissertation (\texttt{AdversarialEnvConfig}) are listed in Table~\ref{tab:reward_constants}. They were calibrated so that the recommended-action policy is net-positive in expectation across an episode (gate G3.4) while the always-\textsc{observe} policy is net-negative (gate G3.5), with all 13 calibration tests in \texttt{tests/test\_env\_design\_gates.py} green at the locking commit \texttt{36fec22}.
 
 The action-cost vector $C_{\mathrm{action}}(a)$ uses scale $\alpha = 1.0$ as the default. A sensitivity sweep over $\alpha \in \{0.5, 1.0, 2.0\}$ (Section~\ref{subsubsec:action_cost_justification}) shows that all three settings produce overlapping 95\,\% bootstrap confidence intervals, confirming that the default $\alpha = 1.0$ is robust to $\pm 2\times$ perturbation in action cost.
 

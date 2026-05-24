@@ -1,4 +1,4 @@
-"""Random Forest baseline for Phase 4.
+"""Random Forest baseline for detector.
 
 Wraps ``sklearn.ensemble.RandomForestClassifier`` with the canonical
 configuration locked in PLAN §8.D3:
@@ -12,7 +12,7 @@ Why a thin wrapper rather than calling sklearn directly?
 
 - Locks the configuration (no ad-hoc tweaks across runs).
 - Provides a uniform ``train_random_forest(...) -> RandomForestClassifier``
-  factory matching the other Phase-4 baselines.
+  factory matching the other detector baselines.
 - Saves a tiny amount of book-keeping (training time, feature importances)
   inside an attribute on the returned model so the entrypoint script can
   ship them in the summary JSON.
@@ -32,7 +32,7 @@ from sklearn.ensemble import RandomForestClassifier
 
 @dataclass
 class RandomForestConfig:
-    """Locked configuration for the Phase-4 RF baseline (PLAN §8.D3)."""
+    """Locked configuration for the detector RF baseline (PLAN §8.D3)."""
 
     n_estimators: int = 100
     max_depth: Optional[int] = None
@@ -63,7 +63,7 @@ def train_random_forest(
     seed: int,
     config: Optional[RandomForestConfig] = None,
 ) -> RandomForestClassifier:
-    """Fit a RandomForest with the locked Phase-4 configuration.
+    """Fit a RandomForest with the locked detector configuration.
 
     The fitted classifier has a ``run_info`` attribute (a
     :class:`RandomForestRunInfo`) with training metadata that the

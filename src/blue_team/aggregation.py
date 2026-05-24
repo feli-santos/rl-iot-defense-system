@@ -1,9 +1,9 @@
-"""Pure-Python aggregation utilities for Phase-5 figures.
+"""Pure-Python aggregation utilities for blue-team figures.
 
 Reading and aggregating ``episodes.jsonl`` and ``eval.jsonl`` is split
 out of the plot scripts because
 
-1. The same routines are used by F3 and F4 (and later by Phase-7's
+1. The same routines are used by F3 and F4 (and later by ablation's
    benchmark plots), so DRYing the I/O matters.
 2. Unit-testing aggregation is easier when it does not depend on a
    matplotlib import path or a ``runs/`` directory layout.

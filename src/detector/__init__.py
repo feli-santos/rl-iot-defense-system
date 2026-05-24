@@ -1,6 +1,6 @@
 """Stage Detector + supervised baselines.
 
-Phase-4 module. Public API:
+detector module. Public API:
 
     StageDetector            — production MLP head used by the RL agent.
     train_random_forest      — sklearn RandomForestClassifier wrapper.

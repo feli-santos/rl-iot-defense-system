@@ -1,11 +1,11 @@
-"""Phase-7 F12 — Security-vs-availability Pareto frontier (PLAN §3.1.6 / D7.5).
+"""ablation F12 — Security-vs-availability Pareto frontier (PLAN §3.1.6 / D7.5).
 
 Plotter-only (D7.5): F12 is *derived* from F9 + F10 outputs, not a
 separate sweep. Reads:
 
-  runs/phase7/reward_sweep/<cell_id>/seed_<k>/eval_test.jsonl
-  runs/phase7/aggressiveness/{ppo,rule}_p<p>/seed_<k>/eval_test.jsonl
-  runs/phase6/<policy>/seed_<k>/eval_test.jsonl  (Phase-6 anchors)
+  runs/ablation/reward_sweep/<cell_id>/seed_<k>/eval_test.jsonl
+  runs/ablation/aggressiveness/{ppo,rule}_p<p>/seed_<k>/eval_test.jsonl
+  runs/benchmark/<policy>/seed_<k>/eval_test.jsonl  (benchmark anchors)
 
 For each (cell, policy) point computes:
 
@@ -124,15 +124,15 @@ def _summarise_seed_dirs(
 
 
 def _collect_phase6_points(
-    phase6_root: Path,
+    benchmark_root: Path,
     sha_collector: Dict[str, str],
 ) -> List[Dict[str, Any]]:
-    """Phase-6 anchor points: 8 baseline policies on test_balanced."""
+    """benchmark anchor points: 8 baseline policies on test_balanced."""
     points: List[Dict[str, Any]] = []
-    if not phase6_root.exists():
-        logger.warning("phase6 root missing: %s — skipping anchors", phase6_root)
+    if not benchmark_root.exists():
+        logger.warning("phase6 root missing: %s — skipping anchors", benchmark_root)
         return points
-    for policy_dir in sorted(phase6_root.iterdir()):
+    for policy_dir in sorted(benchmark_root.iterdir()):
         if not policy_dir.is_dir():
             continue
         seed_dirs = sorted(
@@ -286,7 +286,7 @@ def _evaluate_g74(points: List[Dict[str, Any]], frontier: List[int]) -> Dict[str
             if len(distinct) >= 3 else
             f"FAIL-WITH-FINDING (R7.3): only {len(distinct)} distinct "
             "dominant point(s) on the frontier — the trade-off surface is "
-            "approximately linear under the Phase-3 reward formulation; "
+            "approximately linear under the environment-design reward formulation; "
             "operating-point choice reduces to a single scalar weighting."
         ),
     }
@@ -355,7 +355,7 @@ def _render(
     ax.set_ylabel("Security gain (1 − compromise rate)", fontsize=10)
     ax.set_title(
         "F12 — Security vs. availability Pareto "
-        "(F9 reward sweep + F10 aggressiveness sweep + Phase-6 anchors)",
+        "(F9 reward sweep + F10 aggressiveness sweep + benchmark anchors)",
         fontsize=11,
     )
     ax.grid(True, linestyle=":", alpha=0.4)
@@ -370,23 +370,23 @@ def _render(
 
 def _build_argparser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
-        description="Phase-7 F12 — security-vs-availability Pareto plot. "
-                    "Plotter-only (D7.5); reads F9 + F10 + Phase-6 outputs.",
+        description="ablation F12 — security-vs-availability Pareto plot. "
+                    "Plotter-only (D7.5); reads F9 + F10 + benchmark outputs.",
     )
-    p.add_argument("--phase6-runs",     default="runs/phase6")
-    p.add_argument("--phase7-f9-runs",  default="runs/phase7/reward_sweep")
-    p.add_argument("--phase7-f10-runs", default="runs/phase7/aggressiveness")
+    p.add_argument("--phase6-runs",     default="runs/benchmark")
+    p.add_argument("--phase7-f9-runs",  default="runs/ablation/reward_sweep")
+    p.add_argument("--phase7-f10-runs", default="runs/ablation/aggressiveness")
     p.add_argument("--out-dir",         default="docs/results/07_ablation")
     # Step-8 F2 (07_HANDOFF.md §5): explicit upstream-manifest SHA pins.
     p.add_argument(
         "--phase5-sweep-manifest",
-        default="runs/phase5/sweep_manifest.json",
-        help="Phase-5 sweep_manifest.json (warm-start trained checkpoints).",
+        default="runs/blue_team/sweep_manifest.json",
+        help="blue-team sweep_manifest.json (warm-start trained checkpoints).",
     )
     p.add_argument(
         "--phase1-splits-manifest",
         default="docs/results/01_dataset/manifest.json",
-        help="Phase-1 splits manifest.json (post-3cd2fb9; SHA 1e99d596...).",
+        help="dataset-prep splits manifest.json (post-3cd2fb9; SHA 1e99d596...).",
     )
     return p
 
@@ -400,9 +400,9 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     sha_collector: Dict[str, str] = {}
     points: List[Dict[str, Any]] = []
-    points += _collect_phase6_points(Path(args.phase6_runs), sha_collector)
-    points += _collect_f9_points(Path(args.phase7_f9_runs), sha_collector)
-    points += _collect_f10_points(Path(args.phase7_f10_runs), sha_collector)
+    points += _collect_phase6_points(Path(args.benchmark_runs), sha_collector)
+    points += _collect_f9_points(Path(args.ablation_f9_runs), sha_collector)
+    points += _collect_f10_points(Path(args.ablation_f10_runs), sha_collector)
     logger.info("F12: collected %d points (phase6 + F9 + F10)", len(points))
 
     if not points:
@@ -442,23 +442,23 @@ def main(argv: Optional[List[str]] = None) -> int:
             "json": str(out_dir / "F12_summary.json"),
         },
         "inputs": {
-            "phase6_eval_manifest": {
-                "path": str(Path(args.phase6_runs) / "eval_manifest.json"),
-                "sha256": _sha256(Path(args.phase6_runs) / "eval_manifest.json"),
+            "benchmark_eval_manifest": {
+                "path": str(Path(args.benchmark_runs) / "eval_manifest.json"),
+                "sha256": _sha256(Path(args.benchmark_runs) / "eval_manifest.json"),
             },
             "phase7_f9_sweep_manifest": {
-                "path": str(Path(args.phase7_f9_runs) / "sweep_manifest.json"),
-                "sha256": _sha256(Path(args.phase7_f9_runs) / "sweep_manifest.json"),
+                "path": str(Path(args.ablation_f9_runs) / "sweep_manifest.json"),
+                "sha256": _sha256(Path(args.ablation_f9_runs) / "sweep_manifest.json"),
             },
             "phase7_f10_sweep_manifest": {
-                "path": str(Path(args.phase7_f10_runs) / "sweep_manifest.json"),
-                "sha256": _sha256(Path(args.phase7_f10_runs) / "sweep_manifest.json"),
+                "path": str(Path(args.ablation_f10_runs) / "sweep_manifest.json"),
+                "sha256": _sha256(Path(args.ablation_f10_runs) / "sweep_manifest.json"),
             },
             # Step-8 F2: explicit upstream-manifest SHA pins so the F12
             # hash chain is self-contained (no transitive lookups).
-            "phase5_sweep_manifest": {
-                "path": str(args.phase5_sweep_manifest),
-                "sha256": _sha256(Path(args.phase5_sweep_manifest)),
+            "blue_team_sweep_manifest": {
+                "path": str(args.blue_team_sweep_manifest),
+                "sha256": _sha256(Path(args.blue_team_sweep_manifest)),
             },
             "phase1_splits_manifest": {
                 "path": str(args.phase1_splits_manifest),
@@ -474,10 +474,10 @@ def main(argv: Optional[List[str]] = None) -> int:
         caption_path.write_text(
             "**F12 — Security vs. availability Pareto.** Each point is one "
             "(reward_config, p_defender_deescalation) cell from F9 + F10, "
-            "plus the eight Phase-6 anchor policies, with x = "
+            "plus the eight benchmark anchor policies, with x = "
             "availability cost (BLOCK + ISOLATE share of decisions) and "
             "y = security gain (1 − compromise rate). The dashed red curve "
-            "highlights the Pareto frontier. Squares = Phase-6 anchors; "
+            "highlights the Pareto frontier. Squares = benchmark anchors; "
             "circles = F9 reward-sweep cells; triangles = F10 aggressiveness "
             "cells. Larger black-edged markers are on the frontier. "
             "(PLAN §3.1.6 / D7.5; G7.4 evaluator.)\n"

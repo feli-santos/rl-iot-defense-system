@@ -178,7 +178,7 @@ class TestBuildSplitsEndToEnd:
         va = np.load(splits_dir / "val.idx.npy")
         te = np.load(splits_dir / "test.idx.npy")
         n_total = manifest["num_samples"]
-        # OOD rows are excluded from train/val/test (Phase-4 leakage fix).
+        # OOD rows are excluded from train/val/test (detector leakage fix).
         ood_path = splits_dir / "ood_attack" / "DDoS-HTTP_Flood.idx.npy"
         assert ood_path.exists()
         ood_idx = np.load(ood_path)
@@ -190,13 +190,13 @@ class TestBuildSplitsEndToEnd:
         assert np.unique(union).size == tr.size + va.size + te.size
 
         # **Disjointness with OOD** — the regression test that locks the
-        # Phase-4 leakage fix in place.
+        # detector leakage fix in place.
         ood_set = set(ood_idx.tolist())
         for split_name, split_idx in (("train", tr), ("val", va), ("test", te)):
             overlap = ood_set.intersection(split_idx.tolist())
             assert not overlap, (
                 f"OOD class leaked into {split_name}: {len(overlap)} rows. "
-                "If this fires, the Phase-1 build script regressed on the fix."
+                "If this fires, the dataset-prep build script regressed on the fix."
             )
 
         # Stage-balanced subsets ⊆ val/test pools

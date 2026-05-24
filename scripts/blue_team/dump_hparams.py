@@ -1,13 +1,13 @@
 """T1 — Per-algo hyperparameters table.
 
-PLAN §3.1.10. Reads each ``run_manifest.json`` under ``runs/phase5/`` and
+PLAN §3.1.10. Reads each ``run_manifest.json`` under ``runs/blue_team/`` and
 emits a markdown table + machine-readable JSON listing the hyperparameters
 that produced the figures.
 
 Usage::
 
     python -m scripts.blue_team.dump_hparams \\
-        --runs-root runs/phase5 \\
+        --runs-root runs/blue_team \\
         --out-dir docs/results/05_blue_team
 """
 
@@ -88,12 +88,12 @@ def render(runs_root: Path, out_dir: Path) -> Dict[str, Any]:
     rows = sorted(runs.values(), key=lambda r: r["algo"])
     md_path = out_dir / "T1_hparams.md"
     md = (
-        "# T1 — Phase-5 Per-Algorithm Hyperparameters\n\n"
+        "# T1 — blue-team Per-Algorithm Hyperparameters\n\n"
         f"Generated from {sum(len(r['seeds']) for r in rows)} runs across "
         f"{len(rows)} algorithms (seeds: "
         f"{sorted({s for r in rows for s in r['seeds']})}).\n\n"
         "All values are PLAN §8 D5.4 defaults. Phase 8 may revisit\n"
-        "hyperparameters; Phase 5 reports them as a frozen reference.\n\n"
+        "hyperparameters; blue-team reports them as a frozen reference.\n\n"
     )
     md += _table(rows)
     md_path.write_text(md)

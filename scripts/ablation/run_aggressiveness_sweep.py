@@ -1,4 +1,4 @@
-"""Phase-7 F10 — Attack-aggressiveness sweep driver (PLAN §3.1.5).
+"""ablation F10 — Attack-aggressiveness sweep driver (PLAN §3.1.5).
 
 Sweeps ``p_defender_deescalation ∈ {0.0, 0.2, 0.4, 0.6 (default), 0.8,
 1.0}`` × PPO only (D7.2) × 5 seeds × 250K timesteps (D7.8). Total:
@@ -18,7 +18,7 @@ success rate shifts even though the rule's behaviour does not).
 
 Output layout::
 
-    runs/phase7/aggressiveness/
+    runs/ablation/aggressiveness/
         sweep_manifest.json           — top-level F10 manifest
         ppo_p<p>/seed_<k>/
             episodes.jsonl
@@ -210,14 +210,14 @@ def _roll_rule_baseline(
     args: argparse.Namespace, p: float,
 ) -> Dict[str, Any]:
     """Roll the recommended-action oracle baseline at this p (single
-    seed=0, n=150 ep — same as Phase-6 D6.3 protocol).
+    seed=0, n=150 ep — same as benchmark D6.3 protocol).
 
     The rule's behaviour doesn't depend on p — but the realiser's
     attacker success rate does, so the rule's *mean reward* shifts
     with p. F10 wants both curves on the same axes.
 
     Smoke note: the rule baseline doesn't load a trained model, so
-    the env shape is decoupled from training; we use Phase-3 frozen
+    the env shape is decoupled from training; we use environment-design frozen
     defaults (window_size=5, max_steps=100) for non-smoke and shrink
     them to match the smoke train spec when --smoke is passed.
     """
@@ -282,7 +282,7 @@ def _roll_rule_baseline(
 
 def _build_argparser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
-        description="Phase-7 F10 — attack-aggressiveness sweep "
+        description="ablation F10 — attack-aggressiveness sweep "
                     "(PLAN §3.1.5; PPO + oracle rule × 6 p values × 5 seeds, ~1.5 h CPU).",
     )
     p.add_argument(
@@ -298,8 +298,8 @@ def _build_argparser() -> argparse.ArgumentParser:
     p.add_argument("--n-eval-episodes", type=int, default=30)
     p.add_argument("--n-deterministic-episodes", type=int, default=150,
                    help="Episodes for the recommended-action rule per p.")
-    p.add_argument("--out-root", default="runs/phase7/aggressiveness")
-    p.add_argument("--generator-path", default="artifacts/generator/phase2")
+    p.add_argument("--out-root", default="runs/ablation/aggressiveness")
+    p.add_argument("--generator-path", default="artifacts/generator/red_team")
     p.add_argument("--dataset-path", default="data/processed/ciciot2023")
     p.add_argument(
         "--splits-manifest",

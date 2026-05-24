@@ -11,12 +11,12 @@ The engine:
 2. Samples feature vectors matching the current Kill Chain stage
 3. Returns normalized feature vectors as environment observations
 
-Phase-3 split-aware sampling
+environment-design split-aware sampling
 ----------------------------
 The engine supports an optional ``allowed_indices`` argument and a
 :meth:`RealizationEngine.from_split_manifest` factory. When restricted to
 the *train* split (and excluding OOD attack classes), the engine guarantees
-that no row used during RL training is ever evaluated in Phase 7. See
+that no row used during RL training is ever evaluated in ablation. See
 ``docs/results/03_env/PLAN.md`` §B4 for the rationale.
 """
 
@@ -73,7 +73,7 @@ class RealizationEngine:
                 row indices. Per-stage indices are intersected with this
                 set; any stage whose intersection is empty raises
                 ``ValueError`` at sample time. The default ``None`` means
-                "all rows", reproducing the pre-Phase-3 behaviour.
+                "all rows", reproducing the pre-environment-design behaviour.
 
         Raises:
             FileNotFoundError: If required files are missing.
@@ -97,7 +97,7 @@ class RealizationEngine:
         )
 
     # =========================================================================
-    # Phase-3 split-aware factories
+    # environment-design split-aware factories
     # =========================================================================
 
     @classmethod

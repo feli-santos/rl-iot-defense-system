@@ -1,17 +1,17 @@
-"""Split-aware env factories for Phase-5 RL training.
+"""Split-aware env factories for blue-team RL training.
 
 Two public functions:
 
 - :func:`make_train_env` — builds an :class:`AdversarialIoTEnv` whose
-  :class:`RealizationEngine` is restricted to the Phase-1 *train* split
+  :class:`RealizationEngine` is restricted to the dataset-prep *train* split
   (with OOD-attack rows excluded). Wrapped in SB3's
   :class:`Monitor` and a :class:`DummyVecEnv` so the SB3 algorithms see
   the canonical vectorised interface.
 - :func:`make_eval_env` — same plumbing but pointed at a different
   split (caller-supplied via ``spec.split`` — typically
-  ``"val_balanced"`` for Phase-5 eval, ``"test_balanced"`` for
-  Phase-6 / Phase-7 evaluation) and *without* a ``Monitor`` log
-  file. Used both by SB3's eval rollouts and by Phase-5's
+  ``"val_balanced"`` for blue-team eval, ``"test_balanced"`` for
+  benchmark / ablation evaluation) and *without* a ``Monitor`` log
+  file. Used both by SB3's eval rollouts and by blue-team's
   :class:`PhaseFiveEvalCallback`. **Step-5 F4 / Step-8 doc-fix:**
   earlier docstrings claimed "default `val_balanced`"; the function
   imposes no default, the split is always caller-supplied via the
@@ -19,7 +19,7 @@ Two public functions:
 
 Both factories accept a ``BlueTeamRunConfig.env`` /
 ``BlueTeamRunConfig.eval_env`` :class:`EnvConfigSerializable` and the
-Phase-1 paths.
+dataset-prep paths.
 
 The factories deliberately do NOT call ``env.reset(seed=...)``; SB3's
 ``learn(...)`` and ``evaluate_policy(...)`` paths take care of that and
@@ -46,25 +46,25 @@ logger = logging.getLogger(__name__)
 def _build_env_config(spec: EnvConfigSerializable) -> AdversarialEnvConfig:
     """Translate a serialisable env spec into an :class:`AdversarialEnvConfig`.
 
-    Phase-5 forwarded only the lifecycle + sampling fields; reward
-    coefficients kept their Phase-3 frozen defaults. Phase-7 (PLAN
+    blue-team forwarded only the lifecycle + sampling fields; reward
+    coefficients kept their environment-design frozen defaults. ablation (PLAN
     §3.1.2 / D7.3) forwards the **full** field set so the F9
     reward-component sweep can override individual coefficients
     per-cell. ``EnvConfigSerializable`` defaults match
     :class:`AdversarialEnvConfig` defaults, so when nothing is
     overridden the resulting env config is byte-for-byte identical
-    to the Phase-5 baseline.
+    to the blue-team baseline.
     """
     return AdversarialEnvConfig(
-        # Lifecycle + sampling (Phase-5 fields)
+        # Lifecycle + sampling (blue-team fields)
         max_steps=spec.max_steps,
         min_episode_length=spec.min_episode_length,
         p_defender_deescalation=spec.p_defender_deescalation,
         window_size=spec.window_size,
         include_deltas=spec.include_deltas,
-        # Phase-7 D7.3
+        # ablation D7.3
         impact_is_terminal=spec.impact_is_terminal,
-        # Reward shaping (Phase-7 F9 axes)
+        # Reward shaping (ablation F9 axes)
         action_cost_scale=spec.action_cost_scale,
         reward_proportional=spec.reward_proportional,
         penalty_disproportionate=spec.penalty_disproportionate,
@@ -90,7 +90,7 @@ def _build_env(
     feature sampling.
 
     ``splits_manifest`` may be ``None`` for synthetic-data tests that do
-    not carry a Phase-1 manifest; in that case we fall back to a vanilla
+    not carry a dataset-prep manifest; in that case we fall back to a vanilla
     :class:`RealizationEngine` over the entire dataset directory.
     """
     env_cfg = _build_env_config(spec)
@@ -137,14 +137,14 @@ def make_train_env(
         spec: ``EnvConfigSerializable`` from ``BlueTeamRunConfig.env``.
         generator_path: Path to ``artifacts/generator/phase2``.
         dataset_path: Path to ``data/processed/ciciot2023``.
-        splits_manifest: Path to the Phase-1 ``splits/manifest.json``.
+        splits_manifest: Path to the dataset-prep ``splits/manifest.json``.
             ``None`` short-circuits the split restriction (synthetic tests).
         seed: Optional seed for the underlying :class:`RealizationEngine`.
             SB3 will additionally call ``env.reset(seed=...)`` in
             ``learn(...)``; both seeds are consumed.
         monitor_path: Optional CSV path for SB3's :class:`Monitor`. When
             ``None``, ``Monitor`` runs in non-recording mode; the
-            Phase-5 :class:`EpisodeJSONLCallback` is the canonical log.
+            blue-team :class:`EpisodeJSONLCallback` is the canonical log.
 
     Returns:
         :class:`DummyVecEnv` wrapping a single :class:`Monitor` env.

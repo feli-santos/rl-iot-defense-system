@@ -1,7 +1,7 @@
 """Smoke tests for scripts.benchmark.run_statistical_tests (thesis review C4).
 
 These tests verify that the statistical test machinery works correctly on
-synthetic data, without requiring actual Phase-6 run outputs. They check:
+synthetic data, without requiring actual benchmark run outputs. They check:
   - Helper functions (_cohens_d, _bootstrap_ci, _welch_test, _wilcoxon_test)
   - run_tests() on mock JSONL data written to tmp_path
   - Edge cases: missing data, zero variance, unequal sample sizes
@@ -40,8 +40,8 @@ def _write_jsonl(path: Path, rewards: List[float]) -> None:
 
 
 @pytest.fixture()
-def mock_phase6_root(tmp_path: Path) -> Path:
-    """Build a minimal Phase-6 directory tree with synthetic rewards."""
+def mock_benchmark_root(tmp_path: Path) -> Path:
+    """Build a minimal benchmark directory tree with synthetic rewards."""
     rng = np.random.default_rng(42)
     # DQN: slightly higher mean (~1300)
     dqn_rewards = (rng.normal(loc=1300, scale=100, size=30)).tolist()
@@ -184,10 +184,10 @@ class TestWilcoxonTest:
 
 
 class TestRunTests:
-    def test_smoke_on_mock_data(self, mock_phase6_root: Path) -> None:
-        """Full pipeline smoke test with synthetic Phase-6 data."""
+    def test_smoke_on_mock_data(self, mock_benchmark_root: Path) -> None:
+        """Full pipeline smoke test with synthetic benchmark data."""
         results = run_tests(
-            phase6_root=mock_phase6_root,
+            benchmark_root=mock_benchmark_root,
             seeds=[0, 1],
             alpha=0.05,
         )
@@ -196,9 +196,9 @@ class TestRunTests:
         assert "n_significant" in results
         assert isinstance(results["n_significant"], int)
 
-    def test_ci_summary_has_all_algos(self, mock_phase6_root: Path) -> None:
+    def test_ci_summary_has_all_algos(self, mock_benchmark_root: Path) -> None:
         results = run_tests(
-            phase6_root=mock_phase6_root,
+            benchmark_root=mock_benchmark_root,
             seeds=[0, 1],
         )
         ci = results["bootstrap_ci_summary"]
@@ -207,9 +207,9 @@ class TestRunTests:
         assert "a2c" in ci
         assert "rf_acting" in ci
 
-    def test_ci_contains_means(self, mock_phase6_root: Path) -> None:
+    def test_ci_contains_means(self, mock_benchmark_root: Path) -> None:
         results = run_tests(
-            phase6_root=mock_phase6_root,
+            benchmark_root=mock_benchmark_root,
             seeds=[0, 1],
         )
         for algo, s in results["bootstrap_ci_summary"].items():
@@ -217,9 +217,9 @@ class TestRunTests:
                 f"{algo}: mean {s['mean']} not in CI [{s['ci_95_lower']}, {s['ci_95_upper']}]"
             )
 
-    def test_comparisons_list_nonempty(self, mock_phase6_root: Path) -> None:
+    def test_comparisons_list_nonempty(self, mock_benchmark_root: Path) -> None:
         results = run_tests(
-            phase6_root=mock_phase6_root,
+            benchmark_root=mock_benchmark_root,
             seeds=[0, 1],
         )
         assert len(results["comparisons"]) > 0
@@ -231,7 +231,7 @@ class TestRunTests:
             tmp_path / "dqn" / "seed_0" / "eval_test.jsonl",
             rng.normal(1300, 100, 30).tolist(),
         )
-        results = run_tests(phase6_root=tmp_path, seeds=[0])
+        results = run_tests(benchmark_root=tmp_path, seeds=[0])
         assert "dqn" in results["bootstrap_ci_summary"]
         # comparisons may be empty (no PPO/A2C/RF-Acting) — that's fine
         assert isinstance(results["comparisons"], list)

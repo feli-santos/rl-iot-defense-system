@@ -1,9 +1,9 @@
 """Derive a frozen ``stages.npy`` from ``state_indices.json``.
 
-Phase-4 step 4.2 (see ``docs/results/04_detector/PLAN.md`` §A2).
+detector step 4.2 (see ``docs/results/04_detector/PLAN.md`` §A2).
 
-The Phase-1 dataset already groups every row by Kill Chain stage in
-``state_indices.json``. For Phase 4 we want a flat ``(N,)`` int8 array of
+The dataset-prep dataset already groups every row by Kill Chain stage in
+``state_indices.json``. For detector we want a flat ``(N,)`` int8 array of
 stage labels so all three supervised baselines (StageDetector MLP, RF,
 1D-CNN) train on the *same* per-row labels with O(1) lookup. Building it
 once and hash-pinning the output prevents a class of "did we use the

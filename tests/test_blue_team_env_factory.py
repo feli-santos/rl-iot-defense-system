@@ -25,7 +25,7 @@ from src.generator.attack_sequence_generator import (
 
 @pytest.fixture
 def synthetic_paths(tmp_path: Path) -> Tuple[Path, Path]:
-    """Create a synthetic generator + tiny dataset, no Phase-1 manifest."""
+    """Create a synthetic generator + tiny dataset, no dataset-prep manifest."""
     # Generator
     gen_dir = tmp_path / "generator"
     gen_dir.mkdir(parents=True)
@@ -55,7 +55,7 @@ def synthetic_paths(tmp_path: Path) -> Tuple[Path, Path]:
 
 @pytest.fixture
 def synthetic_manifest(synthetic_paths: Tuple[Path, Path]) -> Path:
-    """Build a Phase-1-shape splits manifest pointing at the synthetic dataset.
+    """Build a dataset-prep-shape splits manifest pointing at the synthetic dataset.
 
     The manifest has the same on-disk layout the production
     ``build_split_indices.py`` produces: ``splits/<name>.idx.npy`` and
@@ -211,7 +211,7 @@ class TestSplitAwareManifest:
         synthetic_paths: Tuple[Path, Path],
         synthetic_manifest: Path,
     ) -> None:
-        """The Phase-3 R2 invariant: training never sees eval rows."""
+        """The environment-design R2 invariant: training never sees eval rows."""
         gen_dir, ds_dir = synthetic_paths
         train_vec = make_train_env(
             spec=EnvConfigSerializable(split="train", exclude_ood=True,

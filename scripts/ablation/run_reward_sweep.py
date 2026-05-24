@@ -1,13 +1,13 @@
-"""Phase-7 F9 — Reward-component ablation sweep driver (PLAN §3.1.4 / D7.1).
+"""ablation F9 — Reward-component ablation sweep driver (PLAN §3.1.4 / D7.1).
 
 Sparse one-at-a-time grid (D7.1): 5 reward components × {0.5×, 1×, 2×}
 multipliers + 1 binary axis (impact_is_terminal ∈ {True, False}). The
-"1×" centre cell is shared across all 6 axes (it's the Phase-5/6
+"1×" centre cell is shared across all 6 axes (it's the blue-team/6
 baseline). Per-cell budget: PPO only (D7.2) × 5 seeds × 250K timesteps
 (D7.8). Total cells: 12 (1 centre + 10 component off-centres + 1
 binary off-centre). Total runs: 12 × 5 = 60 ≈ 6 h CPU.
 
-Components swept (defaults from Phase-3 RESULTS §3):
+Components swept (defaults from environment-design RESULTS §3):
 
     defense_success_bonus      = 250  → {125, 250, 500}
     penalty_missed_impact      = 150  → {75, 150, 300}
@@ -20,11 +20,11 @@ Plus impact_is_terminal ∈ {True (default, F9 baseline cell), False}.
 Each cell produces a unique cell_id like ``def_success_bonus_x0.5``,
 trains 5 seeds in subprocess (mirroring run_phase5.py), and after
 training evaluates each checkpoint on test_balanced (reusing the
-Phase-6 eval_runner harness).
+benchmark eval_runner harness).
 
 Output layout::
 
-    runs/phase7/reward_sweep/
+    runs/ablation/reward_sweep/
         sweep_manifest.json                   — top-level F9 manifest
         <cell_id>/
             cell_config.json                  — the override JSON for this cell
@@ -42,7 +42,7 @@ Usage::
         [--components defense_success_bonus penalty_missed_impact ...] \\
         [--multipliers 0.5 1.0 2.0] \\
         [--seeds 0 1 2 3 4] [--total-timesteps 250000] \\
-        [--algo ppo] [--out-root runs/phase7/reward_sweep] \\
+        [--algo ppo] [--out-root runs/ablation/reward_sweep] \\
         [--n-eval-episodes 30] [--smoke]
 
 The default sweep produces 12 cells × 5 seeds = 60 runs at PPO 250K
@@ -75,7 +75,7 @@ logger = logging.getLogger("scripts.ablation.run_reward_sweep")
 _ROOT = Path(__file__).resolve().parents[2]
 
 
-# Phase-3 defaults (from RESULTS §3 of docs/results/03_env/RESULTS.md)
+# environment-design defaults (from RESULTS §3 of docs/results/03_env/RESULTS.md)
 _PHASE3_DEFAULTS: Dict[str, float] = {
     "defense_success_bonus":   250.0,
     "penalty_missed_impact":   150.0,
@@ -141,9 +141,9 @@ def _enumerate_cells(
     """
     cells: List[Dict[str, Any]] = []
 
-    # 1 centre cell (Phase-5/6 baseline).
+    # 1 centre cell (blue-team/6 baseline).
     cells.append({
-        "cell_id": "baseline_phase5_defaults",
+        "cell_id": "baseline_defaults",
         "axis": "baseline",
         "component": None,
         "multiplier": 1.0,
@@ -232,7 +232,7 @@ def _run_one(
     wallclock = time.time() - t0
     ok = proc.returncode == 0
 
-    # Test-split eval right after training (Phase-6 eval_runner harness).
+    # Test-split eval right after training (benchmark eval_runner harness).
     test_eval_ok = False
     test_eval_jsonl = out_dir / "eval_test.jsonl"
     if ok:
@@ -295,7 +295,7 @@ def _eval_on_test_split(
         manifest = json.loads(run_manifest_path.read_text())
         spec = EnvConfigSerializable(**manifest["eval_env"])
         # The training-time eval_env used val_balanced; we now switch
-        # to test_balanced (Phase-6 D6.2) but keep every other field.
+        # to test_balanced (benchmark D6.2) but keep every other field.
         spec.split = "test_balanced"
     else:
         spec = EnvConfigSerializable(split="test_balanced", exclude_ood=True)
@@ -347,7 +347,7 @@ def _eval_on_test_split(
 
 def _build_argparser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
-        description="Phase-7 F9 — reward-component sweep (sparse one-at-a-time, "
+        description="ablation F9 — reward-component sweep (sparse one-at-a-time, "
                     "PPO 250K × 5 seeds × 12 cells ≈ 6 h CPU; D7.1 / D7.2 / D7.3).",
     )
     p.add_argument(
@@ -356,7 +356,7 @@ def _build_argparser() -> argparse.ArgumentParser:
     )
     p.add_argument(
         "--multipliers", nargs="+", type=float, default=_DEFAULT_MULTIPLIERS,
-        help="Multipliers to apply to each component's Phase-3 default.",
+        help="Multipliers to apply to each component's environment-design default.",
     )
     p.add_argument(
         "--no-impact-terminal-axis", action="store_true",
@@ -369,8 +369,8 @@ def _build_argparser() -> argparse.ArgumentParser:
                    help="PPO timesteps per cell. Default 250K (D7.8 / D5.3.1).")
     p.add_argument("--eval-freq", type=int, default=25_000)
     p.add_argument("--n-eval-episodes", type=int, default=30)
-    p.add_argument("--out-root", default="runs/phase7/reward_sweep")
-    p.add_argument("--generator-path", default="artifacts/generator/phase2")
+    p.add_argument("--out-root", default="runs/ablation/reward_sweep")
+    p.add_argument("--generator-path", default="artifacts/generator/red_team")
     p.add_argument("--dataset-path", default="data/processed/ciciot2023")
     p.add_argument(
         "--splits-manifest",

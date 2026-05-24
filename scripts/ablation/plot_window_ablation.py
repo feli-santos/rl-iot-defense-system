@@ -1,4 +1,4 @@
-"""Phase-8 FA_window — plot window_size ablation (C22).
+"""sensitivity-sweep FA_window — plot window_size ablation (C22).
 
 Reads per-seed eval.jsonl files from the window ablation sweep directories
 and produces a bar chart ``tex/figs/FA_window_ablation.png`` plus a JSON
@@ -7,7 +7,7 @@ summary.
 Usage::
 
     python -m scripts.ablation.plot_window_ablation \\
-        --sweep-root runs/phase8_window \\
+        --sweep-root runs/ablation_window \\
         --out-dir tex/figs/
 """
 
@@ -179,9 +179,9 @@ def plot(summary: Dict[str, Any], out_dir: str) -> Path:
 
 def main(argv: Optional[List[str]] = None) -> int:
     p = argparse.ArgumentParser(
-        description="Phase-8 FA_window — plot window_size ablation (C22).",
+        description="sensitivity-sweep FA_window — plot window_size ablation (C22).",
     )
-    p.add_argument("--sweep-root", default="runs/phase8_window")
+    p.add_argument("--sweep-root", default="runs/ablation_window")
     p.add_argument("--out-dir", default="tex/figs/")
     p.add_argument("--fraction", type=float, default=0.1)
     args = p.parse_args(argv)

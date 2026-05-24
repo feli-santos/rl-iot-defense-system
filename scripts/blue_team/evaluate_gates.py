@@ -1,6 +1,6 @@
-"""Phase-5 exit-gate evaluator.
+"""blue-team exit-gate evaluator.
 
-Reads ``runs/phase5/`` + ``F3_summary.json`` + ``F4_summary.json`` and
+Reads ``runs/blue_team/`` + ``F3_summary.json`` + ``F4_summary.json`` and
 emits a per-gate scoreboard ``docs/results/05_blue_team/G5_scoreboard.json``
 with PASS/FAIL/PASS-WITH-FINDING + headline numbers.
 
@@ -9,7 +9,7 @@ This is the final step before RESULTS.md / CHANGELOG.
 Usage::
 
     python -m scripts.blue_team.evaluate_gates \\
-        --runs-root runs/phase5 \\
+        --runs-root runs/blue_team \\
         --out-dir docs/results/05_blue_team
 """
 
@@ -89,7 +89,7 @@ def _select_best_algo(per_algo: Dict[str, Any]) -> str:
        implementation tie-breaks by highest MTTC: see the sort key
        ``(-mean_reward, -mean_mttc)`` below. The triple disagreement
        between docstring / PLAN / code never fired in practice (the
-       Phase-5 mean-reward gaps are ≥ 25 points, far larger than
+       blue-team mean-reward gaps are ≥ 25 points, far larger than
        any plausible reward-tie band), but the docstring is now
        authoritative and matches the code byte-for-byte. PLAN §8 D5.11
        is preserved verbatim as the audit-trail record of
@@ -167,7 +167,7 @@ def evaluate(runs_root: Path, out_dir: Path, fraction: float = 0.10) -> Dict[str
         g5_5_per_stage = None
 
     # Status-enum derivation (Step-8 F3, schema v2.0). Mirrors the
-    # Phase-6 G6_scoreboard.json shape.
+    # benchmark G6_scoreboard.json shape.
     g5_7_passes = all([
         (out_dir / "F3_manifest.json").exists(),
         (out_dir / "F4_manifest.json").exists(),
@@ -234,7 +234,7 @@ def evaluate(runs_root: Path, out_dir: Path, fraction: float = 0.10) -> Dict[str
                 "per_stage": g5_5_per_stage,
             },
             "G5.6": {
-                "description": "no regression on Phase-3 frozen tests",
+                "description": "no regression on environment-design frozen tests",
                 "status": "SKIP",
                 "evaluated": False,
                 "note": "evaluated separately by `pytest -q tests/test_phase3_env_gates.py tests/test_adversarial_env.py`",
@@ -245,7 +245,7 @@ def evaluate(runs_root: Path, out_dir: Path, fraction: float = 0.10) -> Dict[str
             },
         },
     }
-    # Top-level summary{} (Phase-6-native shape).
+    # Top-level summary{} (benchmark-native shape).
     statuses = [g["status"] for g in scoreboard["gates"].values()]
     scoreboard["summary"] = {
         "total_gates": len(statuses),
@@ -260,8 +260,8 @@ def evaluate(runs_root: Path, out_dir: Path, fraction: float = 0.10) -> Dict[str
     score_path.write_text(json.dumps(scoreboard, indent=2))
     logger.info("wrote %s", score_path)
 
-    # Pretty print to stdout. Reads `status` (Phase-6-native schema).
-    print("=== Phase-5 gate scoreboard ===")
+    # Pretty print to stdout. Reads `status` (benchmark-native schema).
+    print("=== blue-team gate scoreboard ===")
     _MARK = {
         "PASS": "PASS", "PASS-WITH-FINDING": "PASS+",
         "PASS-WITHOUT-STRETCH": "PASS-",
@@ -291,7 +291,7 @@ def evaluate(runs_root: Path, out_dir: Path, fraction: float = 0.10) -> Dict[str
 
 
 def main(argv: Optional[list[str]] = None) -> int:
-    p = argparse.ArgumentParser(description="Phase-5 gate evaluator.")
+    p = argparse.ArgumentParser(description="blue-team gate evaluator.")
     p.add_argument("--runs-root", required=True)
     p.add_argument("--out-dir", default="docs/results/05_blue_team")
     p.add_argument("--fraction", type=float, default=0.10)

@@ -1,4 +1,4 @@
-"""Tests for Phase-3 split-aware RealizationEngine.
+"""Tests for environment-design split-aware RealizationEngine.
 
 Covers two new pieces of public API:
 

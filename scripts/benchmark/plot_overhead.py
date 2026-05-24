@@ -1,4 +1,4 @@
-"""Phase-6 F7 — computational overhead (latency CDF + training time).
+"""benchmark F7 — computational overhead (latency CDF + training time).
 
 PLAN §3.1.7, C6. Aligned with IoTWarden Fig. 4(b).
 
@@ -7,12 +7,12 @@ Two-panel figure:
 - **Left** — per-step inference latency CDF, one curve per policy.
   X-axis is log-scaled; the budget thresholds from G6.4 (RL ≤ 5 ms,
   RF ≤ 3 ms, rule-based ≤ 1 ms) are drawn as vertical reference
-  lines. Source: ``runs/phase6/<policy>/seed_*/latency.jsonl`` (the
+  lines. Source: ``runs/benchmark/<policy>/seed_*/latency.jsonl`` (the
   C3 sidecar — D6.4 — same data the F5 table summarised at p50/p95).
 
 - **Right** — training wallclock per algorithm, **summed over the
-  5 seeds** of the Phase-5 sweep. Source:
-  ``runs/phase5/sweep_manifest.json`` (the per-run ``wallclock_seconds``
+  5 seeds** of the blue-team sweep. Source:
+  ``runs/blue_team/sweep_manifest.json`` (the per-run ``wallclock_seconds``
   field). Non-RL baselines have zero training time and are
   intentionally absent from the right panel — F7 contrasts the
   "RL training cost" with the "rule-based zero-training" trade-off.
@@ -143,19 +143,19 @@ def _gather_latency_ms(runs_root: Path, policy: str) -> np.ndarray:
 
 
 def _gather_training_seconds(
-    phase5_runs_root: Path,
+    blue_team_runs_root: Path,
 ) -> Dict[str, float]:
-    """Sum Phase-5 ``wallclock_seconds`` per algo from the sweep manifest.
+    """Sum blue-team ``wallclock_seconds`` per algo from the sweep manifest.
 
     Returns ``{}`` (rather than raising) when the manifest is missing —
     F7 still draws the latency panel, and the right panel becomes a
     note-only annotation. This is the same robustness pattern the
-    HANDOFF describes for runs/phase5 being gitignored on a fresh
+    HANDOFF describes for runs/blue_team being gitignored on a fresh
     checkout.
     """
-    manifest_path = phase5_runs_root / "sweep_manifest.json"
+    manifest_path = blue_team_runs_root / "sweep_manifest.json"
     if not manifest_path.exists():
-        logger.warning("Phase-5 sweep_manifest.json missing at %s", manifest_path)
+        logger.warning("blue-team sweep_manifest.json missing at %s", manifest_path)
         return {}
     sm = json.loads(manifest_path.read_text())
     totals: Dict[str, float] = {}
@@ -248,7 +248,7 @@ def _render(
         ax_bar.set_xlabel("Total training wallclock, summed over 5 seeds (h)",
                           fontsize=10)
         ax_bar.set_title(
-            "Phase-5 Training Cost per Algorithm "
+            "blue-team Training Cost per Algorithm "
             "(250 K timesteps × 5 seeds, CPU)",
             fontsize=10,
         )
@@ -257,7 +257,7 @@ def _render(
     else:
         ax_bar.set_axis_off()
         ax_bar.text(0.5, 0.5,
-                    "Phase-5 sweep_manifest.json not found.\n"
+                    "blue-team sweep_manifest.json not found.\n"
                     "Run `make phase-5-sweep` to populate.",
                     transform=ax_bar.transAxes, ha="center", va="center",
                     fontsize=10, color="dimgrey")
@@ -269,9 +269,9 @@ def _render(
 
 
 def _build_argparser() -> argparse.ArgumentParser:
-    p = argparse.ArgumentParser(description="Phase-6 F7 — overhead figure.")
-    p.add_argument("--runs-root", default="runs/phase6")
-    p.add_argument("--phase5-runs-root", default="runs/phase5")
+    p = argparse.ArgumentParser(description="benchmark F7 — overhead figure.")
+    p.add_argument("--runs-root", default="runs/benchmark")
+    p.add_argument("--phase5-runs-root", default="runs/blue_team")
     p.add_argument("--out-dir", default="docs/results/06_benchmark")
     return p
 
@@ -283,7 +283,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         format="%(asctime)s %(levelname)s %(name)s %(message)s",
     )
     runs_root = Path(args.runs_root)
-    phase5_runs_root = Path(args.phase5_runs_root)
+    blue_team_runs_root = Path(args.blue_team_runs_root)
     out_dir = Path(args.out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
 
@@ -328,8 +328,8 @@ def main(argv: Optional[List[str]] = None) -> int:
             q["n_samples"], budget, per_policy_summary[pol]["g64_pass"],
         )
 
-    train_secs = _gather_training_seconds(phase5_runs_root)
-    sweep_manifest_path = phase5_runs_root / "sweep_manifest.json"
+    train_secs = _gather_training_seconds(blue_team_runs_root)
+    sweep_manifest_path = blue_team_runs_root / "sweep_manifest.json"
 
     png_path = out_dir / "F7_overhead.png"
     _render(latencies, train_secs, png_path)
@@ -346,10 +346,10 @@ def main(argv: Optional[List[str]] = None) -> int:
         },
         "g64_thresholds_ms": _BUDGET_MS,
         "policies": per_policy_summary,
-        "phase5_training_seconds_per_algo": {
+        "blue_team_training_seconds_per_algo": {
             algo: float(s) for algo, s in train_secs.items()
         },
-        "phase5_training_hours_per_algo": {
+        "blue_team_training_hours_per_algo": {
             algo: float(s) / 3600.0 for algo, s in train_secs.items()
         },
     }
@@ -365,11 +365,11 @@ def main(argv: Optional[List[str]] = None) -> int:
             "json": str(out_dir / "F7_summary.json"),
         },
         "inputs": {
-            "phase6_eval_manifest": {
+            "benchmark_eval_manifest": {
                 "path": str(eval_manifest_path),
                 "sha256": _sha256(eval_manifest_path),
             },
-            "phase5_sweep_manifest": {
+            "blue_team_sweep_manifest": {
                 "path": str(sweep_manifest_path),
                 "sha256": _sha256(sweep_manifest_path),
             },

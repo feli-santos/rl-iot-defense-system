@@ -1,10 +1,10 @@
-"""Phase-7 F9 — Reward-component ablation plot (PLAN §3.1.4 / D7.1).
+"""ablation F9 — Reward-component ablation plot (PLAN §3.1.4 / D7.1).
 
-Reads ``runs/phase7/reward_sweep/<cell_id>/seed_<k>/eval_test.jsonl``
+Reads ``runs/ablation/reward_sweep/<cell_id>/seed_<k>/eval_test.jsonl``
 files (produced by :mod:`scripts.ablation.run_reward_sweep`),
-aggregates per cell with the same bootstrap-CI protocol as Phase 6
+aggregates per cell with the same bootstrap-CI protocol as benchmark
 F5, and renders a multi-panel "what does each reward component
-do?" figure with the **Phase-6 oracle ceiling +1624** and **Phase-6
+do?" figure with the **benchmark oracle ceiling +1624** and **benchmark
 deployable best DQN +1336** as horizontal reference lines.
 
 Outputs:
@@ -12,7 +12,7 @@ Outputs:
 - ``F9_reward_ablation.png`` — multi-panel scatter/line plot, one
   panel per reward component (5) + one panel for the
   ``impact_is_terminal`` binary axis. Each panel shows mean test
-  reward at 0.5× / 1× / 2× of Phase-3 default with 95 % bootstrap
+  reward at 0.5× / 1× / 2× of environment-design default with 95 % bootstrap
   CIs and the two reference lines.
 - ``F9_summary.json`` — per-cell aggregate + per-component slope
   estimate + headline ``best_cell`` (max mean_reward across cells)
@@ -23,10 +23,10 @@ Outputs:
 Gate evaluation:
 
 - **G7.2** — pass iff at least one cell's mean test reward exceeds
-  the Phase-6 deployable best (DQN +1336) by ≥ 1σ of its bootstrap
-  CI. Stretch goal: meet the Phase-6 oracle ceiling (+1624). The
+  the benchmark deployable best (DQN +1336) by ≥ 1σ of its bootstrap
+  CI. Stretch goal: meet the benchmark oracle ceiling (+1624). The
   acceptable failure mode is ``D7.1.1`` — the sweep characterises
-  the limit of one-at-a-time Phase-3-style reward shaping; turning
+  the limit of one-at-a-time environment-design-style reward shaping; turning
   the gate verdict into a finding rather than a closure (see PLAN
   §8 D7.1.1 placeholder).
 """
@@ -51,10 +51,10 @@ logger = logging.getLogger("scripts.ablation.plot_reward_ablation")
 _ROOT = Path(__file__).resolve().parents[2]
 
 
-# Reference lines from Phase 6 (audit-AF2 framing).
+# Reference lines from benchmark (audit-AF2 framing).
 _PHASE6_ORACLE_CEILING_REWARD = 1624.4
 _PHASE6_DEPLOYABLE_BEST_REWARD = 1336.3  # DQN best mean on test_balanced
-_DEPLOYABLE_BEST_LABEL = "DQN +1336 (Phase-6 deployable best)"
+_DEPLOYABLE_BEST_LABEL = "DQN +1336 (benchmark deployable best)"
 _ORACLE_CEILING_LABEL = "Rec-Action +1624 (oracle ceiling, AF2)"
 
 _COMPONENT_DISPLAY: Dict[str, str] = {
@@ -166,10 +166,10 @@ def _summarise_cell(
 # --------------------------------------------------------------- gates
 
 
-# Phase-6 DQN (deployable best) security KPI under the Phase-3 reward
+# benchmark DQN (deployable best) security KPI under the environment-design reward
 # function. This is the apples-to-apples bar for cells that ALSO use
-# the Phase-3 reward function (impact_is_terminal axis + the
-# baseline_phase5_defaults centre cell). Reward-coefficient cells use
+# the environment-design reward function (impact_is_terminal axis + the
+# baseline_defaults centre cell). Reward-coefficient cells use
 # a DIFFERENT reward function and are NOT directly comparable on raw
 # reward — they are evaluated on the security KPI only.
 _PHASE6_DEPLOYABLE_BEST_MITIGATED = 0.153  # DQN mitigated_impact_rate on test_balanced
@@ -186,20 +186,20 @@ def _evaluate_g72(
 
     The audit-D7.1.1 framing (2026-05-01): cells that scale a reward
     *coefficient* by 0.5×/2× are **not directly comparable to
-    Phase-6 raw reward** because the reward scale itself moved. The
-    only Phase-6-comparable raw-reward cells in this 12-cell sparse
-    grid are (a) ``baseline_phase5_defaults`` (Phase-3 reward fn,
+    benchmark raw reward** because the reward scale itself moved. The
+    only benchmark-comparable raw-reward cells in this 12-cell sparse
+    grid are (a) ``baseline_defaults`` (environment-design reward fn,
     one extra seed pool) and (b) the two ``impact_is_terminal``
     cells (env semantics change, reward fn unchanged).
 
     The honest pass criterion therefore splits into two strands:
 
     1. **Reward-comparable strand** (raw-reward gate): for cells
-       under the unchanged Phase-3 reward fn, does any cell's
-       CI_low exceed Phase-6 DQN +1336?
+       under the unchanged environment-design reward fn, does any cell's
+       CI_low exceed benchmark DQN +1336?
     2. **Security-KPI strand** (mitigated_impact_rate gate): for
        *all* cells (incl. coefficient-scaled), does any cell beat
-       Phase-6 DQN's mitigated_impact_rate (0.153) by ≥ 1.5×? This
+       benchmark DQN's mitigated_impact_rate (0.153) by ≥ 1.5×? This
        is the metric that survives reward-function changes.
 
     G7.2 PASSES iff strand-1 holds (the original-shape gate). If
@@ -218,7 +218,7 @@ def _evaluate_g72(
             "deployable_best_threshold": deployable_best,
         }
 
-    # Strand 1: reward-comparable cells only (Phase-3 reward fn).
+    # Strand 1: reward-comparable cells only (environment-design reward fn).
     # axis="reward" cells scale a coefficient ⇒ NOT comparable.
     # axis="baseline" + axis="impact_terminal" preserve the reward fn.
     reward_comparable = [r for r in finite if r.get("axis") in ("baseline", "impact_terminal")]
@@ -252,9 +252,9 @@ def _evaluate_g72(
     if passes_strand1 and meets_oracle_strand1:
         interp = (
             f"PASS: at least one reward-comparable cell "
-            f"(`{best_rc['cell_id']}`) beats the Phase-6 deployable "
+            f"(`{best_rc['cell_id']}`) beats the benchmark deployable "
             f"best DQN +{deployable_best:.0f} by ≥ 1σ on RAW REWARD "
-            f"(commensurable to Phase-6). STRETCH MET: cell also "
+            f"(commensurable to benchmark). STRETCH MET: cell also "
             f"exceeds the oracle ceiling +{oracle_ceiling:.0f} — "
             f"the deployable +288 gap is closed."
         )
@@ -268,7 +268,7 @@ def _evaluate_g72(
     elif passes_strand2:
         interp = (
             f"FAIL-WITH-FINDING (D7.1.1, activated 2026-05-01): no "
-            f"reward-comparable cell (Phase-3 reward fn preserved) "
+            f"reward-comparable cell (environment-design reward fn preserved) "
             f"beats DQN +{deployable_best:.0f} on raw reward by ≥ 1σ. "
             f"BUT: the security-KPI strand passes — cell "
             f"`{best_sec['cell_id']}` improves mitigated_impact_rate "
@@ -276,7 +276,7 @@ def _evaluate_g72(
             f"(vs DQN baseline {deployable_best_mitigated:.3f}, "
             f"≥ 1.5× threshold {sec_threshold:.3f}). The "
             f"one-at-a-time linear sweep characterised the limit of "
-            f"Phase-3-style reward shaping at the apples-to-apples "
+            f"environment-design-style reward shaping at the apples-to-apples "
             f"reward level, but env-semantics + coefficient scaling "
             f"do move the real-security needle. Closing the +288 "
             f"reward gap under fixed reward semantics requires a "
@@ -288,9 +288,9 @@ def _evaluate_g72(
             f"FAIL-WITH-FINDING (D7.1.1): the linear sweep failed to "
             f"close the gap on either strand — neither raw reward "
             f"(reward-comparable cells) nor security KPI "
-            f"(mitigated_impact_rate) beats Phase-6 DQN by the "
+            f"(mitigated_impact_rate) beats benchmark DQN by the "
             f"≥ 1σ / ≥ 1.5× threshold. Characterises the limit of "
-            f"one-at-a-time Phase-3-style reward shaping. Closing "
+            f"one-at-a-time environment-design-style reward shaping. Closing "
             f"the gap requires a different mechanism (curriculum, "
             f"reward modelling, or attack-aware exploration), "
             f"deferred to future work."
@@ -326,11 +326,11 @@ def _evaluate_g72(
         "raw_reward_winner_mean": raw_winner["mean_reward"],
         "raw_reward_winner_note": (
             "raw-reward winner across ALL cells; NOT directly "
-            "comparable to Phase-6 if axis='reward' because reward-"
+            "comparable to benchmark if axis='reward' because reward-"
             "coefficient cells use a different reward function. See "
             "best_reward_comparable_* for the apples-to-apples row."
         ),
-        # Phase-6 baselines.
+        # benchmark baselines.
         "deployable_best_threshold": deployable_best,
         "deployable_best_mitigated": deployable_best_mitigated,
         "oracle_ceiling": oracle_ceiling,
@@ -451,7 +451,7 @@ def _render(
             ax.set_xticks([0.5, 1.0, 2.0])
             ax.set_xticklabels(["0.5×", "1×", "2×"])
             ax.set_title(_COMPONENT_DISPLAY[panel], fontsize=10)
-            ax.set_xlabel("multiplier × Phase-3 default", fontsize=8)
+            ax.set_xlabel("multiplier × environment-design default", fontsize=8)
 
         # Reference lines on every panel.
         ax.axhline(deployable_best, color="#2563eb", linestyle=":",
@@ -496,24 +496,24 @@ def _render(
 
 def _build_argparser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
-        description="Phase-7 F9 — reward-component ablation plot + summary.",
+        description="ablation F9 — reward-component ablation plot + summary.",
     )
-    p.add_argument("--runs-root", default="runs/phase7/reward_sweep")
+    p.add_argument("--runs-root", default="runs/ablation/reward_sweep")
     p.add_argument("--out-dir", default="docs/results/07_ablation")
     p.add_argument(
         "--phase6-eval-manifest",
-        default="runs/phase6/eval_manifest.json",
+        default="runs/benchmark/eval_manifest.json",
     )
     # Step-8 F2 (07_HANDOFF.md §5): explicit upstream-manifest SHA pins.
     p.add_argument(
         "--phase5-sweep-manifest",
-        default="runs/phase5/sweep_manifest.json",
-        help="Phase-5 sweep_manifest.json (warm-start trained checkpoints).",
+        default="runs/blue_team/sweep_manifest.json",
+        help="blue-team sweep_manifest.json (warm-start trained checkpoints).",
     )
     p.add_argument(
         "--phase1-splits-manifest",
         default="docs/results/01_dataset/manifest.json",
-        help="Phase-1 splits manifest.json (post-3cd2fb9; SHA 1e99d596...).",
+        help="dataset-prep splits manifest.json (post-3cd2fb9; SHA 1e99d596...).",
     )
     return p
 
@@ -589,19 +589,19 @@ def main(argv: Optional[List[str]] = None) -> int:
             "json": str(out_dir / "F9_summary.json"),
         },
         "inputs": {
-            "phase7_reward_sweep_manifest": {
+            "ablation_reward_sweep_manifest": {
                 "path": str(sweep_manifest_path),
                 "sha256": _sha256(sweep_manifest_path),
             },
-            "phase6_eval_manifest": {
-                "path": str(args.phase6_eval_manifest),
-                "sha256": _sha256(Path(args.phase6_eval_manifest)),
+            "benchmark_eval_manifest": {
+                "path": str(args.benchmark_eval_manifest),
+                "sha256": _sha256(Path(args.benchmark_eval_manifest)),
             },
             # Step-8 F2: explicit upstream-manifest SHA pins so the F9
             # hash chain is self-contained (no transitive lookups).
-            "phase5_sweep_manifest": {
-                "path": str(args.phase5_sweep_manifest),
-                "sha256": _sha256(Path(args.phase5_sweep_manifest)),
+            "blue_team_sweep_manifest": {
+                "path": str(args.blue_team_sweep_manifest),
+                "sha256": _sha256(Path(args.blue_team_sweep_manifest)),
             },
             "phase1_splits_manifest": {
                 "path": str(args.phase1_splits_manifest),
@@ -617,9 +617,9 @@ def main(argv: Optional[List[str]] = None) -> int:
         caption_path.write_text(
             "**F9 — Reward-component ablation.** Mean episodic reward on "
             "`test_balanced` for PPO trained 250K timesteps × 5 seeds at "
-            "{0.5×, 1×, 2×} of each Phase-3 reward coefficient (one-at-a-"
+            "{0.5×, 1×, 2×} of each environment-design reward coefficient (one-at-a-"
             "time sparse grid; D7.1). Reference lines: blue dotted = "
-            "Phase-6 deployable best (DQN +1336); red dashed = Phase-6 "
+            "benchmark deployable best (DQN +1336); red dashed = benchmark "
             "oracle ceiling (recommended-action rule, +1624 — *upper bound "
             "on the value of perfect stage detection*, audit AF2). The "
             "rightmost panel sweeps the binary `impact_is_terminal` axis "
