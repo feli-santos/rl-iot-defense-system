@@ -42,7 +42,7 @@ import subprocess
 import sys
 import time
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 _ROOT = Path(__file__).resolve().parents[2]
 if str(_ROOT) not in sys.path:
@@ -52,6 +52,7 @@ logger = logging.getLogger(__name__)
 
 _PYTHON = sys.executable
 _TRAIN_MODULE = "scripts.blue_team.train_agent"
+
 
 # Maps scale value → directory-safe string (e.g. 0.5 → "x0p5")
 def _scale_to_tag(scale: float) -> str:
@@ -70,8 +71,8 @@ def _run_cell(
     dataset_path: str,
     splits_manifest: str,
     smoke: bool,
-    blue_team_primary_root: Optional[str],
-) -> Dict[str, Any]:
+    blue_team_primary_root: str | None,
+) -> dict[str, Any]:
     """Train one (scale, seed) cell. Returns a result dict."""
     tag = _scale_to_tag(scale)
     out_dir = str(Path(out_root) / tag / "ppo" / f"seed_{seed}")
@@ -83,7 +84,8 @@ def _run_cell(
         if manifest_path.exists():
             logger.info(
                 "scale=1.0 seed=%d: reusing primary run at %s",
-                seed, primary_run,
+                seed,
+                primary_run,
             )
             # Create a symlink (or record path) in out_dir
             out_path = Path(out_dir)
@@ -96,23 +98,38 @@ def _run_cell(
                     out_path.mkdir(parents=True, exist_ok=True)
                     (out_path / "reused_from.txt").write_text(str(primary_run.resolve()))
             return {
-                "scale": scale, "seed": seed, "ok": True,
-                "out_dir": str(out_path), "reused": True, "wallclock": 0.0,
+                "scale": scale,
+                "seed": seed,
+                "ok": True,
+                "out_dir": str(out_path),
+                "reused": True,
+                "wallclock": 0.0,
             }
 
     # Otherwise train fresh
     cmd = [
-        _PYTHON, "-m", _TRAIN_MODULE,
-        "--algo", "ppo",
-        "--seed", str(seed),
-        "--total-timesteps", str(total_timesteps),
-        "--eval-freq", str(eval_freq),
-        "--n-eval-episodes", str(n_eval_episodes),
-        "--out-dir", out_dir,
-        "--reward-overrides", json.dumps({
-            "action_cost_scale": scale,
-            "impact_is_terminal": False,  # match primary contract
-        }),
+        _PYTHON,
+        "-m",
+        _TRAIN_MODULE,
+        "--algo",
+        "ppo",
+        "--seed",
+        str(seed),
+        "--total-timesteps",
+        str(total_timesteps),
+        "--eval-freq",
+        str(eval_freq),
+        "--n-eval-episodes",
+        str(n_eval_episodes),
+        "--out-dir",
+        out_dir,
+        "--reward-overrides",
+        json.dumps(
+            {
+                "action_cost_scale": scale,
+                "impact_is_terminal": False,  # match primary contract
+            }
+        ),
     ]
     if generator_path:
         cmd += ["--generator-path", generator_path]
@@ -130,18 +147,26 @@ def _run_cell(
     try:
         logger.info(
             "action_cost_sweep: scale=%.1f seed=%d -> %s",
-            scale, seed, out_dir,
+            scale,
+            seed,
+            out_dir,
         )
         with open(log_path, "w") as flog:
             result = subprocess.run(
-                cmd, stdout=flog, stderr=subprocess.STDOUT,
-                cwd=str(_ROOT), timeout=7200,
+                cmd,
+                stdout=flog,
+                stderr=subprocess.STDOUT,
+                cwd=str(_ROOT),
+                timeout=7200,
             )
         ok = result.returncode == 0
         if not ok:
             logger.error(
                 "scale=%.1f seed=%d FAILED (rc=%d); log: %s",
-                scale, seed, result.returncode, log_path,
+                scale,
+                seed,
+                result.returncode,
+                log_path,
             )
     except Exception as exc:  # noqa: BLE001
         logger.error("scale=%.1f seed=%d EXCEPTION: %s", scale, seed, exc)
@@ -149,18 +174,25 @@ def _run_cell(
     if ok:
         logger.info(
             "done scale=%.1f seed=%d ok=%s wallclock=%.1fs",
-            scale, seed, ok, wallclock,
+            scale,
+            seed,
+            ok,
+            wallclock,
         )
     return {
-        "scale": scale, "seed": seed, "ok": ok,
-        "out_dir": out_dir, "reused": False, "wallclock": wallclock,
+        "scale": scale,
+        "seed": seed,
+        "ok": ok,
+        "out_dir": out_dir,
+        "reused": False,
+        "wallclock": wallclock,
     }
 
 
 def run_sweep(
     *,
-    scales: List[float],
-    seeds: List[int],
+    scales: list[float],
+    seeds: list[int],
     out_root: str,
     total_timesteps: int,
     eval_freq: int,
@@ -170,20 +202,24 @@ def run_sweep(
     splits_manifest: str,
     parallel: int,
     smoke: bool,
-    blue_team_primary_root: Optional[str],
-) -> Dict[str, Any]:
+    blue_team_primary_root: str | None,
+) -> dict[str, Any]:
     cells = [(sc, sd) for sc in scales for sd in seeds]
     logger.info(
         "action_cost_sweep: %d cells (scales=%s seeds=%s) on %d worker(s)",
-        len(cells), scales, seeds, parallel,
+        len(cells),
+        scales,
+        seeds,
+        parallel,
     )
-    results: List[Dict[str, Any]] = []
+    results: list[dict[str, Any]] = []
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=parallel) as pool:
         futures = {
             pool.submit(
                 _run_cell,
-                scale=sc, seed=sd,
+                scale=sc,
+                seed=sd,
                 out_root=out_root,
                 total_timesteps=total_timesteps,
                 eval_freq=eval_freq,
@@ -216,12 +252,15 @@ def run_sweep(
     manifest_path.write_text(json.dumps(manifest, indent=2))
     logger.info(
         "action_cost_sweep done: %d ok / %d failed / %d reused; manifest -> %s",
-        n_ok, n_failed, n_reused, manifest_path,
+        n_ok,
+        n_failed,
+        n_reused,
+        manifest_path,
     )
     return manifest
 
 
-def main(argv: Optional[list] = None) -> int:  # type: ignore[type-arg]
+def main(argv: list | None = None) -> int:  # type: ignore[type-arg]
     p = argparse.ArgumentParser(
         description="sensitivity-sweep FA_action_cost — action_cost_scale sensitivity sweep (C8).",
     )
@@ -239,7 +278,8 @@ def main(argv: Optional[list] = None) -> int:  # type: ignore[type-arg]
     )
     p.add_argument("--parallel", type=int, default=3)
     p.add_argument(
-        "--phase5-primary-root", default="runs/blue_team_primary",
+        "--phase5-primary-root",
+        default="runs/blue_team_primary",
         help="Root of the primary blue-team training runs (for scale=1.0 reuse).",
     )
     p.add_argument("--smoke", action="store_true")
@@ -268,7 +308,9 @@ def main(argv: Optional[list] = None) -> int:  # type: ignore[type-arg]
         smoke=args.smoke,
         blue_team_primary_root=args.blue_team_primary_root,
     )
-    print(f"OK: {manifest['n_ok']} / Failed: {manifest['n_failed']} / Reused: {manifest['n_reused']}")
+    print(
+        f"OK: {manifest['n_ok']} / Failed: {manifest['n_failed']} / Reused: {manifest['n_reused']}"
+    )
     return 0 if manifest["n_failed"] == 0 else 1
 
 

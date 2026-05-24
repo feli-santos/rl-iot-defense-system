@@ -23,7 +23,6 @@ from __future__ import annotations
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Optional
 
 import joblib
 import numpy as np
@@ -35,7 +34,7 @@ class RandomForestConfig:
     """Locked configuration for the detector RF baseline (PLAN §8.D3)."""
 
     n_estimators: int = 100
-    max_depth: Optional[int] = None
+    max_depth: int | None = None
     min_samples_leaf: int = 1
     class_weight: str = "balanced"
     n_jobs: int = -1
@@ -61,7 +60,7 @@ def train_random_forest(
     y_train: np.ndarray,
     *,
     seed: int,
-    config: Optional[RandomForestConfig] = None,
+    config: RandomForestConfig | None = None,
 ) -> RandomForestClassifier:
     """Fit a RandomForest with the locked detector configuration.
 

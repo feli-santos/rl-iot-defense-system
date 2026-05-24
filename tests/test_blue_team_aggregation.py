@@ -5,13 +5,12 @@ from __future__ import annotations
 import json
 import math
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
 
 import numpy as np
 import pytest
 
 from src.blue_team import aggregation as agg
-
 
 # --------------------------------------------------------------- helpers
 
@@ -23,12 +22,12 @@ def _make_record(
     episode_length: int = 10,
     compromised: bool = False,
     mttc_steps: int | None = None,
-    action_counts: List[int] | None = None,
-    per_stage: Dict[str, List[int]] | None = None,
+    action_counts: list[int] | None = None,
+    per_stage: dict[str, list[int]] | None = None,
     algo: str = "ppo",
     seed: int = 0,
     episode_idx: int = 0,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Build a minimal record matching the EpisodeJSONLCallback schema."""
     return {
         "schema_version": "1.0",
@@ -47,7 +46,8 @@ def _make_record(
         "final_stage_name": "BENIGN",
         "end_outcome": "ongoing",
         "action_counts": action_counts or [10, 0, 0, 0, 0],
-        "action_counts_by_stage": per_stage or {
+        "action_counts_by_stage": per_stage
+        or {
             "0": [10, 0, 0, 0, 0],
             "1": [0, 0, 0, 0, 0],
             "2": [0, 0, 0, 0, 0],
@@ -57,7 +57,7 @@ def _make_record(
     }
 
 
-def _write_jsonl(path: Path, records: List[Dict[str, Any]]) -> None:
+def _write_jsonl(path: Path, records: list[dict[str, Any]]) -> None:
     with path.open("w") as fh:
         for r in records:
             fh.write(json.dumps(r) + "\n")
@@ -140,9 +140,7 @@ class TestBinByTimesteps:
             _make_record(num_timesteps=60, compromised=False),
             _make_record(num_timesteps=70, compromised=True),
         ]
-        out = agg.bin_by_timesteps(
-            records, [0, 100], "compromised", aggregator="rate"
-        )
+        out = agg.bin_by_timesteps(records, [0, 100], "compromised", aggregator="rate")
         assert out[0] == pytest.approx(2.0 / 3.0)
 
     def test_skips_none_values_for_mttc(self) -> None:
@@ -240,22 +238,24 @@ class TestActionAggregation:
         early = _make_record(
             num_timesteps=10,
             per_stage={
-                "0": [10, 0, 0, 0, 0], "1": [0, 0, 0, 0, 0],
-                "2": [0, 0, 0, 0, 0], "3": [0, 0, 0, 0, 0],
+                "0": [10, 0, 0, 0, 0],
+                "1": [0, 0, 0, 0, 0],
+                "2": [0, 0, 0, 0, 0],
+                "3": [0, 0, 0, 0, 0],
                 "4": [0, 0, 0, 0, 0],
             },
         )
         late = _make_record(
             num_timesteps=1000,
             per_stage={
-                "0": [0, 0, 0, 0, 10], "1": [0, 0, 0, 0, 0],
-                "2": [0, 0, 0, 0, 0], "3": [0, 0, 0, 0, 0],
+                "0": [0, 0, 0, 0, 10],
+                "1": [0, 0, 0, 0, 0],
+                "2": [0, 0, 0, 0, 0],
+                "3": [0, 0, 0, 0, 0],
                 "4": [0, 0, 0, 0, 0],
             },
         )
-        out = agg.per_stage_action_distribution(
-            [early, late], since_timestep=500
-        )
+        out = agg.per_stage_action_distribution([early, late], since_timestep=500)
         # Only the late record contributes to stage 0.
         assert out[0].tolist() == [0.0, 0.0, 0.0, 0.0, 1.0]
 
@@ -266,8 +266,12 @@ class TestActionAggregation:
 class TestSummariseLastWindow:
     def test_last_10_percent(self) -> None:
         records = [
-            _make_record(num_timesteps=t, episode_reward=float(t),
-                         compromised=(t > 80), mttc_steps=20 if t > 80 else None)
+            _make_record(
+                num_timesteps=t,
+                episode_reward=float(t),
+                compromised=(t > 80),
+                mttc_steps=20 if t > 80 else None,
+            )
             for t in (10, 20, 50, 80, 90, 100)
         ]
         s = agg.summarise_last_window(records, fraction=0.10)
@@ -288,8 +292,7 @@ class TestSummariseLastWindow:
             (97, True, "impact_mitigated"),
             (100, False, "ongoing"),
         ]:
-            r = _make_record(num_timesteps=t, compromised=comp,
-                             mttc_steps=20 if comp else None)
+            r = _make_record(num_timesteps=t, compromised=comp, mttc_steps=20 if comp else None)
             r["end_outcome"] = outcome
             records.append(r)
         s = agg.summarise_last_window(records, fraction=0.20)
@@ -304,8 +307,6 @@ class TestSummariseLastWindow:
 
     def test_rejects_bad_fraction(self) -> None:
         with pytest.raises(ValueError):
-            agg.summarise_last_window([_make_record(num_timesteps=1)],
-                                      fraction=0.0)
+            agg.summarise_last_window([_make_record(num_timesteps=1)], fraction=0.0)
         with pytest.raises(ValueError):
-            agg.summarise_last_window([_make_record(num_timesteps=1)],
-                                      fraction=1.5)
+            agg.summarise_last_window([_make_record(num_timesteps=1)], fraction=1.5)

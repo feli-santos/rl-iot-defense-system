@@ -36,7 +36,7 @@ import logging
 import math
 import subprocess
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 logger = logging.getLogger("scripts.benchmark.plot_baselines")
 
@@ -44,7 +44,7 @@ _ROOT = Path(__file__).resolve().parents[2]
 
 
 # Same display ordering as F5; F8 sorts by mean_reward at render time.
-_DISPLAY: Dict[str, str] = {
+_DISPLAY: dict[str, str] = {
     "dqn": "DQN",
     "ppo": "PPO",
     "a2c": "A2C",
@@ -57,12 +57,15 @@ _DISPLAY: Dict[str, str] = {
 
 _RL_POLICIES = {"dqn", "ppo", "a2c"}
 _NON_RL_BASELINES = {
-    "random", "always_observe", "always_block",
-    "recommended_action", "rf_acting",
+    "random",
+    "always_observe",
+    "always_block",
+    "recommended_action",
+    "rf_acting",
 }
 
 
-def _sha256(path: Path) -> Optional[str]:
+def _sha256(path: Path) -> str | None:
     p = Path(path)
     if not p.exists():
         return None
@@ -75,17 +78,22 @@ def _sha256(path: Path) -> Optional[str]:
 
 def _git_sha() -> str:
     try:
-        return subprocess.check_output(
-            ["git", "rev-parse", "HEAD"], cwd=_ROOT,
-            stderr=subprocess.DEVNULL,
-        ).decode().strip()
+        return (
+            subprocess.check_output(
+                ["git", "rev-parse", "HEAD"],
+                cwd=_ROOT,
+                stderr=subprocess.DEVNULL,
+            )
+            .decode()
+            .strip()
+        )
     except Exception:  # noqa: BLE001
         return "unknown"
 
 
 def _ci_overlap(
-    a: Tuple[float, float],
-    b: Tuple[float, float],
+    a: tuple[float, float],
+    b: tuple[float, float],
 ) -> bool:
     """Return True if two intervals (a_low, a_high) and (b_low, b_high)
     overlap (closed intervals)."""
@@ -94,7 +102,7 @@ def _ci_overlap(
     return not (a_high < b_low or b_high < a_low)
 
 
-def _evaluate_g65(rows: List[Dict[str, Any]]) -> Dict[str, Any]:
+def _evaluate_g65(rows: list[dict[str, Any]]) -> dict[str, Any]:
     """Per-RL-policy: does its CI overlap any non-RL baseline CI?
 
     Returns a dict with one key per RL policy mapping to:
@@ -107,10 +115,10 @@ def _evaluate_g65(rows: List[Dict[str, Any]]) -> Dict[str, Any]:
     overlap" in either direction.
     """
     by_pol = {r["policy"]: r for r in rows}
-    out: Dict[str, Any] = {}
+    out: dict[str, Any] = {}
     for rl in [p for p in ("dqn", "ppo", "a2c") if p in by_pol]:
         rl_ci = (by_pol[rl]["mean_reward_ci_low"], by_pol[rl]["mean_reward_ci_high"])
-        overlaps: List[str] = []
+        overlaps: list[str] = []
         for base in [b for b in _NON_RL_BASELINES if b in by_pol]:
             base_ci = (
                 by_pol[base]["mean_reward_ci_low"],
@@ -128,8 +136,8 @@ def _evaluate_g65(rows: List[Dict[str, Any]]) -> Dict[str, Any]:
 
 
 def _render(
-    rows: List[Dict[str, Any]],
-    rec_floor: Optional[float],
+    rows: list[dict[str, Any]],
+    rec_floor: float | None,
     out_path: Path,
 ) -> None:
     """Horizontal bar chart, sorted by mean_reward descending."""
@@ -142,38 +150,51 @@ def _render(
     sorted_rows = sorted(rows, key=lambda r: r["mean_reward"])
     labels = [_DISPLAY.get(r["policy"], r["policy"]) for r in sorted_rows]
     means = [r["mean_reward"] for r in sorted_rows]
-    lo_err = [max(r["mean_reward"] - r["mean_reward_ci_low"], 0.0)
-              for r in sorted_rows]
-    hi_err = [max(r["mean_reward_ci_high"] - r["mean_reward"], 0.0)
-              for r in sorted_rows]
+    lo_err = [max(r["mean_reward"] - r["mean_reward_ci_low"], 0.0) for r in sorted_rows]
+    hi_err = [max(r["mean_reward_ci_high"] - r["mean_reward"], 0.0) for r in sorted_rows]
     yerr = [lo_err, hi_err]
-    colours = [
-        "#2563eb" if r["policy"] in _RL_POLICIES else "#9ca3af"
-        for r in sorted_rows
-    ]
+    colours = ["#2563eb" if r["policy"] in _RL_POLICIES else "#9ca3af" for r in sorted_rows]
 
     fig, ax = plt.subplots(figsize=(11.5, 5.5))
-    bars = ax.barh(labels, means, xerr=yerr, color=colours,
-                   edgecolor="black", linewidth=0.6,
-                   error_kw=dict(ecolor="black", capsize=4, lw=1.0))
-    for bar, m, lo, hi in zip(bars, means,
-                              [r["mean_reward_ci_low"] for r in sorted_rows],
-                              [r["mean_reward_ci_high"] for r in sorted_rows]):
+    bars = ax.barh(
+        labels,
+        means,
+        xerr=yerr,
+        color=colours,
+        edgecolor="black",
+        linewidth=0.6,
+        error_kw={"ecolor": "black", "capsize": 4, "lw": 1.0},
+    )
+    for bar, m, lo, hi in zip(
+        bars,
+        means,
+        [r["mean_reward_ci_low"] for r in sorted_rows],
+        [r["mean_reward_ci_high"] for r in sorted_rows],
+    ):
         # Place annotation past the right error whisker so it never
         # overlaps the bar visually.
         x = m + (max(0.0, hi - m)) + 30.0
-        ax.text(x, bar.get_y() + bar.get_height() / 2,
-                f"{m:.0f}  ({lo:.0f}, {hi:.0f})",
-                va="center", ha="left", fontsize=8)
+        ax.text(
+            x,
+            bar.get_y() + bar.get_height() / 2,
+            f"{m:.0f}  ({lo:.0f}, {hi:.0f})",
+            va="center",
+            ha="left",
+            fontsize=8,
+        )
 
     if rec_floor is not None and math.isfinite(rec_floor):
-        ax.axvline(rec_floor, color="#dc2626", linestyle="--",
-                   linewidth=1.0, alpha=0.85,
-                   label=f"Recommended-Action floor ({rec_floor:.0f})")
+        ax.axvline(
+            rec_floor,
+            color="#dc2626",
+            linestyle="--",
+            linewidth=1.0,
+            alpha=0.85,
+            label=f"Recommended-Action floor ({rec_floor:.0f})",
+        )
         ax.legend(loc="lower right", fontsize=8, framealpha=0.95)
 
-    ax.set_xlabel("Mean episodic reward on test_balanced (95 % bootstrap CI)",
-                  fontsize=10)
+    ax.set_xlabel("Mean episodic reward on test_balanced (95 % bootstrap CI)", fontsize=10)
     ax.set_title(
         "F8 — RL vs Non-RL Baselines (n=150 deterministic episodes / policy)",
         fontsize=11,
@@ -198,7 +219,7 @@ def _build_argparser() -> argparse.ArgumentParser:
     return p
 
 
-def main(argv: Optional[List[str]] = None) -> int:
+def main(argv: list[str] | None = None) -> int:
     args = _build_argparser().parse_args(argv)
     logging.basicConfig(
         level=logging.INFO,
@@ -206,22 +227,23 @@ def main(argv: Optional[List[str]] = None) -> int:
     )
     f5_path = Path(args.f5_summary)
     if not f5_path.exists():
-        logger.error("F5_summary.json not found at %s — run "
-                     "`python -m scripts.benchmark.build_summary_table` first.",
-                     f5_path)
+        logger.error(
+            "F5_summary.json not found at %s — run "
+            "`python -m scripts.benchmark.build_summary_table` first.",
+            f5_path,
+        )
         return 1
     f5 = json.loads(f5_path.read_text())
-    rows: List[Dict[str, Any]] = f5["rows"]
+    rows: list[dict[str, Any]] = f5["rows"]
     if not rows:
         logger.error("F5 rows are empty; cannot render F8")
         return 1
 
     rec_row = next(
-        (r for r in rows if r["policy"] == "recommended_action"), None,
+        (r for r in rows if r["policy"] == "recommended_action"),
+        None,
     )
-    rec_floor = (
-        float(rec_row["mean_reward"]) if rec_row is not None else None
-    )
+    rec_floor = float(rec_row["mean_reward"]) if rec_row is not None else None
 
     g65 = _evaluate_g65(rows)
     out_dir = Path(args.out_dir)
@@ -258,7 +280,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         "figure": "F8",
         "git_sha": _git_sha(),
         "outputs": {
-            "png":  str(png_path),
+            "png": str(png_path),
             "json": str(out_dir / "F8_summary.json"),
         },
         "inputs": {
@@ -283,7 +305,9 @@ def main(argv: Optional[List[str]] = None) -> int:
     for rl, info in g65.items():
         logger.info(
             "G6.5 %s: pass=%s (overlaps with %s)",
-            rl, info["g65_pass"], info["overlaps_with"] or "[]",
+            rl,
+            info["g65_pass"],
+            info["overlaps_with"] or "[]",
         )
     return 0
 

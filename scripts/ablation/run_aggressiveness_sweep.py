@@ -43,7 +43,7 @@ import sys
 import time
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from src.benchmark.baseline_policies import (
     SB3PolicyAdapter,
@@ -58,10 +58,10 @@ logger = logging.getLogger("scripts.ablation.run_aggressiveness_sweep")
 _ROOT = Path(__file__).resolve().parents[2]
 
 
-_DEFAULT_P_VALUES: List[float] = [0.0, 0.2, 0.4, 0.6, 0.8, 1.0]
+_DEFAULT_P_VALUES: list[float] = [0.0, 0.2, 0.4, 0.6, 0.8, 1.0]
 
 
-def _sha256(path: Path) -> Optional[str]:
+def _sha256(path: Path) -> str | None:
     p = Path(path)
     if not p.exists():
         return None
@@ -74,9 +74,15 @@ def _sha256(path: Path) -> Optional[str]:
 
 def _git_sha() -> str:
     try:
-        return subprocess.check_output(
-            ["git", "rev-parse", "HEAD"], cwd=_ROOT, stderr=subprocess.DEVNULL,
-        ).decode().strip()
+        return (
+            subprocess.check_output(
+                ["git", "rev-parse", "HEAD"],
+                cwd=_ROOT,
+                stderr=subprocess.DEVNULL,
+            )
+            .decode()
+            .strip()
+        )
     except Exception:  # noqa: BLE001
         return "unknown"
 
@@ -90,26 +96,41 @@ def _p_slug(p: float) -> str:
 
 
 def _train_ppo(
-    args: argparse.Namespace, p: float, seed: int,
-) -> Dict[str, Any]:
+    args: argparse.Namespace,
+    p: float,
+    seed: int,
+) -> dict[str, Any]:
     """Train PPO at p_defender_deescalation=p for one seed."""
     out_dir = Path(args.out_root) / f"ppo_p{_p_slug(p)}" / f"seed_{seed}"
     out_dir.mkdir(parents=True, exist_ok=True)
     log_path = out_dir / "train.log"
 
     cmd = [
-        sys.executable, "-m", "scripts.blue_team.train_agent",
-        "--algo", "ppo",
-        "--seed", str(seed),
-        "--total-timesteps", str(args.total_timesteps),
-        "--eval-freq", str(args.eval_freq),
-        "--n-eval-episodes", str(args.n_eval_episodes),
-        "--out-dir", str(out_dir),
-        "--generator-path", args.generator_path,
-        "--dataset-path", args.dataset_path,
-        "--splits-manifest", args.splits_manifest,
-        "--p-defender-deescalation", str(p),
-        "--verbose", "0",
+        sys.executable,
+        "-m",
+        "scripts.blue_team.train_agent",
+        "--algo",
+        "ppo",
+        "--seed",
+        str(seed),
+        "--total-timesteps",
+        str(args.total_timesteps),
+        "--eval-freq",
+        str(args.eval_freq),
+        "--n-eval-episodes",
+        str(args.n_eval_episodes),
+        "--out-dir",
+        str(out_dir),
+        "--generator-path",
+        args.generator_path,
+        "--dataset-path",
+        args.dataset_path,
+        "--splits-manifest",
+        args.splits_manifest,
+        "--p-defender-deescalation",
+        str(p),
+        "--verbose",
+        "0",
     ]
     if args.smoke:
         cmd.append("--smoke")
@@ -118,7 +139,10 @@ def _train_ppo(
     t0 = time.time()
     with log_path.open("w") as log_fh:
         proc = subprocess.run(
-            cmd, cwd=_ROOT, stdout=log_fh, stderr=subprocess.STDOUT,
+            cmd,
+            cwd=_ROOT,
+            stdout=log_fh,
+            stderr=subprocess.STDOUT,
             check=False,
         )
     wallclock = time.time() - t0
@@ -132,12 +156,15 @@ def _train_ppo(
             _eval_ppo_on_test(args, p, seed, out_dir, test_eval_jsonl)
             test_eval_ok = test_eval_jsonl.exists()
         except Exception as exc:  # noqa: BLE001
-            logger.error("F10 ppo p=%.1f seed=%d test-eval failed: %s",
-                         p, seed, exc)
+            logger.error("F10 ppo p=%.1f seed=%d test-eval failed: %s", p, seed, exc)
 
     logger.info(
         "F10 ppo p=%.1f seed=%d done train=%s test_eval=%s wc=%.1fs",
-        p, seed, ok, test_eval_ok, wallclock,
+        p,
+        seed,
+        ok,
+        test_eval_ok,
+        wallclock,
     )
 
     return {
@@ -158,8 +185,11 @@ def _train_ppo(
 
 
 def _eval_ppo_on_test(
-    args: argparse.Namespace, p: float, seed: int,
-    out_dir: Path, eval_jsonl_path: Path,
+    args: argparse.Namespace,
+    p: float,
+    seed: int,
+    out_dir: Path,
+    eval_jsonl_path: Path,
 ) -> None:
     """Roll the trained PPO at this p on test_balanced (same p).
 
@@ -176,7 +206,8 @@ def _eval_ppo_on_test(
         spec.p_defender_deescalation = p  # F10's eval matches train p
     else:
         spec = EnvConfigSerializable(
-            split="test_balanced", exclude_ood=True,
+            split="test_balanced",
+            exclude_ood=True,
             p_defender_deescalation=p,
         )
     env = make_eval_env(
@@ -188,10 +219,12 @@ def _eval_ppo_on_test(
     )
     try:
         from stable_baselines3 import PPO
+
         model = PPO.load(out_dir / "model.zip", env=env, device="cpu")
         policy = SB3PolicyAdapter(model, deterministic=True)
         run_policy(
-            policy, env,
+            policy,
+            env,
             n_episodes=2 if args.smoke else args.n_eval_episodes,
             jsonl_path=eval_jsonl_path,
             run_id=f"f10_ppo_p{_p_slug(p)}_seed_{seed}_test",
@@ -200,15 +233,16 @@ def _eval_ppo_on_test(
             seed=seed,
         )
     finally:
-        try:
+        try:  # noqa: SIM105
             env.close()
         except Exception:  # noqa: BLE001
             pass
 
 
 def _roll_rule_baseline(
-    args: argparse.Namespace, p: float,
-) -> Dict[str, Any]:
+    args: argparse.Namespace,
+    p: float,
+) -> dict[str, Any]:
     """Roll the recommended-action oracle baseline at this p (single
     seed=0, n=150 ep — same as benchmark D6.3 protocol).
 
@@ -231,13 +265,17 @@ def _roll_rule_baseline(
         # (window_size=4, max_steps=20). Same realiser pool either
         # way (rule doesn't load a model).
         spec = EnvConfigSerializable(
-            split="test_balanced", exclude_ood=True,
+            split="test_balanced",
+            exclude_ood=True,
             p_defender_deescalation=p,
-            window_size=4, max_steps=20, min_episode_length=5,
+            window_size=4,
+            max_steps=20,
+            min_episode_length=5,
         )
     else:
         spec = EnvConfigSerializable(
-            split="test_balanced", exclude_ood=True,
+            split="test_balanced",
+            exclude_ood=True,
             p_defender_deescalation=p,
         )
     env = make_eval_env(
@@ -251,7 +289,8 @@ def _roll_rule_baseline(
     try:
         t0 = time.time()
         run_policy(
-            recommended_action_policy, env,
+            recommended_action_policy,
+            env,
             n_episodes=n_ep,
             jsonl_path=eval_jsonl,
             run_id=run_id,
@@ -261,7 +300,7 @@ def _roll_rule_baseline(
         )
         wallclock = time.time() - t0
     finally:
-        try:
+        try:  # noqa: SIM105
             env.close()
         except Exception:  # noqa: BLE001
             pass
@@ -283,21 +322,31 @@ def _roll_rule_baseline(
 def _build_argparser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         description="ablation F10 — attack-aggressiveness sweep "
-                    "(PLAN §3.1.5; PPO + oracle rule × 6 p values × 5 seeds, ~1.5 h CPU).",
+        "(PLAN §3.1.5; PPO + oracle rule × 6 p values × 5 seeds, ~1.5 h CPU).",
     )
     p.add_argument(
-        "--p-values", nargs="+", type=float, default=_DEFAULT_P_VALUES,
+        "--p-values",
+        nargs="+",
+        type=float,
+        default=_DEFAULT_P_VALUES,
         help="p_defender_deescalation values to sweep.",
     )
     p.add_argument(
-        "--seeds", nargs="+", type=int, default=[0, 1, 2, 3, 4],
+        "--seeds",
+        nargs="+",
+        type=int,
+        default=[0, 1, 2, 3, 4],
         help="PPO seeds (recommended-action rule uses single seed=0).",
     )
     p.add_argument("--total-timesteps", type=int, default=250_000)
     p.add_argument("--eval-freq", type=int, default=25_000)
     p.add_argument("--n-eval-episodes", type=int, default=30)
-    p.add_argument("--n-deterministic-episodes", type=int, default=150,
-                   help="Episodes for the recommended-action rule per p.")
+    p.add_argument(
+        "--n-deterministic-episodes",
+        type=int,
+        default=150,
+        help="Episodes for the recommended-action rule per p.",
+    )
     p.add_argument("--out-root", default="runs/ablation/aggressiveness")
     p.add_argument("--generator-path", default="artifacts/generator/red_team")
     p.add_argument("--dataset-path", default="data/processed/ciciot2023")
@@ -308,13 +357,15 @@ def _build_argparser() -> argparse.ArgumentParser:
     p.add_argument("--smoke", action="store_true")
     p.add_argument("--continue-on-failure", action="store_true")
     p.add_argument(
-        "--parallel", type=int, default=1,
+        "--parallel",
+        type=int,
+        default=1,
         help="Concurrent train subprocesses (default 1 = serial).",
     )
     return p
 
 
-def main(argv: Optional[List[str]] = None) -> int:
+def main(argv: list[str] | None = None) -> int:
     args = _build_argparser().parse_args(argv)
     logging.basicConfig(
         level=logging.INFO,
@@ -328,8 +379,8 @@ def main(argv: Optional[List[str]] = None) -> int:
         args.seeds = args.seeds[:1]
 
     t_start = time.time()
-    ppo_results: List[Dict[str, Any]] = []
-    rule_results: List[Dict[str, Any]] = []
+    ppo_results: list[dict[str, Any]] = []
+    rule_results: list[dict[str, Any]] = []
 
     # PPO sweep.
     grid = [(p, s) for p in args.p_values for s in args.seeds]
@@ -350,7 +401,8 @@ def main(argv: Optional[List[str]] = None) -> int:
         rule_results.append(_roll_rule_baseline(args, p))
         logger.info(
             "F10 rule p=%.1f done wc=%.1fs",
-            p, rule_results[-1]["wallclock_seconds"],
+            p,
+            rule_results[-1]["wallclock_seconds"],
         )
 
     sweep_manifest = {
@@ -359,7 +411,8 @@ def main(argv: Optional[List[str]] = None) -> int:
         "kind": "f10_aggressiveness_sweep_manifest",
         "git_sha": _git_sha(),
         "started_at": datetime.fromtimestamp(t_start, tz=timezone.utc).strftime(
-            "%Y-%m-%dT%H:%M:%SZ"),
+            "%Y-%m-%dT%H:%M:%SZ"
+        ),
         "completed_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "wallclock_seconds": time.time() - t_start,
         "args": vars(args),
@@ -373,8 +426,10 @@ def main(argv: Optional[List[str]] = None) -> int:
     sweep_manifest_path.write_text(json.dumps(sweep_manifest, indent=2))
     logger.info(
         "F10 sweep done: %d/%d ppo trained, %d rule p-values rolled in %.1fs; -> %s",
-        sweep_manifest["n_ppo_ok"], len(ppo_results),
-        len(rule_results), sweep_manifest["wallclock_seconds"],
+        sweep_manifest["n_ppo_ok"],
+        len(ppo_results),
+        len(rule_results),
+        sweep_manifest["wallclock_seconds"],
         sweep_manifest_path,
     )
     if sweep_manifest["n_ppo_failed"] and not args.continue_on_failure:

@@ -24,22 +24,21 @@ from scripts.data.build_split_indices import (
 )
 from src.utils.label_mapper import AbstractStateLabelMapper
 
-
 # ---------------------------------------------------------------------------
 # Synthetic-data helpers
 # ---------------------------------------------------------------------------
 
 # A small set of real CICIoT2023 labels covering all 5 Kill Chain stages.
 _LABELS_COVERING_ALL_STAGES: list[str] = [
-    "BenignTraffic",        # stage 0
-    "Recon-PortScan",       # stage 1
-    "VulnerabilityScan",    # stage 1
-    "SqlInjection",         # stage 2
-    "DictionaryBruteForce", # stage 2
-    "MITM-ArpSpoofing",     # stage 3
-    "Mirai-udpplain",       # stage 3
-    "DDoS-ICMP_Flood",      # stage 4
-    "DDoS-HTTP_Flood",      # stage 4
+    "BenignTraffic",  # stage 0
+    "Recon-PortScan",  # stage 1
+    "VulnerabilityScan",  # stage 1
+    "SqlInjection",  # stage 2
+    "DictionaryBruteForce",  # stage 2
+    "MITM-ArpSpoofing",  # stage 3
+    "Mirai-udpplain",  # stage 3
+    "DDoS-ICMP_Flood",  # stage 4
+    "DDoS-HTTP_Flood",  # stage 4
 ]
 
 
@@ -206,9 +205,7 @@ class TestBuildSplitsEndToEnd:
         assert np.isin(tb, te).all()
 
         # Manifest hashes are deterministic in the inputs
-        assert {"features.npy", "labels.npy", "metadata.json"} <= set(
-            manifest["inputs"].keys()
-        )
+        assert {"features.npy", "labels.npy", "metadata.json"} <= set(manifest["inputs"].keys())
         assert "splits/train.idx.npy" in manifest["outputs"]
 
     def test_determinism_across_runs(self, tmp_path: Path) -> None:

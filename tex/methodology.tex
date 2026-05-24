@@ -116,12 +116,12 @@ The episode terminates when the chain reaches \textsc{impact} (default environme
 The reward at step $t$ is a piecewise composition of \textbf{six independent reward signals} plus three asymmetric guardrails for cocked-trigger benign-stage policies. Let $a_t$ denote the action chosen at step $t$, $s_t$ the decision-time stage (i.e.\ the stage the agent saw when it chose $a_t$, not the next stage), and $\mathit{rec}(s)$ the recommended-action mapping (\textsc{benign}~$\to$~\textsc{observe}, \textsc{recon}~$\to$~\textsc{log}, \textsc{access}~$\to$~\textsc{throttle}, \textsc{maneuver}~$\to$~\textsc{block}, \textsc{impact}~$\to$~\textsc{isolate}). The per-step reward is:
 \begin{align}\label{eq:reward}
 R_t \;=\; & -C_{\mathrm{action}}(a_t) \cdot \alpha \\
-        & + r_{\mathrm{prop}} \cdot \mathbb{1}\!\left[ |a_t - \mathit{rec}(s_t)| \leq 1 \right]
-        - p_{\mathrm{disp}} \cdot \mathbb{1}\!\left[ |a_t - \mathit{rec}(s_t)| \geq 2 \right] \nonumber \\
-        & + r_{\mathrm{benign}} \cdot \mathbb{1}\!\left[ s_t = \text{\textsc{benign}} \;\wedge\; a_t \leq \text{\textsc{log}} \right] \nonumber \\
-        & - p_{\mathrm{over}} \cdot \mathbb{1}\!\left[ s_t = \text{\textsc{benign}} \;\wedge\; a_t \geq \text{\textsc{throttle}} \right] \nonumber \\
-        & - p_{\mathrm{block\text{-}benign}} \cdot \mathbb{1}\!\left[ s_t = \text{\textsc{benign}} \;\wedge\; a_t \geq \text{\textsc{block}} \right] \nonumber \\
-        & - p_{\mathrm{block\text{-}recon}} \cdot \mathbb{1}\!\left[ s_t = \text{\textsc{recon}} \;\wedge\; a_t \geq \text{\textsc{block}} \right] \nonumber
+        & + r_{\mathrm{prop}} \cdot \mathds{1}\!\left[ |a_t - \mathit{rec}(s_t)| \leq 1 \right]
+        - p_{\mathrm{disp}} \cdot \mathds{1}\!\left[ |a_t - \mathit{rec}(s_t)| \geq 2 \right] \nonumber \\
+        & + r_{\mathrm{benign}} \cdot \mathds{1}\!\left[ s_t = \text{\textsc{benign}} \;\wedge\; a_t \leq \text{\textsc{log}} \right] \nonumber \\
+        & - p_{\mathrm{over}} \cdot \mathds{1}\!\left[ s_t = \text{\textsc{benign}} \;\wedge\; a_t \geq \text{\textsc{throttle}} \right] \nonumber \\
+        & - p_{\mathrm{block\text{-}benign}} \cdot \mathds{1}\!\left[ s_t = \text{\textsc{benign}} \;\wedge\; a_t \geq \text{\textsc{block}} \right] \nonumber \\
+        & - p_{\mathrm{block\text{-}recon}} \cdot \mathds{1}\!\left[ s_t = \text{\textsc{recon}} \;\wedge\; a_t \geq \text{\textsc{block}} \right] \nonumber
 \end{align}
 At terminal-\textsc{impact}, an additional accounting block fires:
 \begin{equation}\label{eq:reward_terminal}
@@ -135,7 +135,7 @@ The action-cost vector $C_{\mathrm{action}}(a)$ uses scale $\alpha = 1.0$ as the
 
 \begin{table}[h!]
 \centering
-\caption{Default reward constants for the environment design (\texttt{AdversarialEnvConfig}). Symbols match Equations~\eqref{eq:reward}--\eqref{eq:reward_terminal}.}
+\caption[Default reward constants for the environment design.]{Default reward constants for the environment design (\texttt{AdversarialEnvConfig}). Symbols match Equations~\eqref{eq:reward}--\eqref{eq:reward_terminal}.}
 \label{tab:reward_constants}
 \begin{tabular}{lrl}
 \toprule

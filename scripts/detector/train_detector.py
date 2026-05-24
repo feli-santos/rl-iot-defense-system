@@ -38,7 +38,6 @@ import logging
 import sys
 import time
 from pathlib import Path
-from typing import Dict, List
 
 import joblib
 import numpy as np
@@ -51,9 +50,9 @@ from src.detector import (
 )
 from src.detector.evaluation import (
     NUM_STAGES,
-    OODEvaluation,
     STAGE_NAMES,
     DetectorEvaluation,
+    OODEvaluation,
     evaluate_ood_class,
 )
 
@@ -62,11 +61,11 @@ logger = logging.getLogger(__name__)
 # Stage assignments for the four held-out OOD classes (dataset-prep fixed list).
 # Used to compute G4.4 per-class recall; these classes are NEVER in the
 # train / val / test splits.
-_OOD_EXPECTED_STAGE: Dict[str, int] = {
-    "DDoS-HTTP_Flood": 4,      # IMPACT
-    "Mirai-udpplain": 4,       # IMPACT
-    "VulnerabilityScan": 1,    # RECON
-    "XSS": 2,                  # ACCESS
+_OOD_EXPECTED_STAGE: dict[str, int] = {
+    "DDoS-HTTP_Flood": 4,  # IMPACT
+    "Mirai-udpplain": 4,  # IMPACT
+    "VulnerabilityScan": 1,  # RECON
+    "XSS": 2,  # ACCESS
 }
 
 
@@ -87,10 +86,7 @@ def _git_sha() -> str:
     import subprocess
 
     try:
-        return (
-            subprocess.check_output(["git", "rev-parse", "HEAD"], text=True)
-            .strip()[:12]
-        )
+        return subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()[:12]
     except Exception:
         return "unknown"
 
@@ -108,7 +104,7 @@ def _load_ood_split(processed_dir: Path, attack_class: str) -> np.ndarray:
     return np.load(processed_dir / "splits" / "ood_attack" / f"{attack_class}.idx.npy")
 
 
-def _verify_disjoint(name_to_idx: Dict[str, np.ndarray]) -> None:
+def _verify_disjoint(name_to_idx: dict[str, np.ndarray]) -> None:
     """Cheap last-line-of-defence sanity check: train ∩ {val,test,ood} = ∅."""
     train = set(name_to_idx["train"].tolist())
     for other_name, other_idx in name_to_idx.items():
@@ -129,7 +125,7 @@ def _verify_disjoint(name_to_idx: Dict[str, np.ndarray]) -> None:
 
 
 def _render_f11(
-    results_test_balanced: Dict[str, DetectorEvaluation],
+    results_test_balanced: dict[str, DetectorEvaluation],
     out_path: Path,
 ) -> None:
     """Render the F11 figure: per-stage recall bar chart + StageDetector CM."""
@@ -183,7 +179,7 @@ def _render_f11(
             ax_cm.text(
                 j,
                 i,
-                f"{cm_norm[i, j]*100:4.1f}%",
+                f"{cm_norm[i, j] * 100:4.1f}%",
                 ha="center",
                 va="center",
                 color="white" if cm_norm[i, j] > 0.5 else "black",
@@ -225,12 +221,12 @@ exit-gate scoreboard and the OOD-class generalisation analysis (G4.4).
 def _check_gates(
     *,
     detector_test_balanced: DetectorEvaluation,
-    all_test_balanced: Dict[str, DetectorEvaluation],
-    ood_results: Dict[str, OODEvaluation],
+    all_test_balanced: dict[str, DetectorEvaluation],
+    ood_results: dict[str, OODEvaluation],
     inference_latency_ms: float,
-) -> Dict[str, dict]:
+) -> dict[str, dict]:
     """Apply PLAN §3.3 gates G4.2-G4.5 (G4.1 = pytest, run separately)."""
-    gates: Dict[str, dict] = {}
+    gates: dict[str, dict] = {}
 
     # G4.2: Detector head macro-F1 on test_balanced >= 0.75
     g42_pass = detector_test_balanced.macro_f1 >= 0.75
@@ -309,11 +305,21 @@ def _check_gates(
     gates["G4.4"] = {
         "name": "At least one held-out OOD class fails to generalise (recall <= 0.30)",
         "threshold_min_recall": 0.30,
-        "observed_min": round(min(o.recall for o in ood_results.values()) if ood_results else 0.0, 6),
-        "observed_max": round(max(o.recall for o in ood_results.values()) if ood_results else 0.0, 6),
+        "observed_min": round(
+            min(o.recall for o in ood_results.values()) if ood_results else 0.0, 6
+        ),
+        "observed_max": round(
+            max(o.recall for o in ood_results.values()) if ood_results else 0.0, 6
+        ),
         "observed_gap": round(
-            (max(o.recall for o in ood_results.values()) -
-             min(o.recall for o in ood_results.values())) if ood_results else 0.0,
+            (
+                (
+                    max(o.recall for o in ood_results.values())
+                    - min(o.recall for o in ood_results.values())
+                )
+                if ood_results
+                else 0.0
+            ),
             6,
         ),
         "per_class": {k: round(v.recall, 6) for k, v in ood_results.items()},
@@ -342,7 +348,7 @@ def _measure_inference_latency(detector: StageDetector) -> float:
         detector.predict_proba(x)
     # Measure.
     n_iter = 1000
-    timings: List[float] = []
+    timings: list[float] = []
     for _ in range(n_iter):
         t0 = time.perf_counter()
         detector.predict_proba(x)
@@ -355,7 +361,7 @@ def _measure_inference_latency(detector: StageDetector) -> float:
 # ---------------------------------------------------------------------------
 
 
-def main(argv: List[str] | None = None) -> int:
+def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n", 1)[0])
     parser.add_argument(
         "--processed-dir",
@@ -396,9 +402,7 @@ def main(argv: List[str] | None = None) -> int:
     ood_class_to_idx = {
         cls: _load_ood_split(args.processed_dir, cls) for cls in _OOD_EXPECTED_STAGE
     }
-    _verify_disjoint(
-        {**splits, **{f"ood:{c}": idx for c, idx in ood_class_to_idx.items()}}
-    )
+    _verify_disjoint({**splits, **{f"ood:{c}": idx for c, idx in ood_class_to_idx.items()}})
 
     # NB: load with mmap, slice into a contiguous in-RAM array. RandomForest
     # in particular wants C-contiguous data; the slice already gives us that.
@@ -459,18 +463,16 @@ def main(argv: List[str] | None = None) -> int:
 
     # ---- 4. Evaluation on test_balanced (D1 primary), test (D1 secondary).
     logger.info("Evaluating on test_balanced and test ...")
-    models: Dict[str, object] = {
+    models: dict[str, object] = {
         "StageDetector": detector,
         "RandomForest": rf,
         "CNN1D": cnn,
     }
-    test_balanced_results: Dict[str, DetectorEvaluation] = {}
-    test_full_results: Dict[str, DetectorEvaluation] = {}
+    test_balanced_results: dict[str, DetectorEvaluation] = {}
+    test_full_results: dict[str, DetectorEvaluation] = {}
     for name, m in models.items():
         y_pred_tb = m.predict(X_tb).astype(np.int64)
-        test_balanced_results[name] = summarize_run(
-            name, "test_balanced", y_tb, y_pred_tb
-        )
+        test_balanced_results[name] = summarize_run(name, "test_balanced", y_tb, y_pred_tb)
         y_pred_t = m.predict(X_t).astype(np.int64)
         test_full_results[name] = summarize_run(name, "test", y_t, y_pred_t)
         logger.info(
@@ -482,7 +484,7 @@ def main(argv: List[str] | None = None) -> int:
 
     # ---- 5. OOD evaluation (G4.4).
     logger.info("Evaluating OOD classes ...")
-    ood_results: Dict[str, OODEvaluation] = {}
+    ood_results: dict[str, OODEvaluation] = {}
     for cls, expected_stage in _OOD_EXPECTED_STAGE.items():
         idx = ood_class_to_idx[cls]
         X_ood = np.ascontiguousarray(X[idx], dtype=np.float32)
@@ -543,13 +545,15 @@ def main(argv: List[str] | None = None) -> int:
                 "test": test_full_results["StageDetector"].to_dict(),
             },
             "RandomForest": {
-                "config": rf.run_info.__dict__  # type: ignore[attr-defined]
-                if False
-                else {
-                    "n_estimators": rf.n_estimators,
-                    "class_weight": "balanced",
-                    "n_jobs": -1,
-                },
+                "config": (
+                    rf.run_info.__dict__  # type: ignore[attr-defined]
+                    if False
+                    else {
+                        "n_estimators": rf.n_estimators,
+                        "class_weight": "balanced",
+                        "n_jobs": -1,
+                    }
+                ),
                 "run_info": {
                     "train_time_seconds": float(
                         rf.run_info.train_time_seconds  # type: ignore[attr-defined]
@@ -589,8 +593,12 @@ def main(argv: List[str] | None = None) -> int:
             "features.npy": _sha256(args.processed_dir / "features.npy"),
             "stages.npy": _sha256(args.processed_dir / "stages.npy"),
             "splits/train.idx.npy": _sha256(args.processed_dir / "splits" / "train.idx.npy"),
-            "splits/val_balanced.idx.npy": _sha256(args.processed_dir / "splits" / "val_balanced.idx.npy"),
-            "splits/test_balanced.idx.npy": _sha256(args.processed_dir / "splits" / "test_balanced.idx.npy"),
+            "splits/val_balanced.idx.npy": _sha256(
+                args.processed_dir / "splits" / "val_balanced.idx.npy"
+            ),
+            "splits/test_balanced.idx.npy": _sha256(
+                args.processed_dir / "splits" / "test_balanced.idx.npy"
+            ),
             "splits/test.idx.npy": _sha256(args.processed_dir / "splits" / "test.idx.npy"),
         },
         "outputs": {

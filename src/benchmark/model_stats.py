@@ -18,13 +18,13 @@ Dependencies:
 
 from __future__ import annotations
 
+import contextlib
 import logging
 import os
 import tempfile
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any
 
-import numpy as np
 import torch
 
 logger = logging.getLogger(__name__)
@@ -33,7 +33,7 @@ logger = logging.getLogger(__name__)
 def _try_thop(
     module: torch.nn.Module,
     dummy_input: torch.Tensor,
-) -> tuple[Optional[float], Optional[float]]:
+) -> tuple[float | None, float | None]:
     """Attempt thop FLOPs/MACs count; return (macs, flops) or (None, None)."""
     try:
         from thop import profile as thop_profile  # type: ignore[import]
@@ -41,10 +41,7 @@ def _try_thop(
         macs, params = thop_profile(module, inputs=(dummy_input,), verbose=False)
         return float(macs), float(params)
     except ImportError:
-        logger.debug(
-            "thop not installed; skipping MACs count. "
-            "Install with: pip install thop"
-        )
+        logger.debug("thop not installed; skipping MACs count. Install with: pip install thop")
         return None, None
     except Exception as exc:  # noqa: BLE001
         logger.debug("thop profiling failed: %s", exc)
@@ -56,7 +53,7 @@ def _count_params(module: torch.nn.Module) -> int:
     return sum(p.numel() for p in module.parameters() if p.requires_grad)
 
 
-def _disk_size_mb(model: Any) -> Optional[float]:
+def _disk_size_mb(model: Any) -> float | None:
     """Save the SB3 model to a temp file and return the zip size in MB."""
     try:
         with tempfile.NamedTemporaryFile(suffix="", delete=False) as f:
@@ -67,10 +64,8 @@ def _disk_size_mb(model: Any) -> Optional[float]:
         target = zip_path if Path(zip_path).exists() else tmp_base
         size = os.path.getsize(target) / 1e6
         for p in [tmp_base, zip_path]:
-            try:
+            with contextlib.suppress(FileNotFoundError):
                 os.remove(p)
-            except FileNotFoundError:
-                pass
         return size
     except Exception as exc:  # noqa: BLE001
         logger.debug("disk size computation failed: %s", exc)
@@ -81,7 +76,7 @@ def get_model_stats(
     model: Any,
     obs_dim: int,
     algo: str = "unknown",
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Compute efficiency metrics for an SB3 policy network.
 
     Args:
@@ -124,7 +119,7 @@ def get_model_stats(
     }
 
 
-def get_file_stats(path: Path) -> Dict[str, Any]:
+def get_file_stats(path: Path) -> dict[str, Any]:
     """Return disk size stats for a model saved as a plain file (e.g., joblib).
 
     Used for the RF / 1D-CNN detectors which are not SB3 models.

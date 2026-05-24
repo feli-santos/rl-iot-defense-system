@@ -56,9 +56,11 @@ import subprocess
 import time
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import numpy as np
+from stable_baselines3.common.monitor import Monitor
+from stable_baselines3.common.vec_env import DummyVecEnv
 
 from src.benchmark.baseline_policies import (
     RFActingPolicy,
@@ -69,12 +71,8 @@ from src.benchmark.baseline_policies import (
     recommended_action_policy,
 )
 from src.benchmark.eval_runner import run_policy
-from src.blue_team.env_factory import _build_env, make_eval_env
+from src.blue_team.env_factory import _build_env
 from src.blue_team.run_config import EnvConfigSerializable
-from src.environment.adversarial_env import AdversarialIoTEnv
-from src.utils.realization_engine import RealizationEngine
-from stable_baselines3.common.monitor import Monitor
-from stable_baselines3.common.vec_env import DummyVecEnv
 
 logger = logging.getLogger("scripts.ablation.run_ood_eval")
 
@@ -86,18 +84,18 @@ _ROOT = Path(__file__).resolve().parents[2]
 # state_indices on every cell. If the OOD splits are ever rebuilt to
 # include other stages, ``_resolve_ood_stage`` falls back to a runtime
 # scan of state_indices.json.
-_OOD_STAGE_BY_CLASS: Dict[str, int] = {
-    "DDoS-HTTP_Flood":   4,  # IMPACT
-    "Mirai-udpplain":    3,  # MANEUVER
+_OOD_STAGE_BY_CLASS: dict[str, int] = {
+    "DDoS-HTTP_Flood": 4,  # IMPACT
+    "Mirai-udpplain": 3,  # MANEUVER
     "VulnerabilityScan": 1,  # RECON  ← detector F11 0.001-recall blind spot
-    "XSS":               2,  # ACCESS
+    "XSS": 2,  # ACCESS
 }
 
 
 # --------------------------------------------------------------------- helpers
 
 
-def _sha256(path: Path) -> Optional[str]:
+def _sha256(path: Path) -> str | None:
     p = Path(path)
     if not p.exists():
         return None
@@ -109,10 +107,16 @@ def _sha256(path: Path) -> Optional[str]:
 
 
 def _git_sha() -> str:
-    try:
-        return subprocess.check_output(
-            ["git", "rev-parse", "HEAD"], cwd=_ROOT, stderr=subprocess.DEVNULL,
-        ).decode().strip()
+    try:  # noqa: SIM105
+        return (
+            subprocess.check_output(
+                ["git", "rev-parse", "HEAD"],
+                cwd=_ROOT,
+                stderr=subprocess.DEVNULL,
+            )
+            .decode()
+            .strip()
+        )
     except Exception:  # noqa: BLE001
         return "unknown"
 
@@ -121,12 +125,15 @@ def _load_sb3_model(algo: str, model_path: Path, env: Any) -> Any:
     a = algo.lower()
     if a == "dqn":
         from stable_baselines3 import DQN
+
         return DQN.load(model_path, env=env, device="cpu")
     if a == "ppo":
         from stable_baselines3 import PPO
+
         return PPO.load(model_path, env=env, device="cpu")
     if a == "a2c":
         from stable_baselines3 import A2C
+
         return A2C.load(model_path, env=env, device="cpu")
     raise ValueError(f"unknown algo {algo!r}; expected dqn / ppo / a2c")
 
@@ -160,23 +167,21 @@ def _resolve_ood_stage(
     """
     state_indices_path = dataset_path / "state_indices.json"
     raw = json.loads(state_indices_path.read_text())
-    state_indices = {int(k): set(int(i) for i in v) for k, v in raw.items()}
-    ood_set = set(int(i) for i in ood_indices.tolist())
+    state_indices = {int(k): {int(i) for i in v} for k, v in raw.items()}
+    ood_set = {int(i) for i in ood_indices.tolist()}
     found_stages = [s for s, idx_set in state_indices.items() if ood_set & idx_set]
     if not found_stages:
-        raise ValueError(
-            f"OOD-class rows have no overlap with any stage in state_indices.json"
-        )
+        raise ValueError("OOD-class rows have no overlap with any stage in state_indices.json")
     if len(found_stages) > 1:
         # Pick the stage with the most overlap; warn the user.
-        overlaps = {
-            s: len(ood_set & state_indices[s]) for s in found_stages
-        }
+        overlaps = {s: len(ood_set & state_indices[s]) for s in found_stages}
         chosen = max(overlaps, key=overlaps.get)
         logger.warning(
             "OOD-class rows span multiple stages %s (counts %s); "
             "using stage %d (largest overlap) as the F15 attack stage.",
-            found_stages, overlaps, chosen,
+            found_stages,
+            overlaps,
+            chosen,
         )
         return chosen
     return found_stages[0]
@@ -185,7 +190,7 @@ def _resolve_ood_stage(
 def _build_ood_env(
     args: argparse.Namespace,
     ood_class: str,
-    seed: Optional[int] = None,
+    seed: int | None = None,
 ) -> Any:
     """Build a fresh eval env with a *hybrid* OOD realiser.
 
@@ -250,7 +255,8 @@ def _build_ood_env(
     logger.debug(
         "F15 hybrid realiser: ood_class=%s ood_stage=%d (replaced %d train-pool rows "
         "with %d OOD-class rows; other stages keep train-pool rows)",
-        ood_class, ood_stage,
+        ood_class,
+        ood_stage,
         len(new_indices),
         len(new_indices),
     )
@@ -265,39 +271,54 @@ def _build_ood_env(
 def _build_argparser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         description="ablation F15 — OOD-class robustness eval (audit-AF1). "
-                    "Rolls every benchmark policy on each held-out OOD attack class.",
+        "Rolls every benchmark policy on each held-out OOD attack class.",
     )
     p.add_argument(
-        "--ood-classes", nargs="+",
+        "--ood-classes",
+        nargs="+",
         default=["DDoS-HTTP_Flood", "Mirai-udpplain", "VulnerabilityScan", "XSS"],
         help="Held-out attack classes to evaluate (one outer loop each).",
     )
     p.add_argument(
-        "--policies", nargs="+",
+        "--policies",
+        nargs="+",
         default=[
-            "recommended_action", "rf_acting",
-            "dqn", "ppo", "a2c",
-            "random", "always_observe", "always_block",
+            "recommended_action",
+            "rf_acting",
+            "dqn",
+            "ppo",
+            "a2c",
+            "random",
+            "always_observe",
+            "always_block",
         ],
         help="Subset of the 8 benchmark policies to evaluate.",
     )
     p.add_argument(
-        "--seeds", nargs="+", type=int, default=[0, 1, 2, 3, 4],
+        "--seeds",
+        nargs="+",
+        type=int,
+        default=[0, 1, 2, 3, 4],
         help="Seeds for non-deterministic policies (RL + random). "
-             "Deterministic baselines always use seed=0.",
+        "Deterministic baselines always use seed=0.",
     )
     p.add_argument(
-        "--n-episodes", type=int, default=30,
-        help="Episodes per (ood_class, RL_algo, seed) and "
-             "per (ood_class, random, seed) cell.",
+        "--n-episodes",
+        type=int,
+        default=30,
+        help="Episodes per (ood_class, RL_algo, seed) and per (ood_class, random, seed) cell.",
     )
     p.add_argument(
-        "--n-deterministic-episodes", type=int, default=150,
-        help="Episodes per (ood_class, deterministic_baseline) cell "
-             "(single seed=0).",
+        "--n-deterministic-episodes",
+        type=int,
+        default=150,
+        help="Episodes per (ood_class, deterministic_baseline) cell (single seed=0).",
     )
-    p.add_argument("--phase5-runs", default="runs/blue_team",
-                   help="Where the trained blue-team model.zip files live.")
+    p.add_argument(
+        "--phase5-runs",
+        default="runs/blue_team",
+        help="Where the trained blue-team model.zip files live.",
+    )
     p.add_argument("--out-root", default="runs/ablation/ood")
     p.add_argument("--generator-path", default="artifacts/generator/red_team")
     p.add_argument("--dataset-path", default="data/processed/ciciot2023")
@@ -306,16 +327,18 @@ def _build_argparser() -> argparse.ArgumentParser:
         default="data/processed/ciciot2023/splits/manifest.json",
     )
     p.add_argument(
-        "--rf-path", default="artifacts/detector/random_forest.joblib",
+        "--rf-path",
+        default="artifacts/detector/random_forest.joblib",
     )
     p.add_argument(
         "--phase6-eval-manifest",
         default="runs/benchmark/eval_manifest.json",
         help="Upstream benchmark eval manifest, hash-pinned in the F15 manifest "
-             "for the SHA-256 reproducibility chain (D7.7).",
+        "for the SHA-256 reproducibility chain (D7.7).",
     )
-    p.add_argument("--smoke", action="store_true",
-                   help="Smoke mode: 1 OOD class × 2 policies × 1 seed × 2 ep.")
+    p.add_argument(
+        "--smoke", action="store_true", help="Smoke mode: 1 OOD class × 2 policies × 1 seed × 2 ep."
+    )
     p.add_argument("--verbose", type=int, default=1)
     return p
 
@@ -325,7 +348,10 @@ def _build_argparser() -> argparse.ArgumentParser:
 
 _RL_ALGOS = {"dqn", "ppo", "a2c"}
 _DETERMINISTIC_BASELINES = {
-    "always_observe", "always_block", "recommended_action", "rf_acting",
+    "always_observe",
+    "always_block",
+    "recommended_action",
+    "rf_acting",
 }
 
 
@@ -334,7 +360,7 @@ def _roll_rl(
     ood_class: str,
     algo: str,
     seed: int,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """One (ood_class, RL_algo, seed) cell."""
     model_path = Path(args.blue_team_runs) / algo / f"seed_{seed}" / "model.zip"
     out_dir = Path(args.out_root) / ood_class / algo / f"seed_{seed}"
@@ -346,19 +372,26 @@ def _roll_rl(
         msg = f"missing blue-team checkpoint at {model_path}"
         logger.error(msg)
         return {
-            "kind": "trained", "ood_class": ood_class, "algo": algo, "seed": seed,
-            "run_id": run_id, "ok": False, "error": msg,
-            "model_path": str(model_path), "model_sha256": None,
+            "kind": "trained",
+            "ood_class": ood_class,
+            "algo": algo,
+            "seed": seed,
+            "run_id": run_id,
+            "ok": False,
+            "error": msg,
+            "model_path": str(model_path),
+            "model_sha256": None,
         }
 
     n_ep = 2 if args.smoke else args.n_episodes
     env = _build_ood_env(args, ood_class, seed=seed)
-    try:
+    try:  # noqa: SIM105
         model = _load_sb3_model(algo, model_path, env)
         policy = SB3PolicyAdapter(model, deterministic=True)
         t0 = time.time()
         stats = run_policy(
-            policy, env,
+            policy,
+            env,
             n_episodes=n_ep,
             jsonl_path=eval_jsonl,
             run_id=run_id,
@@ -368,7 +401,7 @@ def _roll_rl(
         )
         wallclock = time.time() - t0
     finally:
-        try:
+        try:  # noqa: SIM105
             env.close()
         except Exception:  # noqa: BLE001
             pass
@@ -393,7 +426,7 @@ def _roll_random(
     args: argparse.Namespace,
     ood_class: str,
     seed: int,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """One (ood_class, random, seed) cell."""
     out_dir = Path(args.out_root) / ood_class / "random" / f"seed_{seed}"
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -403,14 +436,15 @@ def _roll_random(
     n_ep = 2 if args.smoke else args.n_episodes
     rng = np.random.default_rng(seed)
 
-    def _seeded_random(obs: np.ndarray, info: Dict[str, Any]) -> int:
+    def _seeded_random(obs: np.ndarray, info: dict[str, Any]) -> int:
         return random_policy(obs, info, rng=rng)
 
     env = _build_ood_env(args, ood_class, seed=seed)
-    try:
+    try:  # noqa: SIM105
         t0 = time.time()
         stats = run_policy(
-            _seeded_random, env,
+            _seeded_random,
+            env,
             n_episodes=n_ep,
             jsonl_path=eval_jsonl,
             run_id=run_id,
@@ -420,7 +454,7 @@ def _roll_random(
         )
         wallclock = time.time() - t0
     finally:
-        try:
+        try:  # noqa: SIM105
             env.close()
         except Exception:  # noqa: BLE001
             pass
@@ -443,7 +477,7 @@ def _roll_deterministic(
     args: argparse.Namespace,
     ood_class: str,
     policy_name: str,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """One (ood_class, deterministic_baseline) cell. Single seed=0, n=150."""
     out_dir = Path(args.out_root) / ood_class / policy_name / "seed_0"
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -464,21 +498,26 @@ def _roll_deterministic(
             msg = f"missing RF detector at {rf_path}"
             logger.error(msg)
             return {
-                "kind": "baseline", "ood_class": ood_class,
-                "policy": policy_name, "seed": 0,
-                "run_id": run_id, "ok": False, "error": msg,
-                "rf_path": str(rf_path), "rf_sha256": None,
+                "kind": "baseline",
+                "ood_class": ood_class,
+                "policy": policy_name,
+                "seed": 0,
+                "run_id": run_id,
+                "ok": False,
+                "error": msg,
+                "rf_path": str(rf_path),
+                "rf_sha256": None,
             }
         # Probe the env to discover the obs dim, then compute num_features
         # the same way scripts/benchmark/run_test_eval.py does (environment-design
         # frozen contract).
         spec = _ood_eval_env_spec()
         probe_env = _build_ood_env(args, ood_class, seed=0)
-        try:
+        try:  # noqa: SIM105
             obs0 = probe_env.reset()
             obs_dim = int(np.asarray(obs0).reshape(-1).size)
         finally:
-            try:
+            try:  # noqa: SIM105
                 probe_env.close()
             except Exception:  # noqa: BLE001
                 pass
@@ -494,10 +533,11 @@ def _roll_deterministic(
         raise ValueError(f"unknown deterministic baseline {policy_name!r}")
 
     env = _build_ood_env(args, ood_class, seed=0)
-    try:
+    try:  # noqa: SIM105
         t0 = time.time()
         stats = run_policy(
-            policy, env,
+            policy,
+            env,
             n_episodes=n_ep,
             jsonl_path=eval_jsonl,
             run_id=run_id,
@@ -507,12 +547,12 @@ def _roll_deterministic(
         )
         wallclock = time.time() - t0
     finally:
-        try:
+        try:  # noqa: SIM105
             env.close()
         except Exception:  # noqa: BLE001
             pass
 
-    out: Dict[str, Any] = {
+    out: dict[str, Any] = {
         "kind": "baseline",
         "ood_class": ood_class,
         "policy": policy_name,
@@ -533,7 +573,7 @@ def _roll_deterministic(
 # ---------------------------------------------------------------- main
 
 
-def main(argv: Optional[List[str]] = None) -> int:
+def main(argv: list[str] | None = None) -> int:
     args = _build_argparser().parse_args(argv)
     logging.basicConfig(
         level=logging.INFO if args.verbose >= 1 else logging.WARNING,
@@ -547,12 +587,11 @@ def main(argv: Optional[List[str]] = None) -> int:
         args.policies = args.policies[:2]
         args.seeds = args.seeds[:1]
         logger.info(
-            "SMOKE mode: 1 OOD class × 2 policies × 1 seed × 2 ep "
-            "(approx 4 episodes total)."
+            "SMOKE mode: 1 OOD class × 2 policies × 1 seed × 2 ep (approx 4 episodes total)."
         )
 
     t_start = time.time()
-    results: List[Dict[str, Any]] = []
+    results: list[dict[str, Any]] = []
 
     for ood_class in args.ood_classes:
         for policy_name in args.policies:
@@ -561,7 +600,9 @@ def main(argv: Optional[List[str]] = None) -> int:
                     results.append(_roll_rl(args, ood_class, policy_name, seed))
                     logger.info(
                         "F15 cell done: ood=%s algo=%s seed=%d ok=%s wc=%.1fs",
-                        ood_class, policy_name, seed,
+                        ood_class,
+                        policy_name,
+                        seed,
                         results[-1]["ok"],
                         results[-1].get("wallclock_seconds", 0.0),
                     )
@@ -570,7 +611,8 @@ def main(argv: Optional[List[str]] = None) -> int:
                     results.append(_roll_random(args, ood_class, seed))
                     logger.info(
                         "F15 cell done: ood=%s policy=random seed=%d ok=%s wc=%.1fs",
-                        ood_class, seed,
+                        ood_class,
+                        seed,
                         results[-1]["ok"],
                         results[-1].get("wallclock_seconds", 0.0),
                     )
@@ -578,7 +620,8 @@ def main(argv: Optional[List[str]] = None) -> int:
                 results.append(_roll_deterministic(args, ood_class, policy_name))
                 logger.info(
                     "F15 cell done: ood=%s policy=%s ok=%s wc=%.1fs",
-                    ood_class, policy_name,
+                    ood_class,
+                    policy_name,
                     results[-1]["ok"],
                     results[-1].get("wallclock_seconds", 0.0),
                 )
@@ -597,7 +640,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         "phase": 7,
         "kind": "f15_ood_eval_manifest",
         "audit_finding": "AF1 — promote OOD-class robustness to Tier-1 "
-                          "deliverable (2026-04-30 mentor audit).",
+        "deliverable (2026-04-30 mentor audit).",
         "git_sha": _git_sha(),
         "started_at": datetime.fromtimestamp(t_start, tz=timezone.utc).strftime(
             "%Y-%m-%dT%H:%M:%SZ",
@@ -623,7 +666,7 @@ def main(argv: Optional[List[str]] = None) -> int:
             "p_defender_deescalation": _ood_eval_env_spec().p_defender_deescalation,
             "impact_is_terminal": _ood_eval_env_spec().impact_is_terminal,
             "_note": "environment-design frozen reward config (D7.4) — F15 isolates "
-                      "the generalisation axis from the reward-shaping axis.",
+            "the generalisation axis from the reward-shaping axis.",
         },
         "runs": results,
         "n_ok": sum(1 for r in results if r.get("ok")),
@@ -633,8 +676,10 @@ def main(argv: Optional[List[str]] = None) -> int:
     manifest_path.write_text(json.dumps(eval_manifest, indent=2))
     logger.info(
         "F15 OOD eval done: %d ok / %d failed in %.1fs; manifest -> %s",
-        eval_manifest["n_ok"], eval_manifest["n_failed"],
-        eval_manifest["wallclock_seconds"], manifest_path,
+        eval_manifest["n_ok"],
+        eval_manifest["n_failed"],
+        eval_manifest["wallclock_seconds"],
+        manifest_path,
     )
 
     return 0 if eval_manifest["n_failed"] == 0 else 1

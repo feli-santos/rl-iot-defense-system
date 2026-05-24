@@ -42,10 +42,9 @@ import hashlib
 import json
 import logging
 import math
-import statistics
 import subprocess
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import numpy as np
 
@@ -62,13 +61,18 @@ _ROOT = Path(__file__).resolve().parents[2]
 # Display name + canonical row ordering (top-to-bottom in the table).
 # Trained-RL first (the thesis's headline rows), then non-RL baselines
 # in increasing aggression.
-_POLICY_ORDER: List[str] = [
-    "dqn", "ppo", "a2c",
-    "random", "always_observe", "always_block",
-    "recommended_action", "rf_acting",
+_POLICY_ORDER: list[str] = [
+    "dqn",
+    "ppo",
+    "a2c",
+    "random",
+    "always_observe",
+    "always_block",
+    "recommended_action",
+    "rf_acting",
 ]
 
-_DISPLAY_NAMES: Dict[str, str] = {
+_DISPLAY_NAMES: dict[str, str] = {
     "dqn": "DQN",
     "ppo": "PPO",
     "a2c": "A2C",
@@ -80,7 +84,7 @@ _DISPLAY_NAMES: Dict[str, str] = {
 }
 
 
-def _sha256(path: Path) -> Optional[str]:
+def _sha256(path: Path) -> str | None:
     """SHA-256 of file content (1 MiB chunks); ``None`` if absent."""
     p = Path(path)
     if not p.exists():
@@ -94,10 +98,15 @@ def _sha256(path: Path) -> Optional[str]:
 
 def _git_sha() -> str:
     try:
-        return subprocess.check_output(
-            ["git", "rev-parse", "HEAD"], cwd=_ROOT,
-            stderr=subprocess.DEVNULL,
-        ).decode().strip()
+        return (
+            subprocess.check_output(
+                ["git", "rev-parse", "HEAD"],
+                cwd=_ROOT,
+                stderr=subprocess.DEVNULL,
+            )
+            .decode()
+            .strip()
+        )
     except Exception:  # noqa: BLE001
         return "unknown"
 
@@ -110,7 +119,7 @@ def _load_latency_ms(path: Path) -> np.ndarray:
     """
     if not path.exists():
         return np.array([], dtype=np.float64)
-    durs_ns: List[int] = []
+    durs_ns: list[int] = []
     with path.open("r", encoding="utf-8") as fh:
         for line in fh:
             line = line.strip()
@@ -126,7 +135,7 @@ def _load_latency_ms(path: Path) -> np.ndarray:
 # ---------------------------------------------------------- per-policy ----
 
 
-def _discover_seed_dirs(runs_root: Path, policy: str) -> List[Path]:
+def _discover_seed_dirs(runs_root: Path, policy: str) -> list[Path]:
     """Return ``[seed_0, seed_1, ...]`` directories for one policy.
 
     Order is preserved by integer-seed sort so cross-policy tables line
@@ -136,7 +145,7 @@ def _discover_seed_dirs(runs_root: Path, policy: str) -> List[Path]:
     base = runs_root / policy
     if not base.exists():
         return []
-    out: List[Tuple[int, Path]] = []
+    out: list[tuple[int, Path]] = []
     for child in base.iterdir():
         if not child.is_dir() or not child.name.startswith("seed_"):
             continue
@@ -150,8 +159,8 @@ def _discover_seed_dirs(runs_root: Path, policy: str) -> List[Path]:
 
 def _summarise_policy(
     policy: str,
-    seed_dirs: List[Path],
-) -> Dict[str, Any]:
+    seed_dirs: list[Path],
+) -> dict[str, Any]:
     """Compute the F5 row for one policy.
 
     The mean-reward bootstrap CI is computed differently for
@@ -164,9 +173,9 @@ def _summarise_policy(
       mean per *episode*; bootstrap across all 150 episodes. Otherwise
       the CI would be a single point and look misleadingly tight.
     """
-    all_records: List[Dict] = []
-    per_seed_means: List[float] = []
-    latency_chunks: List[np.ndarray] = []
+    all_records: list[dict] = []
+    per_seed_means: list[float] = []
+    latency_chunks: list[np.ndarray] = []
     for sd in seed_dirs:
         recs = read_episodes_jsonl(sd / "eval_test.jsonl")
         all_records.extend(recs)
@@ -195,20 +204,23 @@ def _summarise_policy(
     rewards = [r["episode_reward"] for r in all_records]
     mttc_vals = [r["mttc_steps"] for r in all_records if r.get("mttc_steps") is not None]
     compromised = [1.0 if r.get("compromised") else 0.0 for r in all_records]
-    mitigated = [
-        1.0 if r.get("end_outcome") == "impact_mitigated" else 0.0
-        for r in all_records
-    ]
+    mitigated = [1.0 if r.get("end_outcome") == "impact_mitigated" else 0.0 for r in all_records]
     lengths = [r["episode_length"] for r in all_records]
 
     # Bootstrap CI: choose granularity to keep the math meaningful.
     if len(per_seed_means) >= 3:
         ci_low, _ci_mean, ci_high = bootstrap_ci(
-            per_seed_means, n_resamples=2000, alpha=0.05, seed=0,
+            per_seed_means,
+            n_resamples=2000,
+            alpha=0.05,
+            seed=0,
         )
     else:
         ci_low, _ci_mean, ci_high = bootstrap_ci(
-            rewards, n_resamples=2000, alpha=0.05, seed=0,
+            rewards,
+            n_resamples=2000,
+            alpha=0.05,
+            seed=0,
         )
 
     # Latency: concatenate seed-level chunks; compute robust quantiles.
@@ -242,16 +254,16 @@ def _summarise_policy(
 # ---------------------------------------------------------- best-algo
 
 
-def _best_row(rows: List[Dict[str, Any]]) -> Optional[str]:
+def _best_row(rows: list[dict[str, Any]]) -> str | None:
     """Return the policy name with max mean_reward (ties: lower p95 latency).
 
     Mirrors D6.10. Returns ``None`` when every row's mean_reward is NaN
     (e.g., empty sweep).
     """
     candidates = [
-        r for r in rows
-        if r.get("mean_reward") is not None
-        and not math.isnan(r.get("mean_reward", math.nan))
+        r
+        for r in rows
+        if r.get("mean_reward") is not None and not math.isnan(r.get("mean_reward", math.nan))
     ]
     if not candidates:
         return None
@@ -264,17 +276,23 @@ def _best_row(rows: List[Dict[str, Any]]) -> Optional[str]:
 # ------------------------------------------------------------ rendering
 
 
-def _render_markdown(rows: List[Dict[str, Any]], best: Optional[str]) -> str:
+def _render_markdown(rows: list[dict[str, Any]], best: str | None) -> str:
     """Render F5 as a Markdown table matching the thesis-paper format."""
     headers = [
-        "Policy", "n", "Mean reward (95 % CI)", "MTTC",
-        "Compromise %", "Mitigated %", "Ep. length",
-        "Latency p50 (ms)", "Latency p95 (ms)",
+        "Policy",
+        "n",
+        "Mean reward (95 % CI)",
+        "MTTC",
+        "Compromise %",
+        "Mitigated %",
+        "Ep. length",
+        "Latency p50 (ms)",
+        "Latency p95 (ms)",
     ]
     sep = "|" + "|".join(["---"] * len(headers)) + "|"
     out = ["| " + " | ".join(headers) + " |", sep]
     for r in rows:
-        is_best = (r["policy"] == best)
+        is_best = r["policy"] == best
         name = _DISPLAY_NAMES.get(r["policy"], r["policy"])
         if is_best:
             name = f"**{name}**"
@@ -283,20 +301,28 @@ def _render_markdown(rows: List[Dict[str, Any]], best: Optional[str]) -> str:
             name,
             f"{r['n_episodes']}",
             ci,
-            f"{r['mean_mttc']:.2f}" if not math.isnan(r['mean_mttc']) else "—",
-            f"{100*r['compromise_rate']:.1f}",
-            f"{100*r['mitigated_impact_rate']:.1f}",
+            f"{r['mean_mttc']:.2f}" if not math.isnan(r["mean_mttc"]) else "—",
+            f"{100 * r['compromise_rate']:.1f}",
+            f"{100 * r['mitigated_impact_rate']:.1f}",
             f"{r['mean_episode_length']:.1f}",
-            f"{r['p50_inference_latency_ms']:.3f}" if not math.isnan(r['p50_inference_latency_ms']) else "—",
-            f"{r['p95_inference_latency_ms']:.3f}" if not math.isnan(r['p95_inference_latency_ms']) else "—",
+            (
+                f"{r['p50_inference_latency_ms']:.3f}"
+                if not math.isnan(r["p50_inference_latency_ms"])
+                else "—"
+            ),
+            (
+                f"{r['p95_inference_latency_ms']:.3f}"
+                if not math.isnan(r["p95_inference_latency_ms"])
+                else "—"
+            ),
         ]
         out.append("| " + " | ".join(cells) + " |")
     return "\n".join(out) + "\n"
 
 
 def _render_png(
-    rows: List[Dict[str, Any]],
-    best: Optional[str],
+    rows: list[dict[str, Any]],
+    best: str | None,
     out_path: Path,
 ) -> None:
     """Render the F5 table as a PNG via matplotlib (no external deps)."""
@@ -306,10 +332,17 @@ def _render_png(
     import matplotlib.pyplot as plt
 
     headers = [
-        "Policy", "n", "Mean reward (95 % CI)", "MTTC",
-        "Comp %", "Mit %", "Ep. len.", "p50 ms", "p95 ms",
+        "Policy",
+        "n",
+        "Mean reward (95 % CI)",
+        "MTTC",
+        "Comp %",
+        "Mit %",
+        "Ep. len.",
+        "p50 ms",
+        "p95 ms",
     ]
-    cell_text: List[List[str]] = []
+    cell_text: list[list[str]] = []
     for r in rows:
         name = _DISPLAY_NAMES.get(r["policy"], r["policy"])
         if r["policy"] == best:
@@ -318,17 +351,27 @@ def _render_png(
             f"{r['mean_reward']:.0f} "
             f"({r['mean_reward_ci_low']:.0f}, {r['mean_reward_ci_high']:.0f})"
         )
-        cell_text.append([
-            name,
-            f"{r['n_episodes']}",
-            ci,
-            f"{r['mean_mttc']:.2f}" if not math.isnan(r['mean_mttc']) else "—",
-            f"{100*r['compromise_rate']:.1f}",
-            f"{100*r['mitigated_impact_rate']:.1f}",
-            f"{r['mean_episode_length']:.1f}",
-            f"{r['p50_inference_latency_ms']:.3f}" if not math.isnan(r['p50_inference_latency_ms']) else "—",
-            f"{r['p95_inference_latency_ms']:.3f}" if not math.isnan(r['p95_inference_latency_ms']) else "—",
-        ])
+        cell_text.append(
+            [
+                name,
+                f"{r['n_episodes']}",
+                ci,
+                f"{r['mean_mttc']:.2f}" if not math.isnan(r["mean_mttc"]) else "—",
+                f"{100 * r['compromise_rate']:.1f}",
+                f"{100 * r['mitigated_impact_rate']:.1f}",
+                f"{r['mean_episode_length']:.1f}",
+                (
+                    f"{r['p50_inference_latency_ms']:.3f}"
+                    if not math.isnan(r["p50_inference_latency_ms"])
+                    else "—"
+                ),
+                (
+                    f"{r['p95_inference_latency_ms']:.3f}"
+                    if not math.isnan(r["p95_inference_latency_ms"])
+                    else "—"
+                ),
+            ]
+        )
     n = len(cell_text)
     fig, ax = plt.subplots(figsize=(13, 0.6 + 0.45 * (n + 1)))
     ax.set_axis_off()
@@ -363,7 +406,8 @@ def _render_png(
     fig.suptitle(
         "F5 — Final Security Metrics on `test_balanced` "
         "(★ = best by mean reward, tie-break p95 latency)",
-        fontsize=11, y=0.995,
+        fontsize=11,
+        y=0.995,
     )
     fig.tight_layout()
     fig.savefig(out_path, dpi=200, bbox_inches="tight")
@@ -373,7 +417,7 @@ def _render_png(
 # ---------------------------------------------------------- main
 
 
-def _write_csv(rows: List[Dict[str, Any]], out_path: Path) -> None:
+def _write_csv(rows: list[dict[str, Any]], out_path: Path) -> None:
     """CSV with one row per policy, all metric columns."""
     if not rows:
         out_path.write_text("")
@@ -391,13 +435,15 @@ def _build_argparser() -> argparse.ArgumentParser:
     p.add_argument("--runs-root", default="runs/benchmark")
     p.add_argument("--out-dir", default="docs/results/06_benchmark")
     p.add_argument(
-        "--policies", nargs="+", default=_POLICY_ORDER,
+        "--policies",
+        nargs="+",
+        default=_POLICY_ORDER,
         help="Subset / ordering of policies to include.",
     )
     return p
 
 
-def main(argv: Optional[List[str]] = None) -> int:
+def main(argv: list[str] | None = None) -> int:
     args = _build_argparser().parse_args(argv)
     logging.basicConfig(
         level=logging.INFO,
@@ -407,8 +453,8 @@ def main(argv: Optional[List[str]] = None) -> int:
     out_dir = Path(args.out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    rows: List[Dict[str, Any]] = []
-    input_jsonl_hashes: Dict[str, str] = {}
+    rows: list[dict[str, Any]] = []
+    input_jsonl_hashes: dict[str, str] = {}
     for pol in args.policies:
         seed_dirs = _discover_seed_dirs(runs_root, pol)
         if not seed_dirs:
@@ -447,9 +493,9 @@ def main(argv: Optional[List[str]] = None) -> int:
         "git_sha": _git_sha(),
         "outputs": {
             "json": str(out_dir / "F5_summary.json"),
-            "md":   str(out_dir / "F5_summary.md"),
-            "csv":  str(out_dir / "F5_summary.csv"),
-            "png":  str(out_dir / "F5_table.png"),
+            "md": str(out_dir / "F5_summary.md"),
+            "csv": str(out_dir / "F5_summary.csv"),
+            "png": str(out_dir / "F5_table.png"),
         },
         "inputs": {
             "eval_manifest": {
@@ -464,7 +510,9 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     logger.info(
         "F5 built: %d rows, best=%s — wrote %s",
-        len(rows), best, out_dir,
+        len(rows),
+        best,
+        out_dir,
     )
     # Echo the best row to stdout for convenience.
     if best is not None:
@@ -473,9 +521,12 @@ def main(argv: Optional[List[str]] = None) -> int:
                 logger.info(
                     "best policy: %s mean_reward=%.2f (95%% CI %.2f, %.2f) "
                     "p50_lat=%.3f ms p95_lat=%.3f ms",
-                    r["policy"], r["mean_reward"],
-                    r["mean_reward_ci_low"], r["mean_reward_ci_high"],
-                    r["p50_inference_latency_ms"], r["p95_inference_latency_ms"],
+                    r["policy"],
+                    r["mean_reward"],
+                    r["mean_reward_ci_low"],
+                    r["mean_reward_ci_high"],
+                    r["p50_inference_latency_ms"],
+                    r["p95_inference_latency_ms"],
                 )
     return 0
 

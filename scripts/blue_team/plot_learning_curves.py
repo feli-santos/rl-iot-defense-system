@@ -21,9 +21,10 @@ import json
 import logging
 import subprocess
 import sys
+from collections.abc import Sequence
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Sequence
+from typing import Any
 
 import matplotlib
 
@@ -52,12 +53,14 @@ _ALGO_COLORS = {"dqn": "#d62728", "ppo": "#1f77b4", "a2c": "#2ca02c"}
 
 def _git_sha() -> str:
     try:
-        sha = subprocess.check_output(
-            ["git", "rev-parse", "--short=12", "HEAD"], cwd=_ROOT
-        ).decode().strip()
-        dirty = subprocess.check_output(
-            ["git", "status", "--porcelain"], cwd=_ROOT
-        ).decode().strip()
+        sha = (
+            subprocess.check_output(["git", "rev-parse", "--short=12", "HEAD"], cwd=_ROOT)
+            .decode()
+            .strip()
+        )
+        dirty = (
+            subprocess.check_output(["git", "status", "--porcelain"], cwd=_ROOT).decode().strip()
+        )
         return sha + ("-dirty" if dirty else "")
     except Exception:
         return "unknown"
@@ -72,14 +75,14 @@ def _sha256(path: Path) -> str:
 
 
 def _build_curves(
-    records: Sequence[Dict],
+    records: Sequence[dict],
     edges: Sequence[int],
     *,
     metric_keys: Sequence[str],
     aggregators: Sequence[str],
-) -> Dict[str, np.ndarray]:
+) -> dict[str, np.ndarray]:
     """Bin a single seed's records into per-metric per-bucket curves."""
-    out: Dict[str, np.ndarray] = {}
+    out: dict[str, np.ndarray] = {}
     for k, agg in zip(metric_keys, aggregators):
         out[k] = bin_by_timesteps(records, edges, k, aggregator=agg)
     return out
@@ -92,7 +95,7 @@ def render(
     n_bins: int = 25,
     bootstrap_n: int = 1000,
     fraction: float = 0.10,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Build F3 + F3_summary.json + manifest.json under ``out_dir``."""
     out_dir.mkdir(parents=True, exist_ok=True)
 
@@ -123,13 +126,11 @@ def render(
             )
     metric_keys = ("episode_reward", "mttc_steps", "impact_mitigated")
     aggregators = ("mean", "mean", "rate")
-    panels: Dict[str, Dict[str, Dict[str, np.ndarray]]] = {
+    panels: dict[str, dict[str, dict[str, np.ndarray]]] = {
         k: {} for k in metric_keys  # algo -> {low, mean, high}
     }
-    eval_panels: Dict[str, Dict[str, Dict[str, np.ndarray]]] = {
-        k: {} for k in metric_keys
-    }
-    summary: Dict[str, Any] = {
+    eval_panels: dict[str, dict[str, dict[str, np.ndarray]]] = {k: {} for k in metric_keys}
+    summary: dict[str, Any] = {
         "version": "1.0",
         "git_sha": _git_sha(),
         "timestamp": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
@@ -146,34 +147,28 @@ def render(
         # Gather all seeds for this algo.
         seeds_train = sorted(s for (a, s) in train_runs if a == algo)
         seeds_eval = sorted(s for (a, s) in eval_runs if a == algo)
-        per_seed_train: Dict[str, List[np.ndarray]] = {k: [] for k in metric_keys}
-        per_seed_eval: Dict[str, List[np.ndarray]] = {k: [] for k in metric_keys}
+        per_seed_train: dict[str, list[np.ndarray]] = {k: [] for k in metric_keys}
+        per_seed_eval: dict[str, list[np.ndarray]] = {k: [] for k in metric_keys}
 
-        last_window_seeds: List[Dict[str, Any]] = []
-        last_window_seeds_eval: List[Dict[str, Any]] = []
+        last_window_seeds: list[dict[str, Any]] = []
+        last_window_seeds_eval: list[dict[str, Any]] = []
 
         for seed in seeds_train:
             recs = train_runs[(algo, seed)]
-            curves = _build_curves(
-                recs, edges, metric_keys=metric_keys, aggregators=aggregators
-            )
+            curves = _build_curves(recs, edges, metric_keys=metric_keys, aggregators=aggregators)
             for k in metric_keys:
                 per_seed_train[k].append(curves[k])
             last_window_seeds.append(summarise_last_window(recs, fraction=fraction))
         for seed in seeds_eval:
             recs = eval_runs[(algo, seed)]
-            curves = _build_curves(
-                recs, edges, metric_keys=metric_keys, aggregators=aggregators
-            )
+            curves = _build_curves(recs, edges, metric_keys=metric_keys, aggregators=aggregators)
             for k in metric_keys:
                 per_seed_eval[k].append(curves[k])
             last_window_seeds_eval.append(summarise_last_window(recs, fraction=fraction))
 
         # Aggregate across seeds.
         for k in metric_keys:
-            lo, mu, hi = aggregate_seeds(
-                per_seed_train[k], n_resamples=bootstrap_n, seed=0
-            )
+            lo, mu, hi = aggregate_seeds(per_seed_train[k], n_resamples=bootstrap_n, seed=0)
             panels[k][algo] = {"low": lo, "mean": mu, "high": hi}
             if per_seed_eval[k]:
                 lo_e, mu_e, hi_e = aggregate_seeds(
@@ -182,26 +177,24 @@ def render(
                 eval_panels[k][algo] = {"low": lo_e, "mean": mu_e, "high": hi_e}
 
         # Last-window scalars (aggregated across seeds).
-        def _agg_lw(items: List[Dict[str, Any]], key: str) -> Dict[str, Any]:
+        def _agg_lw(items: list[dict[str, Any]], key: str) -> dict[str, Any]:
             vals = [it[key] for it in items if it[key] == it[key]]  # NaN-safe
             if not vals:
                 return {"mean": float("nan"), "values": []}
-            return {"mean": float(np.mean(vals)),
-                    "values": [float(v) for v in vals]}
+            return {"mean": float(np.mean(vals)), "values": [float(v) for v in vals]}
 
         _summary_keys = (
-            "mean_reward", "mean_mttc", "compromise_rate",
-            "mitigated_impact_rate", "mitigated_among_compromised",
+            "mean_reward",
+            "mean_mttc",
+            "compromise_rate",
+            "mitigated_impact_rate",
+            "mitigated_among_compromised",
         )
         summary["algos"][algo] = {
             "n_seeds_train": len(seeds_train),
             "n_seeds_eval": len(seeds_eval),
-            "train_last_window": {
-                k: _agg_lw(last_window_seeds, k) for k in _summary_keys
-            },
-            "eval_last_window": {
-                k: _agg_lw(last_window_seeds_eval, k) for k in _summary_keys
-            },
+            "train_last_window": {k: _agg_lw(last_window_seeds, k) for k in _summary_keys},
+            "eval_last_window": {k: _agg_lw(last_window_seeds_eval, k) for k in _summary_keys},
         }
 
     # ---------- render --------------------------------------------------------
@@ -218,17 +211,21 @@ def render(
             low = agg["low"]
             high = agg["high"]
             valid = np.isfinite(mean)
-            ax.plot(centers[valid], mean[valid], color=color,
-                    label=f"{algo.upper()} (train)", lw=2)
-            ax.fill_between(centers[valid], low[valid], high[valid],
-                            color=color, alpha=0.18)
+            ax.plot(centers[valid], mean[valid], color=color, label=f"{algo.upper()} (train)", lw=2)
+            ax.fill_between(centers[valid], low[valid], high[valid], color=color, alpha=0.18)
         # Eval overlay (dotted).
         for algo, agg in eval_panels[k].items():
             color = _ALGO_COLORS.get(algo, "k")
             mean = agg["mean"]
             valid = np.isfinite(mean)
-            ax.plot(centers[valid], mean[valid], color=color, ls=":",
-                    lw=2, label=f"{algo.upper()} (eval)")
+            ax.plot(
+                centers[valid],
+                mean[valid],
+                color=color,
+                ls=":",
+                lw=2,
+                label=f"{algo.upper()} (eval)",
+            )
         title, ylabel = metric_titles[k]
         ax.set_title(title)
         ax.set_xlabel("Training timesteps")
@@ -236,9 +233,8 @@ def render(
         ax.grid(alpha=0.25)
     axes[0].legend(loc="best", fontsize=8, ncol=2)
     n_seeds_summary = sum(
-        len(seeds_train) for seeds_train in [
-            sorted(s for (a, s) in train_runs if a == algo) for algo in algos
-        ]
+        len(seeds_train)
+        for seeds_train in [sorted(s for (a, s) in train_runs if a == algo) for algo in algos]
     )
     fig.suptitle(
         f"F3 — RL learning curves "
@@ -259,12 +255,12 @@ def render(
     logger.info("wrote %s", summary_path)
 
     # manifest.json — hash chain pinned to inputs
-    inputs: Dict[str, str] = {}
-    for (a, s), recs in {**train_runs}.items():
+    inputs: dict[str, str] = {}
+    for (a, s), _recs in {**train_runs}.items():
         p = runs_root / a / f"seed_{s}" / "episodes.jsonl"
         if p.exists():
             inputs[str(p.relative_to(_ROOT) if p.is_absolute() else p)] = _sha256(p)
-    for (a, s), recs in {**eval_runs}.items():
+    for (a, s), _recs in {**eval_runs}.items():
         p = runs_root / a / f"seed_{s}" / "eval.jsonl"
         if p.exists():
             inputs[str(p.relative_to(_ROOT) if p.is_absolute() else p)] = _sha256(p)
@@ -290,7 +286,7 @@ def render(
     }
 
 
-def main(argv: Optional[list[str]] = None) -> int:
+def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(description="Render F3 learning curves.")
     p.add_argument("--runs-root", required=True)
     p.add_argument("--out-dir", default="docs/results/05_blue_team")

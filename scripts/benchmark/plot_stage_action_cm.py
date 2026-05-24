@@ -32,7 +32,7 @@ import logging
 import math
 import subprocess
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import numpy as np
 
@@ -49,7 +49,7 @@ _ROOT = Path(__file__).resolve().parents[2]
 # Recommended action by stage; mirrors src.environment.adversarial_env.
 # Drift-guarded by the same constant in baseline_policies.py and by
 # tests/test_baseline_policies.py.
-_REC: Dict[int, int] = {0: 0, 1: 1, 2: 2, 3: 3, 4: 4}
+_REC: dict[int, int] = {0: 0, 1: 1, 2: 2, 3: 3, 4: 4}
 
 _STAGE_LABELS = ["BENIGN", "RECON", "ACCESS", "MANEUVER", "IMPACT"]
 _ACTION_LABELS = ["OBSERVE", "LOG", "THROTTLE", "BLOCK", "ISOLATE"]
@@ -61,12 +61,16 @@ _ACTION_LABELS = ["OBSERVE", "LOG", "THROTTLE", "BLOCK", "ISOLATE"]
 # its CM would be a perfect identity matrix by construction (D6.5
 # mapping) and the panel would carry no information; F6 is about
 # *deviations* from the recommended policy.
-_PANEL_ORDER: List[str] = [
-    "dqn", "ppo", "a2c",
-    "random", "always_observe", "always_block",
+_PANEL_ORDER: list[str] = [
+    "dqn",
+    "ppo",
+    "a2c",
+    "random",
+    "always_observe",
+    "always_block",
 ]
 
-_DISPLAY: Dict[str, str] = {
+_DISPLAY: dict[str, str] = {
     "dqn": "DQN",
     "ppo": "PPO",
     "a2c": "A2C",
@@ -99,7 +103,7 @@ def _nan_to_none(o: Any) -> Any:
     return o
 
 
-def _sha256(path: Path) -> Optional[str]:
+def _sha256(path: Path) -> str | None:
     """SHA-256 of file content; ``None`` if missing."""
     p = Path(path)
     if not p.exists():
@@ -113,20 +117,25 @@ def _sha256(path: Path) -> Optional[str]:
 
 def _git_sha() -> str:
     try:
-        return subprocess.check_output(
-            ["git", "rev-parse", "HEAD"], cwd=_ROOT,
-            stderr=subprocess.DEVNULL,
-        ).decode().strip()
+        return (
+            subprocess.check_output(
+                ["git", "rev-parse", "HEAD"],
+                cwd=_ROOT,
+                stderr=subprocess.DEVNULL,
+            )
+            .decode()
+            .strip()
+        )
     except Exception:  # noqa: BLE001
         return "unknown"
 
 
-def _gather_records(runs_root: Path, policy: str) -> List[Dict]:
+def _gather_records(runs_root: Path, policy: str) -> list[dict]:
     """Read every per-seed JSONL for this policy and concatenate."""
     base = runs_root / policy
     if not base.exists():
         return []
-    out: List[Dict] = []
+    out: list[dict] = []
     for seed_dir in sorted(base.iterdir()):
         if not seed_dir.is_dir() or not seed_dir.name.startswith("seed_"):
             continue
@@ -168,8 +177,8 @@ def _proportionality_score(
 
 
 def _render(
-    matrices: Dict[str, np.ndarray],
-    scores: Dict[str, float],
+    matrices: dict[str, np.ndarray],
+    scores: dict[str, float],
     out_path: Path,
 ) -> None:
     """Render the 2×3 grid of stage × action heatmaps."""
@@ -186,8 +195,11 @@ def _render(
     rows = 2
     cols = math.ceil(n / rows)
     fig, axes = plt.subplots(
-        rows, cols, figsize=(3.6 * cols, 3.6 * rows),
-        sharex=False, sharey=False,
+        rows,
+        cols,
+        figsize=(3.6 * cols, 3.6 * rows),
+        sharex=False,
+        sharey=False,
     )
     axes_flat = np.asarray(axes).reshape(-1)
 
@@ -199,8 +211,7 @@ def _render(
         cm = matrices[pol]
         # Heatmap with NaN → white.
         masked = np.ma.array(cm, mask=~np.isfinite(cm))
-        im = ax.imshow(masked, cmap="viridis", vmin=0.0, vmax=1.0,
-                       aspect="auto")
+        im = ax.imshow(masked, cmap="viridis", vmin=0.0, vmax=1.0, aspect="auto")
         # Cell annotations (white on dark cells, black on light).
         for s in range(5):
             for a in range(5):
@@ -208,22 +219,26 @@ def _render(
                 if not np.isfinite(v):
                     continue
                 color = "white" if v > 0.45 else "black"
-                ax.text(a, s, f"{v:.2f}", ha="center", va="center",
-                        color=color, fontsize=7)
+                ax.text(a, s, f"{v:.2f}", ha="center", va="center", color=color, fontsize=7)
         # Proportionality band overlay (|a-rec(s)|<=1).
         for s in range(5):
             rec_a = _REC[s]
             lo = max(rec_a - 1, 0)
             hi = min(rec_a + 1, 4)
-            ax.add_patch(Rectangle(
-                (lo - 0.5, s - 0.5), hi - lo + 1, 1,
-                linewidth=1.2, edgecolor="red", facecolor="none",
-                alpha=0.7,
-            ))
+            ax.add_patch(
+                Rectangle(
+                    (lo - 0.5, s - 0.5),
+                    hi - lo + 1,
+                    1,
+                    linewidth=1.2,
+                    edgecolor="red",
+                    facecolor="none",
+                    alpha=0.7,
+                )
+            )
         # Axes & title.
         ax.set_xticks(range(5))
-        ax.set_xticklabels(_ACTION_LABELS, rotation=30, ha="right",
-                           fontsize=7)
+        ax.set_xticklabels(_ACTION_LABELS, rotation=30, ha="right", fontsize=7)
         ax.set_yticks(range(5))
         ax.set_yticklabels(_STAGE_LABELS, fontsize=7)
         ax.set_xlabel("Action", fontsize=8)
@@ -239,7 +254,8 @@ def _render(
     cbar.set_label("Decision share within stage", fontsize=8)
     fig.suptitle(
         "F6 — Stage × Action Decision Distribution per Policy on `test_balanced`",
-        fontsize=12, y=1.0,
+        fontsize=12,
+        y=1.0,
     )
     fig.tight_layout(rect=(0, 0, 0.95, 0.97))
     fig.savefig(out_path, dpi=200, bbox_inches="tight")
@@ -249,10 +265,10 @@ def _render(
 def _benign_fpr(
     cm: np.ndarray,
     *,
-    aggressive_actions: Tuple[int, ...] = (3, 4),
+    aggressive_actions: tuple[int, ...] = (3, 4),
     warn_threshold: float = 0.01,
     policy_name: str = "unknown",
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Compute false-positive rate on BENIGN traffic (thesis review issue C17).
 
     The BENIGN row (index 0) of the stage×action matrix gives the fraction of
@@ -295,7 +311,10 @@ def _benign_fpr(
             "⚠  BENIGN FPR = %.3f (%.1f%%) for policy %r — exceeds "
             "%.1f%% threshold. Consider tuning the reward's "
             "disproportionate-action penalty.",
-            fpr, fpr * 100, policy_name, warn_threshold * 100,
+            fpr,
+            fpr * 100,
+            policy_name,
+            warn_threshold * 100,
         )
     return {
         "benign_fpr": fpr,
@@ -313,7 +332,7 @@ def _build_argparser() -> argparse.ArgumentParser:
     return p
 
 
-def main(argv: Optional[List[str]] = None) -> int:
+def main(argv: list[str] | None = None) -> int:
     args = _build_argparser().parse_args(argv)
     logging.basicConfig(
         level=logging.INFO,
@@ -323,9 +342,9 @@ def main(argv: Optional[List[str]] = None) -> int:
     out_dir = Path(args.out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    matrices: Dict[str, np.ndarray] = {}
-    scores: Dict[str, float] = {}
-    in_hashes: Dict[str, str] = {}
+    matrices: dict[str, np.ndarray] = {}
+    scores: dict[str, float] = {}
+    in_hashes: dict[str, str] = {}
     for pol in args.policies:
         records = _gather_records(runs_root, pol)
         if not records:
@@ -344,7 +363,8 @@ def main(argv: Optional[List[str]] = None) -> int:
                 in_hashes[str(jp)] = sha
         logger.info(
             "%s: G6.3 score (non-IMPACT) = %s",
-            pol, "—" if not np.isfinite(scores[pol]) else f"{scores[pol]:.3f}",
+            pol,
+            "—" if not np.isfinite(scores[pol]) else f"{scores[pol]:.3f}",
         )
 
     if not matrices:
@@ -367,12 +387,9 @@ def main(argv: Optional[List[str]] = None) -> int:
             pol: {
                 "matrix": _nan_to_none(matrices[pol].tolist()),
                 "g63_score_non_impact": (
-                    None if not np.isfinite(scores[pol])
-                    else float(scores[pol])
+                    None if not np.isfinite(scores[pol]) else float(scores[pol])
                 ),
-                "g63_pass": bool(
-                    np.isfinite(scores[pol]) and scores[pol] >= 0.70
-                ),
+                "g63_pass": bool(np.isfinite(scores[pol]) and scores[pol] >= 0.70),
             }
             for pol in matrices
         },
@@ -387,9 +404,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     # regression that introduces a non-IMPACT NaN will fail loudly
     # at serialisation time rather than silently emitting non-RFC
     # JSON.
-    (out_dir / "F6_summary.json").write_text(
-        json.dumps(summary, indent=2, allow_nan=False)
-    )
+    (out_dir / "F6_summary.json").write_text(json.dumps(summary, indent=2, allow_nan=False))
 
     eval_manifest_path = runs_root / "eval_manifest.json"
     manifest = {
@@ -397,7 +412,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         "figure": "F6",
         "git_sha": _git_sha(),
         "outputs": {
-            "png":  str(png_path),
+            "png": str(png_path),
             "json": str(out_dir / "F6_summary.json"),
         },
         "inputs": {
@@ -411,7 +426,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     (out_dir / "F6_manifest.json").write_text(json.dumps(manifest, indent=2))
 
     # ---- Benign FPR analysis (thesis review issue C17) ----
-    fpr_results: Dict[str, Any] = {}
+    fpr_results: dict[str, Any] = {}
     any_exceeds = False
     for pol, cm in matrices.items():
         fpr_result = _benign_fpr(cm, warn_threshold=0.01, policy_name=pol)
@@ -442,7 +457,8 @@ def main(argv: Optional[List[str]] = None) -> int:
     fpr_path.write_text(json.dumps(fpr_summary, indent=2))
     logger.info(
         "Benign FPR summary written to %s  [any_exceeds=%s]",
-        fpr_path, any_exceeds,
+        fpr_path,
+        any_exceeds,
     )
 
     logger.info("F6 written to %s", out_dir)

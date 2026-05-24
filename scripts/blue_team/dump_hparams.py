@@ -18,7 +18,7 @@ import json
 import logging
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 _ROOT = Path(__file__).resolve().parents[2]
 if str(_ROOT) not in sys.path:
@@ -35,11 +35,11 @@ def _format_value(v: Any) -> str:
     return str(v)
 
 
-def _table(rows: List[Dict[str, Any]]) -> str:
+def _table(rows: list[dict[str, Any]]) -> str:
     """Build a markdown table from a list of {algo: ..., **hparams}."""
     if not rows:
         return "_No runs found._\n"
-    keys: List[str] = ["algo", "total_timesteps"]
+    keys: list[str] = ["algo", "total_timesteps"]
     for r in rows:
         for k in r["algo_hparams"]:
             if k not in keys:
@@ -55,10 +55,10 @@ def _table(rows: List[Dict[str, Any]]) -> str:
     return "\n".join(lines) + "\n"
 
 
-def render(runs_root: Path, out_dir: Path) -> Dict[str, Any]:
+def render(runs_root: Path, out_dir: Path) -> dict[str, Any]:
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    runs: Dict[str, Dict[str, Any]] = {}
+    runs: dict[str, dict[str, Any]] = {}
     for manifest_path in sorted(runs_root.rglob("run_manifest.json")):
         d = json.loads(manifest_path.read_text())
         algo = d.get("algo")
@@ -81,7 +81,9 @@ def render(runs_root: Path, out_dir: Path) -> Dict[str, Any]:
             if entry["algo_hparams"] != d["algo_hparams"]:
                 logger.warning(
                     "hparams divergence for algo=%s between %s and %s",
-                    algo, entry["examples"][0], manifest_path,
+                    algo,
+                    entry["examples"][0],
+                    manifest_path,
                 )
             entry["examples"].append(str(manifest_path))
 
@@ -105,7 +107,7 @@ def render(runs_root: Path, out_dir: Path) -> Dict[str, Any]:
     return {"md_path": str(md_path), "json_path": str(json_path)}
 
 
-def main(argv: Optional[list[str]] = None) -> int:
+def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(description="Render T1 hyperparameters table.")
     p.add_argument("--runs-root", required=True)
     p.add_argument("--out-dir", default="docs/results/05_blue_team")

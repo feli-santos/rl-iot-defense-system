@@ -39,7 +39,7 @@ Key Design
 import logging
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Optional, Union
 
 import gymnasium as gym
 import numpy as np
@@ -56,29 +56,29 @@ logger = logging.getLogger(__name__)
 # ACTION SPACE: Force Continuum
 # =============================================================================
 
-ACTION_NAMES: List[str] = [
-    "OBSERVE",   # Level 0: Passive monitoring
-    "LOG",       # Level 1: Enhanced logging
+ACTION_NAMES: list[str] = [
+    "OBSERVE",  # Level 0: Passive monitoring
+    "LOG",  # Level 1: Enhanced logging
     "THROTTLE",  # Level 2: Rate limiting
-    "BLOCK",     # Level 3: Block connections
-    "ISOLATE",   # Level 4: System isolation
+    "BLOCK",  # Level 3: Block connections
+    "ISOLATE",  # Level 4: System isolation
 ]
 
-ACTION_COSTS: List[float] = [
-    0.0,   # OBSERVE: No cost
-    0.1,   # LOG: Minimal impact
-    0.3,   # THROTTLE: Some disruption
-    0.5,   # BLOCK: Significant impact
-    0.8,   # ISOLATE: Major disruption
+ACTION_COSTS: list[float] = [
+    0.0,  # OBSERVE: No cost
+    0.1,  # LOG: Minimal impact
+    0.3,  # THROTTLE: Some disruption
+    0.5,  # BLOCK: Significant impact
+    0.8,  # ISOLATE: Major disruption
 ]
 
 
 def get_action_cost(action: int) -> float:
     """Get the cost of a defensive action.
-    
+
     Args:
         action: Action index (0-4).
-    
+
     Returns:
         Cost of the action.
     """
@@ -87,10 +87,10 @@ def get_action_cost(action: int) -> float:
 
 def get_action_name(action: int) -> str:
     """Get the name of a defensive action.
-    
+
     Args:
         action: Action index (0-4).
-    
+
     Returns:
         Name of the action.
     """
@@ -113,7 +113,7 @@ def get_action_name(action: int) -> str:
 # within ±1 of the recommended level earns ``reward_proportional``; ±2 or
 # more earns ``-penalty_disproportionate``.
 
-_RECOMMENDED_ACTION_BY_STAGE: List[int] = [0, 1, 2, 3, 4]
+_RECOMMENDED_ACTION_BY_STAGE: list[int] = [0, 1, 2, 3, 4]
 
 
 def _recommended_action(stage: int) -> int:
@@ -124,6 +124,7 @@ def _recommended_action(stage: int) -> int:
 # =============================================================================
 # ENVIRONMENT CONFIGURATION
 # =============================================================================
+
 
 @dataclass
 class AdversarialEnvConfig:
@@ -227,29 +228,30 @@ class AdversarialEnvConfig:
 # ADVERSARIAL ENVIRONMENT
 # =============================================================================
 
+
 class AdversarialIoTEnv(gym.Env):
     """Gymnasium environment for adversarial IoT defense training.
-    
+
     This environment implements a partially observable Markov decision
     process where the agent observes realized network features but
     cannot directly see the underlying attack stage.
-    
+
     Red Team (Attack Sequence Generator):
         - Controls attack progression through Kill Chain stages
         - Uses LSTM to generate realistic attack sequences
-    
+
     Blue Team (RL Agent):
         - Observes window of feature vectors
         - Takes discrete defensive actions
         - Receives reward based on defense effectiveness
-    
+
     Observation Space:
         Box of shape (window_size * num_features,) or
         (window_size * num_features * 2,) when delta features are enabled.
-        
+
     Action Space:
         Discrete(5): OBSERVE, LOG, THROTTLE, BLOCK, ISOLATE
-    
+
     Example:
         >>> env = AdversarialIoTEnv(generator_path, dataset_path)
         >>> obs, info = env.reset()
@@ -285,9 +287,9 @@ class AdversarialIoTEnv(gym.Env):
        directly (eliminating the ``# type: ignore[attr-defined]``
        monkey-patch in ``env_factory.py``); deferred to post-thesis.
     """
-    
+
     metadata = {"render_modes": ["human"]}
-    
+
     def __init__(
         self,
         generator_path: Union[str, Path],
@@ -297,7 +299,7 @@ class AdversarialIoTEnv(gym.Env):
         device: str = "cpu",
     ) -> None:
         """Initialize the Adversarial Environment.
-        
+
         Args:
             generator_path: Path to trained Attack Sequence Generator.
             dataset_path: Path to processed dataset for realization.
@@ -306,7 +308,7 @@ class AdversarialIoTEnv(gym.Env):
             device: Device for generator inference.
         """
         super().__init__()
-        
+
         self._config = config or AdversarialEnvConfig()
         self._render_mode = render_mode
         requested_device = torch.device(device)
@@ -323,20 +325,20 @@ class AdversarialIoTEnv(gym.Env):
             self._device = torch.device("cpu")
         else:
             self._device = requested_device
-        
+
         # Load Attack Sequence Generator (Red Team)
         generator_path = Path(generator_path)
         model_file = generator_path / "attack_sequence_generator.pth"
         self._generator = AttackSequenceGenerator.load(model_file, device=self._device)
         self._generator.eval()
-        
+
         # Load Realization Engine (for feature sampling)
         dataset_path = Path(dataset_path)
         self._realization_engine = RealizationEngine(dataset_path)
-        
+
         # Get feature dimension from dataset
         self._num_features = self._realization_engine.num_features
-        
+
         # Define observation space: flattened window of features (optionally with deltas)
         obs_multiplier = 2 if self._config.include_deltas else 1
         obs_dim = self._config.window_size * self._num_features * obs_multiplier
@@ -346,50 +348,50 @@ class AdversarialIoTEnv(gym.Env):
             shape=(obs_dim,),
             dtype=np.float32,
         )
-        
+
         # Define action space: force continuum levels
         self.action_space = spaces.Discrete(self._config.num_actions)
-        
+
         # Episode state (initialized in reset)
         self._step_count: int = 0
         self._current_attack_stage: int = 0
-        self._attack_history: List[int] = []
-        self._observation_window: List[np.ndarray] = []
+        self._attack_history: list[int] = []
+        self._observation_window: list[np.ndarray] = []
         self._last_action: int = 0
         self._rng: Optional[np.random.Generator] = None
         # environment-design: MTTC tracking & defender-driven de-escalation
         self._first_attack_step: Optional[int] = None
         self._compromise_step: Optional[int] = None
         self._defender_deescalations: int = 0
-        
+
         logger.info(
             f"AdversarialIoTEnv initialized: "
             f"obs_shape={self.observation_space.shape}, "
             f"actions={self._config.num_actions}, "
             f"features={self._num_features}"
         )
-    
+
     # =========================================================================
     # Gymnasium API
     # =========================================================================
-    
+
     def reset(
         self,
         *,
         seed: Optional[int] = None,
-        options: Optional[Dict[str, Any]] = None,
-    ) -> Tuple[np.ndarray, Dict[str, Any]]:
+        options: Optional[dict[str, Any]] = None,
+    ) -> tuple[np.ndarray, dict[str, Any]]:
         """Reset the environment to start a new episode.
-        
+
         Args:
             seed: Random seed for reproducibility.
             options: Additional options (unused).
-        
+
         Returns:
             Tuple of (observation, info).
         """
         super().reset(seed=seed)
-        
+
         # Setup RNG
         if seed is not None:
             self._rng = np.random.default_rng(seed)
@@ -400,7 +402,7 @@ class AdversarialIoTEnv(gym.Env):
             np.random.seed(seed)
         else:
             self._rng = np.random.default_rng()
-        
+
         # Reset episode state
         self._step_count = 0
         self._last_action = 0
@@ -412,25 +414,25 @@ class AdversarialIoTEnv(gym.Env):
         # Start with BENIGN or low-level attack
         self._current_attack_stage = 0  # BENIGN
         self._attack_history = [self._current_attack_stage]
-        
+
         # Initialize observation window with BENIGN features
         self._observation_window = []
         for _ in range(self._config.window_size):
             features = self._realization_engine.sample(KillChainStage.BENIGN)
             self._observation_window.append(features)
-        
+
         # Build initial observation
         observation = self._build_observation()
-        
+
         # Build info dict
         info = self._build_info()
-        
+
         return observation, info
-    
+
     def step(
         self,
         action: int,
-    ) -> Tuple[np.ndarray, float, bool, bool, Dict[str, Any]]:
+    ) -> tuple[np.ndarray, float, bool, bool, dict[str, Any]]:
         """Execute one environment step.
 
         Lifecycle (environment-design v2):
@@ -467,9 +469,7 @@ class AdversarialIoTEnv(gym.Env):
 
         # 3) Advance the attack — possibly overriding with defender-driven
         # de-escalation if the agent chose a strong action at ACCESS+.
-        agent_forced_deescalation = self._maybe_defender_deescalation(
-            action, previous_attack_stage
-        )
+        agent_forced_deescalation = self._maybe_defender_deescalation(action, previous_attack_stage)
         if agent_forced_deescalation:
             reward += self._config.defense_success_bonus
             outcome = "defended"
@@ -510,9 +510,7 @@ class AdversarialIoTEnv(gym.Env):
         # 4) Refresh the observation window with a sample drawn from the
         # *new* stage. This is intentional: the agent's *next* observation
         # already reflects whatever the attacker just did.
-        new_features = self._realization_engine.sample(
-            KillChainStage(self._current_attack_stage)
-        )
+        new_features = self._realization_engine.sample(KillChainStage(self._current_attack_stage))
         self._observation_window.pop(0)
         self._observation_window.append(new_features)
         self._last_action = action
@@ -561,9 +559,7 @@ class AdversarialIoTEnv(gym.Env):
 
     # ------------------------------------------------------------------ helpers
 
-    def _step_at_impact(
-        self, action: int
-    ) -> Tuple[np.ndarray, float, bool, bool, Dict[str, Any]]:
+    def _step_at_impact(self, action: int) -> tuple[np.ndarray, float, bool, bool, dict[str, Any]]:
         """Handle the agent's final mitigation turn while the attack is at IMPACT."""
         action_cost = get_action_cost(action) * self._config.action_cost_scale
         reward = -(self._config.impact_penalty) - action_cost
@@ -608,7 +604,7 @@ class AdversarialIoTEnv(gym.Env):
         self._attack_history.append(self._current_attack_stage)
         self._defender_deescalations += 1
         return True
-    
+
     def render(self) -> None:
         """Render the environment state."""
         if self._render_mode == "human":
@@ -617,15 +613,15 @@ class AdversarialIoTEnv(gym.Env):
                 f"Attack Stage = {KillChainStage(self._current_attack_stage).name}, "
                 f"Last Action = {ACTION_NAMES[self._last_action]}"
             )
-    
+
     def close(self) -> None:
         """Clean up environment resources."""
         pass
-    
+
     # =========================================================================
     # Internal Methods
     # =========================================================================
-    
+
     def _advance_attack(self) -> None:
         """Advance attack sequence using generator."""
         # Use generator to predict next attack stage
@@ -637,7 +633,7 @@ class AdversarialIoTEnv(gym.Env):
             )
             self._current_attack_stage = next_stage
             self._attack_history.append(next_stage)
-    
+
     def _build_observation(self) -> np.ndarray:
         """Build observation from feature window."""
         # Stack window and flatten
@@ -648,8 +644,8 @@ class AdversarialIoTEnv(gym.Env):
             window_array = np.concatenate([window_array, deltas], axis=1)
         observation = window_array.flatten().astype(np.float32)
         return observation
-    
-    def _build_info(self) -> Dict[str, Any]:
+
+    def _build_info(self) -> dict[str, Any]:
         """Build info dictionary including environment-design telemetry.
 
         New keys (environment-design):

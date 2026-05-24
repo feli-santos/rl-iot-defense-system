@@ -4,18 +4,21 @@ Configuration Management
 Enhanced configuration loader with validation and environment variable support.
 """
 
-import yaml
-from pathlib import Path
-from typing import Dict, Any, Optional, Union
 import logging
 import os
 from dataclasses import dataclass
+from pathlib import Path
+from typing import Any, Optional
+
+import yaml
 
 logger = logging.getLogger(__name__)
+
 
 @dataclass
 class ConfigPaths:
     """Configuration paths structure"""
+
     data_raw: Path
     data_processed: Path
     models_lstm: Path
@@ -29,56 +32,56 @@ class ConfigLoader:
     """
     Configuration loader with validation and environment variable substitution.
     """
-    
+
     def __init__(self):
-        self.config: Optional[Dict[str, Any]] = None
+        self.config: Optional[dict[str, Any]] = None
         self.paths: Optional[ConfigPaths] = None
-    
-    def load_config(self, config_path: Path) -> Dict[str, Any]:
+
+    def load_config(self, config_path: Path) -> dict[str, Any]:
         """
         Load configuration from YAML file.
-        
+
         Args:
             config_path: Path to configuration file
-            
+
         Returns:
             Configuration dictionary
-            
+
         Raises:
             FileNotFoundError: If config file doesn't exist
             yaml.YAMLError: If config file is invalid
         """
         if not config_path.exists():
             raise FileNotFoundError(f"Configuration file not found: {config_path}")
-        
+
         try:
-            with open(config_path, 'r') as f:
+            with open(config_path) as f:
                 config = yaml.safe_load(f)
-            
+
             # Substitute environment variables
             config = self._substitute_env_vars(config)
-            
+
             # Convert scientific notation strings to floats
             config = self._convert_numeric_values(config)
-            
+
             # Validate configuration
             self._validate_config(config)
-            
+
             # Create paths structure
             self.paths = self._create_paths(config)
-            
+
             # Ensure directories exist
             self._ensure_directories()
-            
+
             self.config = config
             logger.info(f"Configuration loaded from {config_path}")
-            
+
             return config
-            
+
         except yaml.YAMLError as e:
-            raise yaml.YAMLError(f"Invalid YAML configuration: {e}")
-    
-    def _substitute_env_vars(self, config: Dict[str, Any]) -> Dict[str, Any]:
+            raise yaml.YAMLError(f"Invalid YAML configuration: {e}") from e
+
+    def _substitute_env_vars(self, config: dict[str, Any]) -> dict[str, Any]:
         """Recursively substitute environment variables in config"""
         if isinstance(config, dict):
             return {k: self._substitute_env_vars(v) for k, v in config.items()}
@@ -88,15 +91,15 @@ class ConfigLoader:
             return os.path.expandvars(config)
         else:
             return config
-    
-    def _convert_numeric_values(self, config: Dict[str, Any]) -> Dict[str, Any]:
+
+    def _convert_numeric_values(self, config: dict[str, Any]) -> dict[str, Any]:
         """
         Recursively convert string numeric values to proper types.
         Handles scientific notation like '1e-4', '3e-4', etc.
-        
+
         Args:
             config: Configuration dictionary
-            
+
         Returns:
             Configuration with converted numeric values
         """
@@ -114,66 +117,83 @@ class ConfigLoader:
             return config
         else:
             return config
-    
+
     def _is_scientific_notation(self, value: str) -> bool:
         """
         Check if a string represents scientific notation.
-        
+
         Args:
             value: String to check
-            
+
         Returns:
             True if the string is scientific notation
         """
         if not isinstance(value, str):
             return False
-        
+
         # Common patterns for scientific notation
         import re
-        scientific_pattern = r'^[+-]?(\d+\.?\d*|\.\d+)[eE][+-]?\d+$'
+
+        scientific_pattern = r"^[+-]?(\d+\.?\d*|\.\d+)[eE][+-]?\d+$"
         return bool(re.match(scientific_pattern, value))
-    
-    def _validate_config(self, config: Dict[str, Any]) -> None:
+
+    def _validate_config(self, config: dict[str, Any]) -> None:
         """Validate configuration structure"""
-        required_sections = ['dataset', 'attack_generator', 'adversarial_environment', 'rl', 'models']
-        
+        required_sections = [
+            "dataset",
+            "attack_generator",
+            "adversarial_environment",
+            "rl",
+            "models",
+        ]
+
         for section in required_sections:
             if section not in config:
                 raise ValueError(f"Missing required configuration section: {section}")
-        
+
         # Validate dataset config
-        dataset_config = config['dataset']
-        required_dataset_keys = ['name', 'processed_path', 'sequence_length']
+        dataset_config = config["dataset"]
+        required_dataset_keys = ["name", "processed_path", "sequence_length"]
         for key in required_dataset_keys:
             if key not in dataset_config:
                 raise ValueError(f"Missing required dataset config key: {key}")
-        
+
         # Validate generator model paths
-        models_config = config['models']
-        if 'generator' not in models_config or 'save_dir' not in models_config['generator']:
+        models_config = config["models"]
+        if "generator" not in models_config or "save_dir" not in models_config["generator"]:
             raise ValueError("Missing generator model save_dir in configuration")
-        
+
         # Validate RL algorithm hyperparameters are numeric
         self._validate_rl_hyperparams(config)
-        
+
         logger.info("Configuration validation passed")
-    
-    def _validate_rl_hyperparams(self, config: Dict[str, Any]) -> None:
+
+    def _validate_rl_hyperparams(self, config: dict[str, Any]) -> None:
         """
         Validate that RL hyperparameters are proper numeric types.
-        
+
         Args:
             config: Configuration dictionary
         """
-        rl_config = config.get('rl', {})
-        algorithms = rl_config.get('algorithms', {})
-        
+        rl_config = config.get("rl", {})
+        algorithms = rl_config.get("algorithms", {})
+
         numeric_params = [
-            'learning_rate', 'buffer_size', 'batch_size', 'gamma', 'tau',
-            'n_steps', 'n_epochs', 'gae_lambda', 'clip_range', 'ent_coef',
-            'vf_coef', 'max_grad_norm', 'rms_prop_eps'
+            "learning_rate",
+            "buffer_size",
+            "batch_size",
+            "gamma",
+            "tau",
+            "n_steps",
+            "n_epochs",
+            "gae_lambda",
+            "clip_range",
+            "ent_coef",
+            "vf_coef",
+            "max_grad_norm",
+            "rms_prop_eps",
         ]
-        
+
         for alg_name, alg_config in algorithms.items():
             for param_name, param_value in alg_config.items():
                 if param_name in numeric_params:
@@ -187,71 +207,71 @@ class ConfigLoader:
                             f"✅ {alg_name}.{param_name} = {param_value} "
                             f"(type: {type(param_value).__name__})"
                         )
-    
-    def _create_paths(self, config: Dict[str, Any]) -> ConfigPaths:
+
+    def _create_paths(self, config: dict[str, Any]) -> ConfigPaths:
         """Create paths structure from configuration"""
         return ConfigPaths(
-            data_raw=Path(config['dataset'].get('raw_path', 'data/raw')),
-            data_processed=Path(config['dataset']['processed_path']),
-            models_lstm=Path(config['models']['generator']['save_dir']),  # Now points to generator
-            models_rl=Path(config['models']['rl']['save_dir']),
-            results_logs=Path(config.get('logging', {}).get('log_dir', 'results/logs')),
-            results_plots=Path(config.get('results', {}).get('plots_dir', 'results/plots')),
-            results_reports=Path(config.get('results', {}).get('reports_dir', 'results/reports'))
+            data_raw=Path(config["dataset"].get("raw_path", "data/raw")),
+            data_processed=Path(config["dataset"]["processed_path"]),
+            models_lstm=Path(config["models"]["generator"]["save_dir"]),  # Now points to generator
+            models_rl=Path(config["models"]["rl"]["save_dir"]),
+            results_logs=Path(config.get("logging", {}).get("log_dir", "results/logs")),
+            results_plots=Path(config.get("results", {}).get("plots_dir", "results/plots")),
+            results_reports=Path(config.get("results", {}).get("reports_dir", "results/reports")),
         )
-    
+
     def _ensure_directories(self) -> None:
         """Ensure all required directories exist"""
         if self.paths is None:
             return
-        
+
         directories = [
             self.paths.data_processed,
             self.paths.models_lstm,
             self.paths.models_rl,
             self.paths.results_logs,
             self.paths.results_plots,
-            self.paths.results_reports
+            self.paths.results_reports,
         ]
-        
+
         for directory in directories:
             directory.mkdir(parents=True, exist_ok=True)
-        
+
         logger.info("All required directories created/verified")
-    
-    def get_lstm_config(self) -> Dict[str, Any]:
+
+    def get_lstm_config(self) -> dict[str, Any]:
         """Get LSTM-specific configuration"""
         if self.config is None:
             raise ValueError("Configuration not loaded")
-        return self.config['lstm']
-    
-    def get_rl_config(self) -> Dict[str, Any]:
+        return self.config["lstm"]
+
+    def get_rl_config(self) -> dict[str, Any]:
         """Get RL-specific configuration"""
         if self.config is None:
             raise ValueError("Configuration not loaded")
-        return self.config['rl']
-    
-    def get_algorithm_config(self, algorithm: str) -> Dict[str, Any]:
+        return self.config["rl"]
+
+    def get_algorithm_config(self, algorithm: str) -> dict[str, Any]:
         """Get algorithm-specific hyperparameters"""
         rl_config = self.get_rl_config()
-        
-        if 'algorithms' not in rl_config:
+
+        if "algorithms" not in rl_config:
             raise ValueError("No algorithm configurations found")
-        
-        if algorithm not in rl_config['algorithms']:
-            available = list(rl_config['algorithms'].keys())
+
+        if algorithm not in rl_config["algorithms"]:
+            available = list(rl_config["algorithms"].keys())
             raise ValueError(f"Algorithm '{algorithm}' not configured. Available: {available}")
-        
+
         # Ensure all hyperparameters are properly typed
-        hyperparams = rl_config['algorithms'][algorithm].copy()
-        
+        hyperparams = rl_config["algorithms"][algorithm].copy()
+
         # Log hyperparameter types for debugging
         logger.debug(f"Hyperparameters for {algorithm}:")
         for key, value in hyperparams.items():
             logger.debug(f"  {key}: {value} (type: {type(value).__name__})")
-        
+
         return hyperparams
-    
+
     def get_paths(self) -> ConfigPaths:
         """Get paths structure"""
         if self.paths is None:

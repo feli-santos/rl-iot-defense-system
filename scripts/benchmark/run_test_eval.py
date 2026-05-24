@@ -54,7 +54,7 @@ import subprocess
 import time
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import numpy as np
 
@@ -78,7 +78,7 @@ _ROOT = Path(__file__).resolve().parents[2]
 # --------------------------------------------------------------------- helpers
 
 
-def _sha256(path: Path) -> Optional[str]:
+def _sha256(path: Path) -> str | None:
     """Return SHA-256 hex of ``path`` content; ``None`` if missing.
 
     Files are streamed in 1 MiB chunks so 100 MB+ checkpoints don't
@@ -103,9 +103,10 @@ def _git_sha() -> str:
     Falls back to ``"unknown"`` so the sweeper never crashes on a
     detached worktree or a stripped tarball.
     """
-    try:
+    try:  # noqa: SIM105
         out = subprocess.check_output(
-            ["git", "rev-parse", "HEAD"], cwd=_ROOT,
+            ["git", "rev-parse", "HEAD"],
+            cwd=_ROOT,
             stderr=subprocess.DEVNULL,
         )
         return out.decode().strip()
@@ -124,12 +125,15 @@ def _load_sb3_model(algo: str, model_path: Path, env: Any) -> Any:
     a = algo.lower()
     if a == "dqn":
         from stable_baselines3 import DQN
+
         return DQN.load(model_path, env=env, device="cpu")
     if a == "ppo":
         from stable_baselines3 import PPO
+
         return PPO.load(model_path, env=env, device="cpu")
     if a == "a2c":
         from stable_baselines3 import A2C
+
         return A2C.load(model_path, env=env, device="cpu")
     raise ValueError(f"unknown algo {algo!r}; expected dqn / ppo / a2c")
 
@@ -143,7 +147,7 @@ def _eval_env_spec() -> EnvConfigSerializable:
     return EnvConfigSerializable(split="test_balanced", exclude_ood=True)
 
 
-def _build_eval_env(args: argparse.Namespace, seed: Optional[int] = None) -> Any:
+def _build_eval_env(args: argparse.Namespace, seed: int | None = None) -> Any:
     """Build a fresh eval env on test_balanced for one rollout."""
     return make_eval_env(
         spec=_eval_env_spec(),
@@ -160,53 +164,66 @@ def _build_eval_env(args: argparse.Namespace, seed: Optional[int] = None) -> Any
 def _build_argparser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         description="benchmark RL benchmark — roll trained blue-team checkpoints "
-                    "and non-RL baselines on test_balanced.",
+        "and non-RL baselines on test_balanced.",
     )
     p.add_argument("--algos", nargs="+", default=["dqn", "ppo", "a2c"])
     p.add_argument("--seeds", nargs="+", type=int, default=[0, 1, 2, 3, 4])
     p.add_argument(
-        "--n-episodes", type=int, default=30,
+        "--n-episodes",
+        type=int,
+        default=30,
         help="Episodes per (algo, seed) and per random-policy seed (D6.3).",
     )
     p.add_argument(
-        "--n-deterministic-episodes", type=int, default=150,
+        "--n-deterministic-episodes",
+        type=int,
+        default=150,
         help="Episodes per deterministic baseline (D6.3); single seed.",
     )
     p.add_argument(
-        "--phase5-runs-root", default="runs/blue_team",
+        "--phase5-runs-root",
+        default="runs/blue_team",
         help="Where the trained blue-team model.zip files live.",
     )
     p.add_argument("--out-root", default="runs/benchmark")
     p.add_argument(
-        "--generator-path", default="artifacts/generator/red_team",
+        "--generator-path",
+        default="artifacts/generator/red_team",
     )
     p.add_argument(
-        "--dataset-path", default="data/processed/ciciot2023",
+        "--dataset-path",
+        default="data/processed/ciciot2023",
     )
     p.add_argument(
         "--splits-manifest",
         default="data/processed/ciciot2023/splits/manifest.json",
     )
     p.add_argument(
-        "--rf-path", default="artifacts/detector/random_forest.joblib",
+        "--rf-path",
+        default="artifacts/detector/random_forest.joblib",
     )
     p.add_argument(
-        "--baselines", nargs="+",
+        "--baselines",
+        nargs="+",
         default=[
-            "random", "always_observe", "always_block",
-            "recommended_action", "rf_acting",
+            "random",
+            "always_observe",
+            "always_block",
+            "recommended_action",
+            "rf_acting",
         ],
         help="Subset of {random, always_observe, always_block, "
-             "recommended_action, rf_acting} to roll. "
-             "Pass an empty list to skip all baselines.",
+        "recommended_action, rf_acting} to roll. "
+        "Pass an empty list to skip all baselines.",
     )
     p.add_argument(
-        "--skip-trained", action="store_true",
-        help="Skip the blue-team trained checkpoints. Useful for "
-             "iterating on baselines only.",
+        "--skip-trained",
+        action="store_true",
+        help="Skip the blue-team trained checkpoints. Useful for iterating on baselines only.",
     )
-    p.add_argument("--smoke", action="store_true",
-                   help="Smoke mode: 1 algo × 1 seed × 2 ep, 2 ep / baseline.")
+    p.add_argument(
+        "--smoke", action="store_true", help="Smoke mode: 1 algo × 1 seed × 2 ep, 2 ep / baseline."
+    )
     p.add_argument("--verbose", type=int, default=1)
     return p
 
@@ -218,7 +235,7 @@ def _roll_trained(
     args: argparse.Namespace,
     algo: str,
     seed: int,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Roll one blue-team (algo, seed) checkpoint on test_balanced.
 
     The function is the inner loop's worker; it owns env construction
@@ -235,20 +252,25 @@ def _roll_trained(
         msg = f"missing blue-team checkpoint at {model_path}"
         logger.error(msg)
         return {
-            "kind": "trained", "algo": algo, "seed": seed,
-            "run_id": run_id, "ok": False, "error": msg,
+            "kind": "trained",
+            "algo": algo,
+            "seed": seed,
+            "run_id": run_id,
+            "ok": False,
+            "error": msg,
             "model_path": str(model_path),
             "model_sha256": None,
         }
 
     n_ep = 2 if args.smoke else args.n_episodes
     env = _build_eval_env(args, seed=seed)
-    try:
+    try:  # noqa: SIM105
         model = _load_sb3_model(algo, model_path, env)
         policy = SB3PolicyAdapter(model, deterministic=True)
         t0 = time.time()
         stats = run_policy(
-            policy, env,
+            policy,
+            env,
             n_episodes=n_ep,
             jsonl_path=eval_jsonl,
             run_id=run_id,
@@ -258,7 +280,7 @@ def _roll_trained(
         )
         wallclock = time.time() - t0
     finally:
-        try:
+        try:  # noqa: SIM105
             env.close()
         except Exception:  # noqa: BLE001 — best-effort
             pass
@@ -280,7 +302,7 @@ def _roll_trained(
     }
 
 
-def _roll_random(args: argparse.Namespace, seed: int) -> Dict[str, Any]:
+def _roll_random(args: argparse.Namespace, seed: int) -> dict[str, Any]:
     """Roll the random policy with one seed × n_episodes (D6.3)."""
     out_dir = Path(args.out_root) / "random" / f"seed_{seed}"
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -291,15 +313,16 @@ def _roll_random(args: argparse.Namespace, seed: int) -> Dict[str, Any]:
     n_ep = 2 if args.smoke else args.n_episodes
     rng = np.random.default_rng(seed)
 
-    def _seeded_random(obs: np.ndarray, info: Dict[str, Any]) -> int:
+    def _seeded_random(obs: np.ndarray, info: dict[str, Any]) -> int:
         # Bind ``rng`` so successive calls share the seeded generator.
         return random_policy(obs, info, rng=rng)
 
     env = _build_eval_env(args, seed=seed)
-    try:
+    try:  # noqa: SIM105
         t0 = time.time()
         stats = run_policy(
-            _seeded_random, env,
+            _seeded_random,
+            env,
             n_episodes=n_ep,
             jsonl_path=eval_jsonl,
             run_id=run_id,
@@ -309,7 +332,7 @@ def _roll_random(args: argparse.Namespace, seed: int) -> Dict[str, Any]:
         )
         wallclock = time.time() - t0
     finally:
-        try:
+        try:  # noqa: SIM105
             env.close()
         except Exception:  # noqa: BLE001
             pass
@@ -332,7 +355,7 @@ def _roll_random(args: argparse.Namespace, seed: int) -> Dict[str, Any]:
 def _roll_deterministic(
     args: argparse.Namespace,
     policy_name: str,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Roll a deterministic baseline once (single seed=0, n=150 episodes).
 
     Per D6.3, deterministic baselines (always-X, recommended-action,
@@ -359,8 +382,12 @@ def _roll_deterministic(
             msg = f"missing RF detector at {rf_path}"
             logger.error(msg)
             return {
-                "kind": "baseline", "policy": policy_name, "seed": 0,
-                "run_id": run_id, "ok": False, "error": msg,
+                "kind": "baseline",
+                "policy": policy_name,
+                "seed": 0,
+                "run_id": run_id,
+                "ok": False,
+                "error": msg,
                 "rf_path": str(rf_path),
                 "rf_sha256": None,
             }
@@ -370,19 +397,16 @@ def _roll_deterministic(
         # rollout instead of hard-coding 29 to stay robust to a
         # smaller-feature-matrix split.
         probe_env = _build_eval_env(args, seed=0)
-        try:
+        try:  # noqa: SIM105
             obs0 = probe_env.reset()
             obs_dim = int(np.asarray(obs0).reshape(-1).size)
         finally:
-            try:
+            try:  # noqa: SIM105
                 probe_env.close()
             except Exception:  # noqa: BLE001
                 pass
         per_row = obs_dim // spec.window_size
-        if spec.include_deltas:
-            num_features = per_row // 2
-        else:
-            num_features = per_row
+        num_features = per_row // 2 if spec.include_deltas else per_row
         policy = RFActingPolicy(
             rf_path,
             num_features=num_features,
@@ -393,10 +417,11 @@ def _roll_deterministic(
         raise ValueError(f"unknown deterministic baseline {policy_name!r}")
 
     env = _build_eval_env(args, seed=0)
-    try:
+    try:  # noqa: SIM105
         t0 = time.time()
         stats = run_policy(
-            policy, env,
+            policy,
+            env,
             n_episodes=n_ep,
             jsonl_path=eval_jsonl,
             run_id=run_id,
@@ -406,12 +431,12 @@ def _roll_deterministic(
         )
         wallclock = time.time() - t0
     finally:
-        try:
+        try:  # noqa: SIM105
             env.close()
         except Exception:  # noqa: BLE001
             pass
 
-    out: Dict[str, Any] = {
+    out: dict[str, Any] = {
         "kind": "baseline",
         "policy": policy_name,
         "seed": 0,
@@ -433,7 +458,7 @@ def _roll_deterministic(
 # ---------------------------------------------------------------- main
 
 
-def main(argv: Optional[List[str]] = None) -> int:
+def main(argv: list[str] | None = None) -> int:
     args = _build_argparser().parse_args(argv)
     logging.basicConfig(
         level=logging.INFO if args.verbose >= 1 else logging.WARNING,
@@ -450,7 +475,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         logger.info("SMOKE mode: 1 algo × 1 seed × 2 ep + 2 ep per baseline")
 
     t_start = time.time()
-    results: List[Dict[str, Any]] = []
+    results: list[dict[str, Any]] = []
 
     # ---- trained checkpoints ----
     if not args.skip_trained:
@@ -459,7 +484,9 @@ def main(argv: Optional[List[str]] = None) -> int:
                 results.append(_roll_trained(args, algo, seed))
                 logger.info(
                     "trained run done: algo=%s seed=%d ok=%s wallclock=%.1fs",
-                    algo, seed, results[-1]["ok"],
+                    algo,
+                    seed,
+                    results[-1]["ok"],
                     results[-1].get("wallclock_seconds", 0.0),
                 )
     else:
@@ -472,15 +499,16 @@ def main(argv: Optional[List[str]] = None) -> int:
                 results.append(_roll_random(args, seed))
                 logger.info(
                     "random seed=%d done: ok=%s wallclock=%.1fs",
-                    seed, results[-1]["ok"],
+                    seed,
+                    results[-1]["ok"],
                     results[-1].get("wallclock_seconds", 0.0),
                 )
-        elif name in {"always_observe", "always_block",
-                      "recommended_action", "rf_acting"}:
+        elif name in {"always_observe", "always_block", "recommended_action", "rf_acting"}:
             results.append(_roll_deterministic(args, name))
             logger.info(
                 "%s done: ok=%s wallclock=%.1fs",
-                name, results[-1]["ok"],
+                name,
+                results[-1]["ok"],
                 results[-1].get("wallclock_seconds", 0.0),
             )
         else:
@@ -534,8 +562,10 @@ def main(argv: Optional[List[str]] = None) -> int:
     manifest_path.write_text(json.dumps(eval_manifest, indent=2))
     logger.info(
         "phase-6 eval sweep done: %d ok / %d failed in %.1fs; manifest -> %s",
-        eval_manifest["n_ok"], eval_manifest["n_failed"],
-        eval_manifest["wallclock_seconds"], manifest_path,
+        eval_manifest["n_ok"],
+        eval_manifest["n_failed"],
+        eval_manifest["wallclock_seconds"],
+        manifest_path,
     )
 
     return 0 if eval_manifest["n_failed"] == 0 else 1

@@ -39,7 +39,9 @@ def _make_synthetic_dataset(
     data_path = tmp_path / "ds"
     data_path.mkdir()
     rng = np.random.default_rng(seed)
-    np.save(data_path / "features.npy", rng.standard_normal((num_rows, num_features)).astype(np.float32))
+    np.save(
+        data_path / "features.npy", rng.standard_normal((num_rows, num_features)).astype(np.float32)
+    )
 
     # Round-robin assignment: row i -> stage i % 5.  Exhaustive and disjoint.
     state_indices: dict[str, list[int]] = {str(s): [] for s in range(5)}
@@ -165,8 +167,7 @@ _REAL_DATA = Path("data/processed/ciciot2023")
 
 
 @pytest.mark.skipif(
-    not (_REAL_DATA / "features.npy").exists()
-    or not (_REAL_DATA / "state_indices.json").exists(),
+    not (_REAL_DATA / "features.npy").exists() or not (_REAL_DATA / "state_indices.json").exists(),
     reason="Real CICIoT processed snapshot not present.",
 )
 def test_real_dataset_round_trip() -> None:
@@ -178,9 +179,9 @@ def test_real_dataset_round_trip() -> None:
     }
     for stage_id, idx_list in state_indices.items():
         idx = np.asarray(idx_list, dtype=np.int64)
-        assert (stages[idx] == stage_id).all(), (
-            f"Stage {stage_id} disagrees on {(stages[idx] != stage_id).sum()} rows."
-        )
+        assert (
+            stages[idx] == stage_id
+        ).all(), f"Stage {stage_id} disagrees on {(stages[idx] != stage_id).sum()} rows."
 
     # And the array is exhaustive.
     counts = {int(s): int((stages == s).sum()) for s in range(5)}

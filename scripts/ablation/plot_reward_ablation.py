@@ -40,7 +40,7 @@ import logging
 import math
 import subprocess
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import numpy as np
 
@@ -57,16 +57,16 @@ _PHASE6_DEPLOYABLE_BEST_REWARD = 1336.3  # DQN best mean on test_balanced
 _DEPLOYABLE_BEST_LABEL = "DQN +1336 (benchmark deployable best)"
 _ORACLE_CEILING_LABEL = "Rec-Action +1624 (oracle ceiling, AF2)"
 
-_COMPONENT_DISPLAY: Dict[str, str] = {
-    "defense_success_bonus":   "defense_success_bonus  (250)",
-    "penalty_missed_impact":   "penalty_missed_impact  (150)",
-    "reward_proportional":     "reward_proportional      (5)",
-    "penalty_disproportionate":"penalty_disproportionate  (5)",
-    "reward_benign_passive":   "reward_benign_passive   (10)",
+_COMPONENT_DISPLAY: dict[str, str] = {
+    "defense_success_bonus": "defense_success_bonus  (250)",
+    "penalty_missed_impact": "penalty_missed_impact  (150)",
+    "reward_proportional": "reward_proportional      (5)",
+    "penalty_disproportionate": "penalty_disproportionate  (5)",
+    "reward_benign_passive": "reward_benign_passive   (10)",
 }
 
 
-def _sha256(path: Path) -> Optional[str]:
+def _sha256(path: Path) -> str | None:
     p = Path(path)
     if not p.exists():
         return None
@@ -79,9 +79,15 @@ def _sha256(path: Path) -> Optional[str]:
 
 def _git_sha() -> str:
     try:
-        return subprocess.check_output(
-            ["git", "rev-parse", "HEAD"], cwd=_ROOT, stderr=subprocess.DEVNULL,
-        ).decode().strip()
+        return (
+            subprocess.check_output(
+                ["git", "rev-parse", "HEAD"],
+                cwd=_ROOT,
+                stderr=subprocess.DEVNULL,
+            )
+            .decode()
+            .strip()
+        )
     except Exception:  # noqa: BLE001
         return "unknown"
 
@@ -92,26 +98,24 @@ def _git_sha() -> str:
 def _summarise_cell(
     cell_id: str,
     cell_dir: Path,
-    cell_config: Dict[str, Any],
+    cell_config: dict[str, Any],
     *,
-    sha_collector: Dict[str, str],
-) -> Dict[str, Any]:
+    sha_collector: dict[str, str],
+) -> dict[str, Any]:
     """Aggregate eval_test.jsonl across all seed_*/ subdirs of one cell."""
     seed_dirs = sorted(
-        d for d in cell_dir.iterdir()
-        if d.is_dir() and d.name.startswith("seed_")
-        and (d / "eval_test.jsonl").exists()
+        d
+        for d in cell_dir.iterdir()
+        if d.is_dir() and d.name.startswith("seed_") and (d / "eval_test.jsonl").exists()
     )
-    all_records: List[Dict] = []
-    per_seed_means: List[float] = []
+    all_records: list[dict] = []
+    per_seed_means: list[float] = []
     for sd in seed_dirs:
         jsonl = sd / "eval_test.jsonl"
         recs = read_episodes_jsonl(jsonl)
         all_records.extend(recs)
         if recs:
-            per_seed_means.append(
-                float(np.mean([r["episode_reward"] for r in recs]))
-            )
+            per_seed_means.append(float(np.mean([r["episode_reward"] for r in recs])))
         sha = _sha256(jsonl)
         if sha is not None:
             sha_collector[str(jsonl.resolve().relative_to(_ROOT))] = sha
@@ -134,17 +138,20 @@ def _summarise_cell(
 
     rewards = [r["episode_reward"] for r in all_records]
     compromised = [1.0 if r.get("compromised") else 0.0 for r in all_records]
-    mitigated = [
-        1.0 if r.get("end_outcome") == "impact_mitigated" else 0.0
-        for r in all_records
-    ]
+    mitigated = [1.0 if r.get("end_outcome") == "impact_mitigated" else 0.0 for r in all_records]
     if len(per_seed_means) >= 3:
         ci_low, _ci_mean, ci_high = bootstrap_ci(
-            per_seed_means, n_resamples=2000, alpha=0.05, seed=0,
+            per_seed_means,
+            n_resamples=2000,
+            alpha=0.05,
+            seed=0,
         )
     else:
         ci_low, _ci_mean, ci_high = bootstrap_ci(
-            rewards, n_resamples=2000, alpha=0.05, seed=0,
+            rewards,
+            n_resamples=2000,
+            alpha=0.05,
+            seed=0,
         )
 
     return {
@@ -176,11 +183,11 @@ _PHASE6_DEPLOYABLE_BEST_MITIGATED = 0.153  # DQN mitigated_impact_rate on test_b
 
 
 def _evaluate_g72(
-    rows: List[Dict[str, Any]],
+    rows: list[dict[str, Any]],
     deployable_best: float = _PHASE6_DEPLOYABLE_BEST_REWARD,
     oracle_ceiling: float = _PHASE6_ORACLE_CEILING_REWARD,
     deployable_best_mitigated: float = _PHASE6_DEPLOYABLE_BEST_MITIGATED,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """G7.2 — corrected: compare cells fairly on a metric that is
     commensurable across cells with **different reward functions**.
 
@@ -222,22 +229,18 @@ def _evaluate_g72(
     # axis="reward" cells scale a coefficient ⇒ NOT comparable.
     # axis="baseline" + axis="impact_terminal" preserve the reward fn.
     reward_comparable = [r for r in finite if r.get("axis") in ("baseline", "impact_terminal")]
-    best_rc = (
-        max(reward_comparable, key=lambda r: r["mean_reward"])
-        if reward_comparable else None
-    )
+    best_rc = max(reward_comparable, key=lambda r: r["mean_reward"]) if reward_comparable else None
     passes_strand1 = bool(best_rc and best_rc["ci_low"] > deployable_best)
     meets_oracle_strand1 = bool(best_rc and best_rc["ci_low"] > oracle_ceiling)
 
     # Strand 2: security KPI across ALL cells (incl. coefficient-scaled).
     sec_candidates = [
-        r for r in finite
-        if math.isfinite(r.get("mitigated_impact_rate", math.nan))
-        and r.get("axis") != "baseline"
+        r
+        for r in finite
+        if math.isfinite(r.get("mitigated_impact_rate", math.nan)) and r.get("axis") != "baseline"
     ]
     best_sec = (
-        max(sec_candidates, key=lambda r: r["mitigated_impact_rate"])
-        if sec_candidates else None
+        max(sec_candidates, key=lambda r: r["mitigated_impact_rate"]) if sec_candidates else None
     )
     sec_threshold = deployable_best_mitigated * 1.5
     passes_strand2 = bool(best_sec and best_sec["mitigated_impact_rate"] >= sec_threshold)
@@ -285,40 +288,30 @@ def _evaluate_g72(
         )
     else:
         interp = (
-            f"FAIL-WITH-FINDING (D7.1.1): the linear sweep failed to "
-            f"close the gap on either strand — neither raw reward "
-            f"(reward-comparable cells) nor security KPI "
-            f"(mitigated_impact_rate) beats benchmark DQN by the "
-            f"≥ 1σ / ≥ 1.5× threshold. Characterises the limit of "
-            f"one-at-a-time environment-design-style reward shaping. Closing "
-            f"the gap requires a different mechanism (curriculum, "
-            f"reward modelling, or attack-aware exploration), "
-            f"deferred to future work."
+            "FAIL-WITH-FINDING (D7.1.1): the linear sweep failed to "
+            "close the gap on either strand — neither raw reward "
+            "(reward-comparable cells) nor security KPI "
+            "(mitigated_impact_rate) beats benchmark DQN by the "
+            "≥ 1σ / ≥ 1.5× threshold. Characterises the limit of "
+            "one-at-a-time environment-design-style reward shaping. Closing "
+            "the gap requires a different mechanism (curriculum, "
+            "reward modelling, or attack-aware exploration), "
+            "deferred to future work."
         )
 
     return {
         "passes": bool(passes_strand1),
         # Reward-comparable strand (the canonical G7.2 gate).
         "best_reward_comparable_cell": best_rc["cell_id"] if best_rc else None,
-        "best_reward_comparable_mean": (
-            best_rc["mean_reward"] if best_rc else None
-        ),
-        "best_reward_comparable_ci": (
-            [best_rc["ci_low"], best_rc["ci_high"]] if best_rc else None
-        ),
+        "best_reward_comparable_mean": (best_rc["mean_reward"] if best_rc else None),
+        "best_reward_comparable_ci": ([best_rc["ci_low"], best_rc["ci_high"]] if best_rc else None),
         "best_reward_comparable_mitigated": (
             best_rc.get("mitigated_impact_rate") if best_rc else None
         ),
         # Security-KPI strand (D7.1.1 fallback metric).
-        "best_security_kpi_cell": (
-            best_sec["cell_id"] if best_sec else None
-        ),
-        "best_security_kpi_mitigated": (
-            best_sec["mitigated_impact_rate"] if best_sec else None
-        ),
-        "best_security_kpi_reward": (
-            best_sec["mean_reward"] if best_sec else None
-        ),
+        "best_security_kpi_cell": (best_sec["cell_id"] if best_sec else None),
+        "best_security_kpi_mitigated": (best_sec["mitigated_impact_rate"] if best_sec else None),
+        "best_security_kpi_reward": (best_sec["mean_reward"] if best_sec else None),
         "security_kpi_strand_passes": passes_strand2,
         "security_kpi_threshold": sec_threshold,
         # Raw-reward winner (for transparency, NOT the headline).
@@ -339,19 +332,20 @@ def _evaluate_g72(
         # now point at the reward-comparable strand to match the
         # canonical gate.
         "best_cell": best_rc["cell_id"] if best_rc else raw_winner["cell_id"],
-        "best_mean_reward": (
-            best_rc["mean_reward"] if best_rc else raw_winner["mean_reward"]
-        ),
+        "best_mean_reward": (best_rc["mean_reward"] if best_rc else raw_winner["mean_reward"]),
         "best_ci": (
-            [best_rc["ci_low"], best_rc["ci_high"]] if best_rc
+            [best_rc["ci_low"], best_rc["ci_high"]]
+            if best_rc
             else [raw_winner["ci_low"], raw_winner["ci_high"]]
         ),
         "delta_to_deployable": (
-            best_rc["mean_reward"] - deployable_best if best_rc
+            best_rc["mean_reward"] - deployable_best
+            if best_rc
             else raw_winner["mean_reward"] - deployable_best
         ),
         "delta_to_oracle": (
-            best_rc["mean_reward"] - oracle_ceiling if best_rc
+            best_rc["mean_reward"] - oracle_ceiling
+            if best_rc
             else raw_winner["mean_reward"] - oracle_ceiling
         ),
         "interpretation": interp,
@@ -362,7 +356,7 @@ def _evaluate_g72(
 
 
 def _render(
-    rows: List[Dict[str, Any]],
+    rows: list[dict[str, Any]],
     out_path: Path,
     *,
     deployable_best: float = _PHASE6_DEPLOYABLE_BEST_REWARD,
@@ -376,9 +370,9 @@ def _render(
     import matplotlib.pyplot as plt
 
     # Group rows by axis component.
-    by_component: Dict[str, List[Dict[str, Any]]] = {}
-    impact_rows: List[Dict[str, Any]] = []
-    baseline: Optional[Dict[str, Any]] = None
+    by_component: dict[str, list[dict[str, Any]]] = {}
+    impact_rows: list[dict[str, Any]] = []
+    baseline: dict[str, Any] | None = None
     for r in rows:
         if r["axis"] == "baseline":
             baseline = r
@@ -395,9 +389,7 @@ def _render(
     n = len(panels)
     n_cols = 3
     n_rows = (n + n_cols - 1) // n_cols
-    fig, axes = plt.subplots(
-        n_rows, n_cols, figsize=(13.0, 3.6 * n_rows), squeeze=False
-    )
+    fig, axes = plt.subplots(n_rows, n_cols, figsize=(13.0, 3.6 * n_rows), squeeze=False)
 
     for ax_idx, panel in enumerate(panels):
         ax = axes[ax_idx // n_cols][ax_idx % n_cols]
@@ -420,8 +412,7 @@ def _render(
                 lo.append(max(r["mean_reward"] - r["ci_low"], 0.0))
                 hi.append(max(r["ci_high"] - r["mean_reward"], 0.0))
                 labels.append("False")
-            ax.bar(xs, means, yerr=[lo, hi], capsize=4,
-                   color=["#9ca3af", "#2563eb"][:len(xs)])
+            ax.bar(xs, means, yerr=[lo, hi], capsize=4, color=["#9ca3af", "#2563eb"][: len(xs)])
             ax.set_xticks(xs)
             ax.set_xticklabels(labels)
             ax.set_title("impact_is_terminal (D7.3)", fontsize=10)
@@ -430,23 +421,31 @@ def _render(
             comp_rows = by_component[panel]
             # Include the centre baseline at multiplier=1.0.
             if baseline:
-                comp_rows = list(comp_rows) + [{
-                    **baseline,
-                    "component": panel,
-                    "multiplier": 1.0,
-                }]
+                comp_rows = list(comp_rows) + [
+                    {
+                        **baseline,
+                        "component": panel,
+                        "multiplier": 1.0,
+                    }
+                ]
             comp_rows.sort(key=lambda r: r["multiplier"])
             xs = [r["multiplier"] for r in comp_rows]
             means = [r["mean_reward"] for r in comp_rows]
             lo = [r["ci_low"] for r in comp_rows]
             hi = [r["ci_high"] for r in comp_rows]
-            ax.errorbar(xs, means,
-                        yerr=[
-                            [m - l for m, l in zip(means, lo)],
-                            [h - m for m, h in zip(means, hi)],
-                        ],
-                        fmt="o-", capsize=4, color="#2563eb",
-                        markerfacecolor="#2563eb", linewidth=1.5)
+            ax.errorbar(
+                xs,
+                means,
+                yerr=[
+                    [m - lo_val for m, lo_val in zip(means, lo)],
+                    [h - m for m, h in zip(means, hi)],
+                ],
+                fmt="o-",
+                capsize=4,
+                color="#2563eb",
+                markerfacecolor="#2563eb",
+                linewidth=1.5,
+            )
             ax.set_xscale("log", base=2)
             ax.set_xticks([0.5, 1.0, 2.0])
             ax.set_xticklabels(["0.5×", "1×", "2×"])
@@ -454,10 +453,22 @@ def _render(
             ax.set_xlabel("multiplier × environment-design default", fontsize=8)
 
         # Reference lines on every panel.
-        ax.axhline(deployable_best, color="#2563eb", linestyle=":",
-                   linewidth=0.9, alpha=0.7, label=_DEPLOYABLE_BEST_LABEL)
-        ax.axhline(oracle_ceiling, color="#dc2626", linestyle="--",
-                   linewidth=0.9, alpha=0.7, label=_ORACLE_CEILING_LABEL)
+        ax.axhline(
+            deployable_best,
+            color="#2563eb",
+            linestyle=":",
+            linewidth=0.9,
+            alpha=0.7,
+            label=_DEPLOYABLE_BEST_LABEL,
+        )
+        ax.axhline(
+            oracle_ceiling,
+            color="#dc2626",
+            linestyle="--",
+            linewidth=0.9,
+            alpha=0.7,
+            label=_ORACLE_CEILING_LABEL,
+        )
         ax.grid(True, axis="y", linestyle=":", alpha=0.3)
         if ax_idx == 0:
             ax.legend(fontsize=7, loc="lower right", framealpha=0.9)
@@ -479,12 +490,16 @@ def _render(
 
     fig.suptitle(
         "F9 — Reward-component ablation (PPO 250K × 5 seeds; sparse one-at-a-time)",
-        fontsize=12, y=1.0,
+        fontsize=12,
+        y=1.0,
     )
     fig.text(
-        0.5, -0.01,
+        0.5,
+        -0.01,
         "PLAN §3.1.4 / D7.1; targets the +288 deployable gap (D6.2.1, audit AF2)",
-        ha="center", fontsize=8, style="italic",
+        ha="center",
+        fontsize=8,
+        style="italic",
     )
     fig.tight_layout()
     fig.savefig(out_path, dpi=200, bbox_inches="tight")
@@ -518,7 +533,7 @@ def _build_argparser() -> argparse.ArgumentParser:
     return p
 
 
-def main(argv: Optional[List[str]] = None) -> int:
+def main(argv: list[str] | None = None) -> int:
     args = _build_argparser().parse_args(argv)
     logging.basicConfig(
         level=logging.INFO,
@@ -533,25 +548,30 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     # Discover cells (every subdir with cell_config.json).
     cell_dirs = sorted(
-        d for d in runs_root.iterdir()
-        if d.is_dir() and (d / "cell_config.json").exists()
+        d for d in runs_root.iterdir() if d.is_dir() and (d / "cell_config.json").exists()
     )
     if not cell_dirs:
         logger.error("no cell directories under %s", runs_root)
         return 1
 
-    sha_collector: Dict[str, str] = {}
-    rows: List[Dict[str, Any]] = []
+    sha_collector: dict[str, str] = {}
+    rows: list[dict[str, Any]] = []
     for cell_dir in cell_dirs:
         cell_config = json.loads((cell_dir / "cell_config.json").read_text())
         row = _summarise_cell(
-            cell_dir.name, cell_dir, cell_config, sha_collector=sha_collector,
+            cell_dir.name,
+            cell_dir,
+            cell_config,
+            sha_collector=sha_collector,
         )
         rows.append(row)
         logger.info(
             "F9 cell=%s axis=%s mean=%.1f CI=(%.1f, %.1f) n_ep=%d",
-            row["cell_id"], row["axis"],
-            row["mean_reward"], row["ci_low"], row["ci_high"],
+            row["cell_id"],
+            row["axis"],
+            row["mean_reward"],
+            row["ci_low"],
+            row["ci_high"],
             row["n_episodes"],
         )
 
@@ -566,11 +586,11 @@ def main(argv: Optional[List[str]] = None) -> int:
         "phase": 7,
         "figure": "F9",
         "phase3_defaults": {
-            "defense_success_bonus":   250.0,
-            "penalty_missed_impact":   150.0,
-            "reward_proportional":       5.0,
-            "penalty_disproportionate":  5.0,
-            "reward_benign_passive":    10.0,
+            "defense_success_bonus": 250.0,
+            "penalty_missed_impact": 150.0,
+            "reward_proportional": 5.0,
+            "penalty_disproportionate": 5.0,
+            "reward_benign_passive": 10.0,
         },
         "phase6_oracle_ceiling": _PHASE6_ORACLE_CEILING_REWARD,
         "phase6_deployable_best": _PHASE6_DEPLOYABLE_BEST_REWARD,
@@ -627,10 +647,11 @@ def main(argv: Optional[List[str]] = None) -> int:
         )
 
     logger.info(
-        "F9 written to %s — G7.2 passes=%s (best=%s, mean=%.1f, "
-        "Δ_to_dqn=%+.1f, Δ_to_oracle=%+.1f)",
-        out_dir, g72.get("passes"),
-        g72.get("best_cell"), g72.get("best_mean_reward", float("nan")),
+        "F9 written to %s — G7.2 passes=%s (best=%s, mean=%.1f, Δ_to_dqn=%+.1f, Δ_to_oracle=%+.1f)",
+        out_dir,
+        g72.get("passes"),
+        g72.get("best_cell"),
+        g72.get("best_mean_reward", float("nan")),
         g72.get("delta_to_deployable", float("nan")),
         g72.get("delta_to_oracle", float("nan")),
     )

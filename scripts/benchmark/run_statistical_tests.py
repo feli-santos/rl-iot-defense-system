@@ -31,7 +31,7 @@ import json
 import logging
 import math
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import numpy as np
 
@@ -43,9 +43,9 @@ logger = logging.getLogger(__name__)
 
 def _load_episode_rewards(
     jsonl_path: Path,
-) -> List[float]:
+) -> list[float]:
     """Load episodic rewards from a benchmark JSONL file."""
-    rewards: List[float] = []
+    rewards: list[float] = []
     if not jsonl_path.exists():
         logger.warning("JSONL not found: %s", jsonl_path)
         return rewards
@@ -65,10 +65,10 @@ def _load_episode_rewards(
 def _collect_algo_rewards(
     benchmark_root: Path,
     algo: str,
-    seeds: List[int],
-) -> Dict[int, List[float]]:
+    seeds: list[int],
+) -> dict[int, list[float]]:
     """Collect per-seed reward arrays for a given algorithm."""
-    per_seed: Dict[int, List[float]] = {}
+    per_seed: dict[int, list[float]] = {}
     for seed in seeds:
         jsonl = benchmark_root / algo / f"seed_{seed}" / "eval_test.jsonl"
         rewards = _load_episode_rewards(jsonl)
@@ -79,9 +79,9 @@ def _collect_algo_rewards(
     return per_seed
 
 
-def _flatten(per_seed: Dict[int, List[float]]) -> np.ndarray:
+def _flatten(per_seed: dict[int, list[float]]) -> np.ndarray:
     """Flatten all seeds into a single reward array."""
-    all_rewards: List[float] = []
+    all_rewards: list[float] = []
     for rewards in per_seed.values():
         all_rewards.extend(rewards)
     return np.array(all_rewards, dtype=float)
@@ -92,8 +92,7 @@ def _cohens_d(a: np.ndarray, b: np.ndarray) -> float:
     if len(a) < 2 or len(b) < 2:
         return float("nan")
     pooled_std = math.sqrt(
-        ((len(a) - 1) * float(np.var(a, ddof=1))
-         + (len(b) - 1) * float(np.var(b, ddof=1)))
+        ((len(a) - 1) * float(np.var(a, ddof=1)) + (len(b) - 1) * float(np.var(b, ddof=1)))
         / (len(a) + len(b) - 2)
     )
     if pooled_std == 0:
@@ -106,7 +105,7 @@ def _wilcoxon_test(
     b: np.ndarray,
     label: str,
     alpha: float,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Run Wilcoxon signed-rank test if samples are equal length; else Mann-Whitney U."""
     try:
         from scipy import stats  # type: ignore[import]
@@ -159,7 +158,7 @@ def _welch_test(
     b: np.ndarray,
     label: str,
     alpha: float,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Run Welch's t-test (independent samples, unequal variance)."""
     try:
         from scipy import stats  # type: ignore[import]
@@ -192,13 +191,12 @@ def _bootstrap_ci(
     n_boot: int = 10_000,
     ci: float = 0.95,
     seed: int = 42,
-) -> Tuple[float, float]:
+) -> tuple[float, float]:
     """Return (lower, upper) bootstrap CI for the mean of x."""
     rng = np.random.default_rng(seed)
-    boot_means = np.array([
-        np.mean(rng.choice(x, size=len(x), replace=True))
-        for _ in range(n_boot)
-    ])
+    boot_means = np.array(
+        [np.mean(rng.choice(x, size=len(x), replace=True)) for _ in range(n_boot)]
+    )
     lo = float(np.percentile(boot_means, (1 - ci) / 2 * 100))
     hi = float(np.percentile(boot_means, (1 + ci) / 2 * 100))
     return lo, hi
@@ -209,16 +207,16 @@ def _bootstrap_ci(
 
 def run_tests(
     benchmark_root: Path,
-    seeds: List[int],
+    seeds: list[int],
     alpha: float = 0.05,
-    ablation_path: Optional[Path] = None,
-) -> Dict[str, Any]:
+    ablation_path: Path | None = None,
+) -> dict[str, Any]:
     """Run all statistical tests and return the results dict."""
 
-    comparisons: List[Dict[str, Any]] = []
+    comparisons: list[dict[str, Any]] = []
 
     # Load per-algo rewards
-    algo_rewards: Dict[str, np.ndarray] = {}
+    algo_rewards: dict[str, np.ndarray] = {}
     for algo in ["dqn", "ppo", "a2c"]:
         per_seed = _collect_algo_rewards(benchmark_root, algo, seeds)
         if per_seed:
@@ -229,7 +227,8 @@ def run_tests(
                 algo.upper(),
                 len(algo_rewards[algo]),
                 float(np.mean(algo_rewards[algo])),
-                lo, hi,
+                lo,
+                hi,
             )
         else:
             logger.warning("No data for %s — skipping", algo)
@@ -244,37 +243,58 @@ def run_tests(
             "RF-Acting: n=%d  mean=%.1f  95%%CI=[%.1f, %.1f]",
             len(algo_rewards["rf_acting"]),
             float(np.mean(algo_rewards["rf_acting"])),
-            lo, hi,
+            lo,
+            hi,
         )
 
     # Comparison a: DQN vs PPO
     if "dqn" in algo_rewards and "ppo" in algo_rewards:
-        comparisons.append(_welch_test(
-            algo_rewards["dqn"], algo_rewards["ppo"],
-            label="DQN vs PPO (test_balanced)", alpha=alpha,
-        ))
-        comparisons.append(_wilcoxon_test(
-            algo_rewards["dqn"], algo_rewards["ppo"],
-            label="DQN vs PPO (test_balanced)", alpha=alpha,
-        ))
+        comparisons.append(
+            _welch_test(
+                algo_rewards["dqn"],
+                algo_rewards["ppo"],
+                label="DQN vs PPO (test_balanced)",
+                alpha=alpha,
+            )
+        )
+        comparisons.append(
+            _wilcoxon_test(
+                algo_rewards["dqn"],
+                algo_rewards["ppo"],
+                label="DQN vs PPO (test_balanced)",
+                alpha=alpha,
+            )
+        )
 
     # Comparison b: DQN vs A2C
     if "dqn" in algo_rewards and "a2c" in algo_rewards:
-        comparisons.append(_welch_test(
-            algo_rewards["dqn"], algo_rewards["a2c"],
-            label="DQN vs A2C (test_balanced)", alpha=alpha,
-        ))
+        comparisons.append(
+            _welch_test(
+                algo_rewards["dqn"],
+                algo_rewards["a2c"],
+                label="DQN vs A2C (test_balanced)",
+                alpha=alpha,
+            )
+        )
 
     # Comparison c: Best DRL vs RF-Acting
     if "dqn" in algo_rewards and "rf_acting" in algo_rewards:
-        comparisons.append(_welch_test(
-            algo_rewards["dqn"], algo_rewards["rf_acting"],
-            label="DQN vs RF-Acting (test_balanced)", alpha=alpha,
-        ))
-        comparisons.append(_wilcoxon_test(
-            algo_rewards["dqn"], algo_rewards["rf_acting"],
-            label="DQN vs RF-Acting (test_balanced)", alpha=alpha,
-        ))
+        comparisons.append(
+            _welch_test(
+                algo_rewards["dqn"],
+                algo_rewards["rf_acting"],
+                label="DQN vs RF-Acting (test_balanced)",
+                alpha=alpha,
+            )
+        )
+        comparisons.append(
+            _wilcoxon_test(
+                algo_rewards["dqn"],
+                algo_rewards["rf_acting"],
+                label="DQN vs RF-Acting (test_balanced)",
+                alpha=alpha,
+            )
+        )
 
     # Comparison d: impact_is_terminal=True vs False (from F9 ablation data)
     if ablation_path is not None and ablation_path.exists():
@@ -283,15 +303,19 @@ def run_tests(
             true_rewards = np.array(abl_data.get("terminal_true_rewards", []), dtype=float)
             false_rewards = np.array(abl_data.get("terminal_false_rewards", []), dtype=float)
             if len(true_rewards) >= 2 and len(false_rewards) >= 2:
-                comparisons.append(_welch_test(
-                    false_rewards, true_rewards,
-                    label="impact_is_terminal=False vs True (F9 ablation)", alpha=alpha,
-                ))
+                comparisons.append(
+                    _welch_test(
+                        false_rewards,
+                        true_rewards,
+                        label="impact_is_terminal=False vs True (F9 ablation)",
+                        alpha=alpha,
+                    )
+                )
         except Exception as exc:  # noqa: BLE001
             logger.warning("Could not load F9 ablation data: %s", exc)
 
     # Summary per-algorithm bootstrap CIs
-    ci_summary: Dict[str, Any] = {}
+    ci_summary: dict[str, Any] = {}
     for algo, rewards in algo_rewards.items():
         lo, hi = _bootstrap_ci(rewards)
         ci_summary[algo] = {
@@ -305,7 +329,7 @@ def run_tests(
     # Check pairwise CI overlap
     algos = list(ci_summary.keys())
     for i, a in enumerate(algos):
-        for b in algos[i + 1:]:
+        for b in algos[i + 1 :]:
             lo_a, hi_a = ci_summary[a]["ci_95_lower"], ci_summary[a]["ci_95_upper"]
             lo_b, hi_b = ci_summary[b]["ci_95_lower"], ci_summary[b]["ci_95_upper"]
             overlaps = not (hi_a < lo_b or hi_b < lo_a)
@@ -317,10 +341,7 @@ def run_tests(
         "seeds": seeds,
         "bootstrap_ci_summary": ci_summary,
         "comparisons": comparisons,
-        "n_significant": sum(
-            1 for c in comparisons
-            if c.get("significant") is True
-        ),
+        "n_significant": sum(1 for c in comparisons if c.get("significant") is True),
     }
 
 
@@ -333,7 +354,10 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     p.add_argument("--phase6-root", default="runs/benchmark")
     p.add_argument(
-        "--seeds", nargs="+", type=int, default=[0, 1, 2, 3, 4],
+        "--seeds",
+        nargs="+",
+        type=int,
+        default=[0, 1, 2, 3, 4],
         help="Seeds to include in the DRL comparisons.",
     )
     p.add_argument("--alpha", type=float, default=0.05)
@@ -345,7 +369,7 @@ def _build_parser() -> argparse.ArgumentParser:
         "--ablation-path",
         default=None,
         help="Optional path to F9 ablation JSON containing "
-             "'terminal_true_rewards' and 'terminal_false_rewards' arrays.",
+        "'terminal_true_rewards' and 'terminal_false_rewards' arrays.",
     )
     p.add_argument("--verbose", type=int, default=1)
     return p

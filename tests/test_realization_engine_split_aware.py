@@ -13,7 +13,6 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Tuple
 
 import joblib
 import numpy as np
@@ -22,7 +21,6 @@ from sklearn.preprocessing import StandardScaler
 
 from src.utils.label_mapper import KillChainStage
 from src.utils.realization_engine import RealizationEngine
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -49,7 +47,7 @@ def _build_synthetic_dataset(tmp_path: Path) -> Path:
 
 def _build_synthetic_splits_manifest(
     data_path: Path, ood_attack_class_size: int = 4
-) -> Tuple[Path, np.ndarray, np.ndarray]:
+) -> tuple[Path, np.ndarray, np.ndarray]:
     """Build a fake splits/ tree + manifest.json next to ``data_path``.
 
     Returns ``(manifest_path, train_idx, ood_idx)``.
@@ -152,7 +150,11 @@ def test_sample_returns_only_allowed_rows(synthetic_dataset: Path) -> None:
 def test_from_split_manifest_uses_train_split(synthetic_dataset: Path) -> None:
     manifest_path, train_idx, _ = _build_synthetic_splits_manifest(synthetic_dataset)
     eng = RealizationEngine.from_split_manifest(
-        synthetic_dataset, manifest_path, "train", exclude_ood=False, seed=0,
+        synthetic_dataset,
+        manifest_path,
+        "train",
+        exclude_ood=False,
+        seed=0,
     )
     pool = set()
     for s in range(5):
@@ -161,11 +163,12 @@ def test_from_split_manifest_uses_train_split(synthetic_dataset: Path) -> None:
 
 
 def test_from_split_manifest_excludes_ood_by_default(synthetic_dataset: Path) -> None:
-    manifest_path, train_idx, ood_idx = _build_synthetic_splits_manifest(
-        synthetic_dataset
-    )
+    manifest_path, train_idx, ood_idx = _build_synthetic_splits_manifest(synthetic_dataset)
     eng = RealizationEngine.from_split_manifest(
-        synthetic_dataset, manifest_path, "train", seed=0,  # exclude_ood=True default
+        synthetic_dataset,
+        manifest_path,
+        "train",
+        seed=0,  # exclude_ood=True default
     )
     pool = set()
     for s in range(5):
@@ -180,12 +183,18 @@ def test_from_split_manifest_unknown_split_raises(synthetic_dataset: Path) -> No
     manifest_path, _, _ = _build_synthetic_splits_manifest(synthetic_dataset)
     with pytest.raises(KeyError, match="totally-not-a-split"):
         RealizationEngine.from_split_manifest(
-            synthetic_dataset, manifest_path, "totally-not-a-split", seed=0,
+            synthetic_dataset,
+            manifest_path,
+            "totally-not-a-split",
+            seed=0,
         )
 
 
 def test_from_split_manifest_missing_file_raises(tmp_path: Path) -> None:
     with pytest.raises(FileNotFoundError):
         RealizationEngine.from_split_manifest(
-            tmp_path, tmp_path / "does-not-exist.json", "train", seed=0,
+            tmp_path,
+            tmp_path / "does-not-exist.json",
+            "train",
+            seed=0,
         )

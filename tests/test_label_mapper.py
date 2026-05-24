@@ -8,9 +8,9 @@ CICIoT2023 attack labels to Kill Chain abstract states (0-4).
 import pytest
 
 from src.utils.label_mapper import (
+    STAGE_NAMES,
     AbstractStateLabelMapper,
     KillChainStage,
-    STAGE_NAMES,
 )
 
 
@@ -82,9 +82,7 @@ class TestAbstractStateLabelMapper:
             "VulnerabilityScan",
         ],
     )
-    def test_recon_mapping(
-        self, mapper: AbstractStateLabelMapper, label: str
-    ) -> None:
+    def test_recon_mapping(self, mapper: AbstractStateLabelMapper, label: str) -> None:
         """Reconnaissance attacks should map to stage 1."""
         assert mapper.get_stage(label) == KillChainStage.RECON
         assert mapper.get_stage_id(label) == 1
@@ -105,9 +103,7 @@ class TestAbstractStateLabelMapper:
             "DictionaryBruteForce",
         ],
     )
-    def test_access_mapping(
-        self, mapper: AbstractStateLabelMapper, label: str
-    ) -> None:
+    def test_access_mapping(self, mapper: AbstractStateLabelMapper, label: str) -> None:
         """Exploitation/access attacks should map to stage 2."""
         assert mapper.get_stage(label) == KillChainStage.ACCESS
         assert mapper.get_stage_id(label) == 2
@@ -125,9 +121,7 @@ class TestAbstractStateLabelMapper:
             "Mirai-greip_flood",
         ],
     )
-    def test_maneuver_mapping(
-        self, mapper: AbstractStateLabelMapper, label: str
-    ) -> None:
+    def test_maneuver_mapping(self, mapper: AbstractStateLabelMapper, label: str) -> None:
         """Network positioning/spoofing attacks should map to stage 3."""
         assert mapper.get_stage(label) == KillChainStage.MANEUVER
         assert mapper.get_stage_id(label) == 3
@@ -157,9 +151,7 @@ class TestAbstractStateLabelMapper:
             "DoS-HTTP_Flood",
         ],
     )
-    def test_impact_mapping(
-        self, mapper: AbstractStateLabelMapper, label: str
-    ) -> None:
+    def test_impact_mapping(self, mapper: AbstractStateLabelMapper, label: str) -> None:
         """DoS/DDoS attacks should map to stage 4."""
         assert mapper.get_stage(label) == KillChainStage.IMPACT
         assert mapper.get_stage_id(label) == 4
@@ -168,9 +160,7 @@ class TestAbstractStateLabelMapper:
     # Edge Cases and Error Handling
     # =========================================================================
 
-    def test_unknown_label_raises_error(
-        self, mapper: AbstractStateLabelMapper
-    ) -> None:
+    def test_unknown_label_raises_error(self, mapper: AbstractStateLabelMapper) -> None:
         """Unknown labels should raise KeyError."""
         with pytest.raises(KeyError):
             mapper.get_stage("UnknownAttackType")
@@ -179,21 +169,17 @@ class TestAbstractStateLabelMapper:
         """Label matching should be case-sensitive."""
         # Correct case works
         assert mapper.get_stage_id("BenignTraffic") == 0
-        
+
         # Wrong case should raise
         with pytest.raises(KeyError):
             mapper.get_stage("benigntraffic")
 
-    def test_get_stage_safe_with_default(
-        self, mapper: AbstractStateLabelMapper
-    ) -> None:
+    def test_get_stage_safe_with_default(self, mapper: AbstractStateLabelMapper) -> None:
         """get_stage_safe should return default for unknown labels."""
         result = mapper.get_stage_safe("UnknownLabel", default=KillChainStage.BENIGN)
         assert result == KillChainStage.BENIGN
 
-    def test_get_stage_id_safe_with_default(
-        self, mapper: AbstractStateLabelMapper
-    ) -> None:
+    def test_get_stage_id_safe_with_default(self, mapper: AbstractStateLabelMapper) -> None:
         """get_stage_id_safe should return default for unknown labels."""
         result = mapper.get_stage_id_safe("UnknownLabel", default=0)
         assert result == 0
@@ -202,9 +188,7 @@ class TestAbstractStateLabelMapper:
     # Reverse Mapping Tests
     # =========================================================================
 
-    def test_get_labels_for_stage(
-        self, mapper: AbstractStateLabelMapper
-    ) -> None:
+    def test_get_labels_for_stage(self, mapper: AbstractStateLabelMapper) -> None:
         """Should return all labels mapped to a given stage."""
         benign_labels = mapper.get_labels_for_stage(KillChainStage.BENIGN)
         assert "BenignTraffic" in benign_labels
@@ -217,25 +201,19 @@ class TestAbstractStateLabelMapper:
         impact_labels = mapper.get_labels_for_stage(KillChainStage.IMPACT)
         assert len(impact_labels) == 16  # All DDoS and DoS variants
 
-    def test_get_labels_for_stage_id(
-        self, mapper: AbstractStateLabelMapper
-    ) -> None:
+    def test_get_labels_for_stage_id(self, mapper: AbstractStateLabelMapper) -> None:
         """Should return all labels for a stage by ID."""
         labels = mapper.get_labels_for_stage_id(2)  # ACCESS
         assert "SqlInjection" in labels
         assert "XSS" in labels
         assert len(labels) == 7
 
-    def test_mirai_udpplain_mapping(
-        self, mapper: AbstractStateLabelMapper
-    ) -> None:
+    def test_mirai_udpplain_mapping(self, mapper: AbstractStateLabelMapper) -> None:
         """Mirai-udpplain should map to MANEUVER (stage 3)."""
         assert mapper.get_stage("Mirai-udpplain") == KillChainStage.MANEUVER
         assert mapper.get_stage_id("Mirai-udpplain") == 3
 
-    def test_get_labels_for_maneuver(
-        self, mapper: AbstractStateLabelMapper
-    ) -> None:
+    def test_get_labels_for_maneuver(self, mapper: AbstractStateLabelMapper) -> None:
         """MANEUVER stage should include all 5 labels."""
         labels = mapper.get_labels_for_stage_id(3)  # MANEUVER
         assert "MITM-ArpSpoofing" in labels
@@ -280,9 +258,7 @@ class TestAbstractStateLabelMapper:
         stages = mapper.map_labels_batch(labels)
         assert stages == [0, 1, 4]
 
-    def test_map_labels_batch_with_unknown(
-        self, mapper: AbstractStateLabelMapper
-    ) -> None:
+    def test_map_labels_batch_with_unknown(self, mapper: AbstractStateLabelMapper) -> None:
         """Batch mapping with unknown labels should use default."""
         labels = ["BenignTraffic", "Unknown", "DDoS-TCP_Flood"]
         stages = mapper.map_labels_batch(labels, default=-1)
@@ -295,12 +271,12 @@ class TestAbstractStateLabelMapper:
     def test_stage_distribution(self, mapper: AbstractStateLabelMapper) -> None:
         """get_stage_distribution should count labels per stage."""
         distribution = mapper.get_stage_distribution()
-        
-        assert distribution[0] == 1   # BENIGN: 1 label
-        assert distribution[1] == 5   # RECON: 5 labels
-        assert distribution[2] == 7   # ACCESS: 7 labels
-        assert distribution[3] == 5   # MANEUVER: 5 labels (including Mirai-udpplain)
+
+        assert distribution[0] == 1  # BENIGN: 1 label
+        assert distribution[1] == 5  # RECON: 5 labels
+        assert distribution[2] == 7  # ACCESS: 7 labels
+        assert distribution[3] == 5  # MANEUVER: 5 labels (including Mirai-udpplain)
         assert distribution[4] == 16  # IMPACT: 16 labels (DDoS + DoS)
-        
+
         # Total should match all labels
         assert sum(distribution.values()) == 34

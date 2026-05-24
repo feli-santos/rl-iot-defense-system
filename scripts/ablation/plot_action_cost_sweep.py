@@ -22,7 +22,7 @@ import json
 import logging
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import numpy as np
 
@@ -34,31 +34,26 @@ logger = logging.getLogger(__name__)
 
 
 def _bootstrap_ci(
-    values: List[float], n_boot: int = 2000, alpha: float = 0.05
-) -> Tuple[float, float]:
+    values: list[float], n_boot: int = 2000, alpha: float = 0.05
+) -> tuple[float, float]:
     """Return (low, high) 95% bootstrap CI for the mean."""
     if not values:
         return (float("nan"), float("nan"))
     arr = np.array(values)
     rng = np.random.default_rng(42)
-    boot_means = [
-        rng.choice(arr, size=len(arr), replace=True).mean()
-        for _ in range(n_boot)
-    ]
+    boot_means = [rng.choice(arr, size=len(arr), replace=True).mean() for _ in range(n_boot)]
     lo = float(np.percentile(boot_means, 100 * alpha / 2))
     hi = float(np.percentile(boot_means, 100 * (1 - alpha / 2)))
     return (lo, hi)
 
 
-def _read_final_rewards(run_dir: Path, fraction: float = 0.1) -> List[float]:
+def _read_final_rewards(run_dir: Path, fraction: float = 0.1) -> list[float]:
     """Read last ``fraction`` of eval episodes from eval.jsonl, return rewards."""
     eval_path = run_dir / "eval.jsonl"
     if not eval_path.exists():
         logger.warning("eval.jsonl not found in %s", run_dir)
         return []
-    lines = [
-        json.loads(l) for l in eval_path.read_text().splitlines() if l.strip()
-    ]
+    lines = [json.loads(ln) for ln in eval_path.read_text().splitlines() if ln.strip()]
     if not lines:
         return []
     cutoff = max(1, int(len(lines) * (1 - fraction)))
@@ -67,7 +62,7 @@ def _read_final_rewards(run_dir: Path, fraction: float = 0.1) -> List[float]:
 
 def build_summary(
     sweep_root: str,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Load sweep manifest and compute per-scale mean/CI from eval.jsonl files."""
     root = Path(sweep_root)
     manifest_path = root / "sweep_manifest.json"
@@ -79,7 +74,7 @@ def build_summary(
 
     rows = []
     for scale in scales:
-        all_rewards: List[float] = []
+        all_rewards: list[float] = []
         seed_rows = [r for r in manifest["runs"] if abs(r["scale"] - scale) < 1e-9]
         for run in seed_rows:
             if not run["ok"]:
@@ -92,25 +87,35 @@ def build_summary(
 
         if not all_rewards:
             logger.warning("No rewards for scale=%.1f", scale)
-            rows.append({
-                "scale": scale, "n_episodes": 0,
-                "mean_reward": float("nan"),
-                "ci_low": float("nan"), "ci_high": float("nan"),
-            })
+            rows.append(
+                {
+                    "scale": scale,
+                    "n_episodes": 0,
+                    "mean_reward": float("nan"),
+                    "ci_low": float("nan"),
+                    "ci_high": float("nan"),
+                }
+            )
             continue
 
         mean_r = float(np.mean(all_rewards))
         ci_low, ci_high = _bootstrap_ci(all_rewards)
-        rows.append({
-            "scale": scale,
-            "n_episodes": len(all_rewards),
-            "mean_reward": round(mean_r, 3),
-            "ci_low": round(ci_low, 3),
-            "ci_high": round(ci_high, 3),
-        })
+        rows.append(
+            {
+                "scale": scale,
+                "n_episodes": len(all_rewards),
+                "mean_reward": round(mean_r, 3),
+                "ci_low": round(ci_low, 3),
+                "ci_high": round(ci_high, 3),
+            }
+        )
         logger.info(
             "scale=%.1f  n=%d  mean=%.1f  95%%CI=[%.1f, %.1f]",
-            scale, len(all_rewards), mean_r, ci_low, ci_high,
+            scale,
+            len(all_rewards),
+            mean_r,
+            ci_low,
+            ci_high,
         )
 
     return {
@@ -121,9 +126,10 @@ def build_summary(
     }
 
 
-def plot(summary: Dict[str, Any], out_dir: str) -> Path:
+def plot(summary: dict[str, Any], out_dir: str) -> Path:
     """Render grouped bar chart. Returns path to the saved PNG."""
     import matplotlib
+
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
 
@@ -138,12 +144,14 @@ def plot(summary: Dict[str, Any], out_dir: str) -> Path:
 
     fig, ax = plt.subplots(figsize=(6, 4))
     bars = ax.bar(
-        x, means,
+        x,
+        means,
         width=width,
         yerr=[errs_low, errs_high],
         capsize=4,
         color=["#4878CF", "#6ACC65", "#D65F5F"],
-        edgecolor="black", linewidth=0.6,
+        edgecolor="black",
+        linewidth=0.6,
         error_kw={"elinewidth": 1.2, "ecolor": "black"},
     )
 
@@ -153,7 +161,9 @@ def plot(summary: Dict[str, Any], out_dir: str) -> Path:
             bar.get_x() + bar.get_width() / 2,
             bar.get_height() + 5,
             f"{mean_val:.0f}",
-            ha="center", va="bottom", fontsize=9,
+            ha="center",
+            va="bottom",
+            fontsize=9,
         )
 
     ax.set_xticks(x)
@@ -176,14 +186,18 @@ def plot(summary: Dict[str, Any], out_dir: str) -> Path:
     return out_path
 
 
-def main(argv: Optional[List[str]] = None) -> int:
+def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(
         description="sensitivity-sweep FA_action_cost — plot action_cost_scale sensitivity sweep (C8).",
     )
     p.add_argument("--sweep-root", default="runs/ablation_action_cost")
     p.add_argument("--out-dir", default="tex/figs/")
-    p.add_argument("--fraction", type=float, default=0.1,
-                   help="Fraction of eval episodes to use as final reward (default 0.1).")
+    p.add_argument(
+        "--fraction",
+        type=float,
+        default=0.1,
+        help="Fraction of eval episodes to use as final reward (default 0.1).",
+    )
     args = p.parse_args(argv)
 
     logging.basicConfig(

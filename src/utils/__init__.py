@@ -9,8 +9,8 @@ This package provides:
 """
 
 from src.utils.label_mapper import (
-    KillChainStage,
     AbstractStateLabelMapper,
+    KillChainStage,
 )
 from src.utils.realization_engine import RealizationEngine
 

@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Tuple
 
 import joblib
 import numpy as np
@@ -19,19 +18,16 @@ from src.generator.attack_sequence_generator import (
     AttackSequenceGeneratorConfig,
 )
 
-
 # --------------------------------------------------------------- fixtures
 
 
 @pytest.fixture
-def synthetic_paths(tmp_path: Path) -> Tuple[Path, Path]:
+def synthetic_paths(tmp_path: Path) -> tuple[Path, Path]:
     """Create a synthetic generator + tiny dataset, no dataset-prep manifest."""
     # Generator
     gen_dir = tmp_path / "generator"
     gen_dir.mkdir(parents=True)
-    cfg = AttackSequenceGeneratorConfig(
-        num_stages=5, embedding_dim=8, hidden_size=16, num_layers=1
-    )
+    cfg = AttackSequenceGeneratorConfig(num_stages=5, embedding_dim=8, hidden_size=16, num_layers=1)
     gen = AttackSequenceGenerator(config=cfg)
     gen.save(gen_dir / "attack_sequence_generator.pth", save_config=True)
 
@@ -54,7 +50,7 @@ def synthetic_paths(tmp_path: Path) -> Tuple[Path, Path]:
 
 
 @pytest.fixture
-def synthetic_manifest(synthetic_paths: Tuple[Path, Path]) -> Path:
+def synthetic_manifest(synthetic_paths: tuple[Path, Path]) -> Path:
     """Build a dataset-prep-shape splits manifest pointing at the synthetic dataset.
 
     The manifest has the same on-disk layout the production
@@ -90,9 +86,7 @@ def synthetic_manifest(synthetic_paths: Tuple[Path, Path]) -> Path:
         "splits/ood_attack/synthetic_ood.idx.npy": "x" * 64,
     }
     manifest_path = splits / "manifest.json"
-    manifest_path.write_text(
-        json.dumps({"version": "1.0", "outputs": manifest_outputs})
-    )
+    manifest_path.write_text(json.dumps({"version": "1.0", "outputs": manifest_outputs}))
     return manifest_path
 
 
@@ -101,47 +95,59 @@ def synthetic_manifest(synthetic_paths: Tuple[Path, Path]) -> Path:
 
 class TestMakeTrainEnv:
     def test_returns_dummy_vec_env_with_correct_obs_space(
-        self, synthetic_paths: Tuple[Path, Path]
+        self, synthetic_paths: tuple[Path, Path]
     ) -> None:
         gen_dir, ds_dir = synthetic_paths
         spec = EnvConfigSerializable(
-            split="train", exclude_ood=False,
-            min_episode_length=5, max_steps=20,
-            window_size=4, include_deltas=True,
+            split="train",
+            exclude_ood=False,
+            min_episode_length=5,
+            max_steps=20,
+            window_size=4,
+            include_deltas=True,
         )
         vec = make_train_env(
-            spec=spec, generator_path=gen_dir, dataset_path=ds_dir,
-            splits_manifest=None, seed=0,
+            spec=spec,
+            generator_path=gen_dir,
+            dataset_path=ds_dir,
+            splits_manifest=None,
+            seed=0,
         )
         assert vec.num_envs == 1
         # 4 (window) * 29 (features) * 2 (deltas) = 232
         assert vec.observation_space.shape == (4 * 29 * 2,)
         assert vec.action_space.n == 5
 
-    def test_obs_space_no_deltas(
-        self, synthetic_paths: Tuple[Path, Path]
-    ) -> None:
+    def test_obs_space_no_deltas(self, synthetic_paths: tuple[Path, Path]) -> None:
         gen_dir, ds_dir = synthetic_paths
         spec = EnvConfigSerializable(
-            split="train", include_deltas=False, window_size=3,
+            split="train",
+            include_deltas=False,
+            window_size=3,
         )
         vec = make_train_env(
-            spec=spec, generator_path=gen_dir, dataset_path=ds_dir,
-            splits_manifest=None, seed=0,
+            spec=spec,
+            generator_path=gen_dir,
+            dataset_path=ds_dir,
+            splits_manifest=None,
+            seed=0,
         )
         # 3 * 29 * 1 = 87
         assert vec.observation_space.shape == (3 * 29,)
 
-    def test_step_with_random_action(
-        self, synthetic_paths: Tuple[Path, Path]
-    ) -> None:
+    def test_step_with_random_action(self, synthetic_paths: tuple[Path, Path]) -> None:
         gen_dir, ds_dir = synthetic_paths
         spec = EnvConfigSerializable(
-            split="train", min_episode_length=5, max_steps=10,
+            split="train",
+            min_episode_length=5,
+            max_steps=10,
         )
         vec = make_train_env(
-            spec=spec, generator_path=gen_dir, dataset_path=ds_dir,
-            splits_manifest=None, seed=0,
+            spec=spec,
+            generator_path=gen_dir,
+            dataset_path=ds_dir,
+            splits_manifest=None,
+            seed=0,
         )
         obs = vec.reset()
         for _ in range(3):
@@ -154,16 +160,19 @@ class TestMakeTrainEnv:
 class TestSplitAwareManifest:
     def test_train_engine_only_sees_in_distribution_indices(
         self,
-        synthetic_paths: Tuple[Path, Path],
+        synthetic_paths: tuple[Path, Path],
         synthetic_manifest: Path,
     ) -> None:
         gen_dir, ds_dir = synthetic_paths
-        spec = EnvConfigSerializable(split="train", exclude_ood=True,
-                                     window_size=4, max_steps=10,
-                                     min_episode_length=4)
+        spec = EnvConfigSerializable(
+            split="train", exclude_ood=True, window_size=4, max_steps=10, min_episode_length=4
+        )
         vec = make_train_env(
-            spec=spec, generator_path=gen_dir, dataset_path=ds_dir,
-            splits_manifest=synthetic_manifest, seed=0,
+            spec=spec,
+            generator_path=gen_dir,
+            dataset_path=ds_dir,
+            splits_manifest=synthetic_manifest,
+            seed=0,
         )
         # Reach into the underlying env to verify the engine got
         # restricted. DummyVecEnv.envs[0] is the Monitor wrapper;
@@ -171,61 +180,72 @@ class TestSplitAwareManifest:
         wrapped = vec.envs[0].env
         assert isinstance(wrapped, AdversarialIoTEnv)
         engine = wrapped._realization_engine
-        train_idx = set(np.load(
-            synthetic_manifest.parent / "train.idx.npy"
-        ).tolist())
-        ood_idx = set(np.load(
-            synthetic_manifest.parent / "ood_attack" / "synthetic_ood.idx.npy"
-        ).tolist())
+        train_idx = set(np.load(synthetic_manifest.parent / "train.idx.npy").tolist())
+        ood_idx = set(
+            np.load(synthetic_manifest.parent / "ood_attack" / "synthetic_ood.idx.npy").tolist()
+        )
         # Every index the engine still considers must be in train and
         # NOT in ood.
-        for stage_id, idx_list in engine._state_indices.items():
+        for _stage_id, idx_list in engine._state_indices.items():
             for idx in idx_list:
                 assert idx in train_idx
                 assert idx not in ood_idx
 
     def test_eval_split_is_val_balanced(
         self,
-        synthetic_paths: Tuple[Path, Path],
+        synthetic_paths: tuple[Path, Path],
         synthetic_manifest: Path,
     ) -> None:
         gen_dir, ds_dir = synthetic_paths
-        spec = EnvConfigSerializable(split="val_balanced", exclude_ood=True,
-                                     window_size=4, max_steps=10,
-                                     min_episode_length=4)
+        spec = EnvConfigSerializable(
+            split="val_balanced",
+            exclude_ood=True,
+            window_size=4,
+            max_steps=10,
+            min_episode_length=4,
+        )
         vec = make_eval_env(
-            spec=spec, generator_path=gen_dir, dataset_path=ds_dir,
-            splits_manifest=synthetic_manifest, seed=0,
+            spec=spec,
+            generator_path=gen_dir,
+            dataset_path=ds_dir,
+            splits_manifest=synthetic_manifest,
+            seed=0,
         )
         wrapped = vec.envs[0].env
         engine = wrapped._realization_engine
-        val_idx = set(np.load(
-            synthetic_manifest.parent / "val_balanced.idx.npy"
-        ).tolist())
+        val_idx = set(np.load(synthetic_manifest.parent / "val_balanced.idx.npy").tolist())
         for idx_list in engine._state_indices.values():
             for idx in idx_list:
                 assert idx in val_idx
 
     def test_train_eval_pools_disjoint(
         self,
-        synthetic_paths: Tuple[Path, Path],
+        synthetic_paths: tuple[Path, Path],
         synthetic_manifest: Path,
     ) -> None:
         """The environment-design R2 invariant: training never sees eval rows."""
         gen_dir, ds_dir = synthetic_paths
         train_vec = make_train_env(
-            spec=EnvConfigSerializable(split="train", exclude_ood=True,
-                                       window_size=4, max_steps=10,
-                                       min_episode_length=4),
-            generator_path=gen_dir, dataset_path=ds_dir,
-            splits_manifest=synthetic_manifest, seed=0,
+            spec=EnvConfigSerializable(
+                split="train", exclude_ood=True, window_size=4, max_steps=10, min_episode_length=4
+            ),
+            generator_path=gen_dir,
+            dataset_path=ds_dir,
+            splits_manifest=synthetic_manifest,
+            seed=0,
         )
         eval_vec = make_eval_env(
-            spec=EnvConfigSerializable(split="val_balanced", exclude_ood=True,
-                                       window_size=4, max_steps=10,
-                                       min_episode_length=4),
-            generator_path=gen_dir, dataset_path=ds_dir,
-            splits_manifest=synthetic_manifest, seed=0,
+            spec=EnvConfigSerializable(
+                split="val_balanced",
+                exclude_ood=True,
+                window_size=4,
+                max_steps=10,
+                min_episode_length=4,
+            ),
+            generator_path=gen_dir,
+            dataset_path=ds_dir,
+            splits_manifest=synthetic_manifest,
+            seed=0,
         )
         train_pool = set()
         for v in train_vec.envs[0].env._realization_engine._state_indices.values():

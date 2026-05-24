@@ -10,7 +10,6 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Tuple
 
 import joblib
 import numpy as np
@@ -24,17 +23,19 @@ from src.generator.attack_sequence_generator import (
     AttackSequenceGeneratorConfig,
 )
 
-
 # --------------------------------------------------------------- fixtures
 
 
 @pytest.fixture
-def synthetic_paths(tmp_path: Path) -> Tuple[Path, Path]:
+def synthetic_paths(tmp_path: Path) -> tuple[Path, Path]:
     """Tiny synthetic generator + dataset for the smoke run."""
     gen_dir = tmp_path / "generator"
     gen_dir.mkdir(parents=True)
     cfg = AttackSequenceGeneratorConfig(
-        num_stages=5, embedding_dim=8, hidden_size=16, num_layers=1,
+        num_stages=5,
+        embedding_dim=8,
+        hidden_size=16,
+        num_layers=1,
     )
     gen = AttackSequenceGenerator(config=cfg)
     gen.save(gen_dir / "attack_sequence_generator.pth", save_config=True)
@@ -60,19 +61,30 @@ def synthetic_paths(tmp_path: Path) -> Tuple[Path, Path]:
 
 class TestTrainAgentSmoke:
     def _build_cfg(
-        self, *, gen_dir: Path, ds_dir: Path, out_dir: Path,
-        algo: str = "ppo", seed: int = 0,
+        self,
+        *,
+        gen_dir: Path,
+        ds_dir: Path,
+        out_dir: Path,
+        algo: str = "ppo",
+        seed: int = 0,
         total_timesteps: int = 200,
     ) -> BlueTeamRunConfig:
         env = EnvConfigSerializable(
-            split="train", exclude_ood=False,
-            min_episode_length=5, max_steps=20,
-            window_size=4, include_deltas=True,
+            split="train",
+            exclude_ood=False,
+            min_episode_length=5,
+            max_steps=20,
+            window_size=4,
+            include_deltas=True,
         )
         eval_env = EnvConfigSerializable(
-            split="train", exclude_ood=False,
-            min_episode_length=5, max_steps=20,
-            window_size=4, include_deltas=True,
+            split="train",
+            exclude_ood=False,
+            min_episode_length=5,
+            max_steps=20,
+            window_size=4,
+            include_deltas=True,
         )
         return BlueTeamRunConfig(
             algo=algo,
@@ -101,14 +113,16 @@ class TestTrainAgentSmoke:
         )
 
     def test_smoke_run_produces_all_artefacts(
-        self, synthetic_paths: Tuple[Path, Path], tmp_path: Path
+        self, synthetic_paths: tuple[Path, Path], tmp_path: Path
     ) -> None:
         from scripts.blue_team.train_agent import train
 
         gen_dir, ds_dir = synthetic_paths
         out_dir = tmp_path / "run"
         cfg = self._build_cfg(
-            gen_dir=gen_dir, ds_dir=ds_dir, out_dir=out_dir,
+            gen_dir=gen_dir,
+            ds_dir=ds_dir,
+            out_dir=out_dir,
             total_timesteps=200,
         )
         result = train(cfg, verbose=0)
@@ -139,17 +153,20 @@ class TestTrainAgentSmoke:
         assert manifest["wallclock_seconds"] > 0
 
     def test_saved_model_round_trips_to_same_prediction(
-        self, synthetic_paths: Tuple[Path, Path], tmp_path: Path
+        self, synthetic_paths: tuple[Path, Path], tmp_path: Path
     ) -> None:
         """Same-as :func:`test_save_load_model` regression in
         :class:`TestAdversarialAlgorithm`, but for the blue-team entrypoint."""
-        from scripts.blue_team.train_agent import train
         from stable_baselines3 import PPO
+
+        from scripts.blue_team.train_agent import train
 
         gen_dir, ds_dir = synthetic_paths
         out_dir = tmp_path / "run"
         cfg = self._build_cfg(
-            gen_dir=gen_dir, ds_dir=ds_dir, out_dir=out_dir,
+            gen_dir=gen_dir,
+            ds_dir=ds_dir,
+            out_dir=out_dir,
             total_timesteps=64,
         )
         train(cfg, verbose=0)

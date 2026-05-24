@@ -1,7 +1,7 @@
 # RL IoT Defense System — Adversarial RL for Kill-Chain-Aware IoT Defense
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![Tests: 411 passed](https://img.shields.io/badge/tests-411%20passed-brightgreen.svg)](#)
 [![Phases: 0–7 closed](https://img.shields.io/badge/phases-0--7%20closed-brightgreen.svg)](#phases-as-chapters)
 [![Release: v0.2.0](https://img.shields.io/badge/release-v0.2.0-blue.svg)](#)

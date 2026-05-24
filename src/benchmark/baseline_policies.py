@@ -39,7 +39,7 @@ which arrives via :class:`SB3PolicyAdapter`.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Dict, Optional, Protocol, Union
+from typing import Any, Protocol
 
 import numpy as np
 
@@ -52,7 +52,7 @@ class Policy(Protocol):
     plain functions and lambdas work without inheritance ceremony.
     """
 
-    def __call__(self, obs: np.ndarray, info: Dict[str, Any]) -> int: ...
+    def __call__(self, obs: np.ndarray, info: dict[str, Any]) -> int: ...
 
 
 # ---------------------------------------------------------------------- random
@@ -60,9 +60,9 @@ class Policy(Protocol):
 
 def random_policy(
     obs: np.ndarray,  # noqa: ARG001 — uniform-random ignores obs/info
-    info: Dict[str, Any],  # noqa: ARG001
+    info: dict[str, Any],  # noqa: ARG001
     *,
-    rng: Optional[np.random.Generator] = None,
+    rng: np.random.Generator | None = None,
 ) -> int:
     """Uniform-random action in ``[0, 4]``.
 
@@ -86,7 +86,7 @@ def random_policy(
 
 def always_observe(
     obs: np.ndarray,  # noqa: ARG001
-    info: Dict[str, Any],  # noqa: ARG001
+    info: dict[str, Any],  # noqa: ARG001
 ) -> int:
     """Always pick OBSERVE (action 0) — the most permissive baseline.
 
@@ -98,7 +98,7 @@ def always_observe(
 
 def always_block(
     obs: np.ndarray,  # noqa: ARG001
-    info: Dict[str, Any],  # noqa: ARG001
+    info: dict[str, Any],  # noqa: ARG001
 ) -> int:
     """Always pick BLOCK (action 3) — the most aggressive non-isolating baseline.
 
@@ -113,7 +113,7 @@ def always_block(
 
 def recommended_action_policy(
     obs: np.ndarray,  # noqa: ARG001
-    info: Dict[str, Any],
+    info: dict[str, Any],
 ) -> int:
     """The IoTWarden hand-crafted rule baseline.
 
@@ -140,7 +140,7 @@ def recommended_action_policy(
 # alone. Kept in lock-step with src/environment/adversarial_env.py's
 # `_recommended_action`; if that mapping ever changes, this constant must
 # move with it (and a Phase-3.1 test will catch the drift).
-_RECOMMENDED_BY_STAGE: Dict[int, int] = {
+_RECOMMENDED_BY_STAGE: dict[int, int] = {
     0: 0,  # BENIGN   → OBSERVE
     1: 1,  # RECON    → LOG
     2: 2,  # ACCESS   → THROTTLE
@@ -206,13 +206,12 @@ class RFActingPolicy:
         """Underlying classifier; exposed for hash-pinning manifests."""
         return self._rf
 
-    def __call__(self, obs: np.ndarray, info: Dict[str, Any]) -> int:  # noqa: ARG002
+    def __call__(self, obs: np.ndarray, info: dict[str, Any]) -> int:  # noqa: ARG002
         features = self._extract_latest_features(obs)
         stage = int(self._rf.predict(features.reshape(1, -1))[0])
         if not (0 <= stage <= 4):
             raise ValueError(
-                f"RFActingPolicy: classifier returned out-of-range "
-                f"stage {stage} (expected 0..4)"
+                f"RFActingPolicy: classifier returned out-of-range stage {stage} (expected 0..4)"
             )
         return _RECOMMENDED_BY_STAGE[stage]
 
@@ -221,9 +220,7 @@ class RFActingPolicy:
     def _extract_latest_features(self, obs: np.ndarray) -> np.ndarray:
         """Return the raw-feature slice of the *most recent* env-window row."""
         flat = np.asarray(obs).reshape(-1)
-        per_row = (
-            self._num_features * (2 if self._include_deltas else 1)
-        )
+        per_row = self._num_features * (2 if self._include_deltas else 1)
         expected = per_row * self._window_size
         if flat.size != expected:
             raise ValueError(
@@ -272,8 +269,7 @@ class SB3PolicyAdapter:
     def __init__(self, model: Any, *, deterministic: bool = True) -> None:
         if not hasattr(model, "predict"):
             raise TypeError(
-                f"SB3PolicyAdapter: model must expose .predict(obs); "
-                f"got {type(model)!r}"
+                f"SB3PolicyAdapter: model must expose .predict(obs); got {type(model)!r}"
             )
         self._model = model
         self._deterministic = bool(deterministic)
@@ -285,7 +281,7 @@ class SB3PolicyAdapter:
     def __call__(
         self,
         obs: np.ndarray,
-        info: Dict[str, Any],  # noqa: ARG002 — SB3 doesn't read info
+        info: dict[str, Any],  # noqa: ARG002 — SB3 doesn't read info
     ) -> int:
         # SB3.predict expects a leading batch dim; our caller (eval_runner)
         # passes the raw vec-env obs which is already batched. Make this
@@ -293,9 +289,7 @@ class SB3PolicyAdapter:
         x = np.asarray(obs)
         if x.ndim == 1:
             x = x[None, :]
-        action_arr, _state = self._model.predict(
-            x, deterministic=self._deterministic
-        )
+        action_arr, _state = self._model.predict(x, deterministic=self._deterministic)
         # action_arr shape: (1,) for Discrete spaces.
         return int(np.asarray(action_arr).reshape(-1)[0])
 

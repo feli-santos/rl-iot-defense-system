@@ -46,7 +46,7 @@ import logging
 import math
 import subprocess
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import numpy as np
 
@@ -59,7 +59,7 @@ _ROOT = Path(__file__).resolve().parents[2]
 
 # Display ordering — same as benchmark F8, plus rule baseline as the
 # oracle ceiling marker.
-_POLICY_ORDER: List[str] = [
+_POLICY_ORDER: list[str] = [
     "recommended_action",  # oracle ceiling
     "rf_acting",
     "dqn",
@@ -69,23 +69,26 @@ _POLICY_ORDER: List[str] = [
     "random",
     "always_observe",
 ]
-_DISPLAY: Dict[str, str] = {
+_DISPLAY: dict[str, str] = {
     "recommended_action": "Rec-Action (oracle)",
-    "rf_acting":          "RF-Acting",
-    "dqn":                "DQN",
-    "ppo":                "PPO",
-    "a2c":                "A2C",
-    "always_block":       "Always-BLOCK",
-    "random":             "Random",
-    "always_observe":     "Always-OBSERVE",
+    "rf_acting": "RF-Acting",
+    "dqn": "DQN",
+    "ppo": "PPO",
+    "a2c": "A2C",
+    "always_block": "Always-BLOCK",
+    "random": "Random",
+    "always_observe": "Always-OBSERVE",
 }
 _RL_ALGOS = {"dqn", "ppo", "a2c"}
-_OOD_CLASSES_DEFAULT: List[str] = [
-    "DDoS-HTTP_Flood", "Mirai-udpplain", "VulnerabilityScan", "XSS",
+_OOD_CLASSES_DEFAULT: list[str] = [
+    "DDoS-HTTP_Flood",
+    "Mirai-udpplain",
+    "VulnerabilityScan",
+    "XSS",
 ]
 
 
-def _sha256(path: Path) -> Optional[str]:
+def _sha256(path: Path) -> str | None:
     p = Path(path)
     if not p.exists():
         return None
@@ -98,9 +101,15 @@ def _sha256(path: Path) -> Optional[str]:
 
 def _git_sha() -> str:
     try:
-        return subprocess.check_output(
-            ["git", "rev-parse", "HEAD"], cwd=_ROOT, stderr=subprocess.DEVNULL,
-        ).decode().strip()
+        return (
+            subprocess.check_output(
+                ["git", "rev-parse", "HEAD"],
+                cwd=_ROOT,
+                stderr=subprocess.DEVNULL,
+            )
+            .decode()
+            .strip()
+        )
     except Exception:  # noqa: BLE001
         return "unknown"
 
@@ -108,9 +117,7 @@ def _git_sha() -> str:
 # --------------------------------------------------------------- aggregation
 
 
-def _discover_seed_dirs(
-    runs_root: Path, ood_class: str, policy: str
-) -> List[Path]:
+def _discover_seed_dirs(runs_root: Path, ood_class: str, policy: str) -> list[Path]:
     """Find every ``seed_<k>`` dir under
     ``<runs_root>/<ood_class>/<policy>/`` that contains
     ``eval_test.jsonl``."""
@@ -118,35 +125,33 @@ def _discover_seed_dirs(
     if not base.exists():
         return []
     return sorted(
-        d for d in base.iterdir()
-        if d.is_dir() and d.name.startswith("seed_")
-        and (d / "eval_test.jsonl").exists()
+        d
+        for d in base.iterdir()
+        if d.is_dir() and d.name.startswith("seed_") and (d / "eval_test.jsonl").exists()
     )
 
 
 def _summarise_cell(
     ood_class: str,
     policy: str,
-    seed_dirs: List[Path],
+    seed_dirs: list[Path],
     *,
-    sha_collector: Dict[str, str],
-) -> Dict[str, Any]:
+    sha_collector: dict[str, str],
+) -> dict[str, Any]:
     """Compute one (ood_class, policy) row.
 
     Same bootstrap protocol as benchmark F5: when n_seeds ≥ 3, bootstrap
     across per-seed means; else bootstrap across all episodes.
     """
-    all_records: List[Dict] = []
-    per_seed_means: List[float] = []
-    input_paths: List[Path] = []
+    all_records: list[dict] = []
+    per_seed_means: list[float] = []
+    input_paths: list[Path] = []
     for sd in seed_dirs:
         jsonl = sd / "eval_test.jsonl"
         recs = read_episodes_jsonl(jsonl)
         all_records.extend(recs)
         if recs:
-            per_seed_means.append(
-                float(np.mean([r["episode_reward"] for r in recs]))
-            )
+            per_seed_means.append(float(np.mean([r["episode_reward"] for r in recs])))
         input_paths.append(jsonl)
         sha = _sha256(jsonl)
         if sha is not None:
@@ -168,19 +173,22 @@ def _summarise_cell(
 
     rewards = [r["episode_reward"] for r in all_records]
     compromised = [1.0 if r.get("compromised") else 0.0 for r in all_records]
-    mitigated = [
-        1.0 if r.get("end_outcome") == "impact_mitigated" else 0.0
-        for r in all_records
-    ]
+    mitigated = [1.0 if r.get("end_outcome") == "impact_mitigated" else 0.0 for r in all_records]
     lengths = [r["episode_length"] for r in all_records]
 
     if len(per_seed_means) >= 3:
         ci_low, _ci_mean, ci_high = bootstrap_ci(
-            per_seed_means, n_resamples=2000, alpha=0.05, seed=0,
+            per_seed_means,
+            n_resamples=2000,
+            alpha=0.05,
+            seed=0,
         )
     else:
         ci_low, _ci_mean, ci_high = bootstrap_ci(
-            rewards, n_resamples=2000, alpha=0.05, seed=0,
+            rewards,
+            n_resamples=2000,
+            alpha=0.05,
+            seed=0,
         )
 
     return {
@@ -200,7 +208,7 @@ def _summarise_cell(
 # --------------------------------------------------------------- gates
 
 
-def _evaluate_g79(rows: List[Dict[str, Any]]) -> Dict[str, Any]:
+def _evaluate_g79(rows: list[dict[str, Any]]) -> dict[str, Any]:
     """G7.9 (audit-AF1, headline): on ``VulnerabilityScan``, does the
     best trained RL mean_reward beat RF-Acting by ≥ 1σ of bootstrap CI?
 
@@ -213,9 +221,15 @@ def _evaluate_g79(rows: List[Dict[str, Any]]) -> Dict[str, Any]:
     """
     target_class = "VulnerabilityScan"
     by_pol = {
-        r["policy"]: r for r in rows
-        if r["ood_class"] == target_class and r["policy"] in (
-            "rf_acting", "dqn", "ppo", "a2c",
+        r["policy"]: r
+        for r in rows
+        if r["ood_class"] == target_class
+        and r["policy"]
+        in (
+            "rf_acting",
+            "dqn",
+            "ppo",
+            "a2c",
         )
     }
     if "rf_acting" not in by_pol:
@@ -235,9 +249,7 @@ def _evaluate_g79(rows: List[Dict[str, Any]]) -> Dict[str, Any]:
 
     # CI-non-overlap test in the direction "RL > RF".
     passes = bool(
-        math.isfinite(best["ci_low"])
-        and math.isfinite(rf_ci_high)
-        and best["ci_low"] > rf_ci_high
+        math.isfinite(best["ci_low"]) and math.isfinite(rf_ci_high) and best["ci_low"] > rf_ci_high
     )
 
     return {
@@ -251,28 +263,25 @@ def _evaluate_g79(rows: List[Dict[str, Any]]) -> Dict[str, Any]:
         "delta_mean": best["mean_reward"] - rf["mean_reward"],
         "phase4_rf_recall_on_vulnerability_scan": 0.001,
         "interpretation": (
-            "PASS: trained RL recovers some of the supervised RF "
-            "blind spot on VulnerabilityScan."
+            "PASS: trained RL recovers some of the supervised RF blind spot on VulnerabilityScan."
             if passes
             else "FAIL-WITH-FINDING: trained RL does NOT beat RF-Acting "
-                 "on VulnerabilityScan; the thesis claim narrows from "
-                 "'RL closes the OOD gap' to 'RL is robust to (not "
-                 "better at) the OOD class'. See PLAN §8 D7.9.1."
+            "on VulnerabilityScan; the thesis claim narrows from "
+            "'RL closes the OOD gap' to 'RL is robust to (not "
+            "better at) the OOD class'. See PLAN §8 D7.9.1."
         ),
     }
 
 
 def _evaluate_g78(
-    rows: List[Dict[str, Any]],
-    expected_classes: List[str],
-    expected_policies: List[str],
-) -> Dict[str, Any]:
+    rows: list[dict[str, Any]],
+    expected_classes: list[str],
+    expected_policies: list[str],
+) -> dict[str, Any]:
     """G7.8: 4 × 8 matrix is complete with no NaN means."""
-    have: Dict[Tuple[str, str], Dict[str, Any]] = {
-        (r["ood_class"], r["policy"]): r for r in rows
-    }
-    missing: List[Tuple[str, str]] = []
-    nan_cells: List[Tuple[str, str]] = []
+    have: dict[tuple[str, str], dict[str, Any]] = {(r["ood_class"], r["policy"]): r for r in rows}
+    missing: list[tuple[str, str]] = []
+    nan_cells: list[tuple[str, str]] = []
     for c in expected_classes:
         for p in expected_policies:
             if (c, p) not in have:
@@ -295,8 +304,8 @@ def _evaluate_g78(
 
 
 def _render(
-    rows: List[Dict[str, Any]],
-    ood_classes: List[str],
+    rows: list[dict[str, Any]],
+    ood_classes: list[str],
     out_path: Path,
 ) -> None:
     """4-panel grouped bar chart (one panel per OOD class)."""
@@ -305,16 +314,14 @@ def _render(
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
 
-    by_class: Dict[str, Dict[str, Dict[str, Any]]] = {c: {} for c in ood_classes}
+    by_class: dict[str, dict[str, dict[str, Any]]] = {c: {} for c in ood_classes}
     for r in rows:
         by_class.setdefault(r["ood_class"], {})[r["policy"]] = r
 
     n = len(ood_classes)
     n_cols = 2
     n_rows = (n + n_cols - 1) // n_cols
-    fig, axes = plt.subplots(
-        n_rows, n_cols, figsize=(13.5, 4.5 * n_rows), squeeze=False
-    )
+    fig, axes = plt.subplots(n_rows, n_cols, figsize=(13.5, 4.5 * n_rows), squeeze=False)
 
     for ax_idx, ood_class in enumerate(ood_classes):
         ax = axes[ax_idx // n_cols][ax_idx % n_cols]
@@ -326,31 +333,35 @@ def _render(
 
         labels = [_DISPLAY.get(p, p) for p in present]
         means = [cell[p]["mean_reward"] for p in present]
-        lo_err = [
-            max(cell[p]["mean_reward"] - cell[p]["ci_low"], 0.0)
-            for p in present
-        ]
-        hi_err = [
-            max(cell[p]["ci_high"] - cell[p]["mean_reward"], 0.0)
-            for p in present
-        ]
+        lo_err = [max(cell[p]["mean_reward"] - cell[p]["ci_low"], 0.0) for p in present]
+        hi_err = [max(cell[p]["ci_high"] - cell[p]["mean_reward"], 0.0) for p in present]
         colours = [
-            "#dc2626" if p == "recommended_action"  # oracle marker
-            else "#2563eb" if p in _RL_ALGOS         # RL blue
-            else "#9ca3af"                            # baselines grey
+            (
+                "#dc2626"
+                if p == "recommended_action"  # oracle marker
+                else "#2563eb" if p in _RL_ALGOS else "#9ca3af"  # RL blue
+            )  # baselines grey
             for p in present
         ]
 
         bars = ax.barh(
-            labels, means, xerr=[lo_err, hi_err],
-            color=colours, edgecolor="black", linewidth=0.5,
-            error_kw=dict(ecolor="black", capsize=3, lw=0.8),
+            labels,
+            means,
+            xerr=[lo_err, hi_err],
+            color=colours,
+            edgecolor="black",
+            linewidth=0.5,
+            error_kw={"ecolor": "black", "capsize": 3, "lw": 0.8},
         )
         for bar, m in zip(bars, means):
             x = m + 30.0
             ax.text(
-                x, bar.get_y() + bar.get_height() / 2,
-                f"{m:.0f}", va="center", ha="left", fontsize=7,
+                x,
+                bar.get_y() + bar.get_height() / 2,
+                f"{m:.0f}",
+                va="center",
+                ha="left",
+                fontsize=7,
             )
 
         ax.set_title(ood_class, fontsize=10)
@@ -372,13 +383,17 @@ def _render(
 
     fig.suptitle(
         "F15 — OOD-class robustness (mean episodic reward, 95 % bootstrap CI)",
-        fontsize=12, y=1.0,
+        fontsize=12,
+        y=1.0,
     )
     fig.text(
-        0.5, -0.01,
+        0.5,
+        -0.01,
         "audit-AF1 · trained-RL recovery of supervised-detector OOD blind spots · "
         "detector RF recall on VulnerabilityScan = 0.001",
-        ha="center", fontsize=8, style="italic",
+        ha="center",
+        fontsize=8,
+        style="italic",
     )
     fig.tight_layout()
     fig.savefig(out_path, dpi=200, bbox_inches="tight")
@@ -391,21 +406,27 @@ def _render(
 def _build_argparser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         description="ablation F15 — OOD-class robustness plot + summary "
-                    "(audit-AF1, headline G7.9 evaluator).",
+        "(audit-AF1, headline G7.9 evaluator).",
     )
     p.add_argument(
-        "--runs-root", default="runs/ablation/ood",
+        "--runs-root",
+        default="runs/ablation/ood",
         help="Where run_ood_eval.py wrote its outputs.",
     )
     p.add_argument(
-        "--out-dir", default="docs/results/07_ablation",
+        "--out-dir",
+        default="docs/results/07_ablation",
         help="Where to write F15_*.{png,json,md}.",
     )
     p.add_argument(
-        "--ood-classes", nargs="+", default=_OOD_CLASSES_DEFAULT,
+        "--ood-classes",
+        nargs="+",
+        default=_OOD_CLASSES_DEFAULT,
     )
     p.add_argument(
-        "--policies", nargs="+", default=list(_POLICY_ORDER),
+        "--policies",
+        nargs="+",
+        default=list(_POLICY_ORDER),
     )
     p.add_argument(
         "--phase6-eval-manifest",
@@ -426,7 +447,7 @@ def _build_argparser() -> argparse.ArgumentParser:
     return p
 
 
-def main(argv: Optional[List[str]] = None) -> int:
+def main(argv: list[str] | None = None) -> int:
     args = _build_argparser().parse_args(argv)
     logging.basicConfig(
         level=logging.INFO,
@@ -434,24 +455,33 @@ def main(argv: Optional[List[str]] = None) -> int:
     )
     runs_root = Path(args.runs_root)
     if not runs_root.exists():
-        logger.error("runs_root not found: %s — run "
-                     "`python -m scripts.ablation.run_ood_eval` first.",
-                     runs_root)
+        logger.error(
+            "runs_root not found: %s — run `python -m scripts.ablation.run_ood_eval` first.",
+            runs_root,
+        )
         return 1
 
-    sha_collector: Dict[str, str] = {}
-    rows: List[Dict[str, Any]] = []
+    sha_collector: dict[str, str] = {}
+    rows: list[dict[str, Any]] = []
     for ood_class in args.ood_classes:
         for policy in args.policies:
             seed_dirs = _discover_seed_dirs(runs_root, ood_class, policy)
             row = _summarise_cell(
-                ood_class, policy, seed_dirs, sha_collector=sha_collector,
+                ood_class,
+                policy,
+                seed_dirs,
+                sha_collector=sha_collector,
             )
             rows.append(row)
             logger.info(
                 "F15 cell: ood=%s policy=%s n_seeds=%d n_ep=%d mean=%.1f CI=(%.1f, %.1f)",
-                ood_class, policy, row["n_seeds"], row["n_episodes"],
-                row["mean_reward"], row["ci_low"], row["ci_high"],
+                ood_class,
+                policy,
+                row["n_seeds"],
+                row["n_episodes"],
+                row["mean_reward"],
+                row["ci_low"],
+                row["ci_high"],
             )
 
     out_dir = Path(args.out_dir)
@@ -470,7 +500,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         "phase": 7,
         "figure": "F15",
         "audit_finding": "AF1 — promote OOD-class robustness to Tier-1 "
-                          "deliverable (2026-04-30 mentor audit).",
+        "deliverable (2026-04-30 mentor audit).",
         "ood_classes": list(args.ood_classes),
         "policies": list(args.policies),
         "rows": rows,
@@ -480,8 +510,8 @@ def main(argv: Optional[List[str]] = None) -> int:
         },
         "headline": (
             f"G7.9: {g79.get('interpretation', '?')}"
-            if g78.get("passes") else
-            "G7.8 FAIL — F15 result matrix incomplete; G7.9 not evaluated."
+            if g78.get("passes")
+            else "G7.8 FAIL — F15 result matrix incomplete; G7.9 not evaluated."
         ),
     }
     (out_dir / "F15_summary.json").write_text(json.dumps(summary, indent=2))
@@ -494,7 +524,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         "git_sha": _git_sha(),
         "audit_finding": "AF1",
         "outputs": {
-            "png":  str(png_path),
+            "png": str(png_path),
             "json": str(out_dir / "F15_summary.json"),
         },
         "inputs": {
@@ -539,7 +569,9 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     logger.info(
         "F15 written to %s — G7.8=%s, G7.9=%s",
-        out_dir, g78["passes"], g79.get("passes"),
+        out_dir,
+        g78["passes"],
+        g79.get("passes"),
     )
     if g79.get("passes") is False:
         logger.warning("G7.9 PASS=False — see F15_summary.json#headline.")

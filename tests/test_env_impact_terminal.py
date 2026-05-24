@@ -13,8 +13,8 @@ fixture as ``tests/test_env_design_gates.py``. No real-data dependency.
 from __future__ import annotations
 
 import json
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Iterable
 
 import joblib
 import numpy as np
@@ -30,7 +30,6 @@ from src.generator.attack_sequence_generator import (
     AttackSequenceGeneratorConfig,
 )
 from src.utils.label_mapper import KillChainStage
-
 
 # ---------------------------------------------------------------------------
 # Fixture (mirrors tests/test_env_design_gates.py:_build_env)
@@ -81,9 +80,7 @@ def env_factory(tmp_path: Path):
     """
 
     def _make(**overrides) -> AdversarialIoTEnv:
-        return _build_env(
-            tmp_path, config_overrides=tuple((k, v) for k, v in overrides.items())
-        )
+        return _build_env(tmp_path, config_overrides=tuple((k, v) for k, v in overrides.items()))
 
     return _make
 
@@ -182,7 +179,8 @@ class TestImpactIsTerminalDefault:
         terminates the episode (environment-design frozen lifecycle)."""
         env = env_factory()  # impact_is_terminal=True by default
         obs, reward, terminated, truncated, info = _force_into_impact(
-            env, action_into_impact=4  # ISOLATE
+            env,
+            action_into_impact=4,  # ISOLATE
         )
         assert terminated is True, (
             "Environment-design frozen contract: episode must terminate the same "
@@ -190,17 +188,13 @@ class TestImpactIsTerminalDefault:
         )
         assert info["attack_stage"] == KillChainStage.IMPACT.value
 
-    def test_default_isolate_at_impact_arrival_nets_partial_mitigation(
-        self, env_factory
-    ):
+    def test_default_isolate_at_impact_arrival_nets_partial_mitigation(self, env_factory):
         """With the default, ISOLATE on the IMPACT-arrival step earns
         the inline terminal reward shape: -impact_penalty
         +defense_success_bonus + the proportionality reward for picking
         ISOLATE on MANEUVER (the decision-time stage)."""
         env = env_factory()
-        obs, reward, terminated, truncated, info = _force_into_impact(
-            env, action_into_impact=4
-        )
+        obs, reward, terminated, truncated, info = _force_into_impact(env, action_into_impact=4)
         # MANEUVER -> ISOLATE: action_cost=-0.8, prop_band(|4-3|=1)=+5,
         # then -impact_penalty(200) +defense_success_bonus(250) inline.
         # Expected: -0.8 + 5 - 200 + 250 = +54.2
@@ -219,30 +213,23 @@ class TestImpactIsTerminalFalse:
         — the agent gets one more step to make an explicit IMPACT-row
         decision."""
         env = env_factory(impact_is_terminal=False)
-        obs, reward, terminated, truncated, info = _force_into_impact(
-            env, action_into_impact=4
-        )
+        obs, reward, terminated, truncated, info = _force_into_impact(env, action_into_impact=4)
         assert terminated is False, (
             "impact_is_terminal=False must NOT terminate on the "
             "IMPACT-arrival step; the agent gets a separate explicit "
             "IMPACT-row decision step."
         )
-        assert info["attack_stage"] == KillChainStage.IMPACT.value, (
-            "The env still transitioned the attack to IMPACT; only "
-            "termination is deferred."
-        )
+        assert (
+            info["attack_stage"] == KillChainStage.IMPACT.value
+        ), "The env still transitioned the attack to IMPACT; only termination is deferred."
 
-    def test_false_arrival_step_skips_inline_terminal_reward(
-        self, env_factory
-    ):
+    def test_false_arrival_step_skips_inline_terminal_reward(self, env_factory):
         """When False, the IMPACT-arrival step's reward is just the
         non-IMPACT decision reward (MANEUVER -> ISOLATE proportional
         bonus minus action cost), NOT the terminal -impact_penalty
         +defense_success_bonus shape."""
         env = env_factory(impact_is_terminal=False)
-        obs, reward, terminated, truncated, info = _force_into_impact(
-            env, action_into_impact=4
-        )
+        obs, reward, terminated, truncated, info = _force_into_impact(env, action_into_impact=4)
         # MANEUVER -> ISOLATE: action_cost=-0.8, prop_band=+5, no
         # terminal reward applied. Expected: ~+4.2.
         assert reward == pytest.approx(4.2, abs=0.5), (
@@ -273,9 +260,7 @@ class TestImpactIsTerminalFalse:
             f"_step_at_impact reward formula."
         )
 
-    def test_false_explicit_impact_row_decision_observe_full_penalty(
-        self, env_factory
-    ):
+    def test_false_explicit_impact_row_decision_observe_full_penalty(self, env_factory):
         """OBSERVE in the explicit IMPACT-row decision incurs the
         canonical -impact_penalty -penalty_missed_impact = -350 reward
         shape (no defense_success_bonus, no proportional reward)."""
@@ -285,23 +270,18 @@ class TestImpactIsTerminalFalse:
         assert terminated is True
         # OBSERVE: -impact_penalty(200) -ISOLATE_cost(0.0)
         #          -penalty_missed_impact(150) = -350.
-        assert reward == pytest.approx(-350.0, abs=0.5), (
-            f"Expected ~-350.0 for OBSERVE in explicit IMPACT-row "
-            f"decision; got {reward:+.4f}."
-        )
+        assert reward == pytest.approx(
+            -350.0, abs=0.5
+        ), f"Expected ~-350.0 for OBSERVE in explicit IMPACT-row decision; got {reward:+.4f}."
 
-    def test_false_outcome_label_preserved_on_arrival_step(
-        self, env_factory
-    ):
+    def test_false_outcome_label_preserved_on_arrival_step(self, env_factory):
         """When False and IMPACT arrives via _advance_attack (not via
         defender_deescalation override), the arrival step's
         info["outcome"] label must be 'ongoing', NOT 'compromised' or
         'impact_*'. The terminal labelling happens on the explicit
         IMPACT-row step."""
         env = env_factory(impact_is_terminal=False)
-        obs, reward, terminated, truncated, info = _force_into_impact(
-            env, action_into_impact=4
-        )
+        obs, reward, terminated, truncated, info = _force_into_impact(env, action_into_impact=4)
         assert info["outcome"] == "ongoing", (
             f"On IMPACT-arrival under impact_is_terminal=False, outcome "
             f"must remain 'ongoing' (the agent has not yet picked an "

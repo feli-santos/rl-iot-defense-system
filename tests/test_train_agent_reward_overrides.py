@@ -27,7 +27,6 @@ from scripts.blue_team.train_agent import (
 )
 from src.blue_team import EnvConfigSerializable
 
-
 # ---------------------------------------------------------------------------
 # _apply_env_overrides — direct unit tests
 # ---------------------------------------------------------------------------
@@ -153,10 +152,7 @@ class TestBuildRunConfigOverrides:
 
     def test_reward_overrides_json_applied_to_both_specs(self) -> None:
         """``--reward-overrides`` modifies both train and eval env specs."""
-        args = _parse(
-            self._base_argv()
-            + ["--reward-overrides", '{"defense_success_bonus": 500}']
-        )
+        args = _parse(self._base_argv() + ["--reward-overrides", '{"defense_success_bonus": 500}'])
         cfg = build_run_config(args)
         assert cfg.env.defense_success_bonus == 500.0
         assert cfg.eval_env.defense_success_bonus == 500.0
@@ -166,9 +162,7 @@ class TestBuildRunConfigOverrides:
 
     def test_p_defender_deescalation_arg_applied_to_both_specs(self) -> None:
         """``--p-defender-deescalation`` modifies both env and eval_env."""
-        args = _parse(
-            self._base_argv() + ["--p-defender-deescalation", "0.0"]
-        )
+        args = _parse(self._base_argv() + ["--p-defender-deescalation", "0.0"])
         cfg = build_run_config(args)
         assert cfg.env.p_defender_deescalation == 0.0
         assert cfg.eval_env.p_defender_deescalation == 0.0
@@ -182,24 +176,18 @@ class TestBuildRunConfigOverrides:
         Pins the F9 binary axis (D7.3): the value is a boolean parsed
         from the string "false" / "true".
         """
-        args = _parse(
-            self._base_argv() + ["--impact-is-terminal", "false"]
-        )
+        args = _parse(self._base_argv() + ["--impact-is-terminal", "false"])
         cfg = build_run_config(args)
         assert cfg.env.impact_is_terminal is False
         assert cfg.eval_env.impact_is_terminal is False
 
     def test_unknown_reward_field_raises(self) -> None:
         """Bad field name in ``--reward-overrides`` JSON → ValueError."""
-        args = _parse(
-            self._base_argv() + ["--reward-overrides", '{"banana": 1}']
-        )
+        args = _parse(self._base_argv() + ["--reward-overrides", '{"banana": 1}'])
         with pytest.raises(ValueError, match="banana"):
             build_run_config(args)
 
-    def test_run_manifest_records_merged_config(
-        self, tmp_path: Path
-    ) -> None:
+    def test_run_manifest_records_merged_config(self, tmp_path: Path) -> None:
         """The serialised ``run_manifest.json`` includes the merged
         env config, so downstream ablation sweep manifests can SHA-pin
         the per-cell config without re-parsing the CLI."""
@@ -257,9 +245,7 @@ class TestBackwardCompatibility:
     """Deserialising a pre-ablation ``run_manifest.json`` (which lacks the
     new reward-shaping fields) must still round-trip cleanly."""
 
-    def test_old_manifest_deserialises_with_defaults(
-        self, tmp_path: Path
-    ) -> None:
+    def test_old_manifest_deserialises_with_defaults(self, tmp_path: Path) -> None:
         """A blue-team-era manifest (only the original 7 env fields) must
         deserialise into a config whose new fields are at default."""
         from src.blue_team import BlueTeamRunConfig

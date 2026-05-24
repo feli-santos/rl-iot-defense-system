@@ -20,7 +20,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import numpy as np
 import pytest
@@ -34,7 +34,6 @@ from src.benchmark.eval_runner import (
 )
 from src.blue_team.aggregation import read_episodes_jsonl
 
-
 # ----------------------------------------------------------------- stub env
 
 
@@ -46,10 +45,10 @@ class _StubEpisode:
     def __init__(
         self,
         *,
-        stages: List[int],
-        rewards: List[float],
+        stages: list[int],
+        rewards: list[float],
         compromised: bool,
-        mttc_steps: Optional[int],
+        mttc_steps: int | None,
         outcome: str,
         defender_deescalations: int = 0,
     ) -> None:
@@ -65,12 +64,12 @@ class _StubEpisode:
 class _StubVecEnv:
     """Minimal SB3-shaped VecEnv playing back a list of ``_StubEpisode``."""
 
-    def __init__(self, episodes: List[_StubEpisode], obs_dim: int = 8) -> None:
+    def __init__(self, episodes: list[_StubEpisode], obs_dim: int = 8) -> None:
         self._episodes = list(episodes)
         self._obs_dim = obs_dim
         self._ep_idx = 0
         self._step_in_ep = 0
-        self.actions_received: List[int] = []
+        self.actions_received: list[int] = []
 
     # ----------------- VecEnv API ----------------- #
 
@@ -87,12 +86,12 @@ class _StubVecEnv:
         i = self._step_in_ep
         post_stage = ep.stages[i]
         reward = ep.rewards[i]
-        terminal = (i == len(ep.stages) - 1)
+        terminal = i == len(ep.stages) - 1
 
         if terminal:
             # Pre-reset (terminal) info — what the env "would have"
             # written before the autoreset bumps attack_stage back to 0.
-            terminal_info: Dict[str, Any] = {
+            terminal_info: dict[str, Any] = {
                 "attack_stage": int(post_stage),
                 "compromised": ep.compromised,
                 "mttc_steps": ep.mttc_steps,
@@ -100,7 +99,7 @@ class _StubVecEnv:
                 "outcome": ep.outcome,
             }
             # SB3 Monitor packs total reward + length under "episode".
-            info: Dict[str, Any] = {
+            info: dict[str, Any] = {
                 "attack_stage": 0,  # post-reset
                 "compromised": False,
                 "mttc_steps": None,
@@ -131,7 +130,7 @@ class _StubVecEnv:
 # ------------------------------------------------------------ helper episodes
 
 
-def _two_episodes() -> List[_StubEpisode]:
+def _two_episodes() -> list[_StubEpisode]:
     return [
         _StubEpisode(
             stages=[1, 2, 3],
@@ -157,14 +156,18 @@ def _two_episodes() -> List[_StubEpisode]:
 
 class TestRunPolicy:
     def test_round_trip_jsonl_loads_via_aggregation(
-        self, tmp_path: Path,
+        self,
+        tmp_path: Path,
     ) -> None:
         env = _StubVecEnv(_two_episodes())
         out = tmp_path / "eval.jsonl"
         stats = run_policy(
-            always_observe, env,
-            n_episodes=2, jsonl_path=out,
-            run_id="random_seed_2_test", policy_name="random",
+            always_observe,
+            env,
+            n_episodes=2,
+            jsonl_path=out,
+            run_id="random_seed_2_test",
+            policy_name="random",
         )
         assert stats["n_episodes_written"] == 2
         assert stats["n_steps_total"] == 3 + 4
@@ -191,20 +194,23 @@ class TestRunPolicy:
         assert r1["defender_deescalations"] == 1
 
     def test_latency_sidecar_emits_one_row_per_step(
-        self, tmp_path: Path,
+        self,
+        tmp_path: Path,
     ) -> None:
         env = _StubVecEnv(_two_episodes())
         out = tmp_path / "eval.jsonl"
         lat = tmp_path / "latency.jsonl"
         stats = run_policy(
-            always_observe, env,
-            n_episodes=2, jsonl_path=out,
+            always_observe,
+            env,
+            n_episodes=2,
+            jsonl_path=out,
             run_id="always_observe_seed_0_test",
             policy_name="always_observe",
             latency_path=lat,
         )
         assert stats["n_latency_rows"] == 3 + 4
-        rows = [json.loads(l) for l in lat.read_text().splitlines() if l.strip()]
+        rows = [json.loads(ln) for ln in lat.read_text().splitlines() if ln.strip()]
         assert len(rows) == 7
         for r in rows:
             assert r["schema_version"] == "1.0"
@@ -219,7 +225,8 @@ class TestRunPolicy:
         assert [r["step_idx"] for r in ep1_rows] == [0, 1, 2, 3]
 
     def test_recommended_action_policy_consumes_info_seed(
-        self, tmp_path: Path,
+        self,
+        tmp_path: Path,
     ) -> None:
         # The eval_runner reconstructs `info["recommended_action"]` from
         # the (decision-time) attack stage, not from the env's post-step
@@ -228,8 +235,10 @@ class TestRunPolicy:
         env = _StubVecEnv(_two_episodes())
         out = tmp_path / "eval.jsonl"
         run_policy(
-            recommended_action_policy, env,
-            n_episodes=2, jsonl_path=out,
+            recommended_action_policy,
+            env,
+            n_episodes=2,
+            jsonl_path=out,
             run_id="recommended_seed_0_test",
             policy_name="recommended_action",
         )
@@ -246,13 +255,16 @@ class TestRunPolicy:
         assert records[1]["action_counts"] == [1, 1, 1, 1, 0]
 
     def test_action_counts_by_stage_uses_decision_stage(
-        self, tmp_path: Path,
+        self,
+        tmp_path: Path,
     ) -> None:
         env = _StubVecEnv(_two_episodes())
         out = tmp_path / "eval.jsonl"
         run_policy(
-            recommended_action_policy, env,
-            n_episodes=1, jsonl_path=out,
+            recommended_action_policy,
+            env,
+            n_episodes=1,
+            jsonl_path=out,
             run_id="recommended_seed_0_test",
             policy_name="recommended_action",
         )

@@ -44,7 +44,7 @@ import logging
 import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 logger = logging.getLogger("scripts.ablation.close_ablation")
 
@@ -53,14 +53,20 @@ _ROOT = Path(__file__).resolve().parents[2]
 
 def _git_sha() -> str:
     try:
-        return subprocess.check_output(
-            ["git", "rev-parse", "HEAD"], cwd=_ROOT, stderr=subprocess.DEVNULL,
-        ).decode().strip()
+        return (
+            subprocess.check_output(
+                ["git", "rev-parse", "HEAD"],
+                cwd=_ROOT,
+                stderr=subprocess.DEVNULL,
+            )
+            .decode()
+            .strip()
+        )
     except Exception:  # noqa: BLE001
         return "unknown"
 
 
-def _read_summary(path: Path) -> Optional[Dict[str, Any]]:
+def _read_summary(path: Path) -> dict[str, Any] | None:
     if not path.exists():
         logger.warning("missing summary: %s", path)
         return None
@@ -71,7 +77,7 @@ def _read_summary(path: Path) -> Optional[Dict[str, Any]]:
         return None
 
 
-def _parse_pytest_summary(last_line: str) -> Dict[str, int]:
+def _parse_pytest_summary(last_line: str) -> dict[str, int]:
     """Extract counts from a pytest summary line.
 
     The line typically looks like one of:
@@ -114,7 +120,7 @@ def _parse_pytest_summary(last_line: str) -> Dict[str, int]:
     return counts
 
 
-def _run_pytest_count() -> Dict[str, Any]:
+def _run_pytest_count() -> dict[str, Any]:
     """Run pytest -q and parse the trailing summary line.
 
     Decision rule for ``ok``: a run is considered green iff
@@ -128,7 +134,10 @@ def _run_pytest_count() -> Dict[str, Any]:
     try:
         proc = subprocess.run(
             ["pytest", "-q", "--tb=no"],
-            cwd=_ROOT, capture_output=True, text=True, timeout=600,
+            cwd=_ROOT,
+            capture_output=True,
+            text=True,
+            timeout=600,
         )
         lines = proc.stdout.strip().splitlines()
         last_line = lines[-1] if lines else ""
@@ -158,27 +167,35 @@ def _run_pytest_count() -> Dict[str, Any]:
 
 
 def _evaluate_gates(
-    out_dir: Path, *, run_pytest: bool = True,
-) -> List[Dict[str, Any]]:
+    out_dir: Path,
+    *,
+    run_pytest: bool = True,
+) -> list[dict[str, Any]]:
     """Materialise the G7.1–G7.9 scoreboard rows."""
-    gates: List[Dict[str, Any]] = []
+    gates: list[dict[str, Any]] = []
 
     # G7.1 — pytest green.
     if run_pytest:
         pyt = _run_pytest_count()
-        gates.append({
-            "id": "G7.1",
-            "threshold": "pytest -q ≥ 430 passed; zero new skips",
-            "value": pyt.get("summary_line", "?"),
-            "passes": bool(pyt.get("ok") and pyt.get("passed", 0) >= 430),
-            "kind": "tests",
-        })
+        gates.append(
+            {
+                "id": "G7.1",
+                "threshold": "pytest -q ≥ 430 passed; zero new skips",
+                "value": pyt.get("summary_line", "?"),
+                "passes": bool(pyt.get("ok") and pyt.get("passed", 0) >= 430),
+                "kind": "tests",
+            }
+        )
     else:
-        gates.append({
-            "id": "G7.1", "kind": "tests",
-            "threshold": "pytest -q ≥ 430 passed",
-            "passes": None, "value": "skipped (run-pytest=false)",
-        })
+        gates.append(
+            {
+                "id": "G7.1",
+                "kind": "tests",
+                "threshold": "pytest -q ≥ 430 passed",
+                "passes": None,
+                "value": "skipped (run-pytest=false)",
+            }
+        )
 
     # G7.2 — F9 reward-component sweep.
     f9 = _read_summary(out_dir / "F9_summary.json")
@@ -204,79 +221,101 @@ def _evaluate_gates(
                 f"Δ_to_dqn={g72.get('delta_to_deployable', float('nan')):+.1f}, "
                 f"meets_oracle_stretch={g72.get('meets_oracle_ceiling_stretch')}"
             )
-        gates.append({
-            "id": "G7.2",
-            "threshold": "F9 best reward-comparable cell mean test reward > Phase-6 DQN +1336 by ≥1σ (apples-to-apples; reward-coefficient cells fall back to security-KPI strand per D7.1.1)",
-            "value": value_str,
-            "passes": bool(g72.get("passes")),
-            "kind": "f9",
-            "interpretation": g72.get("interpretation"),
-            "security_kpi_strand_passes": g72.get("security_kpi_strand_passes"),
-        })
+        gates.append(
+            {
+                "id": "G7.2",
+                "threshold": "F9 best reward-comparable cell mean test reward > Phase-6 DQN +1336 by ≥1σ (apples-to-apples; reward-coefficient cells fall back to security-KPI strand per D7.1.1)",
+                "value": value_str,
+                "passes": bool(g72.get("passes")),
+                "kind": "f9",
+                "interpretation": g72.get("interpretation"),
+                "security_kpi_strand_passes": g72.get("security_kpi_strand_passes"),
+            }
+        )
     else:
-        gates.append({
-            "id": "G7.2", "kind": "f9",
-            "threshold": "F9 best cell mean test reward > DQN +1336 by ≥1σ",
-            "passes": False, "value": "F9_summary.json missing",
-        })
+        gates.append(
+            {
+                "id": "G7.2",
+                "kind": "f9",
+                "threshold": "F9 best cell mean test reward > DQN +1336 by ≥1σ",
+                "passes": False,
+                "value": "F9_summary.json missing",
+            }
+        )
 
     # G7.3 — F10 aggressiveness.
     f10 = _read_summary(out_dir / "F10_summary.json")
     if f10 is not None:
         g73 = f10.get("gates", {}).get("G7.3", {})
-        gates.append({
-            "id": "G7.3",
-            "threshold": "PPO p=0.0 < p=0.6 by ≥1σ AND rule monotone",
-            "value": g73.get("ppo_reason", "?"),
-            "passes": bool(g73.get("passes")),
-            "kind": "f10",
-            "interpretation": g73.get("interpretation"),
-        })
+        gates.append(
+            {
+                "id": "G7.3",
+                "threshold": "PPO p=0.0 < p=0.6 by ≥1σ AND rule monotone",
+                "value": g73.get("ppo_reason", "?"),
+                "passes": bool(g73.get("passes")),
+                "kind": "f10",
+                "interpretation": g73.get("interpretation"),
+            }
+        )
     else:
-        gates.append({
-            "id": "G7.3", "kind": "f10",
-            "threshold": "PPO p=0.0 < p=0.6 by ≥1σ",
-            "passes": False, "value": "F10_summary.json missing",
-        })
+        gates.append(
+            {
+                "id": "G7.3",
+                "kind": "f10",
+                "threshold": "PPO p=0.0 < p=0.6 by ≥1σ",
+                "passes": False,
+                "value": "F10_summary.json missing",
+            }
+        )
 
     # G7.4 — F12 Pareto.
     f12 = _read_summary(out_dir / "F12_summary.json")
     if f12 is not None:
         g74 = f12.get("gates", {}).get("G7.4", {})
-        gates.append({
-            "id": "G7.4",
-            "threshold": "Pareto frontier ≥ 3 distinct dominant points",
-            "value": (
-                f"n_distinct={g74.get('n_distinct_frontier_points', '?')}/"
-                f"{f12.get('n_points_total', '?')}"
-            ),
-            "passes": bool(g74.get("passes")),
-            "kind": "f12",
-            "interpretation": g74.get("interpretation"),
-        })
+        gates.append(
+            {
+                "id": "G7.4",
+                "threshold": "Pareto frontier ≥ 3 distinct dominant points",
+                "value": (
+                    f"n_distinct={g74.get('n_distinct_frontier_points', '?')}/"
+                    f"{f12.get('n_points_total', '?')}"
+                ),
+                "passes": bool(g74.get("passes")),
+                "kind": "f12",
+                "interpretation": g74.get("interpretation"),
+            }
+        )
     else:
-        gates.append({
-            "id": "G7.4", "kind": "f12",
-            "threshold": "≥ 3 distinct Pareto frontier points",
-            "passes": False, "value": "F12_summary.json missing",
-        })
+        gates.append(
+            {
+                "id": "G7.4",
+                "kind": "f12",
+                "threshold": "≥ 3 distinct Pareto frontier points",
+                "passes": False,
+                "value": "F12_summary.json missing",
+            }
+        )
 
     # G7.5 + G7.6 — environment-design / overall regression: piggyback on G7.1.
     pyt_ok = bool(gates[0].get("passes"))
-    gates.append({
-        "id": "G7.5",
-        "threshold": "Environment-design frozen tests pass with impact_is_terminal=True",
-        "passes": pyt_ok,
-        "value": "G7.1 carries this through (full pytest green ⇒ environment-design contract preserved)",
-        "kind": "regression",
-    })
-    gates.append({
-        "id": "G7.6",
-        "threshold": "No regression on environment-design/detector/blue-team/benchmark frozen tests overall",
-        "passes": pyt_ok,
-        "value": "G7.1 carries this through",
-        "kind": "regression",
-    })
+    gates.append(
+        {
+            "id": "G7.5",
+            "threshold": "Environment-design frozen tests pass with impact_is_terminal=True",
+            "passes": pyt_ok,
+            "value": "G7.1 carries this through (full pytest green ⇒ environment-design contract preserved)",
+            "kind": "regression",
+        }
+    )
+    gates.append(
+        {
+            "id": "G7.6",
+            "threshold": "No regression on environment-design/detector/blue-team/benchmark frozen tests overall",
+            "passes": pyt_ok,
+            "value": "G7.1 carries this through",
+            "kind": "regression",
+        }
+    )
 
     # G7.7 — manifests.
     manifest_paths = [
@@ -286,65 +325,78 @@ def _evaluate_gates(
         out_dir / "F15_manifest.json",
     ]
     missing = [str(p.relative_to(_ROOT)) for p in manifest_paths if not p.exists()]
-    gates.append({
-        "id": "G7.7",
-        "threshold": "F9/F10/F12/F15 manifest.json all present + SHA-pinned",
-        "passes": not missing,
-        "value": (
-            f"all 4 manifests present"
-            if not missing else f"missing: {missing}"
-        ),
-        "kind": "manifests",
-    })
+    gates.append(
+        {
+            "id": "G7.7",
+            "threshold": "F9/F10/F12/F15 manifest.json all present + SHA-pinned",
+            "passes": not missing,
+            "value": ("all 4 manifests present" if not missing else f"missing: {missing}"),
+            "kind": "manifests",
+        }
+    )
 
     # G7.8 — F15 OOD matrix complete (audit-AF1).
     f15 = _read_summary(out_dir / "F15_summary.json")
     if f15 is not None:
         g78 = f15.get("gates", {}).get("G7.8", {})
-        gates.append({
-            "id": "G7.8",
-            "threshold": "F15 4-class × 8-policy matrix complete, no NaN means",
-            "value": (
-                f"{g78.get('n_cells_present', '?')}/{g78.get('n_cells_expected', '?')} "
-                f"cells; "
-                f"n_missing={len(g78.get('missing_cells', []))}; "
-                f"n_nan={len(g78.get('nan_cells', []))}"
-            ),
-            "passes": bool(g78.get("passes")),
-            "kind": "f15",
-            "audit_finding": "AF1",
-        })
+        gates.append(
+            {
+                "id": "G7.8",
+                "threshold": "F15 4-class × 8-policy matrix complete, no NaN means",
+                "value": (
+                    f"{g78.get('n_cells_present', '?')}/{g78.get('n_cells_expected', '?')} "
+                    f"cells; "
+                    f"n_missing={len(g78.get('missing_cells', []))}; "
+                    f"n_nan={len(g78.get('nan_cells', []))}"
+                ),
+                "passes": bool(g78.get("passes")),
+                "kind": "f15",
+                "audit_finding": "AF1",
+            }
+        )
 
         # G7.9 — F15 headline.
         g79 = f15.get("gates", {}).get("G7.9", {})
-        gates.append({
-            "id": "G7.9",
-            "threshold": (
-                "On VulnerabilityScan, best trained RL CI_low > "
-                "RF-Acting CI_high (≥1σ separation, RL > RF)"
-            ),
-            "value": (
-                f"best_rl={g79.get('best_rl_algo', '?')} "
-                f"({g79.get('best_rl_mean_reward', float('nan')):+.1f}), "
-                f"RF=({g79.get('rf_acting_mean_reward', float('nan')):+.1f}), "
-                f"Δ={g79.get('delta_mean', float('nan')):+.1f}"
-            ),
-            "passes": bool(g79.get("passes")),
-            "kind": "f15",
-            "audit_finding": "AF1 (HEADLINE)",
-            "interpretation": g79.get("interpretation"),
-        })
+        gates.append(
+            {
+                "id": "G7.9",
+                "threshold": (
+                    "On VulnerabilityScan, best trained RL CI_low > "
+                    "RF-Acting CI_high (≥1σ separation, RL > RF)"
+                ),
+                "value": (
+                    f"best_rl={g79.get('best_rl_algo', '?')} "
+                    f"({g79.get('best_rl_mean_reward', float('nan')):+.1f}), "
+                    f"RF=({g79.get('rf_acting_mean_reward', float('nan')):+.1f}), "
+                    f"Δ={g79.get('delta_mean', float('nan')):+.1f}"
+                ),
+                "passes": bool(g79.get("passes")),
+                "kind": "f15",
+                "audit_finding": "AF1 (HEADLINE)",
+                "interpretation": g79.get("interpretation"),
+            }
+        )
     else:
-        gates.append({
-            "id": "G7.8", "kind": "f15", "audit_finding": "AF1",
-            "threshold": "F15 matrix complete, no NaN means",
-            "passes": False, "value": "F15_summary.json missing",
-        })
-        gates.append({
-            "id": "G7.9", "kind": "f15", "audit_finding": "AF1 (HEADLINE)",
-            "threshold": "On VulnerabilityScan: trained RL > RF-Acting by ≥1σ",
-            "passes": False, "value": "F15_summary.json missing",
-        })
+        gates.append(
+            {
+                "id": "G7.8",
+                "kind": "f15",
+                "audit_finding": "AF1",
+                "threshold": "F15 matrix complete, no NaN means",
+                "passes": False,
+                "value": "F15_summary.json missing",
+            }
+        )
+        gates.append(
+            {
+                "id": "G7.9",
+                "kind": "f15",
+                "audit_finding": "AF1 (HEADLINE)",
+                "threshold": "On VulnerabilityScan: trained RL > RF-Acting by ≥1σ",
+                "passes": False,
+                "value": "F15_summary.json missing",
+            }
+        )
 
     return gates
 
@@ -367,14 +419,14 @@ _STATUS_SKIP = "SKIP"
 # Step-8 task #2 (07_HANDOFF.md §5 F3) acceptance: jq '.gates[].status'
 # returns enum members and finding_id is present where status is
 # {PASS-WITH-FINDING, PASS-WITHOUT-STRETCH, FAIL-WITH-FINDING}.
-_GATE_FINDING_ID: Dict[str, str] = {
-    "G7.2": "D7.1.1",   # reward-comparable strand relaxation per D7.1.1
-    "G7.4": "R7.3",     # Pareto-frontier-collapse risk realised
-    "G7.9": "D7.9.1",   # OOD headline: "robust to, not better at"
+_GATE_FINDING_ID: dict[str, str] = {
+    "G7.2": "D7.1.1",  # reward-comparable strand relaxation per D7.1.1
+    "G7.4": "R7.3",  # Pareto-frontier-collapse risk realised
+    "G7.9": "D7.9.1",  # OOD headline: "robust to, not better at"
 }
 
 
-def _resolve_status_finding(gate: Dict[str, Any]) -> Dict[str, Any]:
+def _resolve_status_finding(gate: dict[str, Any]) -> dict[str, Any]:
     """Map the gate's `passes`+`interpretation`+`audit_finding` triple
     into a Phase-6-native ``(status, finding_id)`` pair.
 
@@ -409,19 +461,24 @@ def _resolve_status_finding(gate: Dict[str, Any]) -> Dict[str, Any]:
         else:
             status = _STATUS_FAIL
 
-    out: Dict[str, Any] = {"status": status}
+    out: dict[str, Any] = {"status": status}
     finding_id = _GATE_FINDING_ID.get(gate.get("id", ""))
-    if status in {
-        _STATUS_PASS_WITH_FINDING,
-        _STATUS_PASS_WITHOUT_STRETCH,
-        _STATUS_FAIL_WITH_FINDING,
-    } and finding_id is not None:
+    if (
+        status
+        in {
+            _STATUS_PASS_WITH_FINDING,
+            _STATUS_PASS_WITHOUT_STRETCH,
+            _STATUS_FAIL_WITH_FINDING,
+        }
+        and finding_id is not None
+    ):
         out["finding_id"] = finding_id
     return out
 
 
 def _write_scoreboard(
-    out_dir: Path, gates: List[Dict[str, Any]],
+    out_dir: Path,
+    gates: list[dict[str, Any]],
 ) -> Path:
     """Emit ``G7_scoreboard.json`` in the benchmark-native schema.
 
@@ -433,13 +490,13 @@ def _write_scoreboard(
     audit_finding, security_kpi_strand_passes, note_post_lock_*)
     are preserved verbatim.
     """
-    enriched_gates: List[Dict[str, Any]] = []
+    enriched_gates: list[dict[str, Any]] = []
     for g in gates:
         sf = _resolve_status_finding(g)
         new_g = {k: v for k, v in g.items() if k != "passes"}
         # Insert status (and finding_id) immediately after id+threshold+value
         # for human readability; final dict order is for cosmetics only.
-        ordered: Dict[str, Any] = {}
+        ordered: dict[str, Any] = {}
         for k in ("id", "threshold", "value"):
             if k in new_g:
                 ordered[k] = new_g.pop(k)
@@ -450,15 +507,11 @@ def _write_scoreboard(
         enriched_gates.append(ordered)
 
     n_pass = sum(1 for g in enriched_gates if g["status"] == _STATUS_PASS)
-    n_pass_with_finding = sum(
-        1 for g in enriched_gates if g["status"] == _STATUS_PASS_WITH_FINDING
-    )
+    n_pass_with_finding = sum(1 for g in enriched_gates if g["status"] == _STATUS_PASS_WITH_FINDING)
     n_pass_without_stretch = sum(
         1 for g in enriched_gates if g["status"] == _STATUS_PASS_WITHOUT_STRETCH
     )
-    n_fail_with_finding = sum(
-        1 for g in enriched_gates if g["status"] == _STATUS_FAIL_WITH_FINDING
-    )
+    n_fail_with_finding = sum(1 for g in enriched_gates if g["status"] == _STATUS_FAIL_WITH_FINDING)
     n_fail = sum(1 for g in enriched_gates if g["status"] == _STATUS_FAIL)
     n_skip = sum(1 for g in enriched_gates if g["status"] == _STATUS_SKIP)
 
@@ -482,13 +535,18 @@ def _write_scoreboard(
     path.write_text(json.dumps(payload, indent=2))
     logger.info(
         "wrote %s (pass=%d pwf=%d pws=%d fwf=%d fail=%d skip=%d)",
-        path, n_pass, n_pass_with_finding, n_pass_without_stretch,
-        n_fail_with_finding, n_fail, n_skip,
+        path,
+        n_pass,
+        n_pass_with_finding,
+        n_pass_without_stretch,
+        n_fail_with_finding,
+        n_fail,
+        n_skip,
     )
     return path
 
 
-def _summary_table(gates: List[Dict[str, Any]]) -> str:
+def _summary_table(gates: list[dict[str, Any]]) -> str:
     """Markdown table: gate / threshold / status / value.
 
     Renders the unified benchmark-native ``status`` enum. Falls back
@@ -508,24 +566,21 @@ def _summary_table(gates: List[Dict[str, Any]]) -> str:
             # path; preserved for backwards-compat in case of direct
             # callers).
             status = (
-                _STATUS_PASS if g.get("passes") is True
-                else _STATUS_FAIL_WITH_FINDING if g.get("passes") is False
-                else _STATUS_SKIP
+                _STATUS_PASS
+                if g.get("passes") is True
+                else _STATUS_FAIL_WITH_FINDING if g.get("passes") is False else _STATUS_SKIP
             )
         finding = g.get("finding_id")
-        status_cell = (
-            f"**{status}**" if status == _STATUS_PASS else status
-        )
+        status_cell = f"**{status}**" if status == _STATUS_PASS else status
         if finding:
             status_cell = f"{status_cell} ({finding})"
-        rows.append(
-            f"| **{g['id']}** | {g['threshold']} | {status_cell} | {g.get('value', '?')} |"
-        )
+        rows.append(f"| **{g['id']}** | {g['threshold']} | {status_cell} | {g.get('value', '?')} |")
     return "\n".join(rows)
 
 
 def _write_results_md(
-    out_dir: Path, gates: List[Dict[str, Any]],
+    out_dir: Path,
+    gates: list[dict[str, Any]],
 ) -> Path:
     """Write an ablation RESULTS.md skeleton with live numbers.
 
@@ -544,7 +599,7 @@ def _write_results_md(
     g72 = f9.get("gates", {}).get("G7.2", {})
     g73 = f10.get("gates", {}).get("G7.3", {})
     g74 = f12.get("gates", {}).get("G7.4", {})
-    g78 = f15.get("gates", {}).get("G7.8", {})
+    f15.get("gates", {}).get("G7.8", {})
     g79 = f15.get("gates", {}).get("G7.9", {})
 
     md = f"""# Ablation + OOD-class Robustness: Results
@@ -561,22 +616,22 @@ def _write_results_md(
 **F9 — reward-component sweep (D7.1):**
 {g72.get("interpretation", "(F9 not produced yet)")}
 
-  - Best cell: `{g72.get('best_cell', '?')}` (mean = {g72.get('best_mean_reward', float('nan')):+.1f},
-    CI = ({g72.get('best_ci', [float('nan'), float('nan')])[0]:+.1f},
-    {g72.get('best_ci', [float('nan'), float('nan')])[1]:+.1f}))
-  - Δ to benchmark deployable best (DQN +1336): **{g72.get('delta_to_deployable', float('nan')):+.1f}**
-  - Δ to benchmark oracle ceiling (rule +1624): **{g72.get('delta_to_oracle', float('nan')):+.1f}**
-  - Stretch goal (oracle ceiling) met: **{g72.get('meets_oracle_ceiling_stretch')}**
+  - Best cell: `{g72.get("best_cell", "?")}` (mean = {g72.get("best_mean_reward", float("nan")):+.1f},
+    CI = ({g72.get("best_ci", [float("nan"), float("nan")])[0]:+.1f},
+    {g72.get("best_ci", [float("nan"), float("nan")])[1]:+.1f}))
+  - Δ to benchmark deployable best (DQN +1336): **{g72.get("delta_to_deployable", float("nan")):+.1f}**
+  - Δ to benchmark oracle ceiling (rule +1624): **{g72.get("delta_to_oracle", float("nan")):+.1f}**
+  - Stretch goal (oracle ceiling) met: **{g72.get("meets_oracle_ceiling_stretch")}**
 
 **F15 — OOD-class robustness (audit-AF1, HEADLINE):**
 {g79.get("interpretation", "(F15 not produced yet)")}
 
   - On `VulnerabilityScan` (RF detector recall = 0.001):
-    - Best trained RL: `{g79.get('best_rl_algo', '?')}` mean = {g79.get('best_rl_mean_reward', float('nan')):+.1f}
-      (CI {g79.get('best_rl_ci', [float('nan'), float('nan')])})
-    - RF-Acting mean = {g79.get('rf_acting_mean_reward', float('nan')):+.1f}
-      (CI {g79.get('rf_acting_ci', [float('nan'), float('nan')])})
-    - Δ = **{g79.get('delta_mean', float('nan')):+.1f}**
+    - Best trained RL: `{g79.get("best_rl_algo", "?")}` mean = {g79.get("best_rl_mean_reward", float("nan")):+.1f}
+      (CI {g79.get("best_rl_ci", [float("nan"), float("nan")])})
+    - RF-Acting mean = {g79.get("rf_acting_mean_reward", float("nan")):+.1f}
+      (CI {g79.get("rf_acting_ci", [float("nan"), float("nan")])})
+    - Δ = **{g79.get("delta_mean", float("nan")):+.1f}**
 
 **F10 — attack-aggressiveness (IoTWarden Fig. 6 re-impl):**
 {g73.get("interpretation", "(F10 not produced yet)")}
@@ -584,8 +639,8 @@ def _write_results_md(
 **F12 — security-vs-availability Pareto:**
 {g74.get("interpretation", "(F12 not produced yet)")}
 
-  - Total points collected: {f12.get('n_points_total', '?')}
-  - Frontier points (distinct): {g74.get('n_distinct_frontier_points', '?')}
+  - Total points collected: {f12.get("n_points_total", "?")}
+  - Frontier points (distinct): {g74.get("n_distinct_frontier_points", "?")}
 
 ## 2 — Gate scoreboard
 
@@ -699,8 +754,9 @@ Dataset prep 254 → Dataset prep 266 → Red-team 283 → Env design 296 → De
 
 
 def _prepend_changelog(
-    repo_root: Path, gates: List[Dict[str, Any]],
-) -> Optional[Path]:
+    repo_root: Path,
+    gates: list[dict[str, Any]],
+) -> Path | None:
     """Prepend an ablation [Unreleased] section to CHANGELOG.md."""
     changelog = repo_root / "CHANGELOG.md"
     if not changelog.exists():
@@ -755,17 +811,19 @@ def _build_argparser() -> argparse.ArgumentParser:
     )
     p.add_argument("--out-dir", default="docs/results/07_ablation")
     p.add_argument(
-        "--no-pytest", action="store_true",
+        "--no-pytest",
+        action="store_true",
         help="Skip the pytest run for G7.1 (use the most recent known result).",
     )
     p.add_argument(
-        "--no-changelog", action="store_true",
+        "--no-changelog",
+        action="store_true",
         help="Skip the CHANGELOG.md prepend.",
     )
     return p
 
 
-def main(argv: Optional[List[str]] = None) -> int:
+def main(argv: list[str] | None = None) -> int:
     args = _build_argparser().parse_args(argv)
     logging.basicConfig(
         level=logging.INFO,
@@ -784,7 +842,8 @@ def main(argv: Optional[List[str]] = None) -> int:
     n_fail = sum(1 for g in gates if g.get("passes") is False)
     logger.info(
         "Ablation closer done: %d PASS / %d FAIL-WITH-FINDING across G7.1-G7.9",
-        n_pass, n_fail,
+        n_pass,
+        n_fail,
     )
     return 0 if n_fail == 0 else 1
 

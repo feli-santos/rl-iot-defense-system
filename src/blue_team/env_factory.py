@@ -30,7 +30,6 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import Optional, Union
 
 import gymnasium as gym
 from stable_baselines3.common.monitor import Monitor
@@ -81,10 +80,10 @@ def _build_env_config(spec: EnvConfigSerializable) -> AdversarialEnvConfig:
 def _build_env(
     *,
     spec: EnvConfigSerializable,
-    generator_path: Union[str, Path],
-    dataset_path: Union[str, Path],
-    splits_manifest: Optional[Union[str, Path]],
-    seed: Optional[int],
+    generator_path: str | Path,
+    dataset_path: str | Path,
+    splits_manifest: str | Path | None,
+    seed: int | None,
 ) -> AdversarialIoTEnv:
     """Assemble an unwrapped :class:`AdversarialIoTEnv` with split-aware
     feature sampling.
@@ -117,7 +116,8 @@ def _build_env(
         env._num_features = engine.num_features  # type: ignore[attr-defined]
         logger.debug(
             "RealizationEngine restricted to split=%s (exclude_ood=%s)",
-            spec.split, spec.exclude_ood,
+            spec.split,
+            spec.exclude_ood,
         )
     return env
 
@@ -125,11 +125,11 @@ def _build_env(
 def make_train_env(
     *,
     spec: EnvConfigSerializable,
-    generator_path: Union[str, Path],
-    dataset_path: Union[str, Path],
-    splits_manifest: Optional[Union[str, Path]] = None,
-    seed: Optional[int] = None,
-    monitor_path: Optional[Union[str, Path]] = None,
+    generator_path: str | Path,
+    dataset_path: str | Path,
+    splits_manifest: str | Path | None = None,
+    seed: int | None = None,
+    monitor_path: str | Path | None = None,
 ) -> DummyVecEnv:
     """Build the *training* env wrapped in Monitor + DummyVecEnv.
 
@@ -149,6 +149,7 @@ def make_train_env(
     Returns:
         :class:`DummyVecEnv` wrapping a single :class:`Monitor` env.
     """
+
     def _factory() -> gym.Env:
         env = _build_env(
             spec=spec,
@@ -169,10 +170,10 @@ def make_train_env(
 def make_eval_env(
     *,
     spec: EnvConfigSerializable,
-    generator_path: Union[str, Path],
-    dataset_path: Union[str, Path],
-    splits_manifest: Optional[Union[str, Path]] = None,
-    seed: Optional[int] = None,
+    generator_path: str | Path,
+    dataset_path: str | Path,
+    splits_manifest: str | Path | None = None,
+    seed: int | None = None,
 ) -> DummyVecEnv:
     """Build the *evaluation* env. Same plumbing as :func:`make_train_env`,
     no Monitor CSV side-effect."""

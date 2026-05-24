@@ -27,10 +27,10 @@ Public API: :func:`measure_inference_latency`.
 from __future__ import annotations
 
 import time
-from typing import Any, Callable, Dict, Optional, Sequence
+from collections.abc import Sequence
+from typing import Any, Callable
 
 import numpy as np
-
 
 # Module-level reference so tests can monkey-patch
 # ``src.benchmark.latency._DEFAULT_CLOCK`` for deterministic ns sampling.
@@ -38,13 +38,13 @@ _DEFAULT_CLOCK: Callable[[], int] = time.perf_counter_ns
 
 
 def measure_inference_latency(
-    policy_callable: Callable[[np.ndarray, Dict[str, Any]], int],
+    policy_callable: Callable[[np.ndarray, dict[str, Any]], int],
     obs_pool: Sequence[np.ndarray],
     *,
-    info_pool: Optional[Sequence[Dict[str, Any]]] = None,
+    info_pool: Sequence[dict[str, Any]] | None = None,
     n_warmup: int = 100,
     n_measure: int = 1000,
-    clock: Optional[Callable[[], int]] = None,
+    clock: Callable[[], int] | None = None,
 ) -> np.ndarray:
     """Run ``policy_callable`` repeatedly on ``obs_pool`` and return
     per-call wall-time durations in nanoseconds.
@@ -95,16 +95,15 @@ def measure_inference_latency(
 
     # Pre-fetch infos so we don't pay dict-construction cost inside the
     # hot loop (it would bias the measurement upward by tens of ns).
-    infos: Sequence[Dict[str, Any]]
+    infos: Sequence[dict[str, Any]]
     if info_pool is not None:
         if len(info_pool) != pool_n:
             raise ValueError(
-                f"info_pool length {len(info_pool)} does not match "
-                f"obs_pool length {pool_n}"
+                f"info_pool length {len(info_pool)} does not match obs_pool length {pool_n}"
             )
         infos = info_pool
     else:
-        empty: Dict[str, Any] = {}
+        empty: dict[str, Any] = {}
         infos = [empty] * pool_n
 
     # ---- warmup ----

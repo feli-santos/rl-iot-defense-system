@@ -34,8 +34,8 @@ from __future__ import annotations
 import json
 import logging
 import math
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Dict, Iterable, List, Optional, Sequence, Tuple, Union
 
 import numpy as np
 
@@ -48,7 +48,7 @@ _EXPECTED_SCHEMA = "1.0"
 # -------------------------------------------------------------------------- I/O
 
 
-def read_episodes_jsonl(path: Union[str, Path]) -> List[Dict]:
+def read_episodes_jsonl(path: str | Path) -> list[dict]:
     """Read an ``episodes.jsonl`` file into a list of dicts.
 
     Asserts every record carries ``schema_version == "1.0"``; raises
@@ -58,7 +58,7 @@ def read_episodes_jsonl(path: Union[str, Path]) -> List[Dict]:
     p = Path(path)
     if not p.exists():
         raise FileNotFoundError(f"episodes.jsonl not found at {p}")
-    rows: List[Dict] = []
+    rows: list[dict] = []
     with p.open("r", encoding="utf-8") as fh:
         for lineno, line in enumerate(fh, start=1):
             line = line.strip()
@@ -68,25 +68,24 @@ def read_episodes_jsonl(path: Union[str, Path]) -> List[Dict]:
             v = rec.get("schema_version")
             if v != _EXPECTED_SCHEMA:
                 raise ValueError(
-                    f"{p}:{lineno}: unexpected schema_version {v!r}; "
-                    f"expected {_EXPECTED_SCHEMA!r}"
+                    f"{p}:{lineno}: unexpected schema_version {v!r}; expected {_EXPECTED_SCHEMA!r}"
                 )
             rows.append(rec)
     return rows
 
 
 def read_runs_directory(
-    runs_dir: Union[str, Path],
+    runs_dir: str | Path,
     *,
     file_name: str = "episodes.jsonl",
-) -> Dict[Tuple[str, int], List[Dict]]:
+) -> dict[tuple[str, int], list[dict]]:
     """Read every ``runs/<algo>/seed_<k>/<file_name>`` under ``runs_dir``.
 
     Returns a mapping ``(algo, seed) -> records``. Skips any algo or
     seed whose JSONL is missing (with a logged warning).
     """
     base = Path(runs_dir)
-    out: Dict[Tuple[str, int], List[Dict]] = {}
+    out: dict[tuple[str, int], list[dict]] = {}
     if not base.exists():
         return out
     for algo_dir in sorted(p for p in base.iterdir() if p.is_dir()):
@@ -110,7 +109,7 @@ def read_runs_directory(
 
 
 def bin_by_timesteps(
-    records: Sequence[Dict],
+    records: Sequence[dict],
     edges: Sequence[int],
     key: str,
     *,
@@ -152,9 +151,7 @@ def bin_by_timesteps(
             continue
         bucket_vals = [raw_vals[i] for i in np.where(sel)[0]]
         if aggregator == "rate":
-            out[b] = float(
-                np.mean([1.0 if v else 0.0 for v in bucket_vals])
-            )
+            out[b] = float(np.mean([1.0 if v else 0.0 for v in bucket_vals]))
         elif aggregator == "mean":
             # Skip None values (e.g., mttc_steps when no compromise).
             scalars = [float(v) for v in bucket_vals if v is not None]
@@ -178,8 +175,8 @@ def bootstrap_ci(
     *,
     n_resamples: int = 1000,
     alpha: float = 0.05,
-    seed: Optional[int] = 0,
-) -> Tuple[float, float, float]:
+    seed: int | None = 0,
+) -> tuple[float, float, float]:
     """Percentile bootstrap CI on a 1-D array.
 
     Args:
@@ -193,8 +190,7 @@ def bootstrap_ci(
         ``(nan, nan, nan)``. If ``len(values) == 1`` returns
         ``(v, v, v)`` (CI is a point).
     """
-    arr = np.asarray([v for v in values if v is not None and not _isnan(v)],
-                     dtype=np.float64)
+    arr = np.asarray([v for v in values if v is not None and not _isnan(v)], dtype=np.float64)
     if arr.size == 0:
         return (math.nan, math.nan, math.nan)
     mean = float(np.mean(arr))
@@ -223,8 +219,8 @@ def aggregate_seeds(
     *,
     n_resamples: int = 1000,
     alpha: float = 0.05,
-    seed: Optional[int] = 0,
-) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    seed: int | None = 0,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Stack a list of per-seed bucket-curves and compute per-bucket
     bootstrap CIs across seeds.
 
@@ -264,7 +260,7 @@ def aggregate_seeds(
 
 
 def action_counts_by_bin(
-    records: Sequence[Dict],
+    records: Sequence[dict],
     edges: Sequence[int],
 ) -> np.ndarray:
     """Sum per-action counts over records bucketed by ``num_timesteps``.
@@ -293,9 +289,9 @@ def action_counts_by_bin(
 
 
 def per_stage_action_distribution(
-    records: Sequence[Dict],
+    records: Sequence[dict],
     *,
-    since_timestep: Optional[int] = None,
+    since_timestep: int | None = None,
 ) -> np.ndarray:
     """Per-decision-stage action distribution across selected records.
 
@@ -333,10 +329,10 @@ def per_stage_action_distribution(
 
 
 def summarise_last_window(
-    records: Sequence[Dict],
+    records: Sequence[dict],
     *,
     fraction: float = 0.10,
-) -> Dict[str, float]:
+) -> dict[str, float]:
     """Compute the headline gate metrics over the last ``fraction`` of
     training timesteps.
 
@@ -362,10 +358,13 @@ def summarise_last_window(
     """
     if not records:
         return {
-            "mean_reward": math.nan, "mean_mttc": math.nan,
-            "compromise_rate": math.nan, "mitigated_impact_rate": math.nan,
+            "mean_reward": math.nan,
+            "mean_mttc": math.nan,
+            "compromise_rate": math.nan,
+            "mitigated_impact_rate": math.nan,
             "mitigated_among_compromised": math.nan,
-            "n_episodes": 0, "last_window_start": 0,
+            "n_episodes": 0,
+            "last_window_start": 0,
         }
     if not (0.0 < fraction <= 1.0):
         raise ValueError(f"fraction must be in (0, 1], got {fraction}")
@@ -374,26 +373,25 @@ def summarise_last_window(
     sel = [r for r in records if r["num_timesteps"] >= cutoff]
     if not sel:
         return {
-            "mean_reward": math.nan, "mean_mttc": math.nan,
-            "compromise_rate": math.nan, "mitigated_impact_rate": math.nan,
+            "mean_reward": math.nan,
+            "mean_mttc": math.nan,
+            "compromise_rate": math.nan,
+            "mitigated_impact_rate": math.nan,
             "mitigated_among_compromised": math.nan,
-            "n_episodes": 0, "last_window_start": cutoff,
+            "n_episodes": 0,
+            "last_window_start": cutoff,
         }
     rewards = [r["episode_reward"] for r in sel]
     mttc_vals = [r["mttc_steps"] for r in sel if r.get("mttc_steps") is not None]
     compromised = [1.0 if r.get("compromised") else 0.0 for r in sel]
-    mitigated = [
-        1.0 if r.get("end_outcome") == "impact_mitigated" else 0.0
-        for r in sel
-    ]
+    mitigated = [1.0 if r.get("end_outcome") == "impact_mitigated" else 0.0 for r in sel]
     n_compromised = int(sum(compromised))
     if n_compromised > 0:
         mit_among_comp = float(
             sum(
                 1.0
                 for r in sel
-                if r.get("compromised")
-                and r.get("end_outcome") == "impact_mitigated"
+                if r.get("compromised") and r.get("end_outcome") == "impact_mitigated"
             )
             / n_compromised
         )

@@ -49,10 +49,9 @@ from __future__ import annotations
 import json
 import logging
 import time
-from collections import Counter
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any
 
 from stable_baselines3.common.callbacks import BaseCallback
 
@@ -86,13 +85,13 @@ class EpisodeRecord:
     episode_reward: float
     episode_length: int
     compromised: bool
-    mttc_steps: Optional[int]
+    mttc_steps: int | None
     defender_deescalations: int
     final_stage: int
     final_stage_name: str
     end_outcome: str
-    action_counts: List[int]
-    action_counts_by_stage: Dict[str, List[int]]
+    action_counts: list[int]
+    action_counts_by_stage: dict[str, list[int]]
 
     def to_jsonl(self) -> str:
         """Render the record as a single JSON line (no trailing newline)."""
@@ -105,8 +104,8 @@ class _EpisodeAccumulator:
 
     cumulative_reward: float = 0.0
     length: int = 0
-    action_counts: List[int] = field(default_factory=lambda: [0] * 5)
-    action_counts_by_stage: Dict[int, List[int]] = field(
+    action_counts: list[int] = field(default_factory=lambda: [0] * 5)
+    action_counts_by_stage: dict[int, list[int]] = field(
         default_factory=lambda: {s: [0] * 5 for s in range(5)}
     )
 
@@ -158,7 +157,7 @@ class EpisodeJSONLCallback(BaseCallback):
 
     def __init__(
         self,
-        out_path: Union[str, Path],
+        out_path: str | Path,
         run_id: str,
         algo: str,
         seed: int,
@@ -174,10 +173,10 @@ class EpisodeJSONLCallback(BaseCallback):
             raise ValueError(f"flush_every must be >= 1, got {flush_every}")
         self._flush_every = int(flush_every)
 
-        self._fh: Optional[Any] = None
+        self._fh: Any | None = None
         self._t_start: float = 0.0
-        self._accumulators: Dict[int, _EpisodeAccumulator] = {}
-        self._pre_step_stages: Dict[int, int] = {}
+        self._accumulators: dict[int, _EpisodeAccumulator] = {}
+        self._pre_step_stages: dict[int, int] = {}
         self._episode_idx: int = 0
         self._unflushed: int = 0
 
@@ -196,7 +195,10 @@ class EpisodeJSONLCallback(BaseCallback):
         if self.verbose > 0:
             logger.info(
                 "EpisodeJSONLCallback opened %s for run_id=%s algo=%s seed=%d",
-                self._out_path, self._run_id, self._algo, self._seed,
+                self._out_path,
+                self._run_id,
+                self._algo,
+                self._seed,
             )
 
     def _on_step(self) -> bool:  # noqa: D401 — SB3 API
@@ -277,7 +279,7 @@ class EpisodeJSONLCallback(BaseCallback):
         except (TypeError, IndexError):
             return bool(dones)
 
-    def _emit_record(self, env_idx: int, info: Dict[str, Any]) -> None:
+    def _emit_record(self, env_idx: int, info: dict[str, Any]) -> None:
         """Build an EpisodeRecord from the current accumulator + info,
         write it as a JSONL line, and increment counters."""
         acc = self._accumulators[env_idx]
@@ -287,13 +289,9 @@ class EpisodeJSONLCallback(BaseCallback):
         # tally also includes). Fall back to the accumulator otherwise.
         monitor = info.get("episode") if isinstance(info, dict) else None
         ep_reward = (
-            float(monitor["r"]) if monitor and "r" in monitor
-            else float(acc.cumulative_reward)
+            float(monitor["r"]) if monitor and "r" in monitor else float(acc.cumulative_reward)
         )
-        ep_length = (
-            int(monitor["l"]) if monitor and "l" in monitor
-            else int(acc.length)
-        )
+        ep_length = int(monitor["l"]) if monitor and "l" in monitor else int(acc.length)
 
         # When SB3 auto-resets a Monitor-wrapped env, ``info["terminal_observation"]``
         # is set and ``info["attack_stage"]`` already reflects the post-reset
@@ -332,8 +330,7 @@ class EpisodeJSONLCallback(BaseCallback):
             end_outcome=outcome,
             action_counts=list(acc.action_counts),
             action_counts_by_stage={
-                str(s): list(counts)
-                for s, counts in acc.action_counts_by_stage.items()
+                str(s): list(counts) for s, counts in acc.action_counts_by_stage.items()
             },
         )
         assert self._fh is not None  # invariant after _on_training_start
@@ -378,7 +375,7 @@ class EvalToJSONLCallback(BaseCallback):
     def __init__(
         self,
         eval_env: Any,
-        out_path: Union[str, Path],
+        out_path: str | Path,
         run_id: str,
         algo: str,
         seed: int,
@@ -397,7 +394,7 @@ class EvalToJSONLCallback(BaseCallback):
         self._n_eval_episodes = int(n_eval_episodes)
         self._deterministic = bool(deterministic)
 
-        self._fh: Optional[Any] = None
+        self._fh: Any | None = None
         self._t_start: float = 0.0
         self._eval_block_idx: int = 0
         self._n_evals: int = 0  # cumulative eval episodes written
@@ -461,9 +458,7 @@ class EvalToJSONLCallback(BaseCallback):
                     # from the live info before reset.
                     self._emit_eval_record(ep, acc, info)
 
-    def _emit_eval_record(
-        self, ep: int, acc: _EpisodeAccumulator, info: Dict[str, Any]
-    ) -> None:
+    def _emit_eval_record(self, ep: int, acc: _EpisodeAccumulator, info: dict[str, Any]) -> None:
         terminal_info = info.get("terminal_info") if isinstance(info, dict) else None
         if isinstance(terminal_info, dict):
             src = terminal_info
@@ -493,9 +488,7 @@ class EvalToJSONLCallback(BaseCallback):
             final_stage_name=KillChainStage(final_stage).name,
             end_outcome=outcome,
             action_counts=list(acc.action_counts),
-            action_counts_by_stage={
-                str(s): list(c) for s, c in acc.action_counts_by_stage.items()
-            },
+            action_counts_by_stage={str(s): list(c) for s, c in acc.action_counts_by_stage.items()},
         )
         assert self._fh is not None
         self._fh.write(record.to_jsonl())

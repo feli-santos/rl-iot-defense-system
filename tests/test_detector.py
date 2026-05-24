@@ -54,9 +54,7 @@ def _toy_dataset(
     rng = np.random.default_rng(seed)
     X_parts, y_parts = [], []
     for stage in range(NUM_STAGES):
-        X_parts.append(
-            _TOY_CENTRES[stage] + rng.standard_normal((n_per_class, num_features))
-        )
+        X_parts.append(_TOY_CENTRES[stage] + rng.standard_normal((n_per_class, num_features)))
         y_parts.append(np.full(n_per_class, stage, dtype=np.int64))
     X = np.vstack(X_parts).astype(np.float32)
     y = np.concatenate(y_parts)
@@ -222,6 +220,7 @@ class TestStageDetector:
             det.predict_proba(x)
 
         import time
+
         n_iter = 1000
         t0 = time.perf_counter()
         for _ in range(n_iter):
@@ -283,7 +282,7 @@ class TestCNN1D:
 
     def test_forward_shape(self) -> None:
         cfg = CNN1DConfig()
-        cnn = CNN1D(cfg)
+        CNN1D(cfg)
         # Need to fit at least once to construct the inner _ConvNet, but we
         # can also directly poke forward via the model to test the shape.
         from src.detector.cnn1d import _ConvNet
@@ -304,9 +303,9 @@ class TestCNN1D:
         # First-epoch loss should be greater than last-epoch loss.
         history = cnn.run_info.train_loss_history
         assert len(history) >= 2
-        assert history[0] > history[-1], (
-            f"loss did not decrease: {history[0]:.4f} -> {history[-1]:.4f}"
-        )
+        assert (
+            history[0] > history[-1]
+        ), f"loss did not decrease: {history[0]:.4f} -> {history[-1]:.4f}"
         # And toy macro-F1 should be > 0.85 (CNN is a bit weaker than MLP at
         # this problem size, hence the slightly lower bar).
         f1 = macro_f1(y_te, cnn.predict(X_te))

@@ -5,14 +5,11 @@ from __future__ import annotations
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-import numpy as np
 import pytest
 import torch
 import torch.nn as nn
 
-
 from src.benchmark.model_stats import get_file_stats, get_model_stats
-
 
 # ------------------------------------------------------------------ helpers
 
@@ -32,12 +29,15 @@ def _make_mock_sb3_model(obs_dim: int = 10) -> MagicMock:
     """Return a MagicMock that mimics an SB3 BaseAlgorithm."""
     model = MagicMock()
     model.policy = _TinyNet(in_dim=obs_dim)
+
     # Mock save() to write a small zip file so _disk_size_mb works.
     def _fake_save(path: str) -> None:
         import zipfile
+
         zip_path = path + ".zip"
         with zipfile.ZipFile(zip_path, "w") as zf:
             zf.writestr("policy.pth", b"fake_weights" * 100)
+
     model.save.side_effect = _fake_save
     return model
 
@@ -84,9 +84,7 @@ class TestGetModelStats:
     def test_param_count_matches_network(self) -> None:
         """Parameter count must match what PyTorch reports directly."""
         model = _make_mock_sb3_model(obs_dim=10)
-        expected_params = sum(
-            p.numel() for p in model.policy.parameters() if p.requires_grad
-        )
+        expected_params = sum(p.numel() for p in model.policy.parameters() if p.requires_grad)
         stats = get_model_stats(model, obs_dim=10)
         assert stats["params"] == expected_params
 

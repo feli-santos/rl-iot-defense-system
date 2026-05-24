@@ -12,7 +12,6 @@ to the entrypoint script in ``scripts/detector/train_detector.py``.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Dict, List
 
 import numpy as np
 
@@ -20,7 +19,7 @@ import numpy as np
 # is also hard-coded in src/utils/label_mapper.KillChainStage and
 # src/environment/adversarial_env.
 NUM_STAGES: int = 5
-STAGE_NAMES: List[str] = ["BENIGN", "RECON", "ACCESS", "MANEUVER", "IMPACT"]
+STAGE_NAMES: list[str] = ["BENIGN", "RECON", "ACCESS", "MANEUVER", "IMPACT"]
 
 
 # ---------------------------------------------------------------------------
@@ -39,9 +38,7 @@ def confusion_matrix(
     y_true = np.asarray(y_true, dtype=np.int64)
     y_pred = np.asarray(y_pred, dtype=np.int64)
     if y_true.shape != y_pred.shape:
-        raise ValueError(
-            f"y_true {y_true.shape} and y_pred {y_pred.shape} must match"
-        )
+        raise ValueError(f"y_true {y_true.shape} and y_pred {y_pred.shape} must match")
     cm = np.zeros((num_classes, num_classes), dtype=np.int64)
     np.add.at(cm, (y_true, y_pred), 1)
     return cm
@@ -83,9 +80,7 @@ def per_class_f1(
     return f1.astype(np.float64)
 
 
-def macro_f1(
-    y_true: np.ndarray, y_pred: np.ndarray, *, num_classes: int = NUM_STAGES
-) -> float:
+def macro_f1(y_true: np.ndarray, y_pred: np.ndarray, *, num_classes: int = NUM_STAGES) -> float:
     """Unweighted mean of per-class F1 scores."""
     return float(per_class_f1(y_true, y_pred, num_classes=num_classes).mean())
 
@@ -119,14 +114,13 @@ class DetectorEvaluation:
     confusion_matrix: np.ndarray
     n_samples: int
 
-    def to_dict(self) -> Dict[str, object]:
+    def to_dict(self) -> dict[str, object]:
         return {
             "model_name": self.model_name,
             "split_name": self.split_name,
             "macro_f1": round(float(self.macro_f1), 6),
             "per_class_f1": {
-                STAGE_NAMES[i]: round(float(v), 6)
-                for i, v in enumerate(self.per_class_f1.tolist())
+                STAGE_NAMES[i]: round(float(v), 6) for i, v in enumerate(self.per_class_f1.tolist())
             },
             "per_stage_recall": {
                 STAGE_NAMES[i]: round(float(v), 6)
@@ -179,9 +173,9 @@ class OODEvaluation:
     expected_stage: int
     n_samples: int
     recall: float
-    predicted_stage_distribution: Dict[str, int] = field(default_factory=dict)
+    predicted_stage_distribution: dict[str, int] = field(default_factory=dict)
 
-    def to_dict(self) -> Dict[str, object]:
+    def to_dict(self) -> dict[str, object]:
         return {
             "attack_class": self.attack_class,
             "expected_stage": STAGE_NAMES[self.expected_stage],
@@ -206,12 +200,10 @@ def evaluate_ood_class(
             expected_stage=expected_stage,
             n_samples=0,
             recall=0.0,
-            predicted_stage_distribution={s: 0 for s in STAGE_NAMES},
+            predicted_stage_distribution=dict.fromkeys(STAGE_NAMES, 0),
         )
     correct = int((y_pred == expected_stage).sum())
-    dist = {
-        STAGE_NAMES[i]: int((y_pred == i).sum()) for i in range(NUM_STAGES)
-    }
+    dist = {STAGE_NAMES[i]: int((y_pred == i).sum()) for i in range(NUM_STAGES)}
     return OODEvaluation(
         attack_class=attack_class,
         expected_stage=expected_stage,

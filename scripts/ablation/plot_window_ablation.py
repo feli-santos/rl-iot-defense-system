@@ -18,7 +18,7 @@ import json
 import logging
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import numpy as np
 
@@ -30,38 +30,33 @@ logger = logging.getLogger(__name__)
 
 
 def _bootstrap_ci(
-    values: List[float], n_boot: int = 2000, alpha: float = 0.05
-) -> Tuple[float, float]:
+    values: list[float], n_boot: int = 2000, alpha: float = 0.05
+) -> tuple[float, float]:
     """Return (low, high) 95% bootstrap CI for the mean."""
     if not values:
         return (float("nan"), float("nan"))
     arr = np.array(values)
     rng = np.random.default_rng(42)
-    boot_means = [
-        rng.choice(arr, size=len(arr), replace=True).mean()
-        for _ in range(n_boot)
-    ]
+    boot_means = [rng.choice(arr, size=len(arr), replace=True).mean() for _ in range(n_boot)]
     lo = float(np.percentile(boot_means, 100 * alpha / 2))
     hi = float(np.percentile(boot_means, 100 * (1 - alpha / 2)))
     return (lo, hi)
 
 
-def _read_final_rewards(run_dir: Path, fraction: float = 0.1) -> List[float]:
+def _read_final_rewards(run_dir: Path, fraction: float = 0.1) -> list[float]:
     """Read last ``fraction`` of eval episodes from eval.jsonl."""
     eval_path = run_dir / "eval.jsonl"
     if not eval_path.exists():
         logger.warning("eval.jsonl not found in %s", run_dir)
         return []
-    lines = [
-        json.loads(l) for l in eval_path.read_text().splitlines() if l.strip()
-    ]
+    lines = [json.loads(ln) for ln in eval_path.read_text().splitlines() if ln.strip()]
     if not lines:
         return []
     cutoff = max(1, int(len(lines) * (1 - fraction)))
     return [row["episode_reward"] for row in lines[cutoff:] if "episode_reward" in row]
 
 
-def build_summary(sweep_root: str) -> Dict[str, Any]:
+def build_summary(sweep_root: str) -> dict[str, Any]:
     """Load sweep manifest and compute per-window_size mean/CI."""
     root = Path(sweep_root)
     manifest_path = root / "sweep_manifest.json"
@@ -73,7 +68,7 @@ def build_summary(sweep_root: str) -> Dict[str, Any]:
 
     rows = []
     for w in window_sizes:
-        all_rewards: List[float] = []
+        all_rewards: list[float] = []
         seed_rows = [r for r in manifest["runs"] if r["window_size"] == w]
         for run in seed_rows:
             if not run["ok"]:
@@ -87,27 +82,38 @@ def build_summary(sweep_root: str) -> Dict[str, Any]:
 
         if not all_rewards:
             logger.warning("No rewards for window_size=%d", w)
-            rows.append({
-                "window_size": w, "n_episodes": 0,
-                "mean_reward": float("nan"),
-                "ci_low": float("nan"), "ci_high": float("nan"),
-                "obs_dim": w * 29 * 2,
-            })
+            rows.append(
+                {
+                    "window_size": w,
+                    "n_episodes": 0,
+                    "mean_reward": float("nan"),
+                    "ci_low": float("nan"),
+                    "ci_high": float("nan"),
+                    "obs_dim": w * 29 * 2,
+                }
+            )
             continue
 
         mean_r = float(np.mean(all_rewards))
         ci_low, ci_high = _bootstrap_ci(all_rewards)
-        rows.append({
-            "window_size": w,
-            "obs_dim": w * 29 * 2,  # w × features × 2 (with deltas)
-            "n_episodes": len(all_rewards),
-            "mean_reward": round(mean_r, 3),
-            "ci_low": round(ci_low, 3),
-            "ci_high": round(ci_high, 3),
-        })
+        rows.append(
+            {
+                "window_size": w,
+                "obs_dim": w * 29 * 2,  # w × features × 2 (with deltas)
+                "n_episodes": len(all_rewards),
+                "mean_reward": round(mean_r, 3),
+                "ci_low": round(ci_low, 3),
+                "ci_high": round(ci_high, 3),
+            }
+        )
         logger.info(
             "w=%d  obs_dim=%d  n=%d  mean=%.1f  95%%CI=[%.1f, %.1f]",
-            w, w * 29 * 2, len(all_rewards), mean_r, ci_low, ci_high,
+            w,
+            w * 29 * 2,
+            len(all_rewards),
+            mean_r,
+            ci_low,
+            ci_high,
         )
 
     return {
@@ -118,9 +124,10 @@ def build_summary(sweep_root: str) -> Dict[str, Any]:
     }
 
 
-def plot(summary: Dict[str, Any], out_dir: str) -> Path:
+def plot(summary: dict[str, Any], out_dir: str) -> Path:
     """Render bar chart. Returns path to saved PNG."""
     import matplotlib
+
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
 
@@ -138,12 +145,14 @@ def plot(summary: Dict[str, Any], out_dir: str) -> Path:
 
     fig, ax = plt.subplots(figsize=(6, 4))
     bars = ax.bar(
-        x, means,
+        x,
+        means,
         width=width,
         yerr=[errs_low, errs_high],
         capsize=4,
         color=colors,
-        edgecolor="black", linewidth=0.6,
+        edgecolor="black",
+        linewidth=0.6,
         error_kw={"elinewidth": 1.2, "ecolor": "black"},
     )
 
@@ -153,7 +162,9 @@ def plot(summary: Dict[str, Any], out_dir: str) -> Path:
             bar.get_x() + bar.get_width() / 2,
             bar.get_height() + 5,
             f"{mean_val:.0f}",
-            ha="center", va="bottom", fontsize=9,
+            ha="center",
+            va="bottom",
+            fontsize=9,
         )
 
     ax.set_xticks(x)
@@ -161,8 +172,7 @@ def plot(summary: Dict[str, Any], out_dir: str) -> Path:
     ax.set_xlabel("Observation Window Size (rows)", fontsize=11)
     ax.set_ylabel("Mean Episode Reward", fontsize=11)
     ax.set_title(
-        "Window-Length Ablation (PPO, 3 seeds × 30 ep, last 10%)\n"
-        "Orange = primary contract (w=5)",
+        "Window-Length Ablation (PPO, 3 seeds × 30 ep, last 10%)\nOrange = primary contract (w=5)",
         fontsize=9,
     )
     ax.axhline(0, color="gray", linewidth=0.5, linestyle="--")
@@ -177,7 +187,7 @@ def plot(summary: Dict[str, Any], out_dir: str) -> Path:
     return out_path
 
 
-def main(argv: Optional[List[str]] = None) -> int:
+def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(
         description="sensitivity-sweep FA_window — plot window_size ablation (C22).",
     )

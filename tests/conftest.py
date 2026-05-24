@@ -15,7 +15,6 @@ import numpy as np
 import pytest
 import torch
 
-
 # =============================================================================
 # Kill Chain Stage Constants
 # =============================================================================
@@ -137,7 +136,7 @@ def sample_feature_batch(num_features: int) -> np.ndarray:
 @pytest.fixture
 def sample_attack_sequence() -> list[int]:
     """Sample attack sequence following kill chain grammar.
-    
+
     Pattern: BENIGN -> RECON -> ACCESS -> IMPACT (escalation with persistence)
     """
     return [0, 0, 1, 1, 1, 2, 2, 3, 4, 4]
@@ -214,7 +213,7 @@ def environment_config() -> dict[str, Any]:
 @pytest.fixture
 def action_effectiveness() -> dict[int, int]:
     """Action effectiveness levels (action_id -> max stage it can counter).
-    
+
     Per Force Continuum design:
     - MONITOR (0): Fails against any attack (effectiveness 0)
     - MITIGATE (1): Effective against RECON only (effectiveness 1)
@@ -266,7 +265,7 @@ def temp_data_dir(tmp_path: Path) -> Path:
 @pytest.fixture
 def mock_dataset(temp_data_dir: Path, num_features: int) -> dict[str, Any]:
     """Create a mock processed dataset for testing.
-    
+
     Creates:
     - features.npy: Random feature vectors
     - labels.npy: CICIoT2023 labels (strings)
@@ -275,47 +274,45 @@ def mock_dataset(temp_data_dir: Path, num_features: int) -> dict[str, Any]:
     - state_indices.json: Stage to row indices mapping
     """
     import json
-    
+
     import joblib
     from sklearn.preprocessing import StandardScaler
-    
+
     np.random.seed(42)
-    
+
     # Create samples for each stage
     samples_per_stage = 100
     all_features = []
     all_labels = []
-    
+
     for stage_id in range(NUM_STAGES):
-        stage_labels = [
-            label for label, s in CICIOT_TO_STAGE_MAPPING.items() if s == stage_id
-        ]
+        stage_labels = [label for label, s in CICIOT_TO_STAGE_MAPPING.items() if s == stage_id]
         for _ in range(samples_per_stage):
             all_features.append(np.random.randn(num_features).astype(np.float32))
             all_labels.append(np.random.choice(stage_labels))
-    
+
     features = np.array(all_features)
     labels = np.array(all_labels)
-    
+
     # Fit and save scaler
     scaler = StandardScaler()
     scaler.fit(features)
     normalized_features = scaler.transform(features)
-    
+
     # Save artifacts
     np.save(temp_data_dir / "features.npy", normalized_features)
     np.save(temp_data_dir / "labels.npy", labels)
     joblib.dump(scaler, temp_data_dir / "scaler.joblib")
-    
+
     # Create state indices mapping
     state_indices: dict[str, list[int]] = {str(i): [] for i in range(NUM_STAGES)}
     for idx, label in enumerate(labels):
         stage = CICIOT_TO_STAGE_MAPPING[label]
         state_indices[str(stage)].append(idx)
-    
+
     with open(temp_data_dir / "state_indices.json", "w") as f:
         json.dump(state_indices, f)
-    
+
     # Save metadata
     metadata = {
         "num_samples": len(features),
@@ -325,7 +322,7 @@ def mock_dataset(temp_data_dir: Path, num_features: int) -> dict[str, Any]:
     }
     with open(temp_data_dir / "metadata.json", "w") as f:
         json.dump(metadata, f)
-    
+
     return {
         "path": temp_data_dir,
         "features": normalized_features,

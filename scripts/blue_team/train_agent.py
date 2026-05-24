@@ -38,7 +38,7 @@ import subprocess
 import sys
 import time
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any
 
 import numpy as np
 
@@ -50,6 +50,7 @@ if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
 import torch  # noqa: E402
+from stable_baselines3.common.callbacks import CallbackList  # noqa: E402
 
 from src.algorithms.adversarial_algorithm import (  # noqa: E402
     AdversarialAlgorithm,
@@ -63,14 +64,13 @@ from src.blue_team import (  # noqa: E402
     make_eval_env,
     make_train_env,
 )
-from stable_baselines3.common.callbacks import CallbackList  # noqa: E402
 
 logger = logging.getLogger("scripts.blue_team.train_agent")
 
 
 # Default per-algo hyperparameters locked in PLAN §8 D5.4. Phase 8
 # may sweep these, but blue-team ships exactly these values.
-DEFAULT_HPARAMS: Dict[str, Dict[str, Any]] = {
+DEFAULT_HPARAMS: dict[str, dict[str, Any]] = {
     "ppo": {
         "learning_rate": 3e-4,
         "n_steps": 2048,
@@ -109,12 +109,14 @@ DEFAULT_HPARAMS: Dict[str, Dict[str, Any]] = {
 def _git_sha() -> str:
     """Best-effort short SHA of the producing commit (untracked changes are noted)."""
     try:
-        sha = subprocess.check_output(
-            ["git", "rev-parse", "--short=12", "HEAD"], cwd=_ROOT
-        ).decode().strip()
-        dirty = subprocess.check_output(
-            ["git", "status", "--porcelain"], cwd=_ROOT
-        ).decode().strip()
+        sha = (
+            subprocess.check_output(["git", "rev-parse", "--short=12", "HEAD"], cwd=_ROOT)
+            .decode()
+            .strip()
+        )
+        dirty = (
+            subprocess.check_output(["git", "status", "--porcelain"], cwd=_ROOT).decode().strip()
+        )
         return sha + ("-dirty" if dirty else "")
     except Exception:  # pragma: no cover — best effort
         return "unknown"
@@ -135,9 +137,9 @@ def _seed_everything(seed: int) -> None:
 def _apply_env_overrides(
     spec: EnvConfigSerializable,
     *,
-    reward_overrides: Optional[Dict[str, Any]] = None,
-    p_defender_deescalation: Optional[float] = None,
-    impact_is_terminal: Optional[bool] = None,
+    reward_overrides: dict[str, Any] | None = None,
+    p_defender_deescalation: float | None = None,
+    impact_is_terminal: bool | None = None,
 ) -> EnvConfigSerializable:
     """Return a copy of ``spec`` with per-field overrides applied.
 
@@ -149,7 +151,7 @@ def _apply_env_overrides(
     ``impact_is_terminal``) > ``reward_overrides`` JSON > ``spec`` defaults.
     """
     valid_fields = {f.name for f in dataclasses.fields(EnvConfigSerializable)}
-    merged: Dict[str, Any] = dataclasses.asdict(spec)
+    merged: dict[str, Any] = dataclasses.asdict(spec)
 
     if reward_overrides:
         bad = sorted(set(reward_overrides) - valid_fields)
@@ -179,34 +181,46 @@ def build_run_config(args: argparse.Namespace) -> BlueTeamRunConfig:
         eval_freq = 1_000
         n_eval_episodes = 5
         env_spec = EnvConfigSerializable(
-            split="train", exclude_ood=True,
-            min_episode_length=5, max_steps=20,
-            window_size=4, include_deltas=True,
+            split="train",
+            exclude_ood=True,
+            min_episode_length=5,
+            max_steps=20,
+            window_size=4,
+            include_deltas=True,
         )
         eval_spec = EnvConfigSerializable(
-            split="val_balanced", exclude_ood=True,
-            min_episode_length=5, max_steps=20,
-            window_size=4, include_deltas=True,
+            split="val_balanced",
+            exclude_ood=True,
+            min_episode_length=5,
+            max_steps=20,
+            window_size=4,
+            include_deltas=True,
         )
     else:
         total_timesteps = args.total_timesteps
         eval_freq = args.eval_freq
         n_eval_episodes = args.n_eval_episodes
         env_spec = EnvConfigSerializable(
-            split="train", exclude_ood=True,
-            min_episode_length=20, max_steps=100,
-            window_size=5, include_deltas=True,
+            split="train",
+            exclude_ood=True,
+            min_episode_length=20,
+            max_steps=100,
+            window_size=5,
+            include_deltas=True,
         )
         eval_spec = EnvConfigSerializable(
-            split="val_balanced", exclude_ood=True,
-            min_episode_length=20, max_steps=100,
-            window_size=5, include_deltas=True,
+            split="val_balanced",
+            exclude_ood=True,
+            min_episode_length=20,
+            max_steps=100,
+            window_size=5,
+            include_deltas=True,
         )
 
     # ablation §3.1.2 / D7.3: apply per-field overrides from
     # --reward-overrides / --p-defender-deescalation / --impact-is-terminal.
     # Defaults preserve byte-for-byte blue-team behaviour.
-    reward_overrides_obj: Optional[Dict[str, Any]] = None
+    reward_overrides_obj: dict[str, Any] | None = None
     if getattr(args, "reward_overrides", None):
         reward_overrides_obj = json.loads(args.reward_overrides)
         if not isinstance(reward_overrides_obj, dict):
@@ -248,7 +262,7 @@ def build_run_config(args: argparse.Namespace) -> BlueTeamRunConfig:
     )
 
 
-def train(cfg: BlueTeamRunConfig, *, verbose: int = 0) -> Dict[str, Any]:
+def train(cfg: BlueTeamRunConfig, *, verbose: int = 0) -> dict[str, Any]:
     """Execute one training run end-to-end.
 
     Returns a dict of post-run telemetry written into ``run_manifest.json``.
@@ -258,14 +272,15 @@ def train(cfg: BlueTeamRunConfig, *, verbose: int = 0) -> Dict[str, Any]:
 
     logger.info(
         "phase-5 train: algo=%s seed=%d total_timesteps=%d out_dir=%s",
-        cfg.algo, cfg.seed, cfg.total_timesteps, out_dir,
+        cfg.algo,
+        cfg.seed,
+        cfg.total_timesteps,
+        out_dir,
     )
 
     _seed_everything(cfg.seed)
 
-    splits_manifest: Optional[str] = (
-        cfg.splits_manifest if cfg.splits_manifest else None
-    )
+    splits_manifest: str | None = cfg.splits_manifest if cfg.splits_manifest else None
 
     train_env = make_train_env(
         spec=cfg.env,
@@ -288,8 +303,11 @@ def train(cfg: BlueTeamRunConfig, *, verbose: int = 0) -> Dict[str, Any]:
         total_timesteps=cfg.total_timesteps,
         verbose=verbose,
         tensorboard_log=None,
-        **{k: v for k, v in cfg.algo_hparams.items()
-           if k in AdversarialAlgorithmConfig.__dataclass_fields__},
+        **{
+            k: v
+            for k, v in cfg.algo_hparams.items()
+            if k in AdversarialAlgorithmConfig.__dataclass_fields__
+        },
     )
     alg = AdversarialAlgorithm(alg_config)
     model = alg.create_model(train_env)
@@ -345,7 +363,9 @@ def train(cfg: BlueTeamRunConfig, *, verbose: int = 0) -> Dict[str, Any]:
 
     logger.info(
         "phase-5 train done: wallclock=%.1fs episodes_train=%d episodes_eval=%d",
-        wallclock, n_train_episodes, n_eval_episodes,
+        wallclock,
+        n_train_episodes,
+        n_eval_episodes,
     )
     return {
         **extra,
@@ -372,27 +392,36 @@ def _build_argparser() -> argparse.ArgumentParser:
     p.add_argument("--algo", required=True, choices=("ppo", "dqn", "a2c"))
     p.add_argument("--seed", type=int, required=True)
     p.add_argument(
-        "--total-timesteps", type=int, default=500_000,
+        "--total-timesteps",
+        type=int,
+        default=500_000,
         help="Total training timesteps (default 500K, matches PLAN D5.3).",
     )
     p.add_argument(
-        "--eval-freq", type=int, default=25_000,
+        "--eval-freq",
+        type=int,
+        default=25_000,
         help="Run an eval block every N timesteps (default 25K, PLAN D5.5).",
     )
     p.add_argument(
-        "--n-eval-episodes", type=int, default=30,
+        "--n-eval-episodes",
+        type=int,
+        default=30,
         help="Episodes per eval block (default 30, PLAN D5.5).",
     )
     p.add_argument(
-        "--out-dir", default=None,
+        "--out-dir",
+        default=None,
         help="Output dir (default runs/<algo>/seed_<seed>).",
     )
     p.add_argument(
-        "--generator-path", default="artifacts/generator/red_team",
+        "--generator-path",
+        default="artifacts/generator/red_team",
         help="Path to red-team generator artefact directory.",
     )
     p.add_argument(
-        "--dataset-path", default="data/processed/ciciot2023",
+        "--dataset-path",
+        default="data/processed/ciciot2023",
         help="Path to processed CICIoT2023 dataset directory.",
     )
     p.add_argument(
@@ -404,16 +433,22 @@ def _build_argparser() -> argparse.ArgumentParser:
         ),
     )
     p.add_argument(
-        "--smoke", action="store_true",
+        "--smoke",
+        action="store_true",
         help="Reduce to 5K timesteps + tiny eval grid; for quick smoke runs.",
     )
     p.add_argument(
-        "--verbose", type=int, default=0, choices=(0, 1, 2),
+        "--verbose",
+        type=int,
+        default=0,
+        choices=(0, 1, 2),
         help="SB3 verbosity (0/1/2).",
     )
     # ----- ablation §3.1.2 / D7.3 overrides (default off; preserve blue-team) -----
     p.add_argument(
-        "--reward-overrides", type=str, default=None,
+        "--reward-overrides",
+        type=str,
+        default=None,
         help=(
             "JSON object overriding individual EnvConfigSerializable fields "
             "(reward coefficients, lifecycle, impact_is_terminal). Example: "
@@ -422,7 +457,9 @@ def _build_argparser() -> argparse.ArgumentParser:
         ),
     )
     p.add_argument(
-        "--p-defender-deescalation", type=float, default=None,
+        "--p-defender-deescalation",
+        type=float,
+        default=None,
         help=(
             "Override AdversarialEnvConfig.p_defender_deescalation. "
             "Convenience knob for the F10 attack-aggressiveness sweep "
@@ -431,7 +468,8 @@ def _build_argparser() -> argparse.ArgumentParser:
         ),
     )
     p.add_argument(
-        "--impact-is-terminal", type=lambda x: x.lower() in ("true", "1", "yes"),
+        "--impact-is-terminal",
+        type=lambda x: x.lower() in ("true", "1", "yes"),
         default=None,
         help=(
             "Override AdversarialEnvConfig.impact_is_terminal "
@@ -444,7 +482,7 @@ def _build_argparser() -> argparse.ArgumentParser:
     return p
 
 
-def main(argv: Optional[list[str]] = None) -> int:
+def main(argv: list[str] | None = None) -> int:
     args = _build_argparser().parse_args(argv)
     logging.basicConfig(
         level=logging.INFO,

@@ -16,7 +16,7 @@ import json
 import logging
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Optional
 
 import matplotlib.pyplot as plt
 import mlflow
@@ -24,7 +24,7 @@ import mlflow.pytorch
 import numpy as np
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
+import torch.nn.functional as F  # noqa: N812
 from torch.optim import Adam
 from torch.utils.data import DataLoader, TensorDataset, WeightedRandomSampler
 
@@ -32,7 +32,7 @@ from src.generator.attack_sequence_generator import (
     AttackSequenceGenerator,
     AttackSequenceGeneratorConfig,
 )
-from src.generator.episode_generator import EpisodeGenerator, episodes_to_numpy
+from src.generator.episode_generator import episodes_to_numpy
 
 logger = logging.getLogger(__name__)
 
@@ -40,7 +40,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class GeneratorTrainingConfig:
     """Configuration for Generator training.
-    
+
     Attributes:
         epochs: Number of training epochs.
         batch_size: Training batch size.
@@ -51,7 +51,7 @@ class GeneratorTrainingConfig:
         output_dir: Directory to save trained model.
         device: Device to train on ('cpu', 'cuda', 'mps').
     """
-    
+
     epochs: int = 50
     batch_size: int = 32
     learning_rate: float = 0.001
@@ -62,23 +62,23 @@ class GeneratorTrainingConfig:
     device: str = "cpu"
     use_mlflow: bool = True
     mlflow_experiment_name: str = "lstm_attack_generator"
-    
+
     # Imbalance mitigation
     use_class_weights: bool = False
     use_weighted_sampler: bool = False
     class_weight_smoothing: float = 1.0
     seed: Optional[int] = None
-    
+
     # Training stability
     grad_clip_norm: Optional[float] = None
     use_lr_scheduler: bool = False
     scheduler_patience: int = 5
     scheduler_factor: float = 0.5
-    
+
     # Balanced validation
     balanced_validation: bool = False
     val_samples_per_class: int = 80
-    
+
     # Early stopping on macro-F1 with recall gates
     use_macro_f1_stopping: bool = False
     min_recall_stage_1: float = 0.5
@@ -87,88 +87,88 @@ class GeneratorTrainingConfig:
 
 class GeneratorTrainer:
     """Trainer for the Attack Sequence Generator.
-    
+
     This class handles the complete training pipeline:
     1. Convert episodes to training sequences
     2. Train LSTM with cross-entropy loss
     3. Validate and track metrics
     4. Save best model to disk
-    
+
     Example:
         >>> trainer = GeneratorTrainer()
         >>> episodes = EpisodeGenerator().generate_all()
         >>> results = trainer.train(episodes)
         >>> trainer.save()
     """
-    
+
     def __init__(
         self,
         config: Optional[GeneratorTrainingConfig] = None,
         model_config: Optional[AttackSequenceGeneratorConfig] = None,
     ) -> None:
         """Initialize the trainer.
-        
+
         Args:
             config: Training configuration.
             model_config: Model architecture configuration.
         """
         self._config = config or GeneratorTrainingConfig()
         self._model_config = model_config or AttackSequenceGeneratorConfig()
-        
+
         # Setup output directory
         if self._config.output_dir is None:
             self._config.output_dir = Path("artifacts/generator")
         self._config.output_dir = Path(self._config.output_dir)
         self._config.output_dir.mkdir(parents=True, exist_ok=True)
-        
+
         # Setup device
         self._device = torch.device(self._config.device)
-        
+
         # Create model
         self._model = AttackSequenceGenerator(config=self._model_config)
         self._model.to(self._device)
-        
+
         # Training state
         self._optimizer: Optional[Adam] = None
         self._criterion = nn.CrossEntropyLoss()
-        self._best_val_loss = float('inf')
+        self._best_val_loss = float("inf")
         self._last_confusion_matrix: Optional[np.ndarray] = None
-        
+
         logger.info(
             f"GeneratorTrainer initialized: "
             f"epochs={self._config.epochs}, "
             f"batch_size={self._config.batch_size}, "
             f"device={self._device}"
         )
-    
+
     @property
     def config(self) -> GeneratorTrainingConfig:
         """Get training configuration."""
         return self._config
-    
+
     @property
     def model(self) -> AttackSequenceGenerator:
         """Get the model."""
         return self._model
-    
+
     @property
     def last_confusion_matrix(self) -> Optional[np.ndarray]:
         """Get confusion matrix from last evaluate() call."""
         return self._last_confusion_matrix
-    
+
     # =========================================================================
     # Data Preparation
     # =========================================================================
-    
+
     def prepare_data(
         self,
-        episodes: List[List[int]],
-    ) -> Tuple[DataLoader, DataLoader]:
+        episodes: list[list[int]],
+    ) -> tuple[DataLoader, DataLoader]:
         """Prepare training and validation data loaders.
-        
+
         Args:
             episodes: List of episode sequences.
-        
+
         Returns:
             Tuple of (train_loader, val_loader).
         """
@@ -178,7 +178,7 @@ class GeneratorTrainer:
         X, y = episodes_to_numpy(episodes, self._config.sequence_length)
 
         logger.info(f"Prepared {len(X)} training sequences")
-        
+
         # Build balanced validation set if enabled
         if self._config.balanced_validation:
             train_idx, val_idx = self._build_balanced_validation_split(y)
@@ -186,7 +186,7 @@ class GeneratorTrainer:
             # Standard random split
             n_val = int(len(X) * self._config.val_split)
             n_train = len(X) - n_val
-            
+
             # Shuffle with seed if provided
             if self._config.seed is not None:
                 rng = np.random.RandomState(self._config.seed)
@@ -195,26 +195,26 @@ class GeneratorTrainer:
                 indices = np.random.permutation(len(X))
             train_idx = indices[:n_train]
             val_idx = indices[n_train:]
-        
+
         # Create tensors
         X_train = torch.tensor(X[train_idx], dtype=torch.long)
         y_train = torch.tensor(y[train_idx], dtype=torch.long)
         X_val = torch.tensor(X[val_idx], dtype=torch.long)
         y_val = torch.tensor(y[val_idx], dtype=torch.long)
-        
+
         # Compute class weights and/or sampler weights for imbalance mitigation
         sampler: Optional[WeightedRandomSampler] = None
         self._criterion = nn.CrossEntropyLoss()
         if self._config.use_class_weights or self._config.use_weighted_sampler:
             num_stages = 5
-            
+
             # Compute inverse-frequency weights from training targets only
             class_counts = torch.bincount(y_train, minlength=num_stages).float()
             total = float(class_counts.sum().item())
-            
+
             if total <= 0:
                 raise ValueError("No training samples available to compute class weights.")
-            
+
             eps = 1e-12
             smoothing = max(self._config.class_weight_smoothing, eps)
             inv_freq = 1.0 / (class_counts + smoothing)
@@ -230,7 +230,7 @@ class GeneratorTrainer:
                     replacement=True,
                 )
                 logger.info("Using WeightedRandomSampler with inverse-frequency sample weights")
-            
+
             if self._config.use_class_weights and sampler is None:
                 self._criterion = nn.CrossEntropyLoss(weight=class_weights.to(self._device))
                 logger.info("Using class-weighted CrossEntropyLoss (sampler disabled)")
@@ -241,11 +241,11 @@ class GeneratorTrainer:
                 )
             else:
                 self._criterion = nn.CrossEntropyLoss()
-        
+
         # Create data loaders
         train_dataset = TensorDataset(X_train, y_train)
         val_dataset = TensorDataset(X_val, y_val)
-        
+
         train_loader = DataLoader(
             train_dataset,
             batch_size=self._config.batch_size,
@@ -257,65 +257,67 @@ class GeneratorTrainer:
             batch_size=self._config.batch_size,
             shuffle=False,
         )
-        
+
         logger.info(f"Train: {len(train_dataset)}, Val: {len(val_dataset)}")
         return train_loader, val_loader
-    
-    def _build_balanced_validation_split(self, y: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+
+    def _build_balanced_validation_split(self, y: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
         """Build stratified validation set with fixed samples per class.
-        
+
         Args:
             y: Target labels array.
-        
+
         Returns:
             Tuple of (train_indices, val_indices).
         """
         num_stages = 5
         val_indices = []
         train_indices = []
-        
+
         rng = np.random.RandomState(self._config.seed)
-        
+
         for stage in range(num_stages):
             stage_indices = np.where(y == stage)[0]
             n_available = len(stage_indices)
             n_val = min(self._config.val_samples_per_class, n_available)
-            
+
             if n_available == 0:
                 logger.warning(f"Stage {stage} has no samples; skipping.")
                 continue
-            
+
             # Shuffle and split
             rng.shuffle(stage_indices)
             val_indices.extend(stage_indices[:n_val])
             train_indices.extend(stage_indices[n_val:])
-            
-            logger.info(f"Stage {stage}: {n_val} val, {n_available - n_val} train (total={n_available})")
-        
+
+            logger.info(
+                f"Stage {stage}: {n_val} val, {n_available - n_val} train (total={n_available})"
+            )
+
         val_indices = np.array(val_indices, dtype=np.int64)
         train_indices = np.array(train_indices, dtype=np.int64)
-        
+
         logger.info(f"Balanced validation: {len(val_indices)} val, {len(train_indices)} train")
         return train_indices, val_indices
-    
+
     # =========================================================================
     # Training
     # =========================================================================
-    
+
     def train(
         self,
-        episodes: List[List[int]],
-    ) -> Dict[str, Any]:
+        episodes: list[list[int]],
+    ) -> dict[str, Any]:
         """Train the generator model with MLflow tracking.
-        
+
         Args:
             episodes: List of episode sequences.
-        
+
         Returns:
             Training results dictionary with loss history.
         """
         logger.info("Starting generator training...")
-        
+
         # Start MLflow run if enabled
         mlflow_run_active = False
         if self._config.use_mlflow:
@@ -324,63 +326,64 @@ class GeneratorTrainer:
                 mlflow.start_run()
                 mlflow_run_active = True
                 logger.info(f"MLflow run started: {mlflow.active_run().info.run_id}")
-                
+
                 # Log training parameters
                 self._log_training_params(episodes)
             except Exception as e:
                 logger.warning(f"Failed to start MLflow run: {e}. Continuing without MLflow.")
                 self._config.use_mlflow = False
-        
+
         try:
             # Prepare data
             train_loader, val_loader = self.prepare_data(episodes)
-            
+
             # Log dataset statistics
             if self._config.use_mlflow:
                 self._log_dataset_stats(train_loader, val_loader, episodes)
-            
+
             # Setup optimizer
             self._optimizer = Adam(
                 self._model.parameters(),
                 lr=self._config.learning_rate,
             )
-            
+
             # Setup learning rate scheduler if enabled
             scheduler = None
             if self._config.use_lr_scheduler:
                 from torch.optim.lr_scheduler import ReduceLROnPlateau
+
                 scheduler = ReduceLROnPlateau(
                     self._optimizer,
-                    mode='min',
+                    mode="min",
                     factor=self._config.scheduler_factor,
                     patience=self._config.scheduler_patience,
                 )
                 logger.info("Using ReduceLROnPlateau scheduler")
-            
+
             # Training history
-            train_losses: List[float] = []
-            val_losses: List[float] = []
-            val_macro_f1s: List[float] = []
-            
+            train_losses: list[float] = []
+            val_losses: list[float] = []
+            val_macro_f1s: list[float] = []
+
             # Early stopping
             patience_counter = 0
             best_epoch = 0
-            best_macro_f1 = -float('inf')
-            best_observed_val_loss = float('inf')
-            best_observed_macro_f1 = -float('inf')
+            best_macro_f1 = -float("inf")
+            best_observed_val_loss = float("inf")
+            best_observed_macro_f1 = -float("inf")
             recall_gate_pass_count = 0
-            recall_gate_pass_epochs: List[int] = []
-            
+            recall_gate_pass_epochs: list[int] = []
+
             for epoch in range(self._config.epochs):
                 # Train epoch
                 train_loss = self._train_epoch(train_loader)
                 train_losses.append(train_loss)
-                
+
                 # Validate
                 val_loss, val_metrics = self._validate(val_loader)
                 val_losses.append(val_loss)
                 val_macro_f1s.append(val_metrics["macro_f1"])
-                
+
                 # Extract recall for stages 1 and 2
                 recall_stage_1 = val_metrics["recall_stage_1"]
                 recall_stage_2 = val_metrics["recall_stage_2"]
@@ -391,29 +394,30 @@ class GeneratorTrainer:
                     best_observed_val_loss = val_loss
                 if macro_f1 > best_observed_macro_f1:
                     best_observed_macro_f1 = macro_f1
-                
+
                 logger.info(
                     f"Epoch {epoch + 1}/{self._config.epochs}: "
                     f"train_loss={train_loss:.4f}, val_loss={val_loss:.4f}, "
                     f"macro_f1={macro_f1:.4f}, recall_s1={recall_stage_1:.4f}, recall_s2={recall_stage_2:.4f}"
                 )
-                
+
                 # Log metrics to MLflow
                 if self._config.use_mlflow:
-                    self._log_epoch_metrics_extended(epoch, train_loss, val_loss, val_metrics, patience_counter)
-                
+                    self._log_epoch_metrics_extended(
+                        epoch, train_loss, val_loss, val_metrics, patience_counter
+                    )
+
                 # Step scheduler if enabled (use val_loss for scheduler)
                 if scheduler is not None:
                     scheduler.step(val_loss)
-                
+
                 # Check for improvement (macro-F1 with recall gates or val_loss)
-                improved = False
                 if self._config.use_macro_f1_stopping:
                     # Hard gates: require BOTH Stage 1 AND Stage 2 recall >= threshold
                     # We need a model that learns the entire Kill Chain
                     recall_gate_passed = (
-                        recall_stage_1 >= self._config.min_recall_stage_1 and 
-                        recall_stage_2 >= self._config.min_recall_stage_2
+                        recall_stage_1 >= self._config.min_recall_stage_1
+                        and recall_stage_2 >= self._config.min_recall_stage_2
                     )
                     if recall_gate_passed:
                         recall_gate_pass_count += 1
@@ -427,7 +431,6 @@ class GeneratorTrainer:
                             self._best_val_loss = val_loss  # Store for reporting
                             patience_counter = 0
                             best_epoch = epoch
-                            improved = True
                             self._save_checkpoint()
                             if is_better_macro:
                                 logger.info(
@@ -441,16 +444,17 @@ class GeneratorTrainer:
                             patience_counter += 1
                     else:
                         patience_counter += 1
-                        logger.info(f"  → Recall gates NOT passed (s1={recall_stage_1:.4f}, s2={recall_stage_2:.4f})")
+                        logger.info(
+                            f"  → Recall gates NOT passed (s1={recall_stage_1:.4f}, s2={recall_stage_2:.4f})"
+                        )
                 else:
                     # Standard: minimize val_loss
                     if val_loss < self._best_val_loss:
                         self._best_val_loss = val_loss
                         patience_counter = 0
                         best_epoch = epoch
-                        improved = True
                         self._save_checkpoint()
-                
+
                 # Early stopping
                 if patience_counter >= self._config.early_stopping_patience:
                     logger.info(f"Early stopping at epoch {epoch + 1}")
@@ -463,10 +467,10 @@ class GeneratorTrainer:
             checkpoint_path = self._config.output_dir / "checkpoint.pth"
             if not checkpoint_path.exists():
                 self._save_checkpoint()
-            
+
             # Load best model
             self._load_best_checkpoint()
-            
+
             # Save final model and config
             self._save_final()
 
@@ -480,27 +484,29 @@ class GeneratorTrainer:
                 reported_best_macro_f1 = best_macro_f1
                 if not np.isfinite(reported_best_macro_f1):
                     reported_best_macro_f1 = best_observed_macro_f1
-            
+
             results = {
                 "train_losses": train_losses,
                 "val_losses": val_losses,
                 "val_macro_f1s": val_macro_f1s,
                 "best_val_loss": float(reported_best_val_loss),
-                "best_macro_f1": float(reported_best_macro_f1) if reported_best_macro_f1 is not None else None,
+                "best_macro_f1": (
+                    float(reported_best_macro_f1) if reported_best_macro_f1 is not None else None
+                ),
                 "epochs_trained": len(train_losses),
                 "best_epoch": best_epoch,
                 "recall_gate_passed_any": bool(recall_gate_pass_count > 0),
                 "recall_gate_pass_count": int(recall_gate_pass_count),
                 "recall_gate_pass_epochs": recall_gate_pass_epochs,
             }
-            
+
             # Log final metrics and artifacts to MLflow
             if self._config.use_mlflow:
                 self._log_final_results(results, train_losses, val_losses)
-            
+
             logger.info(f"Training complete. Best val_loss: {results['best_val_loss']:.4f}")
             return results
-            
+
         finally:
             # Always end MLflow run
             if mlflow_run_active:
@@ -509,42 +515,42 @@ class GeneratorTrainer:
                     logger.info("MLflow run ended")
                 except Exception as e:
                     logger.warning(f"Failed to end MLflow run: {e}")
-    
+
     def _train_epoch(self, train_loader: DataLoader) -> float:
         """Train for one epoch."""
         self._model.train()
         total_loss = 0.0
         n_batches = 0
-        
+
         for X_batch, y_batch in train_loader:
             X_batch = X_batch.to(self._device)
             y_batch = y_batch.to(self._device)
-            
+
             # Forward pass
             self._optimizer.zero_grad()
             logits = self._model(X_batch)
             loss = self._criterion(logits, y_batch)
-            
+
             # Backward pass
             loss.backward()
-            
+
             # Gradient clipping if enabled
             if self._config.grad_clip_norm is not None:
                 torch.nn.utils.clip_grad_norm_(
                     self._model.parameters(),
                     self._config.grad_clip_norm,
                 )
-            
+
             self._optimizer.step()
-            
+
             total_loss += loss.item()
             n_batches += 1
-        
+
         return total_loss / n_batches
-    
-    def _validate(self, val_loader: DataLoader) -> Tuple[float, Dict[str, float]]:
+
+    def _validate(self, val_loader: DataLoader) -> tuple[float, dict[str, float]]:
         """Validate the model and compute metrics.
-        
+
         Returns:
             Tuple of (val_loss, metrics_dict with macro_f1 and per-class recall).
         """
@@ -553,64 +559,64 @@ class GeneratorTrainer:
         n_batches = 0
         all_preds = []
         all_targets = []
-        
+
         with torch.no_grad():
             for X_batch, y_batch in val_loader:
                 X_batch = X_batch.to(self._device)
                 y_batch = y_batch.to(self._device)
-                
+
                 logits = self._model(X_batch)
                 loss = self._criterion(logits, y_batch)
-                
+
                 total_loss += loss.item()
                 n_batches += 1
-                
+
                 # Collect predictions
                 preds = logits.argmax(dim=-1)
                 all_preds.extend(preds.cpu().numpy())
                 all_targets.extend(y_batch.cpu().numpy())
-        
+
         avg_loss = total_loss / n_batches
-        
+
         # Compute per-class metrics
         all_preds = np.array(all_preds)
         all_targets = np.array(all_targets)
         num_stages = 5
-        
+
         f1_scores = []
         recalls = {}
-        
+
         for stage in range(num_stages):
             tp = ((all_preds == stage) & (all_targets == stage)).sum()
             fp = ((all_preds == stage) & (all_targets != stage)).sum()
             fn = ((all_preds != stage) & (all_targets == stage)).sum()
-            
+
             precision = tp / (tp + fp + 1e-12)
             recall = tp / (tp + fn + 1e-12)
             f1 = 2 * precision * recall / (precision + recall + 1e-12)
-            
+
             f1_scores.append(float(f1))
             recalls[f"recall_stage_{stage}"] = float(recall)
-        
+
         macro_f1 = float(np.mean(f1_scores))
-        
+
         metrics = {
             "macro_f1": macro_f1,
             **recalls,
         }
-        
+
         return avg_loss, metrics
-    
+
     # =========================================================================
     # Evaluation
     # =========================================================================
-    
+
     def evaluate(
         self,
-        episodes: List[List[int]],
-    ) -> Dict[str, float]:
+        episodes: list[list[int]],
+    ) -> dict[str, float]:
         """Evaluate the model on episodes with comprehensive metrics.
-        
+
         Computes:
         - Loss and accuracy
         - Per-class precision, recall, F1
@@ -618,106 +624,106 @@ class GeneratorTrainer:
         - Transition accuracy
         - Perplexity
         - Confusion matrix
-        
+
         Args:
             episodes: List of episode sequences.
-        
+
         Returns:
             Dictionary with evaluation metrics.
         """
         # Prepare data (no split needed) — stateless helper, no class instance.
         X, y = episodes_to_numpy(episodes, self._config.sequence_length)
-        
+
         X_tensor = torch.tensor(X, dtype=torch.long).to(self._device)
         y_tensor = torch.tensor(y, dtype=torch.long).to(self._device)
-        
+
         dataset = TensorDataset(X_tensor, y_tensor)
         loader = DataLoader(dataset, batch_size=self._config.batch_size)
-        
+
         self._model.eval()
-        
+
         # Accumulators
         total_loss = 0.0
         total_log_probs = 0.0
         all_preds = []
         all_targets = []
-        
+
         with torch.no_grad():
             for X_batch, y_batch in loader:
                 logits = self._model(X_batch)
                 loss = self._criterion(logits, y_batch)
-                
+
                 total_loss += loss.item() * len(X_batch)
-                
+
                 # For perplexity
                 log_probs = F.log_softmax(logits, dim=-1)
                 target_log_probs = log_probs.gather(1, y_batch.unsqueeze(1)).squeeze(1)
                 total_log_probs += target_log_probs.sum().item()
-                
+
                 # Store predictions and targets
                 preds = logits.argmax(dim=-1)
                 all_preds.extend(preds.cpu().numpy())
                 all_targets.extend(y_batch.cpu().numpy())
-        
+
         all_preds = np.array(all_preds)
         all_targets = np.array(all_targets)
         total = len(all_targets)
-        
+
         # Basic metrics
         avg_loss = total_loss / total
         accuracy = (all_preds == all_targets).sum() / total
         perplexity = np.exp(-total_log_probs / total)
-        
+
         # Per-class metrics
         num_stages = 5
         per_class_metrics = {}
-        
+
         for stage in range(num_stages):
             # True positives, false positives, false negatives
             tp = ((all_preds == stage) & (all_targets == stage)).sum()
             fp = ((all_preds == stage) & (all_targets != stage)).sum()
             fn = ((all_preds != stage) & (all_targets == stage)).sum()
-            
+
             precision = tp / (tp + fp + 1e-12)
             recall = tp / (tp + fn + 1e-12)
             f1 = 2 * precision * recall / (precision + recall + 1e-12)
-            
+
             per_class_metrics[f"precision_stage_{stage}"] = float(precision)
             per_class_metrics[f"recall_stage_{stage}"] = float(recall)
             per_class_metrics[f"f1_stage_{stage}"] = float(f1)
-        
+
         # Macro F1
         macro_f1 = np.mean([per_class_metrics[f"f1_stage_{i}"] for i in range(num_stages)])
-        
+
         # Transition accuracy (from episodes)
         transition_correct = 0
         transition_total = 0
-        
+
         for episode in episodes:
             if len(episode) <= self._config.sequence_length:
                 continue
-            
+
             for i in range(len(episode) - self._config.sequence_length):
-                history = episode[i:i + self._config.sequence_length]
+                history = episode[i : i + self._config.sequence_length]
                 true_next = episode[i + self._config.sequence_length]
-                
+
                 # Predict
                 x_input = torch.tensor([history], dtype=torch.long).to(self._device)
                 with torch.no_grad():
                     logits = self._model(x_input)
                 pred_next = logits.argmax(dim=-1).item()
-                
+
                 if pred_next == true_next:
                     transition_correct += 1
                 transition_total += 1
-        
+
         transition_accuracy = transition_correct / transition_total if transition_total > 0 else 0.0
-        
+
         # Confusion matrix (as flat list for JSON serialization)
         confusion_matrix = np.zeros((num_stages, num_stages), dtype=np.int32)
         for pred, target in zip(all_preds, all_targets):
             confusion_matrix[target, pred] += 1
-        
+
         # Compile results
         metrics = {
             "loss": avg_loss,
@@ -727,47 +733,50 @@ class GeneratorTrainer:
             "transition_accuracy": float(transition_accuracy),
             **per_class_metrics,
         }
-        
+
         # Store confusion matrix separately (not for primary metrics dict)
         self._last_confusion_matrix = confusion_matrix
-        
+
         return metrics
-    
+
     # =========================================================================
     # Persistence
     # =========================================================================
-    
+
     def _save_checkpoint(self) -> None:
         """Save checkpoint during training."""
         checkpoint_path = self._config.output_dir / "checkpoint.pth"
-        torch.save({
-            'model_state_dict': self._model.state_dict(),
-            'optimizer_state_dict': self._optimizer.state_dict(),
-            'best_val_loss': self._best_val_loss,
-        }, checkpoint_path)
-    
+        torch.save(
+            {
+                "model_state_dict": self._model.state_dict(),
+                "optimizer_state_dict": self._optimizer.state_dict(),
+                "best_val_loss": self._best_val_loss,
+            },
+            checkpoint_path,
+        )
+
     def _load_best_checkpoint(self) -> None:
         """Load best checkpoint."""
         checkpoint_path = self._config.output_dir / "checkpoint.pth"
         if checkpoint_path.exists():
             checkpoint = torch.load(checkpoint_path, map_location=self._device)
-            self._model.load_state_dict(checkpoint['model_state_dict'])
-    
+            self._model.load_state_dict(checkpoint["model_state_dict"])
+
     def _save_final(self) -> None:
         """Save final model and configuration."""
         # Save model
         model_path = self._config.output_dir / "attack_sequence_generator.pth"
         self._model.save(model_path, save_config=True)
-        
+
         # Save training config
         train_config_path = self._config.output_dir / "training_config.json"
         with open(train_config_path, "w") as f:
             config_dict = asdict(self._config)
             config_dict["output_dir"] = str(self._config.output_dir)
             json.dump(config_dict, f, indent=2)
-        
+
         logger.info(f"Model saved to {model_path}")
-    
+
     @classmethod
     def load(
         cls,
@@ -775,92 +784,95 @@ class GeneratorTrainer:
         device: str = "cpu",
     ) -> "GeneratorTrainer":
         """Load a trained trainer from disk.
-        
+
         Args:
             model_dir: Directory containing saved model.
             device: Device to load model onto.
-        
+
         Returns:
             Loaded GeneratorTrainer instance.
         """
         model_dir = Path(model_dir)
-        
+
         # Load training config
         train_config_path = model_dir / "training_config.json"
         if train_config_path.exists():
-            with open(train_config_path, "r") as f:
+            with open(train_config_path) as f:
                 config_dict = json.load(f)
             config_dict["output_dir"] = model_dir
             config_dict["device"] = device
             training_config = GeneratorTrainingConfig(**config_dict)
         else:
             training_config = GeneratorTrainingConfig(output_dir=model_dir, device=device)
-        
+
         # Load model config
         model_config_path = model_dir / "config.json"
         if model_config_path.exists():
-            with open(model_config_path, "r") as f:
+            with open(model_config_path) as f:
                 model_config_dict = json.load(f)
             model_config = AttackSequenceGeneratorConfig(**model_config_dict)
         else:
             model_config = None
-        
+
         # Create trainer
         trainer = cls(config=training_config, model_config=model_config)
-        
+
         # Load model weights
         model_path = model_dir / "attack_sequence_generator.pth"
         trainer._model = AttackSequenceGenerator.load(model_path, device=torch.device(device))
-        
+
         logger.info(f"Trainer loaded from {model_dir}")
         return trainer
-    
+
     # =========================================================================
     # MLflow Logging Helpers
     # =========================================================================
-    
-    def _log_training_params(self, episodes: List[List[int]]) -> None:
+
+    def _log_training_params(self, episodes: list[list[int]]) -> None:
         """Log training parameters to MLflow."""
         try:
             # Training config
-            mlflow.log_params({
-                "epochs": self._config.epochs,
-                "batch_size": self._config.batch_size,
-                "learning_rate": self._config.learning_rate,
-                "sequence_length": self._config.sequence_length,
-                "val_split": self._config.val_split,
-                "early_stopping_patience": self._config.early_stopping_patience,
-                "device": self._config.device,
-            })
-            
+            mlflow.log_params(
+                {
+                    "epochs": self._config.epochs,
+                    "batch_size": self._config.batch_size,
+                    "learning_rate": self._config.learning_rate,
+                    "sequence_length": self._config.sequence_length,
+                    "val_split": self._config.val_split,
+                    "early_stopping_patience": self._config.early_stopping_patience,
+                    "device": self._config.device,
+                }
+            )
+
             # Model config
-            mlflow.log_params({
-                "num_stages": self._model_config.num_stages,
-                "embedding_dim": self._model_config.embedding_dim,
-                "hidden_size": self._model_config.hidden_size,
-                "num_layers": self._model_config.num_layers,
-                "dropout": self._model_config.dropout,
-                "temperature": self._model_config.temperature,
-            })
-            
+            mlflow.log_params(
+                {
+                    "num_stages": self._model_config.num_stages,
+                    "embedding_dim": self._model_config.embedding_dim,
+                    "hidden_size": self._model_config.hidden_size,
+                    "num_layers": self._model_config.num_layers,
+                    "dropout": self._model_config.dropout,
+                    "temperature": self._model_config.temperature,
+                }
+            )
+
             # Episode statistics
             episode_lengths = [len(ep) for ep in episodes]
-            mlflow.log_params({
-                "num_episodes": len(episodes),
-                "min_episode_length": min(episode_lengths),
-                "max_episode_length": max(episode_lengths),
-                "mean_episode_length": np.mean(episode_lengths),
-            })
-            
+            mlflow.log_params(
+                {
+                    "num_episodes": len(episodes),
+                    "min_episode_length": min(episode_lengths),
+                    "max_episode_length": max(episode_lengths),
+                    "mean_episode_length": np.mean(episode_lengths),
+                }
+            )
+
             logger.info("Logged training parameters to MLflow")
         except Exception as e:
             logger.warning(f"Failed to log training params: {e}")
-    
+
     def _log_dataset_stats(
-        self, 
-        train_loader: DataLoader, 
-        val_loader: DataLoader,
-        episodes: List[List[int]]
+        self, train_loader: DataLoader, val_loader: DataLoader, episodes: list[list[int]]
     ) -> None:
         """Log dataset statistics to MLflow."""
         try:
@@ -868,97 +880,107 @@ class GeneratorTrainer:
             train_size = len(train_loader.dataset)
             val_size = len(val_loader.dataset)
             total_size = train_size + val_size
-            
-            mlflow.log_metrics({
-                "data/train_sequences": train_size,
-                "data/val_sequences": val_size,
-                "data/total_sequences": total_size,
-                "data/train_ratio": train_size / total_size,
-            })
-            
+
+            mlflow.log_metrics(
+                {
+                    "data/train_sequences": train_size,
+                    "data/val_sequences": val_size,
+                    "data/total_sequences": total_size,
+                    "data/train_ratio": train_size / total_size,
+                }
+            )
+
             # Stage distribution in episodes
             all_stages = [stage for ep in episodes for stage in ep]
             stage_counts = np.bincount(all_stages, minlength=5)
             stage_proportions = stage_counts / len(all_stages)
-            
+
             for stage_id in range(5):
-                mlflow.log_metrics({
-                    f"data/stage_{stage_id}_count": int(stage_counts[stage_id]),
-                    f"data/stage_{stage_id}_proportion": float(stage_proportions[stage_id]),
-                })
-            
+                mlflow.log_metrics(
+                    {
+                        f"data/stage_{stage_id}_count": int(stage_counts[stage_id]),
+                        f"data/stage_{stage_id}_proportion": float(stage_proportions[stage_id]),
+                    }
+                )
+
             logger.info("Logged dataset statistics to MLflow")
         except Exception as e:
             logger.warning(f"Failed to log dataset stats: {e}")
-    
+
     def _log_epoch_metrics_extended(
-        self, 
-        epoch: int, 
-        train_loss: float, 
+        self,
+        epoch: int,
+        train_loss: float,
         val_loss: float,
-        val_metrics: Dict[str, float],
-        patience_counter: int
+        val_metrics: dict[str, float],
+        patience_counter: int,
     ) -> None:
         """Log per-epoch metrics including macro-F1 and recall to MLflow."""
         try:
-            mlflow.log_metrics({
-                "loss/train": train_loss,
-                "loss/val": val_loss,
-                "loss/train_val_gap": abs(train_loss - val_loss),
-                "metrics/macro_f1": val_metrics["macro_f1"],
-                "metrics/recall_stage_0": val_metrics["recall_stage_0"],
-                "metrics/recall_stage_1": val_metrics["recall_stage_1"],
-                "metrics/recall_stage_2": val_metrics["recall_stage_2"],
-                "metrics/recall_stage_3": val_metrics["recall_stage_3"],
-                "metrics/recall_stage_4": val_metrics["recall_stage_4"],
-                "training/epoch": epoch + 1,
-                "training/patience_counter": patience_counter,
-            }, step=epoch)
-            
+            mlflow.log_metrics(
+                {
+                    "loss/train": train_loss,
+                    "loss/val": val_loss,
+                    "loss/train_val_gap": abs(train_loss - val_loss),
+                    "metrics/macro_f1": val_metrics["macro_f1"],
+                    "metrics/recall_stage_0": val_metrics["recall_stage_0"],
+                    "metrics/recall_stage_1": val_metrics["recall_stage_1"],
+                    "metrics/recall_stage_2": val_metrics["recall_stage_2"],
+                    "metrics/recall_stage_3": val_metrics["recall_stage_3"],
+                    "metrics/recall_stage_4": val_metrics["recall_stage_4"],
+                    "training/epoch": epoch + 1,
+                    "training/patience_counter": patience_counter,
+                },
+                step=epoch,
+            )
+
             # Log improvement indicator
             if patience_counter == 0:
                 mlflow.log_metric("training/improved", 1.0, step=epoch)
             else:
                 mlflow.log_metric("training/improved", 0.0, step=epoch)
-                
+
         except Exception as e:
             logger.warning(f"Failed to log epoch metrics: {e}")
-    
+
     def _log_final_results(
-        self, 
-        results: Dict[str, Any],
-        train_losses: List[float],
-        val_losses: List[float]
+        self, results: dict[str, Any], train_losses: list[float], val_losses: list[float]
     ) -> None:
         """Log final results and artifacts to MLflow."""
         try:
             # Final metrics
-            mlflow.log_metrics({
-                "final/best_val_loss": results["best_val_loss"],
-                "final/epochs_trained": results["epochs_trained"],
-                "final/best_epoch": results["best_epoch"],
-                "final/final_train_loss": train_losses[-1],
-                "final/final_val_loss": val_losses[-1],
-                "final/min_train_loss": min(train_losses),
-                "final/min_val_loss": min(val_losses),
-            })
-            
+            mlflow.log_metrics(
+                {
+                    "final/best_val_loss": results["best_val_loss"],
+                    "final/epochs_trained": results["epochs_trained"],
+                    "final/best_epoch": results["best_epoch"],
+                    "final/final_train_loss": train_losses[-1],
+                    "final/final_val_loss": val_losses[-1],
+                    "final/min_train_loss": min(train_losses),
+                    "final/min_val_loss": min(val_losses),
+                }
+            )
+
             # Model performance indicators
             train_val_gap = abs(train_losses[-1] - val_losses[-1])
             convergence_rate = (train_losses[0] - train_losses[-1]) / max(train_losses[0], 1e-8)
-            
-            mlflow.log_metrics({
-                "quality/train_val_gap": train_val_gap,
-                "quality/convergence_rate": convergence_rate,
-                "quality/early_stop_triggered": 1.0 if results["epochs_trained"] < self._config.epochs else 0.0,
-            })
-            
+
+            mlflow.log_metrics(
+                {
+                    "quality/train_val_gap": train_val_gap,
+                    "quality/convergence_rate": convergence_rate,
+                    "quality/early_stop_triggered": (
+                        1.0 if results["epochs_trained"] < self._config.epochs else 0.0
+                    ),
+                }
+            )
+
             # Generate and log loss curves
             self._log_loss_curves(train_losses, val_losses)
-            
+
             # Log model artifacts
             self._log_model_artifacts()
-            
+
             # Log config files
             config_files = [
                 self._config.output_dir / "config.json",
@@ -967,49 +989,51 @@ class GeneratorTrainer:
             for config_file in config_files:
                 if config_file.exists():
                     mlflow.log_artifact(str(config_file))
-            
+
             logger.info("Logged final results to MLflow")
         except Exception as e:
             logger.warning(f"Failed to log final results: {e}")
-    
-    def _log_loss_curves(self, train_losses: List[float], val_losses: List[float]) -> None:
+
+    def _log_loss_curves(self, train_losses: list[float], val_losses: list[float]) -> None:
         """Generate and log loss curve plots to MLflow."""
         try:
             fig, axes = plt.subplots(1, 2, figsize=(14, 5))
-            
+
             # Loss curves
             epochs = range(1, len(train_losses) + 1)
-            axes[0].plot(epochs, train_losses, label='Train Loss', marker='o', markersize=3)
-            axes[0].plot(epochs, val_losses, label='Val Loss', marker='s', markersize=3)
-            axes[0].set_xlabel('Epoch')
-            axes[0].set_ylabel('Loss')
-            axes[0].set_title('Training and Validation Loss')
+            axes[0].plot(epochs, train_losses, label="Train Loss", marker="o", markersize=3)
+            axes[0].plot(epochs, val_losses, label="Val Loss", marker="s", markersize=3)
+            axes[0].set_xlabel("Epoch")
+            axes[0].set_ylabel("Loss")
+            axes[0].set_title("Training and Validation Loss")
             axes[0].legend()
             axes[0].grid(True, alpha=0.3)
-            
+
             # Train/Val gap
             gap = [abs(t - v) for t, v in zip(train_losses, val_losses)]
-            axes[1].plot(epochs, gap, label='Train-Val Gap', marker='o', markersize=3, color='orange')
-            axes[1].set_xlabel('Epoch')
-            axes[1].set_ylabel('Absolute Gap')
-            axes[1].set_title('Train-Val Loss Gap')
+            axes[1].plot(
+                epochs, gap, label="Train-Val Gap", marker="o", markersize=3, color="orange"
+            )
+            axes[1].set_xlabel("Epoch")
+            axes[1].set_ylabel("Absolute Gap")
+            axes[1].set_title("Train-Val Loss Gap")
             axes[1].legend()
             axes[1].grid(True, alpha=0.3)
-            
+
             plt.tight_layout()
-            
+
             # Save and log
             plot_path = self._config.output_dir / "loss_curves.png"
-            plt.savefig(plot_path, dpi=150, bbox_inches='tight')
+            plt.savefig(plot_path, dpi=150, bbox_inches="tight")
             plt.close()
-            
+
             mlflow.log_artifact(str(plot_path))
             logger.info(f"Logged loss curves to MLflow: {plot_path}")
-            
+
         except Exception as e:
             logger.warning(f"Failed to log loss curves: {e}")
-            plt.close('all')
-    
+            plt.close("all")
+
     def _log_model_artifacts(self) -> None:
         """Log trained model to MLflow."""
         try:
@@ -1017,14 +1041,14 @@ class GeneratorTrainer:
             model_path = self._config.output_dir / "attack_sequence_generator.pth"
             if model_path.exists():
                 mlflow.log_artifact(str(model_path))
-                
+
                 # Also log using MLflow's PyTorch integration
                 mlflow.pytorch.log_model(
                     pytorch_model=self._model,
                     artifact_path="lstm_model",
                     registered_model_name=None,  # Optional: register model
                 )
-            
+
             logger.info("Logged model artifacts to MLflow")
         except Exception as e:
             logger.warning(f"Failed to log model artifacts: {e}")

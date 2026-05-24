@@ -21,7 +21,7 @@ import logging
 import math
 import sys
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any
 
 _ROOT = Path(__file__).resolve().parents[2]
 if str(_ROOT) not in sys.path:
@@ -47,25 +47,27 @@ def _isnan(x: Any) -> bool:
 
 
 def _evaluate_g5_2_g5_3_g5_4(
-    eval_runs: Dict[tuple, list],
+    eval_runs: dict[tuple, list],
     fraction: float,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Aggregate per-algo eval-summary across seeds for G5.2, G5.3, G5.4."""
-    by_algo: Dict[str, list] = {}
+    by_algo: dict[str, list] = {}
     for (algo, seed), recs in eval_runs.items():
         by_algo.setdefault(algo, []).append((seed, recs))
 
-    out: Dict[str, Any] = {}
+    out: dict[str, Any] = {}
     for algo, items in by_algo.items():
         per_seed = []
         for seed, recs in items:
             s = summarise_last_window(recs, fraction=fraction)
             s["seed"] = seed
             per_seed.append(s)
+
         # Mean across seeds (NaN-safe).
-        def _mean(key: str) -> float:
-            vals = [s[key] for s in per_seed if not _isnan(s.get(key))]
+        def _mean(key: str, _ps: list = per_seed) -> float:
+            vals = [s[key] for s in _ps if not _isnan(s.get(key))]
             return float(sum(vals) / len(vals)) if vals else float("nan")
+
         out[algo] = {
             "mean_reward": _mean("mean_reward"),
             "mean_mttc": _mean("mean_mttc"),
@@ -78,7 +80,7 @@ def _evaluate_g5_2_g5_3_g5_4(
     return out
 
 
-def _select_best_algo(per_algo: Dict[str, Any]) -> str:
+def _select_best_algo(per_algo: dict[str, Any]) -> str:
     """Pick the algo with the highest mean reward; tie-break by **highest
     mean MTTC** (longest mean time to compromise — i.e., the algo that
     held off compromise the longest among reward-tied candidates).
@@ -104,10 +106,10 @@ def _select_best_algo(per_algo: Dict[str, Any]) -> str:
     return ranked[0][0]
 
 
-def evaluate(runs_root: Path, out_dir: Path, fraction: float = 0.10) -> Dict[str, Any]:
+def evaluate(runs_root: Path, out_dir: Path, fraction: float = 0.10) -> dict[str, Any]:
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    train_runs = read_runs_directory(runs_root, file_name="episodes.jsonl")
+    read_runs_directory(runs_root, file_name="episodes.jsonl")
     eval_runs = read_runs_directory(runs_root, file_name="eval.jsonl")
     if not eval_runs:
         raise RuntimeError(f"no eval runs found under {runs_root}")
@@ -124,16 +126,11 @@ def evaluate(runs_root: Path, out_dir: Path, fraction: float = 0.10) -> Dict[str
 
     # G5.3 — best algo's mean MTTC >= min_episode_length - 1 (see D5.4.1).
     g5_3_observed = per_algo[best_algo]["mean_mttc"]
-    g5_3_passes = (
-        not _isnan(g5_3_observed)
-        and g5_3_observed >= (_MIN_EPISODE_LENGTH - 1)
-    )
+    g5_3_passes = not _isnan(g5_3_observed) and g5_3_observed >= (_MIN_EPISODE_LENGTH - 1)
 
     # G5.4 — best algo's mitigated-impact rate >= 0.5 (D5.4.1).
     g5_4_observed = per_algo[best_algo]["mitigated_impact_rate"]
-    g5_4_passes = (
-        not _isnan(g5_4_observed) and g5_4_observed >= 0.5
-    )
+    g5_4_passes = not _isnan(g5_4_observed) and g5_4_observed >= 0.5
 
     # G5.5 — pulled from F4_summary.json (per-stage non-degeneracy).
     f4_summary_path = out_dir / "F4_summary.json"
@@ -168,13 +165,15 @@ def evaluate(runs_root: Path, out_dir: Path, fraction: float = 0.10) -> Dict[str
 
     # Status-enum derivation (Step-8 F3, schema v2.0). Mirrors the
     # benchmark G6_scoreboard.json shape.
-    g5_7_passes = all([
-        (out_dir / "F3_manifest.json").exists(),
-        (out_dir / "F4_manifest.json").exists(),
-        (out_dir / "T1_hparams.json").exists(),
-    ])
+    g5_7_passes = all(
+        [
+            (out_dir / "F3_manifest.json").exists(),
+            (out_dir / "F4_manifest.json").exists(),
+            (out_dir / "T1_hparams.json").exists(),
+        ]
+    )
 
-    def _status(passes: Optional[bool], evaluated: bool = True) -> str:
+    def _status(passes: bool | None, evaluated: bool = True) -> str:
         if not evaluated or passes is None:
             return "SKIP"
         return "PASS" if passes else "FAIL"
@@ -185,9 +184,7 @@ def evaluate(runs_root: Path, out_dir: Path, fraction: float = 0.10) -> Dict[str
     # documented thesis claim that the agent learned the policy
     # the reward incentivised. Encoded as FAIL-WITH-FINDING +
     # finding_id D5.4.1 to preserve the audit trail.
-    g5_4_status = (
-        "PASS" if g5_4_passes else "FAIL-WITH-FINDING"
-    )
+    g5_4_status = "PASS" if g5_4_passes else "FAIL-WITH-FINDING"
 
     scoreboard = {
         "schema_version": "2.0",
@@ -210,10 +207,7 @@ def evaluate(runs_root: Path, out_dir: Path, fraction: float = 0.10) -> Dict[str
                 "status": _status(g5_2_passes),
             },
             "G5.3": {
-                "description": (
-                    f"best algo mean MTTC >= {_MIN_EPISODE_LENGTH - 1} "
-                    "(D5.4.1)"
-                ),
+                "description": (f"best algo mean MTTC >= {_MIN_EPISODE_LENGTH - 1} (D5.4.1)"),
                 "threshold": _MIN_EPISODE_LENGTH - 1,
                 "observed": g5_3_observed,
                 "best_algo": best_algo,
@@ -263,16 +257,20 @@ def evaluate(runs_root: Path, out_dir: Path, fraction: float = 0.10) -> Dict[str
     # Pretty print to stdout. Reads `status` (benchmark-native schema).
     print("=== blue-team gate scoreboard ===")
     _MARK = {
-        "PASS": "PASS", "PASS-WITH-FINDING": "PASS+",
+        "PASS": "PASS",
+        "PASS-WITH-FINDING": "PASS+",
         "PASS-WITHOUT-STRETCH": "PASS-",
-        "FAIL-WITH-FINDING": "FAIL+", "FAIL": "FAIL", "SKIP": "----",
+        "FAIL-WITH-FINDING": "FAIL+",
+        "FAIL": "FAIL",
+        "SKIP": "----",
     }
     for gid, g in scoreboard["gates"].items():
         mark = _MARK.get(g.get("status", ""), "----")
         observed = g.get("observed")
         obs_str = (
-            f"  observed={observed:.3f}" if isinstance(observed, (int, float))
-            and not _isnan(observed) else ""
+            f"  observed={observed:.3f}"
+            if isinstance(observed, (int, float)) and not _isnan(observed)
+            else ""
         )
         finding = g.get("finding_id")
         fid_str = f"  [{finding}]" if finding else ""
@@ -290,7 +288,7 @@ def evaluate(runs_root: Path, out_dir: Path, fraction: float = 0.10) -> Dict[str
     return scoreboard
 
 
-def main(argv: Optional[list[str]] = None) -> int:
+def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(description="blue-team gate evaluator.")
     p.add_argument("--runs-root", required=True)
     p.add_argument("--out-dir", default="docs/results/05_blue_team")

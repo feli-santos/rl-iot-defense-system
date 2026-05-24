@@ -14,8 +14,8 @@ The fixed RNG seeds make the suite deterministic.
 from __future__ import annotations
 
 import json
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Iterable, List
 
 import joblib
 import numpy as np
@@ -23,7 +23,6 @@ import pytest
 from sklearn.preprocessing import StandardScaler
 
 from src.environment.adversarial_env import (
-    ACTION_NAMES,
     AdversarialEnvConfig,
     AdversarialIoTEnv,
     _recommended_action,
@@ -33,7 +32,6 @@ from src.generator.attack_sequence_generator import (
     AttackSequenceGeneratorConfig,
 )
 from src.utils.label_mapper import KillChainStage
-
 
 # ---------------------------------------------------------------------------
 # Fixtures: a tiny untrained env that nevertheless exercises the new lifecycle
@@ -82,9 +80,7 @@ def env_factory(tmp_path_factory: pytest.TempPathFactory):
     base_tmp = tmp_path_factory.mktemp("env_design_gates")
 
     def _make(**overrides) -> AdversarialIoTEnv:
-        return _build_env(
-            base_tmp, config_overrides=tuple((k, v) for k, v in overrides.items())
-        )
+        return _build_env(base_tmp, config_overrides=tuple((k, v) for k, v in overrides.items()))
 
     return _make
 
@@ -163,7 +159,7 @@ def _rollout_recommended(env: AdversarialIoTEnv, *, seed: int) -> dict:
 # ===========================================================================
 
 
-class TestG3_1_RegressionTests:
+class TestG3_1_RegressionTests:  # noqa: N801
     """G3.1: targeted unit tests for each environment-design behaviour change."""
 
     def test_recommended_action_yields_positive_reward_per_step(self, env_factory):
@@ -197,9 +193,9 @@ class TestG3_1_RegressionTests:
         A weaker version of G3.3 — useful as a fast unit test."""
         env = env_factory(min_episode_length=20, max_steps=50)
         result = _rollout_fixed_action(env, action=3, seed=0)
-        assert result["steps"] >= 5, (
-            f"always-BLOCK terminated after {result['steps']} steps; expected ≥ 5"
-        )
+        assert (
+            result["steps"] >= 5
+        ), f"always-BLOCK terminated after {result['steps']} steps; expected ≥ 5"
 
     def test_mttc_fields_present_in_info(self, env_factory):
         """B5 fix: info dict exposes the four MTTC keys."""
@@ -254,14 +250,14 @@ class TestG3_1_RegressionTests:
 # ===========================================================================
 
 
-class TestG3_2_to_G3_6_StatisticalGates:
+class TestG3_2_to_G3_6_StatisticalGates:  # noqa: N801
     """G3.2-G3.6: empirical gates over many rollouts."""
 
     @pytest.mark.parametrize("n_episodes", [100])
     def test_g3_2_random_action_median_episode_length(self, env_factory, n_episodes):
         """G3.2: median episode length over N random-action rollouts ≥ 15 steps."""
         env = env_factory(min_episode_length=20, max_steps=200)
-        lengths: List[int] = [
+        lengths: list[int] = [
             _rollout_random(env, seed=1000 + i)["steps"] for i in range(n_episodes)
         ]
         median = float(np.median(lengths))
@@ -276,28 +272,26 @@ class TestG3_2_to_G3_6_StatisticalGates:
 
         Proves the 'BLOCK = instant win' bug is gone (B1)."""
         env = env_factory(min_episode_length=20, max_steps=200)
-        lengths: List[int] = [
-            _rollout_fixed_action(env, action=3, seed=2000 + i)["steps"]
-            for i in range(n_episodes)
+        lengths: list[int] = [
+            _rollout_fixed_action(env, action=3, seed=2000 + i)["steps"] for i in range(n_episodes)
         ]
         median = float(np.median(lengths))
-        assert median >= 10, (
-            f"G3.3 FAILED: median always-BLOCK length = {median:.1f}; expected ≥ 10"
-        )
+        assert (
+            median >= 10
+        ), f"G3.3 FAILED: median always-BLOCK length = {median:.1f}; expected ≥ 10"
 
     @pytest.mark.parametrize("n_episodes", [50])
     def test_g3_4_recommended_action_mean_reward_positive(self, env_factory, n_episodes):
         """G3.4: agent that always plays the recommended action earns
         average reward > 0 over N rollouts. (B2 sanity check.)"""
         env = env_factory(min_episode_length=20, max_steps=100)
-        rewards: List[float] = [
-            _rollout_recommended(env, seed=3000 + i)["total_reward"]
-            for i in range(n_episodes)
+        rewards: list[float] = [
+            _rollout_recommended(env, seed=3000 + i)["total_reward"] for i in range(n_episodes)
         ]
         mean_r = float(np.mean(rewards))
-        assert mean_r > 0, (
-            f"G3.4 FAILED: recommended-action mean reward = {mean_r:+.1f}; expected > 0"
-        )
+        assert (
+            mean_r > 0
+        ), f"G3.4 FAILED: recommended-action mean reward = {mean_r:+.1f}; expected > 0"
 
     @pytest.mark.parametrize("n_episodes", [50])
     def test_g3_5_always_observe_mean_reward_negative(self, env_factory, n_episodes):
@@ -306,14 +300,12 @@ class TestG3_2_to_G3_6_StatisticalGates:
         This is the 'do-nothing exploit' check: if always-OBSERVE were
         net-positive, the agent could trivially win by ignoring all attacks."""
         env = env_factory(min_episode_length=20, max_steps=100)
-        rewards: List[float] = [
+        rewards: list[float] = [
             _rollout_fixed_action(env, action=0, seed=4000 + i)["total_reward"]
             for i in range(n_episodes)
         ]
         mean_r = float(np.mean(rewards))
-        assert mean_r < 0, (
-            f"G3.5 FAILED: always-OBSERVE mean reward = {mean_r:+.1f}; expected < 0"
-        )
+        assert mean_r < 0, f"G3.5 FAILED: always-OBSERVE mean reward = {mean_r:+.1f}; expected < 0"
 
     @pytest.mark.parametrize("n_episodes", [50])
     def test_g3_6_always_isolate_mean_reward_negative(self, env_factory, n_episodes):
@@ -322,14 +314,12 @@ class TestG3_2_to_G3_6_StatisticalGates:
         This is the 'always-blast exploit' check: punishing benign traffic
         with ISOLATE on every step must dominate any defense bonus."""
         env = env_factory(min_episode_length=20, max_steps=100)
-        rewards: List[float] = [
+        rewards: list[float] = [
             _rollout_fixed_action(env, action=4, seed=5000 + i)["total_reward"]
             for i in range(n_episodes)
         ]
         mean_r = float(np.mean(rewards))
-        assert mean_r < 0, (
-            f"G3.6 FAILED: always-ISOLATE mean reward = {mean_r:+.1f}; expected < 0"
-        )
+        assert mean_r < 0, f"G3.6 FAILED: always-ISOLATE mean reward = {mean_r:+.1f}; expected < 0"
 
 
 # ===========================================================================

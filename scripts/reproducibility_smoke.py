@@ -44,15 +44,15 @@ no entry returns FAIL. The exit code is 0 iff no FAIL entries.
 
 Wallclock budget: ~5 seconds on a fresh checkout.
 """
+
 from __future__ import annotations
 
 import argparse
 import hashlib
 import json
 import logging
-import sys
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 logger = logging.getLogger("scripts.reproducibility_smoke")
 
@@ -61,13 +61,19 @@ _ROOT = Path(__file__).resolve().parents[1]
 
 # Canonical scoreboard status enum — must match
 # `scripts/ablation/close_ablation.py::_STATUS_*`.
-_VALID_STATUS = frozenset({
-    "PASS", "PASS-WITH-FINDING", "PASS-WITHOUT-STRETCH",
-    "FAIL-WITH-FINDING", "FAIL", "SKIP",
-})
+_VALID_STATUS = frozenset(
+    {
+        "PASS",
+        "PASS-WITH-FINDING",
+        "PASS-WITHOUT-STRETCH",
+        "FAIL-WITH-FINDING",
+        "FAIL",
+        "SKIP",
+    }
+)
 
 
-def _sha256(path: Path) -> Optional[str]:
+def _sha256(path: Path) -> str | None:
     if not path.exists():
         return None
     h = hashlib.sha256()
@@ -81,7 +87,7 @@ def _sha256(path: Path) -> Optional[str]:
 # is_committed_artefact) — the third field controls whether a
 # missing input is FAIL (committed → must exist) or SKIP (gitignored →
 # best-effort).
-_TARGETS: List[Tuple[str, Path, bool]] = [
+_TARGETS: list[tuple[str, Path, bool]] = [
     ("dataset", _ROOT / "docs/results/01_dataset/manifest.json", True),
     ("red_team", _ROOT / "docs/results/02_red_team/manifest.json", True),
     ("detector", _ROOT / "docs/results/04_detector/manifest.json", True),
@@ -95,7 +101,7 @@ _TARGETS: List[Tuple[str, Path, bool]] = [
     ("ablation/F15", _ROOT / "docs/results/07_ablation/F15_manifest.json", True),
 ]
 
-_SCOREBOARDS: List[Tuple[str, Path]] = [
+_SCOREBOARDS: list[tuple[str, Path]] = [
     ("G4", _ROOT / "docs/results/04_detector/G4_scoreboard.json"),
     ("G5", _ROOT / "docs/results/05_blue_team/G5_scoreboard.json"),
     ("G6", _ROOT / "docs/results/06_benchmark/G6_scoreboard.json"),
@@ -106,7 +112,7 @@ _SCOREBOARDS: List[Tuple[str, Path]] = [
 # ---------------------------------------------------------------- helpers
 
 
-def _walk_pin_entries(node: Any, prefix: str = "") -> List[Tuple[str, Dict[str, Any]]]:
+def _walk_pin_entries(node: Any, prefix: str = "") -> list[tuple[str, dict[str, Any]]]:
     """Recursively find every ``{path, sha256}`` dict-record in a manifest tree.
 
     Manifests use a few different shapes:
@@ -122,7 +128,7 @@ def _walk_pin_entries(node: Any, prefix: str = "") -> List[Tuple[str, Dict[str, 
     - or a leaf ``{relpath: sha256}`` rendered as
       ``{"path": relpath, "sha256": hex}`` for uniformity.
     """
-    out: List[Tuple[str, Dict[str, Any]]] = []
+    out: list[tuple[str, dict[str, Any]]] = []
     if isinstance(node, dict):
         # Case 1: this dict IS a {path, sha256} pin.
         if (
@@ -134,9 +140,12 @@ def _walk_pin_entries(node: Any, prefix: str = "") -> List[Tuple[str, Dict[str, 
             return out
         # Case 2: this dict is a {relpath: sha256_hex} flat map.
         leaves = [
-            (k, v) for k, v in node.items()
-            if isinstance(k, str) and isinstance(v, str)
-            and len(v) == 64 and all(c in "0123456789abcdef" for c in v)
+            (k, v)
+            for k, v in node.items()
+            if isinstance(k, str)
+            and isinstance(v, str)
+            and len(v) == 64
+            and all(c in "0123456789abcdef" for c in v)
         ]
         non_leaves = [(k, v) for k, v in node.items() if (k, v) not in leaves]
         for k, v in leaves:
@@ -155,7 +164,7 @@ def _walk_pin_entries(node: Any, prefix: str = "") -> List[Tuple[str, Dict[str, 
 # superseded by a newer SHA on disk. Each entry references the
 # Step-N mentor-review finding that documented the divergence and
 # the resolution narrative.
-_KNOWN_DIVERGENCES: Dict[str, Dict[str, str]] = {
+_KNOWN_DIVERGENCES: dict[str, dict[str, str]] = {
     # (label, path_str, recorded_sha) -> {actual_sha, finding_id, note}
     (
         "dataset",
@@ -188,7 +197,7 @@ _KNOWN_DIVERGENCES: Dict[str, Dict[str, str]] = {
 }
 
 
-def _check_manifest(label: str, manifest_path: Path) -> Tuple[int, int, int, int, List[str]]:
+def _check_manifest(label: str, manifest_path: Path) -> tuple[int, int, int, int, list[str]]:
     """Return (n_ok, n_fail, n_skip, n_known, msgs) for one manifest.
 
     `n_known` counts pins whose SHA mismatch is a pre-registered,
@@ -207,7 +216,7 @@ def _check_manifest(label: str, manifest_path: Path) -> Tuple[int, int, int, int
         return 0, 0, 1, 0, [f"{label}: no SHA pins to check (inputs empty)"]
 
     n_ok = n_fail = n_skip = n_known = 0
-    msgs: List[str] = []
+    msgs: list[str] = []
     for label_full, pin in pins:
         path_str = pin["path"]
         recorded_sha = pin["sha256"]
@@ -225,8 +234,7 @@ def _check_manifest(label: str, manifest_path: Path) -> Tuple[int, int, int, int
         if actual_sha is None:
             n_skip += 1
             msgs.append(
-                f"  SKIP  {label} {label_full}: input not on disk "
-                f"({path_str}; gitignored?)"
+                f"  SKIP  {label} {label_full}: input not on disk ({path_str}; gitignored?)"
             )
         elif actual_sha == recorded_sha:
             n_ok += 1
@@ -252,7 +260,7 @@ def _check_manifest(label: str, manifest_path: Path) -> Tuple[int, int, int, int
     return n_ok, n_fail, n_skip, n_known, msgs
 
 
-def _check_scoreboard(label: str, path: Path) -> Tuple[int, int, int, List[str]]:
+def _check_scoreboard(label: str, path: Path) -> tuple[int, int, int, list[str]]:
     """Verify scoreboard parses + every gate.status is in the canonical enum."""
     if not path.exists():
         return 0, 1, 0, [f"  FAIL  scoreboard {label}: missing at {path}"]
@@ -271,25 +279,25 @@ def _check_scoreboard(label: str, path: Path) -> Tuple[int, int, int, List[str]]
         return 0, 1, 0, [f"  FAIL  scoreboard {label}: .gates is neither dict nor list"]
 
     n_ok = n_fail = 0
-    msgs: List[str] = []
+    msgs: list[str] = []
     for gid, status in statuses:
         if status in _VALID_STATUS:
             n_ok += 1
         else:
             n_fail += 1
             msgs.append(
-                f"  FAIL  scoreboard {label} gate {gid}: status={status!r} "
-                f"not in canonical enum"
+                f"  FAIL  scoreboard {label} gate {gid}: status={status!r} not in canonical enum"
             )
     return n_ok, n_fail, 0, msgs
 
 
-def main(argv: Optional[List[str]] = None) -> int:
+def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(
         description="R1 smoke-reproducibility harness — verify hash-chain integrity."
     )
     p.add_argument(
-        "--strict", action="store_true",
+        "--strict",
+        action="store_true",
         help="Exit 1 even on SKIP entries (default: exit 1 only on FAIL)",
     )
     args = p.parse_args(argv)
@@ -304,25 +312,18 @@ def main(argv: Optional[List[str]] = None) -> int:
     print("=" * 78)
 
     total_ok = total_fail = total_skip = total_known = 0
-    all_msgs: List[str] = []
+    all_msgs: list[str] = []
 
     print("\n--- Manifest hash-chain checks ---")
     for label, mpath, _committed in _TARGETS:
         n_ok, n_fail, n_skip, n_known, msgs = _check_manifest(label, mpath)
         if n_fail == 0 and n_known == 0:
-            print(
-                f"  {'OK' if n_skip == 0 else 'OK*'}    {label:18}  "
-                f"({n_ok} OK / {n_skip} SKIP)"
-            )
+            print(f"  {'OK' if n_skip == 0 else 'OK*'}    {label:18}  ({n_ok} OK / {n_skip} SKIP)")
         elif n_fail == 0:
-            print(
-                f"  OK†   {label:18}  "
-                f"({n_ok} OK / {n_known} KNOWN-DIVERGENCE / {n_skip} SKIP)"
-            )
+            print(f"  OK†   {label:18}  ({n_ok} OK / {n_known} KNOWN-DIVERGENCE / {n_skip} SKIP)")
         else:
             print(
-                f"  FAIL  {label:18}  "
-                f"({n_ok} OK / {n_fail} FAIL / {n_known} KNOWN / {n_skip} SKIP)"
+                f"  FAIL  {label:18}  ({n_ok} OK / {n_fail} FAIL / {n_known} KNOWN / {n_skip} SKIP)"
             )
         all_msgs.extend(msgs)
         total_ok += n_ok

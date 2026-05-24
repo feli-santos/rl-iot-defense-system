@@ -28,7 +28,6 @@ import logging
 import time
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Dict, List, Optional
 
 import numpy as np
 import torch
@@ -71,9 +70,9 @@ class CNN1DConfig:
 
 @dataclass
 class CNN1DRunInfo:
-    train_loss_history: List[float] = field(default_factory=list)
-    val_loss_history: List[float] = field(default_factory=list)
-    val_macro_f1_history: List[float] = field(default_factory=list)
+    train_loss_history: list[float] = field(default_factory=list)
+    val_loss_history: list[float] = field(default_factory=list)
+    val_macro_f1_history: list[float] = field(default_factory=list)
     best_epoch: int = -1
     best_val_macro_f1: float = -1.0
     train_time_seconds: float = 0.0
@@ -118,10 +117,10 @@ class _ConvNet(nn.Module):
 class CNN1D:
     """1-D conv baseline. Same I/O contract as :class:`StageDetector`."""
 
-    def __init__(self, config: Optional[CNN1DConfig] = None) -> None:
+    def __init__(self, config: CNN1DConfig | None = None) -> None:
         self.config = config or CNN1DConfig()
         self._device = torch.device("cpu")
-        self._model: Optional[_ConvNet] = None
+        self._model: _ConvNet | None = None
         self.run_info: CNN1DRunInfo = CNN1DRunInfo()
 
     # --------------------------------------------------------------- training
@@ -135,15 +134,14 @@ class CNN1D:
         *,
         seed: int = 0,
         verbose: bool = True,
-    ) -> "CNN1D":
+    ) -> CNN1D:
         torch.manual_seed(seed)
         np.random.seed(seed)
         cfg = self.config
 
         if X_train.shape[1] != cfg.num_features:
             raise ValueError(
-                f"X_train has {X_train.shape[1]} features but config expects "
-                f"{cfg.num_features}"
+                f"X_train has {X_train.shape[1]} features but config expects {cfg.num_features}"
             )
 
         self._model = _ConvNet(cfg).to(self._device)
@@ -169,7 +167,7 @@ class CNN1D:
         yv_np = np.ascontiguousarray(y_val, dtype=np.int64)
 
         info = CNN1DRunInfo(n_train=int(X_train.shape[0]), n_val=int(X_val.shape[0]))
-        best_state: Optional[Dict[str, torch.Tensor]] = None
+        best_state: dict[str, torch.Tensor] | None = None
         epochs_without_improve = 0
         t0 = time.perf_counter()
 
@@ -187,9 +185,7 @@ class CNN1D:
             if val_f1 > info.best_val_macro_f1:
                 info.best_val_macro_f1 = val_f1
                 info.best_epoch = epoch
-                best_state = {
-                    k: v.detach().clone() for k, v in self._model.state_dict().items()
-                }
+                best_state = {k: v.detach().clone() for k, v in self._model.state_dict().items()}
                 epochs_without_improve = 0
             else:
                 epochs_without_improve += 1
@@ -206,7 +202,9 @@ class CNN1D:
 
             if epochs_without_improve >= cfg.patience:
                 if verbose:
-                    logger.info("[CNN1D] Early stop after %d epochs without improvement", cfg.patience)
+                    logger.info(
+                        "[CNN1D] Early stop after %d epochs without improvement", cfg.patience
+                    )
                 break
 
         info.train_time_seconds = time.perf_counter() - t0
@@ -242,10 +240,10 @@ class CNN1D:
 
     # ------------------------------------------------------------- inference
 
-    def predict(self, X: np.ndarray, *, batch_size: Optional[int] = None) -> np.ndarray:
+    def predict(self, X: np.ndarray, *, batch_size: int | None = None) -> np.ndarray:
         return self.predict_proba(X, batch_size=batch_size).argmax(axis=1).astype(np.int64)
 
-    def predict_proba(self, X: np.ndarray, *, batch_size: Optional[int] = None) -> np.ndarray:
+    def predict_proba(self, X: np.ndarray, *, batch_size: int | None = None) -> np.ndarray:
         if self._model is None:
             raise RuntimeError("CNN1D.predict_proba called before fit()")
         bs = batch_size or self.config.inference_batch_size
@@ -256,7 +254,7 @@ class CNN1D:
     def _forward_in_batches(self, x: torch.Tensor, *, batch_size: int) -> torch.Tensor:
         assert self._model is not None
         self._model.eval()
-        outs: List[torch.Tensor] = []
+        outs: list[torch.Tensor] = []
         with torch.no_grad():
             for start in range(0, x.size(0), batch_size):
                 xb = x[start : start + batch_size].to(self._device)
@@ -297,7 +295,7 @@ class CNN1D:
         sidecar.write_text(json.dumps(asdict(self.run_info), indent=2))
 
     @classmethod
-    def from_checkpoint(cls, path: Path) -> "CNN1D":
+    def from_checkpoint(cls, path: Path) -> CNN1D:
         path = Path(path)
         ckpt = torch.load(path, map_location="cpu", weights_only=False)
         cfg = CNN1DConfig(**ckpt["config"])
@@ -322,10 +320,8 @@ def train_cnn1d(
     y_val: np.ndarray,
     *,
     seed: int = 0,
-    config: Optional[CNN1DConfig] = None,
+    config: CNN1DConfig | None = None,
     verbose: bool = True,
 ) -> CNN1D:
     """Train a :class:`CNN1D` from raw arrays. Mirror of `train_random_forest`."""
-    return CNN1D(config=config).fit(
-        X_train, y_train, X_val, y_val, seed=seed, verbose=verbose
-    )
+    return CNN1D(config=config).fit(X_train, y_train, X_val, y_val, seed=seed, verbose=verbose)

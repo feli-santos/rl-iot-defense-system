@@ -4,17 +4,16 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
 
 import numpy as np
 import pytest
 
 from src.blue_team.callbacks import (
+    _SCHEMA_VERSION,
     EpisodeJSONLCallback,
     EpisodeRecord,
-    _SCHEMA_VERSION,
 )
-
 
 # --------------------------------------------------------------------- harness
 
@@ -45,10 +44,10 @@ class _CallbackHarness:
     def step(
         self,
         *,
-        actions: List[int],
-        rewards: List[float],
-        dones: List[bool],
-        infos: List[Dict[str, Any]],
+        actions: list[int],
+        rewards: list[float],
+        dones: list[bool],
+        infos: list[dict[str, Any]],
     ) -> None:
         # Increment SB3 timestep counter the way SB3 itself does.
         self.cb.model.num_timesteps += 1
@@ -70,10 +69,10 @@ class _CallbackHarness:
 def _run_episode(
     h: _CallbackHarness,
     *,
-    actions: List[int],
-    rewards: List[float],
-    stages: List[int],
-    final_info_extra: Dict[str, Any] | None = None,
+    actions: list[int],
+    rewards: list[float],
+    stages: list[int],
+    final_info_extra: dict[str, Any] | None = None,
 ) -> None:
     """Drive a single complete episode through the callback.
 
@@ -85,13 +84,17 @@ def _run_episode(
     n = len(actions)
     for i, (a, r, s) in enumerate(zip(actions, rewards, stages)):
         is_last = i == n - 1
-        info: Dict[str, Any] = {"attack_stage": s}
+        info: dict[str, Any] = {"attack_stage": s}
         if is_last:
             info["episode"] = {"r": float(np.sum(rewards)), "l": n}
-            info.update({
-                "compromised": False, "mttc_steps": None,
-                "defender_deescalations": 0, "outcome": "ongoing",
-            })
+            info.update(
+                {
+                    "compromised": False,
+                    "mttc_steps": None,
+                    "defender_deescalations": 0,
+                    "outcome": "ongoing",
+                }
+            )
             if final_info_extra:
                 info.update(final_info_extra)
         h.step(actions=[a], rewards=[r], dones=[is_last], infos=[info])
@@ -103,15 +106,27 @@ def _run_episode(
 class TestEpisodeRecordSchema:
     def test_to_jsonl_round_trips(self) -> None:
         rec = EpisodeRecord(
-            schema_version="1.0", run_id="ppo_seed_3", algo="ppo", seed=3,
-            episode_idx=12, num_timesteps=1234, wallclock_seconds=4.5,
-            episode_reward=42.0, episode_length=20, compromised=False,
-            mttc_steps=None, defender_deescalations=0, final_stage=0,
-            final_stage_name="BENIGN", end_outcome="ongoing",
+            schema_version="1.0",
+            run_id="ppo_seed_3",
+            algo="ppo",
+            seed=3,
+            episode_idx=12,
+            num_timesteps=1234,
+            wallclock_seconds=4.5,
+            episode_reward=42.0,
+            episode_length=20,
+            compromised=False,
+            mttc_steps=None,
+            defender_deescalations=0,
+            final_stage=0,
+            final_stage_name="BENIGN",
+            end_outcome="ongoing",
             action_counts=[5, 5, 5, 3, 2],
             action_counts_by_stage={
-                "0": [5, 0, 0, 0, 0], "1": [0, 5, 0, 0, 0],
-                "2": [0, 0, 5, 0, 0], "3": [0, 0, 0, 3, 0],
+                "0": [5, 0, 0, 0, 0],
+                "1": [0, 5, 0, 0, 0],
+                "2": [0, 0, 5, 0, 0],
+                "3": [0, 0, 0, 3, 0],
                 "4": [0, 0, 0, 0, 2],
             },
         )
@@ -132,17 +147,20 @@ class TestEpisodeJSONLCallback:
             flush_every=1,
         )
 
-    def test_one_record_per_episode(self, callback: EpisodeJSONLCallback,
-                                    tmp_path: Path) -> None:
+    def test_one_record_per_episode(self, callback: EpisodeJSONLCallback, tmp_path: Path) -> None:
         h = _CallbackHarness(callback)
         # Episode 1: 3 steps.
         _run_episode(
-            h, actions=[0, 1, 2], rewards=[1.0, 1.0, 1.0],
+            h,
+            actions=[0, 1, 2],
+            rewards=[1.0, 1.0, 1.0],
             stages=[0, 1, 2],
         )
         # Episode 2: 2 steps.
         _run_episode(
-            h, actions=[3, 4], rewards=[2.0, 2.0],
+            h,
+            actions=[3, 4],
+            rewards=[2.0, 2.0],
             stages=[3, 4],
         )
         h.end()
@@ -162,7 +180,9 @@ class TestEpisodeJSONLCallback:
         h = _CallbackHarness(callback)
         actions = [0, 0, 1, 2, 3, 3, 4, 4, 4, 4]
         _run_episode(
-            h, actions=actions, rewards=[1.0] * 10,
+            h,
+            actions=actions,
+            rewards=[1.0] * 10,
             stages=[0] * 10,
         )
         h.end()
@@ -180,7 +200,9 @@ class TestEpisodeJSONLCallback:
         # is [BENIGN, RECON, ACCESS, ACCESS] for 4 actions.
         # Decision-time stages are therefore [0, 0, 1, 2].
         _run_episode(
-            h, actions=[0, 0, 1, 2], rewards=[0.0, 0.0, 0.0, 0.0],
+            h,
+            actions=[0, 0, 1, 2],
+            rewards=[0.0, 0.0, 0.0, 0.0],
             stages=[0, 1, 2, 2],
         )
         h.end()
@@ -200,7 +222,9 @@ class TestEpisodeJSONLCallback:
         # Episode that compromises: env reports IMPACT (stage=4) on
         # the final step plus the Phase-3 MTTC fields.
         _run_episode(
-            h, actions=[0, 0, 0], rewards=[0.0, 0.0, -350.0],
+            h,
+            actions=[0, 0, 0],
+            rewards=[0.0, 0.0, -350.0],
             stages=[1, 3, 4],
             final_info_extra={
                 "compromised": True,
@@ -220,13 +244,18 @@ class TestEpisodeJSONLCallback:
     def test_flush_every_buffers_correctly(self, tmp_path: Path) -> None:
         cb = EpisodeJSONLCallback(
             out_path=tmp_path / "episodes.jsonl",
-            run_id="dqn_seed_0", algo="dqn", seed=0,
+            run_id="dqn_seed_0",
+            algo="dqn",
+            seed=0,
             flush_every=3,
         )
         h = _CallbackHarness(cb)
         for _ in range(5):
             _run_episode(
-                h, actions=[0, 1], rewards=[1.0, 1.0], stages=[0, 1],
+                h,
+                actions=[0, 1],
+                rewards=[1.0, 1.0],
+                stages=[0, 1],
             )
         h.end()
         # After end (which flushes + closes) all 5 records present.
@@ -239,7 +268,10 @@ class TestEpisodeJSONLCallback:
         h = _CallbackHarness(callback)
         for _ in range(3):
             _run_episode(
-                h, actions=[0, 1], rewards=[1.0, 1.0], stages=[0, 1],
+                h,
+                actions=[0, 1],
+                rewards=[1.0, 1.0],
+                stages=[0, 1],
             )
         h.end()
         lines = (tmp_path / "episodes.jsonl").read_text().splitlines()
@@ -254,6 +286,8 @@ class TestEpisodeJSONLCallback:
         with pytest.raises(ValueError):
             EpisodeJSONLCallback(
                 out_path=tmp_path / "x.jsonl",
-                run_id="x", algo="ppo", seed=0,
+                run_id="x",
+                algo="ppo",
+                seed=0,
                 flush_every=0,
             )

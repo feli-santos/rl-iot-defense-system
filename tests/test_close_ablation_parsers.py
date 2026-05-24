@@ -24,7 +24,6 @@ import math
 from scripts.ablation.close_ablation import _parse_pytest_summary
 from scripts.ablation.plot_reward_ablation import _evaluate_g72
 
-
 # ----------------------------------------------------------- pytest summary
 
 
@@ -110,15 +109,22 @@ def test_g72_strand1_passes_when_reward_comparable_cell_beats_dqn():
     rows = [
         _row("baseline", "baseline", 1300.0, mit=0.27),
         _row(
-            "impact_is_terminal_false", "impact_terminal", 1500.0,
-            impact_is_terminal=False, mit=0.90,
+            "impact_is_terminal_false",
+            "impact_terminal",
+            1500.0,
+            impact_is_terminal=False,
+            mit=0.90,
         ),
         # A reward-coefficient cell that scaled the bonus 2× and
         # has a huge raw reward — must NOT be the apples-to-apples
         # winner.
         _row(
-            "defense_success_bonus_x2p0", "reward", 2900.0,
-            component="defense_success_bonus", multiplier=2.0, mit=0.55,
+            "defense_success_bonus_x2p0",
+            "reward",
+            2900.0,
+            component="defense_success_bonus",
+            multiplier=2.0,
+            mit=0.55,
         ),
     ]
     result = _evaluate_g72(rows)
@@ -134,12 +140,19 @@ def test_g72_strand1_fails_strand2_passes_activates_d7_1_1():
     rows = [
         _row("baseline", "baseline", 1300.0, mit=0.27),
         _row(
-            "impact_is_terminal_false", "impact_terminal", 1330.0,
-            impact_is_terminal=False, mit=0.90,
+            "impact_is_terminal_false",
+            "impact_terminal",
+            1330.0,
+            impact_is_terminal=False,
+            mit=0.90,
         ),
         _row(
-            "defense_success_bonus_x2p0", "reward", 2900.0,
-            component="defense_success_bonus", multiplier=2.0, mit=0.55,
+            "defense_success_bonus_x2p0",
+            "reward",
+            2900.0,
+            component="defense_success_bonus",
+            multiplier=2.0,
+            mit=0.55,
         ),
     ]
     result = _evaluate_g72(rows)
@@ -154,8 +167,12 @@ def test_g72_both_strands_fail():
     rows = [
         _row("baseline", "baseline", 1300.0, mit=0.15),
         _row(
-            "reward_proportional_x2p0", "reward", 1310.0,
-            component="reward_proportional", multiplier=2.0, mit=0.18,
+            "reward_proportional_x2p0",
+            "reward",
+            1310.0,
+            component="reward_proportional",
+            multiplier=2.0,
+            mit=0.18,
         ),
     ]
     result = _evaluate_g72(rows)
@@ -170,8 +187,11 @@ def test_g72_oracle_stretch_met():
     rows = [
         _row("baseline", "baseline", 1300.0),
         _row(
-            "impact_is_terminal_false", "impact_terminal", 1800.0,
-            impact_is_terminal=False, mit=0.95,
+            "impact_is_terminal_false",
+            "impact_terminal",
+            1800.0,
+            impact_is_terminal=False,
+            mit=0.95,
         ),
     ]
     result = _evaluate_g72(rows)
@@ -203,8 +223,12 @@ def test_g72_reward_coefficient_cell_does_not_count_for_strand1():
     rows = [
         _row("baseline", "baseline", 1100.0, mit=0.20),
         _row(
-            "defense_success_bonus_x2p0", "reward", 3000.0,
-            component="defense_success_bonus", multiplier=2.0, mit=0.55,
+            "defense_success_bonus_x2p0",
+            "reward",
+            3000.0,
+            component="defense_success_bonus",
+            multiplier=2.0,
+            mit=0.55,
         ),
     ]
     result = _evaluate_g72(rows)

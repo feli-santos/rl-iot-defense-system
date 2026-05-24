@@ -41,7 +41,7 @@ import logging
 import math
 import subprocess
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import numpy as np
 
@@ -52,7 +52,7 @@ logger = logging.getLogger("scripts.ablation.plot_pareto")
 _ROOT = Path(__file__).resolve().parents[2]
 
 
-def _sha256(path: Path) -> Optional[str]:
+def _sha256(path: Path) -> str | None:
     p = Path(path)
     if not p.exists():
         return None
@@ -65,9 +65,15 @@ def _sha256(path: Path) -> Optional[str]:
 
 def _git_sha() -> str:
     try:
-        return subprocess.check_output(
-            ["git", "rev-parse", "HEAD"], cwd=_ROOT, stderr=subprocess.DEVNULL,
-        ).decode().strip()
+        return (
+            subprocess.check_output(
+                ["git", "rev-parse", "HEAD"],
+                cwd=_ROOT,
+                stderr=subprocess.DEVNULL,
+            )
+            .decode()
+            .strip()
+        )
     except Exception:  # noqa: BLE001
         return "unknown"
 
@@ -75,7 +81,7 @@ def _git_sha() -> str:
 # --------------------------------------------------------------- aggregation
 
 
-def _summarise_records(records: List[Dict]) -> Tuple[float, float, int]:
+def _summarise_records(records: list[dict]) -> tuple[float, float, int]:
     """Return (security_gain, availability_cost, n_episodes) for a
     list of EpisodeRecord JSONL rows.
 
@@ -99,19 +105,18 @@ def _summarise_records(records: List[Dict]) -> Tuple[float, float, int]:
             total_decisions += sum(counts)
             high_action_decisions += counts[3] + counts[4]
     availability_cost = (
-        float(high_action_decisions) / float(total_decisions)
-        if total_decisions > 0 else math.nan
+        float(high_action_decisions) / float(total_decisions) if total_decisions > 0 else math.nan
     )
     return security_gain, availability_cost, len(records)
 
 
 def _summarise_seed_dirs(
-    seed_dirs: List[Path],
+    seed_dirs: list[Path],
     *,
-    sha_collector: Dict[str, str],
-) -> Tuple[float, float, int]:
+    sha_collector: dict[str, str],
+) -> tuple[float, float, int]:
     """Aggregate eval_test.jsonl across seed dirs and summarise."""
-    all_records: List[Dict] = []
+    all_records: list[dict] = []
     for sd in seed_dirs:
         jsonl = sd / "eval_test.jsonl"
         if not jsonl.exists():
@@ -125,10 +130,10 @@ def _summarise_seed_dirs(
 
 def _collect_phase6_points(
     benchmark_root: Path,
-    sha_collector: Dict[str, str],
-) -> List[Dict[str, Any]]:
+    sha_collector: dict[str, str],
+) -> list[dict[str, Any]]:
     """benchmark anchor points: 8 baseline policies on test_balanced."""
-    points: List[Dict[str, Any]] = []
+    points: list[dict[str, Any]] = []
     if not benchmark_root.exists():
         logger.warning("phase6 root missing: %s — skipping anchors", benchmark_root)
         return points
@@ -136,30 +141,32 @@ def _collect_phase6_points(
         if not policy_dir.is_dir():
             continue
         seed_dirs = sorted(
-            d for d in policy_dir.iterdir()
-            if d.is_dir() and d.name.startswith("seed_")
+            d for d in policy_dir.iterdir() if d.is_dir() and d.name.startswith("seed_")
         )
         if not seed_dirs:
             continue
         sec, avail, n_ep = _summarise_seed_dirs(
-            seed_dirs, sha_collector=sha_collector,
+            seed_dirs,
+            sha_collector=sha_collector,
         )
-        points.append({
-            "source": "phase6",
-            "policy": policy_dir.name,
-            "label": policy_dir.name,
-            "security_gain": sec,
-            "availability_cost": avail,
-            "n_episodes": n_ep,
-        })
+        points.append(
+            {
+                "source": "phase6",
+                "policy": policy_dir.name,
+                "label": policy_dir.name,
+                "security_gain": sec,
+                "availability_cost": avail,
+                "n_episodes": n_ep,
+            }
+        )
     return points
 
 
 def _collect_f9_points(
     f9_root: Path,
-    sha_collector: Dict[str, str],
-) -> List[Dict[str, Any]]:
-    points: List[Dict[str, Any]] = []
+    sha_collector: dict[str, str],
+) -> list[dict[str, Any]]:
+    points: list[dict[str, Any]] = []
     if not f9_root.exists():
         logger.warning("F9 root missing: %s — skipping", f9_root)
         return points
@@ -168,31 +175,33 @@ def _collect_f9_points(
             continue
         cell_config = json.loads((cell_dir / "cell_config.json").read_text())
         seed_dirs = sorted(
-            d for d in cell_dir.iterdir()
-            if d.is_dir() and d.name.startswith("seed_")
+            d for d in cell_dir.iterdir() if d.is_dir() and d.name.startswith("seed_")
         )
         sec, avail, n_ep = _summarise_seed_dirs(
-            seed_dirs, sha_collector=sha_collector,
+            seed_dirs,
+            sha_collector=sha_collector,
         )
-        points.append({
-            "source": "f9_reward_sweep",
-            "cell_id": cell_dir.name,
-            "axis": cell_config.get("axis"),
-            "component": cell_config.get("component"),
-            "multiplier": cell_config.get("multiplier"),
-            "label": f"f9:{cell_dir.name}",
-            "security_gain": sec,
-            "availability_cost": avail,
-            "n_episodes": n_ep,
-        })
+        points.append(
+            {
+                "source": "f9_reward_sweep",
+                "cell_id": cell_dir.name,
+                "axis": cell_config.get("axis"),
+                "component": cell_config.get("component"),
+                "multiplier": cell_config.get("multiplier"),
+                "label": f"f9:{cell_dir.name}",
+                "security_gain": sec,
+                "availability_cost": avail,
+                "n_episodes": n_ep,
+            }
+        )
     return points
 
 
 def _collect_f10_points(
     f10_root: Path,
-    sha_collector: Dict[str, str],
-) -> List[Dict[str, Any]]:
-    points: List[Dict[str, Any]] = []
+    sha_collector: dict[str, str],
+) -> list[dict[str, Any]]:
+    points: list[dict[str, Any]] = []
     if not f10_root.exists():
         logger.warning("F10 root missing: %s — skipping", f10_root)
         return points
@@ -206,28 +215,30 @@ def _collect_f10_points(
         except ValueError:
             continue
         seed_dirs = sorted(
-            d for d in kind_dir.iterdir()
-            if d.is_dir() and d.name.startswith("seed_")
+            d for d in kind_dir.iterdir() if d.is_dir() and d.name.startswith("seed_")
         )
         sec, avail, n_ep = _summarise_seed_dirs(
-            seed_dirs, sha_collector=sha_collector,
+            seed_dirs,
+            sha_collector=sha_collector,
         )
-        points.append({
-            "source": "f10_aggressiveness",
-            "kind": kind,
-            "p_defender_deescalation": p_value,
-            "label": f"f10:{kind}_p{p_value:.1f}",
-            "security_gain": sec,
-            "availability_cost": avail,
-            "n_episodes": n_ep,
-        })
+        points.append(
+            {
+                "source": "f10_aggressiveness",
+                "kind": kind,
+                "p_defender_deescalation": p_value,
+                "label": f"f10:{kind}_p{p_value:.1f}",
+                "security_gain": sec,
+                "availability_cost": avail,
+                "n_episodes": n_ep,
+            }
+        )
     return points
 
 
 # --------------------------------------------------------------- pareto
 
 
-def _pareto_frontier(points: List[Dict[str, Any]]) -> List[int]:
+def _pareto_frontier(points: list[dict[str, Any]]) -> list[int]:
     """Return indices into ``points`` that are on the Pareto frontier.
 
     Direction: higher security_gain is better; LOWER availability_cost
@@ -236,7 +247,7 @@ def _pareto_frontier(points: List[Dict[str, Any]]) -> List[int]:
     availability_cost_i) OR (security_gain_j ≥ security_gain_i AND
     availability_cost_j < availability_cost_i).
     """
-    frontier: List[int] = []
+    frontier: list[int] = []
     for i, pi in enumerate(points):
         si, ai = pi["security_gain"], pi["availability_cost"]
         if not (math.isfinite(si) and math.isfinite(ai)):
@@ -256,11 +267,11 @@ def _pareto_frontier(points: List[Dict[str, Any]]) -> List[int]:
     return frontier
 
 
-def _evaluate_g74(points: List[Dict[str, Any]], frontier: List[int]) -> Dict[str, Any]:
+def _evaluate_g74(points: list[dict[str, Any]], frontier: list[int]) -> dict[str, Any]:
     """G7.4: ≥ 3 distinct dominant Pareto points."""
     # Dedupe nearly-identical points to avoid over-counting numerical
     # ties (within 1 % on each axis).
-    distinct: List[int] = []
+    distinct: list[int] = []
     for idx in frontier:
         p = points[idx]
         is_distinct = True
@@ -283,8 +294,8 @@ def _evaluate_g74(points: List[Dict[str, Any]], frontier: List[int]) -> Dict[str
             f"PASS: Pareto frontier has {len(distinct)} distinct dominant "
             "points — non-trivial trade-off surface; operating-point choice "
             "is a real defender contribution."
-            if len(distinct) >= 3 else
-            f"FAIL-WITH-FINDING (R7.3): only {len(distinct)} distinct "
+            if len(distinct) >= 3
+            else f"FAIL-WITH-FINDING (R7.3): only {len(distinct)} distinct "
             "dominant point(s) on the frontier — the trade-off surface is "
             "approximately linear under the environment-design reward formulation; "
             "operating-point choice reduces to a single scalar weighting."
@@ -296,8 +307,8 @@ def _evaluate_g74(points: List[Dict[str, Any]], frontier: List[int]) -> Dict[str
 
 
 def _render(
-    points: List[Dict[str, Any]],
-    frontier: List[int],
+    points: list[dict[str, Any]],
+    frontier: list[int],
     out_path: Path,
 ) -> None:
     import matplotlib
@@ -326,32 +337,41 @@ def _render(
         label = src if src not in label_done else None
         label_done.add(src)
         ax.scatter(
-            p["availability_cost"], p["security_gain"],
+            p["availability_cost"],
+            p["security_gain"],
             c=colours.get(src, "#000"),
             marker=markers.get(src, "o"),
             s=80 if i in frontier else 40,
             edgecolors="black" if i in frontier else "none",
             linewidth=1.0 if i in frontier else 0,
-            alpha=0.85, label=label, zorder=3,
+            alpha=0.85,
+            label=label,
+            zorder=3,
         )
 
     # Frontier polyline (sorted by availability_cost ascending).
     front_pts = sorted(
-        [points[i] for i in frontier
-         if math.isfinite(points[i]["security_gain"])
-         and math.isfinite(points[i]["availability_cost"])],
+        [
+            points[i]
+            for i in frontier
+            if math.isfinite(points[i]["security_gain"])
+            and math.isfinite(points[i]["availability_cost"])
+        ],
         key=lambda p: p["availability_cost"],
     )
     if front_pts:
         ax.plot(
             [p["availability_cost"] for p in front_pts],
             [p["security_gain"] for p in front_pts],
-            "--", color="#dc2626", linewidth=1.4, alpha=0.85,
-            zorder=2, label="Pareto frontier",
+            "--",
+            color="#dc2626",
+            linewidth=1.4,
+            alpha=0.85,
+            zorder=2,
+            label="Pareto frontier",
         )
 
-    ax.set_xlabel("Availability cost (BLOCK + ISOLATE share of decisions)",
-                  fontsize=10)
+    ax.set_xlabel("Availability cost (BLOCK + ISOLATE share of decisions)", fontsize=10)
     ax.set_ylabel("Security gain (1 − compromise rate)", fontsize=10)
     ax.set_title(
         "F12 — Security vs. availability Pareto "
@@ -371,12 +391,12 @@ def _render(
 def _build_argparser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         description="ablation F12 — security-vs-availability Pareto plot. "
-                    "Plotter-only (D7.5); reads F9 + F10 + benchmark outputs.",
+        "Plotter-only (D7.5); reads F9 + F10 + benchmark outputs.",
     )
-    p.add_argument("--phase6-runs",     default="runs/benchmark")
-    p.add_argument("--phase7-f9-runs",  default="runs/ablation/reward_sweep")
+    p.add_argument("--phase6-runs", default="runs/benchmark")
+    p.add_argument("--phase7-f9-runs", default="runs/ablation/reward_sweep")
     p.add_argument("--phase7-f10-runs", default="runs/ablation/aggressiveness")
-    p.add_argument("--out-dir",         default="docs/results/07_ablation")
+    p.add_argument("--out-dir", default="docs/results/07_ablation")
     # Step-8 F2 (07_HANDOFF.md §5): explicit upstream-manifest SHA pins.
     p.add_argument(
         "--phase5-sweep-manifest",
@@ -391,15 +411,15 @@ def _build_argparser() -> argparse.ArgumentParser:
     return p
 
 
-def main(argv: Optional[List[str]] = None) -> int:
+def main(argv: list[str] | None = None) -> int:
     args = _build_argparser().parse_args(argv)
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s %(levelname)s %(name)s %(message)s",
     )
 
-    sha_collector: Dict[str, str] = {}
-    points: List[Dict[str, Any]] = []
+    sha_collector: dict[str, str] = {}
+    points: list[dict[str, Any]] = []
     points += _collect_phase6_points(Path(args.benchmark_runs), sha_collector)
     points += _collect_f9_points(Path(args.ablation_f9_runs), sha_collector)
     points += _collect_f10_points(Path(args.ablation_f10_runs), sha_collector)
@@ -407,8 +427,7 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     if not points:
         logger.error(
-            "F12: no points collected — run phase-6, phase-7-reward, "
-            "phase-7-aggressiveness first."
+            "F12: no points collected — run phase-6, phase-7-reward, phase-7-aggressiveness first."
         )
         return 1
 
@@ -438,7 +457,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         "figure": "F12",
         "git_sha": _git_sha(),
         "outputs": {
-            "png":  str(png_path),
+            "png": str(png_path),
             "json": str(out_dir / "F12_summary.json"),
         },
         "inputs": {
@@ -485,7 +504,9 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     logger.info(
         "F12 written to %s — G7.4 passes=%s (%d distinct frontier points)",
-        out_dir, g74.get("passes"), g74.get("n_distinct_frontier_points"),
+        out_dir,
+        g74.get("passes"),
+        g74.get("n_distinct_frontier_points"),
     )
     return 0
 

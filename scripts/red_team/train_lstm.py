@@ -38,11 +38,8 @@ import json
 import logging
 import subprocess
 import sys
-from collections import Counter
-from dataclasses import asdict
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 
@@ -69,9 +66,9 @@ NUM_STAGES = 5
 
 # red-team exit gates (from docs/results/02_red_team/PLAN.md §3.2)
 DEFAULT_GATES = {
-    "G1_max_train_val_gap": 0.25,    # max abs(train-val)/val per epoch
-    "G2_min_token_accuracy": 0.55,   # token-level top-1 on synthetic val
-    "G3_max_kl_divergence": 0.05,    # KL(P_lstm || P_synthetic_truth)
+    "G1_max_train_val_gap": 0.25,  # max abs(train-val)/val per epoch
+    "G2_min_token_accuracy": 0.55,  # token-level top-1 on synthetic val
+    "G3_max_kl_divergence": 0.05,  # KL(P_lstm || P_synthetic_truth)
     "G4_min_cosine_similarity": 0.90,
 }
 
@@ -79,6 +76,7 @@ DEFAULT_GATES = {
 # ---------------------------------------------------------------------------
 # Utilities
 # ---------------------------------------------------------------------------
+
 
 def _sha256(path: Path, chunk: int = 1 << 20) -> str:
     h = hashlib.sha256()
@@ -97,7 +95,7 @@ def _git_sha() -> str:
         return "unknown"
 
 
-def _flatten_to_transition_matrix(episodes: List[List[int]]) -> np.ndarray:
+def _flatten_to_transition_matrix(episodes: list[list[int]]) -> np.ndarray:
     """Compute the empirical 5x5 transition matrix from a list of episodes.
 
     Cell ``T[i, j]`` holds ``P(stage_{t+1} = j | stage_t = i)`` over all
@@ -115,7 +113,7 @@ def _flatten_to_transition_matrix(episodes: List[List[int]]) -> np.ndarray:
 
 def _kl_divergence(p: np.ndarray, q: np.ndarray, eps: float = 1e-9) -> float:
     """Mean per-row KL(p || q), ignoring rows where p has zero mass."""
-    kl_per_row: List[float] = []
+    kl_per_row: list[float] = []
     for i in range(p.shape[0]):
         if p[i].sum() <= 0:
             continue
@@ -135,22 +133,23 @@ def _cosine(a: np.ndarray, b: np.ndarray, eps: float = 1e-12) -> float:
 # Sequence sampling from the trained LSTM
 # ---------------------------------------------------------------------------
 
+
 def _generate_lstm_episodes(
     model: AttackSequenceGenerator,
     n_episodes: int,
     seq_len: int,
     *,
-    seed_episodes: List[List[int]],
+    seed_episodes: list[list[int]],
     rng: np.random.Generator,
     sample_temperature: float = 1.0,
-) -> List[List[int]]:
+) -> list[list[int]]:
     """Greedy/sampling rollout of ``n_episodes`` from the LSTM.
 
     For each rollout we pick a random "seed" prefix from *seed_episodes* of
     length ``seq_len`` and then auto-regress for the same length as the seed
     episode (capped at 30 to keep runtime bounded).
     """
-    out: List[List[int]] = []
+    out: list[list[int]] = []
     if not seed_episodes:
         raise ValueError("seed_episodes must be non-empty")
     for _ in range(n_episodes):
@@ -173,10 +172,11 @@ def _generate_lstm_episodes(
 # Plotting
 # ---------------------------------------------------------------------------
 
+
 def _plot_learning_curves(
-    train_losses: List[float],
-    val_losses: List[float],
-    val_macro_f1s: List[float],
+    train_losses: list[float],
+    val_losses: list[float],
+    val_macro_f1s: list[float],
     out_path: Path,
 ) -> None:
     import matplotlib.pyplot as plt
@@ -232,15 +232,18 @@ def _plot_transition_matrices(
         for i in range(NUM_STAGES):
             for j in range(NUM_STAGES):
                 ax.text(
-                    j, i, f"{mat[i, j]:.2f}",
-                    ha="center", va="center",
+                    j,
+                    i,
+                    f"{mat[i, j]:.2f}",
+                    ha="center",
+                    va="center",
                     color="white" if mat[i, j] < (vmin + vmax) / 2 else "black",
                     fontsize=7,
                 )
         return im
 
     _heat(axes[0], p_truth, "Ground truth (synthetic)")
-    _heat(axes[1], p_lstm,  "LSTM empirical (10 000 gen.)")
+    _heat(axes[1], p_lstm, "LSTM empirical (10 000 gen.)")
     diff = p_lstm - p_truth
     _heat(axes[2], diff, "LSTM − Truth", vmin=-0.5, vmax=0.5, cmap="coolwarm")
 
@@ -256,7 +259,8 @@ def _plot_transition_matrices(
 # Main
 # ---------------------------------------------------------------------------
 
-def _parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
+
+def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     p = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
     )
@@ -271,19 +275,20 @@ def _parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
     p.add_argument("--num-episodes", type=int, default=50_000)
     p.add_argument("--min-episode-length", type=int, default=8)
     p.add_argument("--max-episode-length", type=int, default=20)
-    p.add_argument("--lstm-hidden", type=int, default=32)   # smaller -> less memorisation
-    p.add_argument("--lstm-layers", type=int, default=1)    # 1 layer is enough for 5 tokens
+    p.add_argument("--lstm-hidden", type=int, default=32)  # smaller -> less memorisation
+    p.add_argument("--lstm-layers", type=int, default=1)  # 1 layer is enough for 5 tokens
     p.add_argument("--lstm-embed", type=int, default=16)
     p.add_argument("--dropout", type=float, default=0.2)
     p.add_argument("--n-eval-episodes", type=int, default=10_000)
     p.add_argument("--no-mlflow", action="store_true", help="disable MLflow logging")
-    p.add_argument("--dry-run", action="store_true",
-                   help="exit before training (just verify wiring)")
+    p.add_argument(
+        "--dry-run", action="store_true", help="exit before training (just verify wiring)"
+    )
     p.add_argument("-v", "--verbose", action="store_true")
     return p.parse_args(argv)
 
 
-def main(argv: Optional[List[str]] = None) -> int:
+def main(argv: list[str] | None = None) -> int:
     args = _parse_args(argv)
     logging.basicConfig(
         level=logging.DEBUG if args.verbose else logging.INFO,
@@ -294,7 +299,8 @@ def main(argv: Optional[List[str]] = None) -> int:
     if not splits_manifest.exists():
         LOG.error(
             "splits/manifest.json not found at %s. Run `make build-split-indices` "
-            "first (dataset-prep).", splits_manifest,
+            "first (dataset-prep).",
+            splits_manifest,
         )
         return 1
 
@@ -303,7 +309,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     LOG.info("Train-split prior loaded: %s", train_prior)
 
     np.random.seed(args.seed)
-    rng_master = np.random.default_rng(args.seed)
+    np.random.default_rng(args.seed)
 
     # --- 2) Build EpisodeGenerator --------------------------------------------------
     epi_cfg = EpisodeGeneratorConfig(
@@ -313,9 +319,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         num_stages=NUM_STAGES,
         distribution_temperature=0.7,  # mild flattening (rare stages get more mass)
     )
-    epi_gen = EpisodeGenerator(
-        config=epi_cfg, stage_distribution=train_prior, seed=args.seed
-    )
+    epi_gen = EpisodeGenerator(config=epi_cfg, stage_distribution=train_prior, seed=args.seed)
     ground_truth_T = epi_gen._transition_probs.copy()  # noqa: SLF001 — deliberate
     LOG.info("Ground-truth synthetic transition matrix:\n%s", np.round(ground_truth_T, 3))
 
@@ -390,7 +394,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     # than steps in absorbing-state rollouts.
     truth_episodes = epi_gen.generate_batch(args.n_eval_episodes)
 
-    def _stage_freq(eps: List[List[int]]) -> np.ndarray:
+    def _stage_freq(eps: list[list[int]]) -> np.ndarray:
         f = np.zeros(NUM_STAGES)
         for ep in eps:
             for s in ep:
@@ -404,7 +408,10 @@ def main(argv: Optional[List[str]] = None) -> int:
     cos_sim = _cosine(lstm_freq, truth_freq)
     LOG.info(
         "stage-freq cosine(LSTM, truth_rollouts) = %.4f\n  LSTM        = %s\n  truth roll. = %s\n  train prior = %s",
-        cos_sim, np.round(lstm_freq, 3), np.round(truth_freq, 3), np.round(train_freq, 3),
+        cos_sim,
+        np.round(lstm_freq, 3),
+        np.round(truth_freq, 3),
+        np.round(train_freq, 3),
     )
 
     # G1 — generalization gap on i.i.d. data (NOT on the balanced validation
@@ -419,7 +426,10 @@ def main(argv: Optional[List[str]] = None) -> int:
     iid_gap = abs(final_train_loss - holdout_loss) / max(final_train_loss, holdout_loss, 0.1)
     LOG.info(
         "G1 i.i.d. gap = %.3f (final_train=%.4f, holdout=%.4f); balanced-val=%.4f for reference",
-        iid_gap, final_train_loss, holdout_loss, val_losses[-1],
+        iid_gap,
+        final_train_loss,
+        holdout_loss,
+        val_losses[-1],
     )
 
     # Gates evaluation
@@ -443,9 +453,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     f1_path = args.out_dir / "F1_learning_curves.png"
     f2_path = args.out_dir / "F2_transition_matrix_comparison.png"
 
-    _plot_learning_curves(
-        train_losses, val_losses, train_results["val_macro_f1s"], f1_path
-    )
+    _plot_learning_curves(train_losses, val_losses, train_results["val_macro_f1s"], f1_path)
     _plot_transition_matrices(p_lstm, p_truth, f2_path)
 
     summary = {
@@ -502,12 +510,20 @@ def main(argv: Optional[List[str]] = None) -> int:
     print(f"red-team Red Team v2 :: {banner}")
     for gate, passed in gates_passed.items():
         threshold = DEFAULT_GATES[
-            {"G1": "G1_max_train_val_gap", "G2": "G2_min_token_accuracy",
-             "G3": "G3_max_kl_divergence", "G4": "G4_min_cosine_similarity"}[gate]
+            {
+                "G1": "G1_max_train_val_gap",
+                "G2": "G2_min_token_accuracy",
+                "G3": "G3_max_kl_divergence",
+                "G4": "G4_min_cosine_similarity",
+            }[gate]
         ]
         value = gates[
-            {"G1": "G1_iid_train_holdout_gap", "G2": "G2_token_accuracy",
-             "G3": "G3_kl_divergence", "G4": "G4_cosine_similarity"}[gate]
+            {
+                "G1": "G1_iid_train_holdout_gap",
+                "G2": "G2_token_accuracy",
+                "G3": "G3_kl_divergence",
+                "G4": "G4_cosine_similarity",
+            }[gate]
         ]
         status = "PASS" if passed else "FAIL"
         print(f"  {gate}: {status}   threshold={threshold:.3f}   observed={value:.4f}")

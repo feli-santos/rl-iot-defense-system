@@ -7,7 +7,6 @@ artifacts for the Adversarial IoT Environment.
 
 import json
 from pathlib import Path
-from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -24,16 +23,14 @@ class TestDataProcessorAdversarialEnv:
         """Create a directory with mock CICIoT2023 CSV data."""
         data_dir = tmp_path / "raw" / "CICIoT2023"
         data_dir.mkdir(parents=True, exist_ok=True)
-        
+
         # Create mock CSV with realistic columns
         np.random.seed(42)
         n_samples = 500
-        
+
         # Create feature columns (simplified)
-        data = {
-            f"feature_{i}": np.random.randn(n_samples) for i in range(10)
-        }
-        
+        data = {f"feature_{i}": np.random.randn(n_samples) for i in range(10)}
+
         # Add label column with known CICIoT2023 labels
         labels = [
             "BenignTraffic",
@@ -47,10 +44,10 @@ class TestDataProcessorAdversarialEnv:
             "DoS-SYN_Flood",
         ]
         data["label"] = np.random.choice(labels, n_samples)
-        
+
         df = pd.DataFrame(data)
         df.to_csv(data_dir / "test_data.csv", index=False)
-        
+
         return data_dir
 
     @pytest.fixture
@@ -61,9 +58,7 @@ class TestDataProcessorAdversarialEnv:
         return output
 
     @pytest.fixture
-    def processor(
-        self, raw_data_dir: Path, output_dir: Path
-    ) -> CICIoTProcessor:
+    def processor(self, raw_data_dir: Path, output_dir: Path) -> CICIoTProcessor:
         """Create processor with test config."""
         config = DataProcessingConfig(
             dataset_path=raw_data_dir,
@@ -78,10 +73,10 @@ class TestDataProcessorAdversarialEnv:
     ) -> None:
         """Should create features.npy file."""
         processor.process_for_adversarial_env()
-        
+
         features_path = output_dir / "features.npy"
         assert features_path.exists()
-        
+
         features = np.load(features_path)
         assert features.ndim == 2
         assert features.shape[0] > 0
@@ -92,10 +87,10 @@ class TestDataProcessorAdversarialEnv:
     ) -> None:
         """Should create labels.npy file."""
         processor.process_for_adversarial_env()
-        
+
         labels_path = output_dir / "labels.npy"
         assert labels_path.exists()
-        
+
         labels = np.load(labels_path, allow_pickle=True)
         assert len(labels) > 0
 
@@ -104,13 +99,13 @@ class TestDataProcessorAdversarialEnv:
     ) -> None:
         """Should create state_indices.json file."""
         processor.process_for_adversarial_env()
-        
+
         indices_path = output_dir / "state_indices.json"
         assert indices_path.exists()
-        
-        with open(indices_path, "r") as f:
+
+        with open(indices_path) as f:
             state_indices = json.load(f)
-        
+
         # Should have all 5 stages
         assert len(state_indices) == 5
         assert all(str(i) in state_indices for i in range(5))
@@ -120,7 +115,7 @@ class TestDataProcessorAdversarialEnv:
     ) -> None:
         """Should create scaler.joblib file."""
         processor.process_for_adversarial_env()
-        
+
         scaler_path = output_dir / "scaler.joblib"
         assert scaler_path.exists()
 
@@ -129,13 +124,13 @@ class TestDataProcessorAdversarialEnv:
     ) -> None:
         """Should create metadata.json file."""
         processor.process_for_adversarial_env()
-        
+
         metadata_path = output_dir / "metadata.json"
         assert metadata_path.exists()
-        
-        with open(metadata_path, "r") as f:
+
+        with open(metadata_path) as f:
             metadata = json.load(f)
-        
+
         assert "num_samples" in metadata
         assert "num_features" in metadata
         assert "num_stages" in metadata
@@ -146,54 +141,48 @@ class TestDataProcessorAdversarialEnv:
     ) -> None:
         """State indices should cover all samples in dataset."""
         processor.process_for_adversarial_env()
-        
+
         features = np.load(output_dir / "features.npy")
         num_samples = len(features)
-        
-        with open(output_dir / "state_indices.json", "r") as f:
+
+        with open(output_dir / "state_indices.json") as f:
             state_indices = json.load(f)
-        
+
         # Count total indices across all stages
         total_indices = sum(len(indices) for indices in state_indices.values())
         assert total_indices == num_samples
 
-    def test_state_indices_are_valid(
-        self, processor: CICIoTProcessor, output_dir: Path
-    ) -> None:
+    def test_state_indices_are_valid(self, processor: CICIoTProcessor, output_dir: Path) -> None:
         """State indices should be valid row numbers."""
         processor.process_for_adversarial_env()
-        
+
         features = np.load(output_dir / "features.npy")
         num_samples = len(features)
-        
-        with open(output_dir / "state_indices.json", "r") as f:
+
+        with open(output_dir / "state_indices.json") as f:
             state_indices = json.load(f)
-        
-        for stage_id, indices in state_indices.items():
+
+        for _stage_id, indices in state_indices.items():
             for idx in indices:
                 assert 0 <= idx < num_samples
 
-    def test_results_contains_stage_counts(
-        self, processor: CICIoTProcessor
-    ) -> None:
+    def test_results_contains_stage_counts(self, processor: CICIoTProcessor) -> None:
         """Results should include sample counts per stage."""
         results = processor.process_for_adversarial_env()
-        
+
         assert "stage_counts" in results
         assert len(results["stage_counts"]) == 5
 
-    def test_features_are_normalized(
-        self, processor: CICIoTProcessor, output_dir: Path
-    ) -> None:
+    def test_features_are_normalized(self, processor: CICIoTProcessor, output_dir: Path) -> None:
         """Normalized features should have approximately zero mean."""
         processor.process_for_adversarial_env()
-        
+
         features = np.load(output_dir / "features.npy")
-        
+
         # Check normalization (mean close to 0, std close to 1)
         mean = np.mean(features, axis=0)
         std = np.std(features, axis=0)
-        
+
         assert np.abs(mean).mean() < 0.1  # Mean close to 0
         assert 0.8 < std.mean() < 1.2  # Std close to 1
 
@@ -206,9 +195,9 @@ class TestDataProcessorWithLabelMapper:
         """Create data with samples for all Kill Chain stages."""
         data_dir = tmp_path / "raw" / "CICIoT2023"
         data_dir.mkdir(parents=True, exist_ok=True)
-        
+
         np.random.seed(42)
-        
+
         # Labels for each stage
         stage_labels = {
             0: ["BenignTraffic"] * 50,
@@ -217,29 +206,27 @@ class TestDataProcessorWithLabelMapper:
             3: ["MITM-ArpSpoofing", "DNS_Spoofing"] * 25,
             4: ["DDoS-TCP_Flood", "DDoS-UDP_Flood", "DoS-SYN_Flood"] * 17,
         }
-        
+
         all_labels = []
         for labels in stage_labels.values():
             all_labels.extend(labels)
-        
+
         n_samples = len(all_labels)
-        
+
         data = {f"feature_{i}": np.random.randn(n_samples) for i in range(10)}
         data["label"] = all_labels
-        
+
         df = pd.DataFrame(data)
         df.to_csv(data_dir / "test_data.csv", index=False)
-        
+
         return data_dir
 
     @pytest.fixture
-    def processor(
-        self, raw_data_with_all_stages: Path, tmp_path: Path
-    ) -> CICIoTProcessor:
+    def processor(self, raw_data_with_all_stages: Path, tmp_path: Path) -> CICIoTProcessor:
         """Create processor with test config."""
         output = tmp_path / "processed"
         output.mkdir(parents=True, exist_ok=True)
-        
+
         config = DataProcessingConfig(
             dataset_path=raw_data_with_all_stages,
             output_path=output,
@@ -248,14 +235,12 @@ class TestDataProcessorWithLabelMapper:
         )
         return CICIoTProcessor(config)
 
-    def test_all_stages_have_samples(
-        self, processor: CICIoTProcessor
-    ) -> None:
+    def test_all_stages_have_samples(self, processor: CICIoTProcessor) -> None:
         """All 5 Kill Chain stages should have samples."""
         results = processor.process_for_adversarial_env()
-        
+
         stage_counts = results["stage_counts"]
-        
+
         for stage_id in range(5):
             assert stage_counts[stage_id] > 0, f"Stage {stage_id} has no samples"
 
@@ -276,15 +261,17 @@ class TestDataProcessorRegressionFixes:
         n_attack_b = 30
         total = n_benign + n_attack_a + n_attack_b
 
-        df = pd.DataFrame({
-            "feature_0": rng.normal(size=total),
-            "feature_1": rng.normal(size=total),
-            "label": (
-                ["BenignTraffic"] * n_benign
-                + ["DDoS-UDP_Flood"] * n_attack_a
-                + ["Recon-PortScan"] * n_attack_b
-            ),
-        })
+        df = pd.DataFrame(
+            {
+                "feature_0": rng.normal(size=total),
+                "feature_1": rng.normal(size=total),
+                "label": (
+                    ["BenignTraffic"] * n_benign
+                    + ["DDoS-UDP_Flood"] * n_attack_a
+                    + ["Recon-PortScan"] * n_attack_b
+                ),
+            }
+        )
         df.to_csv(data_dir / "smart_sample.csv", index=False)
 
         config = DataProcessingConfig(
@@ -416,7 +403,7 @@ class TestDataProcessorRegressionFixes:
         processor = CICIoTProcessor(config)
         processor.process_for_adversarial_env()
 
-        with open(out_dir / "metadata.json", "r") as f:
+        with open(out_dir / "metadata.json") as f:
             metadata = json.load(f)
 
         split_info = metadata.get("split_info", {})

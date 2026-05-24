@@ -2,21 +2,18 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, List
-
 import numpy as np
 import pytest
 
 from src.benchmark.baseline_policies import (
+    _RECOMMENDED_BY_STAGE,
     RFActingPolicy,
     SB3PolicyAdapter,
-    _RECOMMENDED_BY_STAGE,
     always_block,
     always_observe,
     random_policy,
     recommended_action_policy,
 )
-
 
 # --------------------------------------------------------------- closed-form
 
@@ -76,7 +73,7 @@ class _StubRF:
     of the first feature value. Useful because we can pre-compute the
     expected action without committing the test to a real classifier."""
 
-    def __init__(self, mapping: Dict[float, int]) -> None:
+    def __init__(self, mapping: dict[float, int]) -> None:
         self._mapping = dict(mapping)
 
     def predict(self, X: np.ndarray) -> np.ndarray:  # noqa: D401 — sklearn API
@@ -93,7 +90,9 @@ class TestRFActingPolicy:
         [(0, 0), (1, 1), (2, 2), (3, 3), (4, 4)],
     )
     def test_maps_predicted_stage_to_recommended_action(
-        self, predicted_stage: int, expected_action: int,
+        self,
+        predicted_stage: int,
+        expected_action: int,
     ) -> None:
         # Stub RF: returns `predicted_stage` whenever the first feature
         # is exactly the marker value 0.5. Latest-step features start
@@ -117,7 +116,10 @@ class TestRFActingPolicy:
         window[W - 1, 0] = 1.0
         obs = window.flatten()
         pol = RFActingPolicy(
-            rf, num_features=F, window_size=W, include_deltas=False,
+            rf,
+            num_features=F,
+            window_size=W,
+            include_deltas=False,
         )
         # Predicted stage 3 (MANEUVER) → recommended action 3 (BLOCK).
         assert pol(obs, {}) == 3
@@ -154,7 +156,7 @@ class TestRFActingPolicy:
 class _StubSB3Model:
     """Returns a fixed scripted action sequence (round-robin)."""
 
-    def __init__(self, actions: List[int]) -> None:
+    def __init__(self, actions: list[int]) -> None:
         self._actions = list(actions)
         self._i = 0
 

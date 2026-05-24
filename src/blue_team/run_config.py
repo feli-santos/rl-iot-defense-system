@@ -39,8 +39,7 @@ import json
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, Optional
-
+from typing import Any
 
 _SCHEMA_VERSION = "1.0"
 
@@ -106,7 +105,7 @@ class BlueTeamRunConfig:
     eval_env: EnvConfigSerializable = field(
         default_factory=lambda: EnvConfigSerializable(split="val_balanced")
     )
-    algo_hparams: Dict[str, Any] = field(default_factory=dict)
+    algo_hparams: dict[str, Any] = field(default_factory=dict)
     notes: str = ""
 
     @property
@@ -116,14 +115,14 @@ class BlueTeamRunConfig:
 
     # ------------------------------------------------------------------ I/O
 
-    def to_dict(self, *, completed: bool = False, **extra: Any) -> Dict[str, Any]:
+    def to_dict(self, *, completed: bool = False, **extra: Any) -> dict[str, Any]:
         """Render this config to a JSON-serialisable dict.
 
         When ``completed=True``, fills the post-run telemetry fields
         (``completed_at``, ``wallclock_seconds``, ``n_episodes_*``)
         from ``extra``.
         """
-        d: Dict[str, Any] = {
+        d: dict[str, Any] = {
             "schema_version": _SCHEMA_VERSION,
             "run_id": self.run_id,
             "algo": self.algo,
@@ -147,9 +146,15 @@ class BlueTeamRunConfig:
                 "completed_at",
                 datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
             )
-            for k in ("wallclock_seconds", "n_episodes_train",
-                      "n_episodes_eval", "git_sha", "final_eval_reward",
-                      "final_eval_mttc", "final_eval_compromise_rate"):
+            for k in (
+                "wallclock_seconds",
+                "n_episodes_train",
+                "n_episodes_eval",
+                "git_sha",
+                "final_eval_reward",
+                "final_eval_mttc",
+                "final_eval_compromise_rate",
+            ):
                 if k in extra:
                     d[k] = extra[k]
         return d
@@ -166,7 +171,7 @@ class BlueTeamRunConfig:
     # ------------------------------------------------------------------ factories
 
     @classmethod
-    def from_dict(cls, d: Dict[str, Any]) -> "BlueTeamRunConfig":
+    def from_dict(cls, d: dict[str, Any]) -> BlueTeamRunConfig:
         """Round-trip from the JSON manifest written by :meth:`write_manifest`.
 
         Strict on schema version so tests can lock the wire format.
@@ -174,8 +179,7 @@ class BlueTeamRunConfig:
         v = d.get("schema_version")
         if v != _SCHEMA_VERSION:
             raise ValueError(
-                f"BlueTeamRunConfig: unsupported schema_version {v!r}; "
-                f"expected {_SCHEMA_VERSION!r}"
+                f"BlueTeamRunConfig: unsupported schema_version {v!r}; expected {_SCHEMA_VERSION!r}"
             )
         env = EnvConfigSerializable(**d.get("env", {}))
         eval_env = EnvConfigSerializable(**d.get("eval_env", {}))
@@ -197,7 +201,7 @@ class BlueTeamRunConfig:
         )
 
     @classmethod
-    def from_manifest(cls, path: Path | str) -> "BlueTeamRunConfig":
+    def from_manifest(cls, path: Path | str) -> BlueTeamRunConfig:
         return cls.from_dict(json.loads(Path(path).read_text()))
 
 

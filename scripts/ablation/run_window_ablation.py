@@ -43,7 +43,7 @@ import subprocess
 import sys
 import time
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 _ROOT = Path(__file__).resolve().parents[2]
 if str(_ROOT) not in sys.path:
@@ -73,8 +73,8 @@ def _run_cell(
     dataset_path: str,
     splits_manifest: str,
     smoke: bool,
-    blue_team_primary_root: Optional[str],
-) -> Dict[str, Any]:
+    blue_team_primary_root: str | None,
+) -> dict[str, Any]:
     """Train one (window_size, seed) cell. Returns a result dict."""
     tag = _window_to_tag(window_size)
     out_dir = str(Path(out_root) / tag / "ppo" / f"seed_{seed}")
@@ -86,7 +86,9 @@ def _run_cell(
         if manifest_path.exists():
             logger.info(
                 "window_size=%d seed=%d: reusing primary run at %s",
-                window_size, seed, primary_run,
+                window_size,
+                seed,
+                primary_run,
             )
             out_path = Path(out_dir)
             out_path.parent.mkdir(parents=True, exist_ok=True)
@@ -97,23 +99,38 @@ def _run_cell(
                     out_path.mkdir(parents=True, exist_ok=True)
                     (out_path / "reused_from.txt").write_text(str(primary_run.resolve()))
             return {
-                "window_size": window_size, "seed": seed, "ok": True,
-                "out_dir": str(out_path), "reused": True, "wallclock": 0.0,
+                "window_size": window_size,
+                "seed": seed,
+                "ok": True,
+                "out_dir": str(out_path),
+                "reused": True,
+                "wallclock": 0.0,
             }
 
     # Otherwise train fresh
     cmd = [
-        _PYTHON, "-m", _TRAIN_MODULE,
-        "--algo", "ppo",
-        "--seed", str(seed),
-        "--total-timesteps", str(total_timesteps),
-        "--eval-freq", str(eval_freq),
-        "--n-eval-episodes", str(n_eval_episodes),
-        "--out-dir", out_dir,
-        "--reward-overrides", json.dumps({
-            "window_size": window_size,
-            "impact_is_terminal": False,  # match primary contract
-        }),
+        _PYTHON,
+        "-m",
+        _TRAIN_MODULE,
+        "--algo",
+        "ppo",
+        "--seed",
+        str(seed),
+        "--total-timesteps",
+        str(total_timesteps),
+        "--eval-freq",
+        str(eval_freq),
+        "--n-eval-episodes",
+        str(n_eval_episodes),
+        "--out-dir",
+        out_dir,
+        "--reward-overrides",
+        json.dumps(
+            {
+                "window_size": window_size,
+                "impact_is_terminal": False,  # match primary contract
+            }
+        ),
     ]
     if generator_path:
         cmd += ["--generator-path", generator_path]
@@ -131,18 +148,26 @@ def _run_cell(
     try:
         logger.info(
             "window_ablation: w=%d seed=%d -> %s",
-            window_size, seed, out_dir,
+            window_size,
+            seed,
+            out_dir,
         )
         with open(log_path, "w") as flog:
             result = subprocess.run(
-                cmd, stdout=flog, stderr=subprocess.STDOUT,
-                cwd=str(_ROOT), timeout=7200,
+                cmd,
+                stdout=flog,
+                stderr=subprocess.STDOUT,
+                cwd=str(_ROOT),
+                timeout=7200,
             )
         ok = result.returncode == 0
         if not ok:
             logger.error(
                 "w=%d seed=%d FAILED (rc=%d); log: %s",
-                window_size, seed, result.returncode, log_path,
+                window_size,
+                seed,
+                result.returncode,
+                log_path,
             )
     except Exception as exc:  # noqa: BLE001
         logger.error("w=%d seed=%d EXCEPTION: %s", window_size, seed, exc)
@@ -150,18 +175,25 @@ def _run_cell(
     if ok:
         logger.info(
             "done w=%d seed=%d ok=%s wallclock=%.1fs",
-            window_size, seed, ok, wallclock,
+            window_size,
+            seed,
+            ok,
+            wallclock,
         )
     return {
-        "window_size": window_size, "seed": seed, "ok": ok,
-        "out_dir": out_dir, "reused": False, "wallclock": wallclock,
+        "window_size": window_size,
+        "seed": seed,
+        "ok": ok,
+        "out_dir": out_dir,
+        "reused": False,
+        "wallclock": wallclock,
     }
 
 
 def run_sweep(
     *,
-    window_sizes: List[int],
-    seeds: List[int],
+    window_sizes: list[int],
+    seeds: list[int],
     out_root: str,
     total_timesteps: int,
     eval_freq: int,
@@ -171,20 +203,24 @@ def run_sweep(
     splits_manifest: str,
     parallel: int,
     smoke: bool,
-    blue_team_primary_root: Optional[str],
-) -> Dict[str, Any]:
+    blue_team_primary_root: str | None,
+) -> dict[str, Any]:
     cells = [(w, sd) for w in window_sizes for sd in seeds]
     logger.info(
         "window_ablation: %d cells (windows=%s seeds=%s) on %d worker(s)",
-        len(cells), window_sizes, seeds, parallel,
+        len(cells),
+        window_sizes,
+        seeds,
+        parallel,
     )
-    results: List[Dict[str, Any]] = []
+    results: list[dict[str, Any]] = []
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=parallel) as pool:
         futures = {
             pool.submit(
                 _run_cell,
-                window_size=w, seed=sd,
+                window_size=w,
+                seed=sd,
                 out_root=out_root,
                 total_timesteps=total_timesteps,
                 eval_freq=eval_freq,
@@ -217,12 +253,15 @@ def run_sweep(
     manifest_path.write_text(json.dumps(manifest, indent=2))
     logger.info(
         "window_ablation done: %d ok / %d failed / %d reused; manifest -> %s",
-        n_ok, n_failed, n_reused, manifest_path,
+        n_ok,
+        n_failed,
+        n_reused,
+        manifest_path,
     )
     return manifest
 
 
-def main(argv: Optional[list] = None) -> int:  # type: ignore[type-arg]
+def main(argv: list | None = None) -> int:  # type: ignore[type-arg]
     p = argparse.ArgumentParser(
         description="sensitivity-sweep FA_window — window_size ablation (C22).",
     )
@@ -240,7 +279,8 @@ def main(argv: Optional[list] = None) -> int:  # type: ignore[type-arg]
     )
     p.add_argument("--parallel", type=int, default=3)
     p.add_argument(
-        "--phase5-primary-root", default="runs/blue_team_primary",
+        "--phase5-primary-root",
+        default="runs/blue_team_primary",
         help="Root of the primary blue-team runs (for window_size=5 reuse).",
     )
     p.add_argument("--smoke", action="store_true")
@@ -269,7 +309,9 @@ def main(argv: Optional[list] = None) -> int:  # type: ignore[type-arg]
         smoke=args.smoke,
         blue_team_primary_root=args.blue_team_primary_root,
     )
-    print(f"OK: {manifest['n_ok']} / Failed: {manifest['n_failed']} / Reused: {manifest['n_reused']}")
+    print(
+        f"OK: {manifest['n_ok']} / Failed: {manifest['n_failed']} / Reused: {manifest['n_reused']}"
+    )
     return 0 if manifest["n_failed"] == 0 else 1
 
 

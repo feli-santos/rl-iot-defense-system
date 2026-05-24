@@ -34,7 +34,6 @@ import sys
 import time
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Dict, List
 
 logger = logging.getLogger("scripts.blue_team.run_sweep")
 
@@ -50,14 +49,18 @@ def _build_argparser() -> argparse.ArgumentParser:
     p.add_argument("--n-eval-episodes", type=int, default=30)
     p.add_argument("--out-root", default="runs/blue_team")
     p.add_argument(
-        "--parallel", type=int, default=1,
+        "--parallel",
+        type=int,
+        default=1,
         help="Number of concurrent subprocesses (default 1 = serial).",
     )
     p.add_argument(
-        "--generator-path", default="artifacts/generator/red_team",
+        "--generator-path",
+        default="artifacts/generator/red_team",
     )
     p.add_argument(
-        "--dataset-path", default="data/processed/ciciot2023",
+        "--dataset-path",
+        default="data/processed/ciciot2023",
     )
     p.add_argument(
         "--splits-manifest",
@@ -65,14 +68,17 @@ def _build_argparser() -> argparse.ArgumentParser:
     )
     p.add_argument("--smoke", action="store_true")
     p.add_argument(
-        "--continue-on-failure", action="store_true",
+        "--continue-on-failure",
+        action="store_true",
         help="If a run crashes, log it and keep going. Default: stop.",
     )
     # Allow passing impact_is_terminal and reward overrides to the per-run
     # train_agent subprocess so the sweep driver can launch the primary
     # (impact_is_terminal=False) contract without code duplication.
     p.add_argument(
-        "--impact-is-terminal", type=str, default=None,
+        "--impact-is-terminal",
+        type=str,
+        default=None,
         help=(
             "Forwarded to train_agent --impact-is-terminal. "
             "Use 'false' to enable the explicit IMPACT-row decision step. "
@@ -80,30 +86,44 @@ def _build_argparser() -> argparse.ArgumentParser:
         ),
     )
     p.add_argument(
-        "--reward-overrides", type=str, default=None,
+        "--reward-overrides",
+        type=str,
+        default=None,
         help="JSON object forwarded to train_agent --reward-overrides.",
     )
     return p
 
 
-def _run_one(args: argparse.Namespace, algo: str, seed: int) -> Dict:
+def _run_one(args: argparse.Namespace, algo: str, seed: int) -> dict:
     """Spawn a single ``python -m scripts.blue_team.train_agent`` subprocess."""
     out_dir = Path(args.out_root) / algo / f"seed_{seed}"
     out_dir.mkdir(parents=True, exist_ok=True)
     log_path = out_dir / "train.log"
 
-    cmd: List[str] = [
-        sys.executable, "-m", "scripts.blue_team.train_agent",
-        "--algo", algo,
-        "--seed", str(seed),
-        "--total-timesteps", str(args.total_timesteps),
-        "--eval-freq", str(args.eval_freq),
-        "--n-eval-episodes", str(args.n_eval_episodes),
-        "--out-dir", str(out_dir),
-        "--generator-path", args.generator_path,
-        "--dataset-path", args.dataset_path,
-        "--splits-manifest", args.splits_manifest,
-        "--verbose", "0",
+    cmd: list[str] = [
+        sys.executable,
+        "-m",
+        "scripts.blue_team.train_agent",
+        "--algo",
+        algo,
+        "--seed",
+        str(seed),
+        "--total-timesteps",
+        str(args.total_timesteps),
+        "--eval-freq",
+        str(args.eval_freq),
+        "--n-eval-episodes",
+        str(args.n_eval_episodes),
+        "--out-dir",
+        str(out_dir),
+        "--generator-path",
+        args.generator_path,
+        "--dataset-path",
+        args.dataset_path,
+        "--splits-manifest",
+        args.splits_manifest,
+        "--verbose",
+        "0",
     ]
     if args.smoke:
         cmd.append("--smoke")
@@ -117,13 +137,15 @@ def _run_one(args: argparse.Namespace, algo: str, seed: int) -> Dict:
     t0 = time.time()
     with log_path.open("w") as log_fh:
         proc = subprocess.run(
-            cmd, cwd=_ROOT, stdout=log_fh, stderr=subprocess.STDOUT,
+            cmd,
+            cwd=_ROOT,
+            stdout=log_fh,
+            stderr=subprocess.STDOUT,
             check=False,
         )
     wallclock = time.time() - t0
     ok = proc.returncode == 0
-    logger.info("done    algo=%s seed=%d ok=%s wallclock=%.1fs",
-                algo, seed, ok, wallclock)
+    logger.info("done    algo=%s seed=%d ok=%s wallclock=%.1fs", algo, seed, ok, wallclock)
 
     return {
         "algo": algo,
@@ -147,10 +169,15 @@ def main(argv: list[str] | None = None) -> int:
     out_root.mkdir(parents=True, exist_ok=True)
 
     grid = [(a, s) for a in args.algos for s in args.seeds]
-    logger.info("blue-team sweep: %d runs (%s) x (%s) on %d worker(s)",
-                len(grid), args.algos, args.seeds, args.parallel)
+    logger.info(
+        "blue-team sweep: %d runs (%s) x (%s) on %d worker(s)",
+        len(grid),
+        args.algos,
+        args.seeds,
+        args.parallel,
+    )
     t_start = time.time()
-    results: List[Dict] = []
+    results: list[dict] = []
 
     if args.parallel <= 1:
         for algo, seed in grid:
@@ -166,7 +193,9 @@ def main(argv: list[str] | None = None) -> int:
 
     sweep_manifest = {
         "schema_version": "1.0",
-        "started_at": datetime.fromtimestamp(t_start, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "started_at": datetime.fromtimestamp(t_start, tz=timezone.utc).strftime(
+            "%Y-%m-%dT%H:%M:%SZ"
+        ),
         "completed_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "wallclock_seconds": time.time() - t_start,
         "args": vars(args),
@@ -179,8 +208,10 @@ def main(argv: list[str] | None = None) -> int:
 
     logger.info(
         "blue-team sweep done: %d ok / %d failed in %.1fs; manifest -> %s",
-        sweep_manifest["n_ok"], sweep_manifest["n_failed"],
-        sweep_manifest["wallclock_seconds"], sweep_manifest_path,
+        sweep_manifest["n_ok"],
+        sweep_manifest["n_failed"],
+        sweep_manifest["wallclock_seconds"],
+        sweep_manifest_path,
     )
     if sweep_manifest["n_failed"] and not args.continue_on_failure:
         return 1

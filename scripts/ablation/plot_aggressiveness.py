@@ -32,7 +32,7 @@ import logging
 import math
 import subprocess
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import numpy as np
 
@@ -43,7 +43,7 @@ logger = logging.getLogger("scripts.ablation.plot_aggressiveness")
 _ROOT = Path(__file__).resolve().parents[2]
 
 
-def _sha256(path: Path) -> Optional[str]:
+def _sha256(path: Path) -> str | None:
     p = Path(path)
     if not p.exists():
         return None
@@ -56,9 +56,15 @@ def _sha256(path: Path) -> Optional[str]:
 
 def _git_sha() -> str:
     try:
-        return subprocess.check_output(
-            ["git", "rev-parse", "HEAD"], cwd=_ROOT, stderr=subprocess.DEVNULL,
-        ).decode().strip()
+        return (
+            subprocess.check_output(
+                ["git", "rev-parse", "HEAD"],
+                cwd=_ROOT,
+                stderr=subprocess.DEVNULL,
+            )
+            .decode()
+            .strip()
+        )
     except Exception:  # noqa: BLE001
         return "unknown"
 
@@ -72,49 +78,64 @@ def _summarise(
     kind: str,
     p: float,
     *,
-    sha_collector: Dict[str, str],
-) -> Dict[str, Any]:
+    sha_collector: dict[str, str],
+) -> dict[str, Any]:
     """Aggregate one (kind, p) cell across all seeds."""
     base = runs_root / f"{kind}_p{_p_slug(p)}"
-    seed_dirs = sorted(
-        d for d in base.iterdir()
-        if base.exists() and d.is_dir() and d.name.startswith("seed_")
-        and (d / "eval_test.jsonl").exists()
-    ) if base.exists() else []
-    all_records: List[Dict] = []
-    per_seed_means: List[float] = []
+    seed_dirs = (
+        sorted(
+            d
+            for d in base.iterdir()
+            if base.exists()
+            and d.is_dir()
+            and d.name.startswith("seed_")
+            and (d / "eval_test.jsonl").exists()
+        )
+        if base.exists()
+        else []
+    )
+    all_records: list[dict] = []
+    per_seed_means: list[float] = []
     for sd in seed_dirs:
         jsonl = sd / "eval_test.jsonl"
         recs = read_episodes_jsonl(jsonl)
         all_records.extend(recs)
         if recs:
-            per_seed_means.append(
-                float(np.mean([r["episode_reward"] for r in recs]))
-            )
+            per_seed_means.append(float(np.mean([r["episode_reward"] for r in recs])))
         sha = _sha256(jsonl)
         if sha is not None:
             sha_collector[str(jsonl.resolve().relative_to(_ROOT))] = sha
 
     if not all_records:
         return {
-            "kind": kind, "p": p,
-            "n_seeds": len(seed_dirs), "n_episodes": 0,
+            "kind": kind,
+            "p": p,
+            "n_seeds": len(seed_dirs),
+            "n_episodes": 0,
             "mean_reward": math.nan,
-            "ci_low": math.nan, "ci_high": math.nan,
+            "ci_low": math.nan,
+            "ci_high": math.nan,
         }
 
     rewards = [r["episode_reward"] for r in all_records]
     if len(per_seed_means) >= 3:
         ci_low, _ci_mean, ci_high = bootstrap_ci(
-            per_seed_means, n_resamples=2000, alpha=0.05, seed=0,
+            per_seed_means,
+            n_resamples=2000,
+            alpha=0.05,
+            seed=0,
         )
     else:
         ci_low, _ci_mean, ci_high = bootstrap_ci(
-            rewards, n_resamples=2000, alpha=0.05, seed=0,
+            rewards,
+            n_resamples=2000,
+            alpha=0.05,
+            seed=0,
         )
 
     return {
-        "kind": kind, "p": p,
+        "kind": kind,
+        "p": p,
         "n_seeds": len(seed_dirs),
         "n_episodes": len(all_records),
         "mean_reward": float(np.mean(rewards)),
@@ -124,17 +145,19 @@ def _summarise(
 
 
 def _evaluate_g73(
-    ppo_rows: List[Dict[str, Any]],
-    rule_rows: List[Dict[str, Any]],
-) -> Dict[str, Any]:
+    ppo_rows: list[dict[str, Any]],
+    rule_rows: list[dict[str, Any]],
+) -> dict[str, Any]:
     """G7.3: PPO p=0.0 reward < p=0.6 reward by ≥ 1σ; rule monotone."""
     by_p_ppo = {r["p"]: r for r in ppo_rows}
     by_p_rule = {r["p"]: r for r in rule_rows}
 
     p0 = by_p_ppo.get(0.0)
     p06 = by_p_ppo.get(0.6)
-    if p0 is None or p06 is None or not (
-        math.isfinite(p0["ci_high"]) and math.isfinite(p06["ci_low"])
+    if (
+        p0 is None
+        or p06 is None
+        or not (math.isfinite(p0["ci_high"]) and math.isfinite(p06["ci_low"]))
     ):
         ppo_strict_lt = False
         ppo_reason = "missing or NaN p=0.0 or p=0.6 cell"
@@ -170,8 +193,8 @@ def _evaluate_g73(
             "by ≥ 1σ between p=0.0 and p=0.6, and the rule curve is "
             "monotone non-decreasing in p — replicates the IoTWarden Fig. 6 "
             "qualitative shape on CICIoT2023."
-            if passes else
-            "FAIL-WITH-FINDING: see ppo_reason / rule_monotone fields. "
+            if passes
+            else "FAIL-WITH-FINDING: see ppo_reason / rule_monotone fields. "
             "The expected qualitative shape (more lenient defender ⇒ "
             "higher RL reward) was NOT replicated; PLAN §6 R7.3 covers "
             "the reframe."
@@ -180,8 +203,8 @@ def _evaluate_g73(
 
 
 def _render(
-    ppo_rows: List[Dict[str, Any]],
-    rule_rows: List[Dict[str, Any]],
+    ppo_rows: list[dict[str, Any]],
+    rule_rows: list[dict[str, Any]],
     out_path: Path,
 ) -> None:
     import matplotlib
@@ -205,16 +228,12 @@ def _render(
     if ppo_rows:
         _plot(ppo_rows, "#2563eb", "PPO (5 seeds, 250K timesteps)")
     if rule_rows:
-        _plot(rule_rows, "#dc2626",
-              "Recommended-Action oracle rule (1 seed × 150 ep)")
+        _plot(rule_rows, "#dc2626", "Recommended-Action oracle rule (1 seed × 150 ep)")
 
-    ax.set_xlabel("p_defender_deescalation (defender's de-escalation success rate)",
-                  fontsize=10)
-    ax.set_ylabel("Mean episodic reward on test_balanced (95 % bootstrap CI)",
-                  fontsize=10)
+    ax.set_xlabel("p_defender_deescalation (defender's de-escalation success rate)", fontsize=10)
+    ax.set_ylabel("Mean episodic reward on test_balanced (95 % bootstrap CI)", fontsize=10)
     ax.set_title(
-        "F10 — Sensitivity to attack aggressiveness "
-        "(IoTWarden Fig. 6 re-implementation)",
+        "F10 — Sensitivity to attack aggressiveness (IoTWarden Fig. 6 re-implementation)",
         fontsize=11,
     )
     ax.grid(True, linestyle=":", alpha=0.4)
@@ -233,7 +252,9 @@ def _build_argparser() -> argparse.ArgumentParser:
     p.add_argument("--runs-root", default="runs/ablation/aggressiveness")
     p.add_argument("--out-dir", default="docs/results/07_ablation")
     p.add_argument(
-        "--p-values", nargs="+", type=float,
+        "--p-values",
+        nargs="+",
+        type=float,
         default=[0.0, 0.2, 0.4, 0.6, 0.8, 1.0],
     )
     # Step-8 F2 (07_HANDOFF.md §5): explicit upstream-manifest SHA pins.
@@ -255,7 +276,7 @@ def _build_argparser() -> argparse.ArgumentParser:
     return p
 
 
-def main(argv: Optional[List[str]] = None) -> int:
+def main(argv: list[str] | None = None) -> int:
     args = _build_argparser().parse_args(argv)
     logging.basicConfig(
         level=logging.INFO,
@@ -266,14 +287,10 @@ def main(argv: Optional[List[str]] = None) -> int:
         logger.error("runs_root not found: %s", runs_root)
         return 1
 
-    sha_collector: Dict[str, str] = {}
-    ppo_rows = [
-        _summarise(runs_root, "ppo", p, sha_collector=sha_collector)
-        for p in args.p_values
-    ]
+    sha_collector: dict[str, str] = {}
+    ppo_rows = [_summarise(runs_root, "ppo", p, sha_collector=sha_collector) for p in args.p_values]
     rule_rows = [
-        _summarise(runs_root, "rule", p, sha_collector=sha_collector)
-        for p in args.p_values
+        _summarise(runs_root, "rule", p, sha_collector=sha_collector) for p in args.p_values
     ]
 
     out_dir = Path(args.out_dir)
@@ -300,7 +317,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         "figure": "F10",
         "git_sha": _git_sha(),
         "outputs": {
-            "png":  str(png_path),
+            "png": str(png_path),
             "json": str(out_dir / "F10_summary.json"),
         },
         "inputs": {
@@ -340,7 +357,8 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     logger.info(
         "F10 written to %s — G7.3 passes=%s",
-        out_dir, g73.get("passes"),
+        out_dir,
+        g73.get("passes"),
     )
     return 0
 

@@ -23,10 +23,9 @@ import argparse
 import json
 import logging
 import subprocess
-import sys
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 logger = logging.getLogger("scripts.detector.close_detector")
 
@@ -46,8 +45,8 @@ _STATUS_SKIP = "SKIP"
 # Per-gate finding-id table. The OOD-recall G4.4 result is the canonical
 # detector thesis-finding entry (revised D2 / step 4.5 PLAN locking),
 # carried into the ablation evaluation as the F15 / D7.9.1 headline.
-_GATE_FINDING_ID: Dict[str, str] = {
-    "G4.4": "D2.1",   # OOD-recall blind spot: VulnerabilityScan recall = 0.001
+_GATE_FINDING_ID: dict[str, str] = {
+    "G4.4": "D2.1",  # OOD-recall blind spot: VulnerabilityScan recall = 0.001
 }
 
 
@@ -55,7 +54,7 @@ _GATE_FINDING_ID: Dict[str, str] = {
 # ships "PASS-with-finding" (lowercase suffix); the unified schema spells
 # the enum members all-uppercase to match G6_scoreboard.json. The
 # normaliser is permissive on input casing.
-def _canon_status(raw: Optional[str]) -> str:
+def _canon_status(raw: str | None) -> str:
     if raw is None:
         return _STATUS_SKIP
     s = raw.upper().strip()
@@ -75,14 +74,20 @@ def _canon_status(raw: Optional[str]) -> str:
 
 def _git_sha() -> str:
     try:
-        return subprocess.check_output(
-            ["git", "rev-parse", "HEAD"], cwd=_ROOT, stderr=subprocess.DEVNULL,
-        ).decode().strip()
+        return (
+            subprocess.check_output(
+                ["git", "rev-parse", "HEAD"],
+                cwd=_ROOT,
+                stderr=subprocess.DEVNULL,
+            )
+            .decode()
+            .strip()
+        )
     except Exception:  # noqa: BLE001
         return "unknown"
 
 
-def _build_g4_1(out_dir: Path) -> Dict[str, Any]:
+def _build_g4_1(out_dir: Path) -> dict[str, Any]:
     """G4.1 — full pytest suite green. docs/results/04_detector/RESULTS.md
     L20 records ``329 / 329 PASS`` at the detector lock. A later dead-code
     cleanup (commit 281860a) reduced the count to 411 by deleting tests for
@@ -105,64 +110,73 @@ def _build_g4_1(out_dir: Path) -> Dict[str, Any]:
     }
 
 
-def _g4_2_to_g4_5(summary: Dict[str, Any]) -> List[Dict[str, Any]]:
+def _g4_2_to_g4_5(summary: dict[str, Any]) -> list[dict[str, Any]]:
     """Translate ``F11_summary.json::gates`` (G4.2..G4.5) to the unified shape."""
     src = summary.get("gates", {}) if summary else {}
-    rows: List[Dict[str, Any]] = []
+    rows: list[dict[str, Any]] = []
     for gid in ("G4.2", "G4.3", "G4.4", "G4.5"):
         s = src.get(gid)
         if s is None:
-            rows.append({
-                "id": gid,
-                "description": f"missing in F11_summary.json (detector not yet sealed?)",
-                "status": _STATUS_FAIL,
-                "value": "F11_summary.json missing this gate",
-            })
+            rows.append(
+                {
+                    "id": gid,
+                    "description": "missing in F11_summary.json (detector not yet sealed?)",
+                    "status": _STATUS_FAIL,
+                    "value": "F11_summary.json missing this gate",
+                }
+            )
             continue
         status = _canon_status(s.get("status"))
-        row: Dict[str, Any] = {
+        row: dict[str, Any] = {
             "id": gid,
             "description": s.get("name") or "(no description)",
         }
         # threshold + observed: keep verbatim under the original keys
         # but also expose a compact `value` summary string for jq.
         for k in (
-            "threshold", "threshold_min_recall", "threshold_ms",
-            "observed", "observed_worst", "observed_worst_at",
-            "observed_min", "observed_max", "observed_gap",
+            "threshold",
+            "threshold_min_recall",
+            "threshold_ms",
+            "observed",
+            "observed_worst",
+            "observed_worst_at",
+            "observed_min",
+            "observed_max",
+            "observed_gap",
             "observed_ms",
             "diagnostic_cross_baseline_worst",
             "diagnostic_cross_baseline_worst_at",
-            "per_class", "note",
+            "per_class",
+            "note",
         ):
             if k in s:
                 row[k] = s[k]
         row["status"] = status
         finding_id = _GATE_FINDING_ID.get(gid)
-        if status in {
-            _STATUS_PASS_WITH_FINDING,
-            _STATUS_PASS_WITHOUT_STRETCH,
-            _STATUS_FAIL_WITH_FINDING,
-        } and finding_id is not None:
+        if (
+            status
+            in {
+                _STATUS_PASS_WITH_FINDING,
+                _STATUS_PASS_WITHOUT_STRETCH,
+                _STATUS_FAIL_WITH_FINDING,
+            }
+            and finding_id is not None
+        ):
             row["finding_id"] = finding_id
         rows.append(row)
     return rows
 
 
-def build_scoreboard(out_dir: Path) -> Dict[str, Any]:
+def build_scoreboard(out_dir: Path) -> dict[str, Any]:
     summary_path = out_dir / "F11_summary.json"
     if not summary_path.exists():
-        raise FileNotFoundError(
-            f"missing {summary_path} — detector step has not been sealed yet"
-        )
+        raise FileNotFoundError(f"missing {summary_path} — detector step has not been sealed yet")
     summary = json.loads(summary_path.read_text())
 
     manifest_path = out_dir / "manifest.json"
-    manifest = (
-        json.loads(manifest_path.read_text()) if manifest_path.exists() else {}
-    )
+    manifest = json.loads(manifest_path.read_text()) if manifest_path.exists() else {}
 
-    gates: List[Dict[str, Any]] = [_build_g4_1(out_dir)]
+    gates: list[dict[str, Any]] = [_build_g4_1(out_dir)]
     gates.extend(_g4_2_to_g4_5(summary))
 
     statuses = [g["status"] for g in gates]
@@ -191,7 +205,7 @@ def build_scoreboard(out_dir: Path) -> Dict[str, Any]:
     return payload
 
 
-def main(argv: Optional[List[str]] = None) -> int:
+def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(description="Detector closer: G4_scoreboard.json")
     p.add_argument("--out-dir", default="docs/results/04_detector")
     args = p.parse_args(argv)

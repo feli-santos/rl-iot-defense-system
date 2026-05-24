@@ -26,13 +26,13 @@ import logging
 import time
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Any, Callable, Dict, Optional, Union
+from typing import Any, Callable
 
 import numpy as np
 
 from src.blue_team.callbacks import (
-    EpisodeRecord,
     _SCHEMA_VERSION,
+    EpisodeRecord,
     _EpisodeAccumulator,
 )
 from src.utils.label_mapper import KillChainStage
@@ -65,16 +65,16 @@ class LatencyRecord:
 
 
 def run_policy(
-    policy: Callable[[np.ndarray, Dict[str, Any]], int],
+    policy: Callable[[np.ndarray, dict[str, Any]], int],
     env: Any,
     *,
     n_episodes: int,
-    jsonl_path: Union[str, Path],
+    jsonl_path: str | Path,
     run_id: str,
-    policy_name: Optional[str] = None,
-    latency_path: Optional[Union[str, Path]] = None,
-    seed: Optional[int] = None,
-) -> Dict[str, int]:
+    policy_name: str | None = None,
+    latency_path: str | Path | None = None,
+    seed: int | None = None,
+) -> dict[str, int]:
     """Roll ``policy`` on ``env`` for ``n_episodes`` and write the JSONL.
 
     Args:
@@ -149,12 +149,9 @@ def run_policy(
     with out_path.open("w", encoding="utf-8") as ep_fh:
         # First reset is the only place we may pass `seed` — Gym/SB3
         # contract: subsequent resets are auto-seeded by the wrapper.
-        if seed is not None:
-            obs = env.reset()  # SB3 DummyVecEnv ignores `seed=` kwarg pre-1.x;
-            # fall back to setting the action_space seed via env's RNG
-            # by calling reset with a numpy-style call when supported.
-        else:
-            obs = env.reset()
+        # SB3 DummyVecEnv ignores `seed=` kwarg pre-1.x; fall back to
+        # setting the action_space seed via env's RNG when supported.
+        obs = env.reset()  # noqa: SIM108
 
         for episode_idx in range(n_episodes):
             acc = _EpisodeAccumulator()
@@ -180,8 +177,14 @@ def run_policy(
                     decision_stage = int(info.get("attack_stage", 0))
                 else:
                     _emit_episode(
-                        ep_fh, acc, info, episode_idx, run_id, pol_name,
-                        n_steps_total + step_idx + 1, t_run_start,
+                        ep_fh,
+                        acc,
+                        info,
+                        episode_idx,
+                        run_id,
+                        pol_name,
+                        n_steps_total + step_idx + 1,
+                        t_run_start,
                     )
 
                 if lat_fh is not None:
@@ -206,7 +209,11 @@ def run_policy(
 
     logger.info(
         "run_policy completed: run_id=%s policy=%s episodes=%d steps=%d latency_rows=%d",
-        run_id, pol_name, n_episodes, n_steps_total, n_latency_rows,
+        run_id,
+        pol_name,
+        n_episodes,
+        n_steps_total,
+        n_latency_rows,
     )
     return {
         "n_episodes_written": n_episodes,
@@ -233,7 +240,7 @@ def _squeeze(obs: Any) -> np.ndarray:
     return arr
 
 
-def _info_seed(decision_stage: int) -> Dict[str, Any]:
+def _info_seed(decision_stage: int) -> dict[str, Any]:
     """Build the *pre-step* info dict the policy sees at decision time.
 
     The Phase-3 env's ``info["recommended_action"]`` is a function of
@@ -258,7 +265,7 @@ def _info_seed(decision_stage: int) -> Dict[str, Any]:
 def _emit_episode(
     fh: Any,
     acc: _EpisodeAccumulator,
-    info: Dict[str, Any],
+    info: dict[str, Any],
     episode_idx: int,
     run_id: str,
     policy_name: str,  # noqa: ARG001 — policy_name lives in latency records, not EpisodeRecord
@@ -293,14 +300,8 @@ def _emit_episode(
     # terminal step's reward and length — same precedence rule as
     # EpisodeJSONLCallback._emit_record.
     monitor = info.get("episode") if isinstance(info, dict) else None
-    ep_reward = (
-        float(monitor["r"]) if monitor and "r" in monitor
-        else float(acc.cumulative_reward)
-    )
-    ep_length = (
-        int(monitor["l"]) if monitor and "l" in monitor
-        else int(acc.length)
-    )
+    ep_reward = float(monitor["r"]) if monitor and "r" in monitor else float(acc.cumulative_reward)
+    ep_length = int(monitor["l"]) if monitor and "l" in monitor else int(acc.length)
 
     record = EpisodeRecord(
         schema_version=_SCHEMA_VERSION,
@@ -323,9 +324,7 @@ def _emit_episode(
         final_stage_name=KillChainStage(final_stage).name,
         end_outcome=outcome,
         action_counts=list(acc.action_counts),
-        action_counts_by_stage={
-            str(s): list(c) for s, c in acc.action_counts_by_stage.items()
-        },
+        action_counts_by_stage={str(s): list(c) for s, c in acc.action_counts_by_stage.items()},
     )
     fh.write(record.to_jsonl())
     fh.write("\n")

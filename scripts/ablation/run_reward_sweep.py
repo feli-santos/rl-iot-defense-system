@@ -61,9 +61,7 @@ import sys
 import time
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional
-
-import numpy as np
+from typing import Any
 
 from src.benchmark.baseline_policies import SB3PolicyAdapter
 from src.benchmark.eval_runner import run_policy
@@ -76,19 +74,19 @@ _ROOT = Path(__file__).resolve().parents[2]
 
 
 # environment-design defaults (from RESULTS §3 of docs/results/03_env/RESULTS.md)
-_PHASE3_DEFAULTS: Dict[str, float] = {
-    "defense_success_bonus":   250.0,
-    "penalty_missed_impact":   150.0,
-    "reward_proportional":       5.0,
-    "penalty_disproportionate":  5.0,
-    "reward_benign_passive":    10.0,
+_PHASE3_DEFAULTS: dict[str, float] = {
+    "defense_success_bonus": 250.0,
+    "penalty_missed_impact": 150.0,
+    "reward_proportional": 5.0,
+    "penalty_disproportionate": 5.0,
+    "reward_benign_passive": 10.0,
 }
 
-_DEFAULT_COMPONENTS: List[str] = list(_PHASE3_DEFAULTS.keys())
-_DEFAULT_MULTIPLIERS: List[float] = [0.5, 1.0, 2.0]
+_DEFAULT_COMPONENTS: list[str] = list(_PHASE3_DEFAULTS.keys())
+_DEFAULT_MULTIPLIERS: list[float] = [0.5, 1.0, 2.0]
 
 
-def _sha256(path: Path) -> Optional[str]:
+def _sha256(path: Path) -> str | None:
     p = Path(path)
     if not p.exists():
         return None
@@ -100,10 +98,16 @@ def _sha256(path: Path) -> Optional[str]:
 
 
 def _git_sha() -> str:
-    try:
-        return subprocess.check_output(
-            ["git", "rev-parse", "HEAD"], cwd=_ROOT, stderr=subprocess.DEVNULL,
-        ).decode().strip()
+    try:  # noqa: SIM105
+        return (
+            subprocess.check_output(
+                ["git", "rev-parse", "HEAD"],
+                cwd=_ROOT,
+                stderr=subprocess.DEVNULL,
+            )
+            .decode()
+            .strip()
+        )
     except Exception:  # noqa: BLE001
         return "unknown"
 
@@ -123,11 +127,11 @@ def _slug(component: str, multiplier: float) -> str:
 
 
 def _enumerate_cells(
-    components: List[str],
-    multipliers: List[float],
+    components: list[str],
+    multipliers: list[float],
     *,
     impact_terminal_axis: bool = True,
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     """Build the sparse one-at-a-time cell list (D7.1).
 
     Returns a list of cells, each with:
@@ -139,48 +143,51 @@ def _enumerate_cells(
       - impact_is_terminal: True or False
     The "1×" centre cell is added once with axis='baseline'.
     """
-    cells: List[Dict[str, Any]] = []
+    cells: list[dict[str, Any]] = []
 
     # 1 centre cell (blue-team/6 baseline).
-    cells.append({
-        "cell_id": "baseline_defaults",
-        "axis": "baseline",
-        "component": None,
-        "multiplier": 1.0,
-        "reward_overrides": {},
-        "impact_is_terminal": True,
-    })
+    cells.append(
+        {
+            "cell_id": "baseline_defaults",
+            "axis": "baseline",
+            "component": None,
+            "multiplier": 1.0,
+            "reward_overrides": {},
+            "impact_is_terminal": True,
+        }
+    )
 
     # 10 component off-centres (5 components × 2 off-centre multipliers).
     for component in components:
         if component not in _PHASE3_DEFAULTS:
-            raise ValueError(
-                f"unknown component {component!r}; valid: "
-                f"{list(_PHASE3_DEFAULTS)}"
-            )
+            raise ValueError(f"unknown component {component!r}; valid: {list(_PHASE3_DEFAULTS)}")
         for mult in multipliers:
             if mult == 1.0:
                 continue  # centre is shared
             value = _PHASE3_DEFAULTS[component] * mult
-            cells.append({
-                "cell_id": _slug(component, mult),
-                "axis": "reward",
-                "component": component,
-                "multiplier": mult,
-                "reward_overrides": {component: value},
-                "impact_is_terminal": True,
-            })
+            cells.append(
+                {
+                    "cell_id": _slug(component, mult),
+                    "axis": "reward",
+                    "component": component,
+                    "multiplier": mult,
+                    "reward_overrides": {component: value},
+                    "impact_is_terminal": True,
+                }
+            )
 
     # 1 binary off-centre (impact_is_terminal=False at otherwise-default).
     if impact_terminal_axis:
-        cells.append({
-            "cell_id": "impact_is_terminal_false",
-            "axis": "impact_terminal",
-            "component": "impact_is_terminal",
-            "multiplier": None,
-            "reward_overrides": {},
-            "impact_is_terminal": False,
-        })
+        cells.append(
+            {
+                "cell_id": "impact_is_terminal_false",
+                "axis": "impact_terminal",
+                "component": "impact_is_terminal",
+                "multiplier": None,
+                "reward_overrides": {},
+                "impact_is_terminal": False,
+            }
+        )
 
     return cells
 
@@ -190,26 +197,38 @@ def _enumerate_cells(
 
 def _run_one(
     args: argparse.Namespace,
-    cell: Dict[str, Any],
+    cell: dict[str, Any],
     seed: int,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Spawn a single ``python -m scripts.blue_team.train_agent`` for a cell+seed."""
     out_dir = Path(args.out_root) / cell["cell_id"] / f"seed_{seed}"
     out_dir.mkdir(parents=True, exist_ok=True)
     log_path = out_dir / "train.log"
 
-    cmd: List[str] = [
-        sys.executable, "-m", "scripts.blue_team.train_agent",
-        "--algo", args.algo,
-        "--seed", str(seed),
-        "--total-timesteps", str(args.total_timesteps),
-        "--eval-freq", str(args.eval_freq),
-        "--n-eval-episodes", str(args.n_eval_episodes),
-        "--out-dir", str(out_dir),
-        "--generator-path", args.generator_path,
-        "--dataset-path", args.dataset_path,
-        "--splits-manifest", args.splits_manifest,
-        "--verbose", "0",
+    cmd: list[str] = [
+        sys.executable,
+        "-m",
+        "scripts.blue_team.train_agent",
+        "--algo",
+        args.algo,
+        "--seed",
+        str(seed),
+        "--total-timesteps",
+        str(args.total_timesteps),
+        "--eval-freq",
+        str(args.eval_freq),
+        "--n-eval-episodes",
+        str(args.n_eval_episodes),
+        "--out-dir",
+        str(out_dir),
+        "--generator-path",
+        args.generator_path,
+        "--dataset-path",
+        args.dataset_path,
+        "--splits-manifest",
+        args.splits_manifest,
+        "--verbose",
+        "0",
     ]
     if cell["reward_overrides"]:
         cmd += ["--reward-overrides", json.dumps(cell["reward_overrides"])]
@@ -220,13 +239,19 @@ def _run_one(
 
     logger.info(
         "F9 cell=%s seed=%d → %s (overrides=%s impact_term=%s)",
-        cell["cell_id"], seed, out_dir,
-        cell["reward_overrides"], cell["impact_is_terminal"],
+        cell["cell_id"],
+        seed,
+        out_dir,
+        cell["reward_overrides"],
+        cell["impact_is_terminal"],
     )
     t0 = time.time()
     with log_path.open("w") as log_fh:
         proc = subprocess.run(
-            cmd, cwd=_ROOT, stdout=log_fh, stderr=subprocess.STDOUT,
+            cmd,
+            cwd=_ROOT,
+            stdout=log_fh,
+            stderr=subprocess.STDOUT,
             check=False,
         )
     wallclock = time.time() - t0
@@ -236,17 +261,20 @@ def _run_one(
     test_eval_ok = False
     test_eval_jsonl = out_dir / "eval_test.jsonl"
     if ok:
-        try:
+        try:  # noqa: SIM105
             _eval_on_test_split(args, cell, seed, out_dir, test_eval_jsonl)
             test_eval_ok = test_eval_jsonl.exists()
         except Exception as exc:  # noqa: BLE001
-            logger.error("F9 cell=%s seed=%d test-eval failed: %s",
-                         cell["cell_id"], seed, exc)
+            logger.error("F9 cell=%s seed=%d test-eval failed: %s", cell["cell_id"], seed, exc)
             test_eval_ok = False
 
     logger.info(
         "F9 cell=%s seed=%d done train=%s test_eval=%s wc=%.1fs",
-        cell["cell_id"], seed, ok, test_eval_ok, wallclock,
+        cell["cell_id"],
+        seed,
+        ok,
+        test_eval_ok,
+        wallclock,
     )
 
     return {
@@ -272,7 +300,7 @@ def _run_one(
 
 def _eval_on_test_split(
     args: argparse.Namespace,
-    cell: Dict[str, Any],
+    cell: dict[str, Any],
     seed: int,
     out_dir: Path,
     eval_jsonl_path: Path,
@@ -311,23 +339,27 @@ def _eval_on_test_split(
         splits_manifest=args.splits_manifest,
         seed=seed,
     )
-    try:
+    try:  # noqa: SIM105
         a = args.algo.lower()
         if a == "ppo":
             from stable_baselines3 import PPO
+
             model = PPO.load(out_dir / "model.zip", env=env, device="cpu")
         elif a == "dqn":
             from stable_baselines3 import DQN
+
             model = DQN.load(out_dir / "model.zip", env=env, device="cpu")
         elif a == "a2c":
             from stable_baselines3 import A2C
+
             model = A2C.load(out_dir / "model.zip", env=env, device="cpu")
         else:
             raise ValueError(f"unknown algo {args.algo!r}")
 
         policy = SB3PolicyAdapter(model, deterministic=True)
         run_policy(
-            policy, env,
+            policy,
+            env,
             n_episodes=2 if args.smoke else args.n_eval_episodes,
             jsonl_path=eval_jsonl_path,
             run_id=f"f9_{cell['cell_id']}_{args.algo}_seed_{seed}_test",
@@ -336,7 +368,7 @@ def _eval_on_test_split(
             seed=seed,
         )
     finally:
-        try:
+        try:  # noqa: SIM105
             env.close()
         except Exception:  # noqa: BLE001
             pass
@@ -348,25 +380,39 @@ def _eval_on_test_split(
 def _build_argparser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         description="ablation F9 — reward-component sweep (sparse one-at-a-time, "
-                    "PPO 250K × 5 seeds × 12 cells ≈ 6 h CPU; D7.1 / D7.2 / D7.3).",
+        "PPO 250K × 5 seeds × 12 cells ≈ 6 h CPU; D7.1 / D7.2 / D7.3).",
     )
     p.add_argument(
-        "--components", nargs="+", default=_DEFAULT_COMPONENTS,
+        "--components",
+        nargs="+",
+        default=_DEFAULT_COMPONENTS,
         help=f"Reward components to sweep (default: {_DEFAULT_COMPONENTS}).",
     )
     p.add_argument(
-        "--multipliers", nargs="+", type=float, default=_DEFAULT_MULTIPLIERS,
+        "--multipliers",
+        nargs="+",
+        type=float,
+        default=_DEFAULT_MULTIPLIERS,
         help="Multipliers to apply to each component's environment-design default.",
     )
     p.add_argument(
-        "--no-impact-terminal-axis", action="store_true",
+        "--no-impact-terminal-axis",
+        action="store_true",
         help="Skip the impact_is_terminal=False cell (D7.3).",
     )
-    p.add_argument("--algo", default="ppo", choices=("ppo", "dqn", "a2c"),
-                   help="Algorithm to train per cell. Default ppo (D7.2).")
+    p.add_argument(
+        "--algo",
+        default="ppo",
+        choices=("ppo", "dqn", "a2c"),
+        help="Algorithm to train per cell. Default ppo (D7.2).",
+    )
     p.add_argument("--seeds", nargs="+", type=int, default=[0, 1, 2, 3, 4])
-    p.add_argument("--total-timesteps", type=int, default=250_000,
-                   help="PPO timesteps per cell. Default 250K (D7.8 / D5.3.1).")
+    p.add_argument(
+        "--total-timesteps",
+        type=int,
+        default=250_000,
+        help="PPO timesteps per cell. Default 250K (D7.8 / D5.3.1).",
+    )
     p.add_argument("--eval-freq", type=int, default=25_000)
     p.add_argument("--n-eval-episodes", type=int, default=30)
     p.add_argument("--out-root", default="runs/ablation/reward_sweep")
@@ -377,19 +423,23 @@ def _build_argparser() -> argparse.ArgumentParser:
         default="data/processed/ciciot2023/splits/manifest.json",
     )
     p.add_argument(
-        "--parallel", type=int, default=1,
+        "--parallel",
+        type=int,
+        default=1,
         help="Number of concurrent train subprocesses (default 1 = serial).",
     )
-    p.add_argument("--smoke", action="store_true",
-                   help="Smoke mode: 1 cell × 1 seed × 5K timesteps.")
     p.add_argument(
-        "--continue-on-failure", action="store_true",
+        "--smoke", action="store_true", help="Smoke mode: 1 cell × 1 seed × 5K timesteps."
+    )
+    p.add_argument(
+        "--continue-on-failure",
+        action="store_true",
         help="Keep going if a cell crashes (default: stop).",
     )
     return p
 
 
-def main(argv: Optional[List[str]] = None) -> int:
+def main(argv: list[str] | None = None) -> int:
     args = _build_argparser().parse_args(argv)
     logging.basicConfig(
         level=logging.INFO,
@@ -399,7 +449,8 @@ def main(argv: Optional[List[str]] = None) -> int:
     out_root.mkdir(parents=True, exist_ok=True)
 
     cells = _enumerate_cells(
-        args.components, args.multipliers,
+        args.components,
+        args.multipliers,
         impact_terminal_axis=not args.no_impact_terminal_axis,
     )
 
@@ -417,11 +468,15 @@ def main(argv: Optional[List[str]] = None) -> int:
     grid = [(cell, seed) for cell in cells for seed in args.seeds]
     logger.info(
         "F9 sweep: %d cells × %d seeds = %d runs (algo=%s, %d worker(s))",
-        len(cells), len(args.seeds), len(grid), args.algo, args.parallel,
+        len(cells),
+        len(args.seeds),
+        len(grid),
+        args.algo,
+        args.parallel,
     )
 
     t_start = time.time()
-    results: List[Dict[str, Any]] = []
+    results: list[dict[str, Any]] = []
 
     if args.parallel <= 1:
         for cell, seed in grid:
@@ -444,7 +499,8 @@ def main(argv: Optional[List[str]] = None) -> int:
         "kind": "f9_reward_sweep_manifest",
         "git_sha": _git_sha(),
         "started_at": datetime.fromtimestamp(t_start, tz=timezone.utc).strftime(
-            "%Y-%m-%dT%H:%M:%SZ"),
+            "%Y-%m-%dT%H:%M:%SZ"
+        ),
         "completed_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "wallclock_seconds": time.time() - t_start,
         "args": vars(args),
@@ -459,9 +515,12 @@ def main(argv: Optional[List[str]] = None) -> int:
     sweep_manifest_path.write_text(json.dumps(sweep_manifest, indent=2))
     logger.info(
         "F9 sweep done: %d/%d trained, %d/%d test-evaled in %.1fs; manifest -> %s",
-        sweep_manifest["n_ok_train"], len(results),
-        sweep_manifest["n_ok_test_eval"], len(results),
-        sweep_manifest["wallclock_seconds"], sweep_manifest_path,
+        sweep_manifest["n_ok_train"],
+        len(results),
+        sweep_manifest["n_ok_test_eval"],
+        len(results),
+        sweep_manifest["wallclock_seconds"],
+        sweep_manifest_path,
     )
 
     if sweep_manifest["n_failed"] and not args.continue_on_failure:

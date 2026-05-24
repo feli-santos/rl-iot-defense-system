@@ -12,7 +12,6 @@ from __future__ import annotations
 import json
 import math
 from pathlib import Path
-from typing import List
 
 import numpy as np
 import pytest
@@ -20,18 +19,16 @@ import pytest
 from scripts.benchmark.run_statistical_tests import (
     _bootstrap_ci,
     _cohens_d,
-    _flatten,
     _load_episode_rewards,
     _welch_test,
     _wilcoxon_test,
     run_tests,
 )
 
-
 # ------------------------------------------------------------------ fixtures
 
 
-def _write_jsonl(path: Path, rewards: List[float]) -> None:
+def _write_jsonl(path: Path, rewards: list[float]) -> None:
     """Write synthetic EpisodeRecord-like JSONL with only episode_reward."""
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w") as fh:
@@ -53,9 +50,9 @@ def mock_benchmark_root(tmp_path: Path) -> Path:
     rf_rewards = (rng.normal(loc=1500, scale=80, size=150)).tolist()
 
     for seed in range(2):  # 2 seeds × 15 episodes each
-        chunk_dqn = dqn_rewards[seed * 15: (seed + 1) * 15]
-        chunk_ppo = ppo_rewards[seed * 15: (seed + 1) * 15]
-        chunk_a2c = a2c_rewards[seed * 15: (seed + 1) * 15]
+        chunk_dqn = dqn_rewards[seed * 15 : (seed + 1) * 15]
+        chunk_ppo = ppo_rewards[seed * 15 : (seed + 1) * 15]
+        chunk_a2c = a2c_rewards[seed * 15 : (seed + 1) * 15]
         _write_jsonl(tmp_path / "dqn" / f"seed_{seed}" / "eval_test.jsonl", chunk_dqn)
         _write_jsonl(tmp_path / "ppo" / f"seed_{seed}" / "eval_test.jsonl", chunk_ppo)
         _write_jsonl(tmp_path / "a2c" / f"seed_{seed}" / "eval_test.jsonl", chunk_a2c)
@@ -213,9 +210,9 @@ class TestRunTests:
             seeds=[0, 1],
         )
         for algo, s in results["bootstrap_ci_summary"].items():
-            assert s["ci_95_lower"] <= s["mean"] <= s["ci_95_upper"], (
-                f"{algo}: mean {s['mean']} not in CI [{s['ci_95_lower']}, {s['ci_95_upper']}]"
-            )
+            assert (
+                s["ci_95_lower"] <= s["mean"] <= s["ci_95_upper"]
+            ), f"{algo}: mean {s['mean']} not in CI [{s['ci_95_lower']}, {s['ci_95_upper']}]"
 
     def test_comparisons_list_nonempty(self, mock_benchmark_root: Path) -> None:
         results = run_tests(

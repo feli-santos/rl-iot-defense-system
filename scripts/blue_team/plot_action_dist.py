@@ -27,7 +27,7 @@ import subprocess
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, Optional, Tuple
+from typing import Any
 
 import matplotlib
 
@@ -63,12 +63,14 @@ _ACTION_COLORS = {
 
 def _git_sha() -> str:
     try:
-        sha = subprocess.check_output(
-            ["git", "rev-parse", "--short=12", "HEAD"], cwd=_ROOT
-        ).decode().strip()
-        dirty = subprocess.check_output(
-            ["git", "status", "--porcelain"], cwd=_ROOT
-        ).decode().strip()
+        sha = (
+            subprocess.check_output(["git", "rev-parse", "--short=12", "HEAD"], cwd=_ROOT)
+            .decode()
+            .strip()
+        )
+        dirty = (
+            subprocess.check_output(["git", "status", "--porcelain"], cwd=_ROOT).decode().strip()
+        )
         return sha + ("-dirty" if dirty else "")
     except Exception:
         return "unknown"
@@ -83,18 +85,18 @@ def _sha256(path: Path) -> str:
 
 
 def _select_best_algo(
-    eval_runs: Dict[Tuple[str, int], list],
+    eval_runs: dict[tuple[str, int], list],
     fraction: float,
 ) -> str:
     """Per D5.11: highest mean eval reward over the last ``fraction`` of
     training, averaged across seeds; tie-break by lower variance."""
-    scoreboard: Dict[str, Tuple[float, float, int]] = {}
-    by_algo: Dict[str, list] = {}
+    scoreboard: dict[str, tuple[float, float, int]] = {}
+    by_algo: dict[str, list] = {}
     for (algo, seed), recs in eval_runs.items():
         by_algo.setdefault(algo, []).extend([(seed, recs)])
     for algo, items in by_algo.items():
         rewards = []
-        for seed, recs in items:
+        for _seed, recs in items:
             s = summarise_last_window(recs, fraction=fraction)
             r = s["mean_reward"]
             if r == r:  # not NaN
@@ -115,7 +117,7 @@ def _select_best_algo(
 
 
 def _stack_per_seed_action_bins(
-    runs: Dict[Tuple[str, int], list],
+    runs: dict[tuple[str, int], list],
     algo: str,
     edges: np.ndarray,
 ) -> np.ndarray:
@@ -147,7 +149,7 @@ def render(
     *,
     n_bins: int = 25,
     fraction: float = 0.10,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     out_dir.mkdir(parents=True, exist_ok=True)
 
     train_runs = read_runs_directory(runs_root, file_name="episodes.jsonl")
@@ -155,16 +157,15 @@ def render(
     if not train_runs:
         raise RuntimeError(f"no training runs found under {runs_root}")
 
-    max_ts = max(
-        max(r["num_timesteps"] for r in recs) for recs in train_runs.values() if recs
-    )
+    max_ts = max(max(r["num_timesteps"] for r in recs) for recs in train_runs.values() if recs)
     edges = np.linspace(0, max_ts, n_bins + 1, dtype=np.int64)
     centers = bucket_centers(edges)
 
     # Pick the best algo per D5.11 from eval reward.
     best_algo = (
         _select_best_algo(eval_runs, fraction=fraction)
-        if eval_runs else sorted({a for (a, _) in train_runs})[0]
+        if eval_runs
+        else sorted({a for (a, _) in train_runs})[0]
     )
     logger.info("F4 best-algo selection -> %s", best_algo)
 
@@ -178,11 +179,11 @@ def render(
         "mid": (int(0.45 * max_ts), int(0.55 * max_ts)),
         "late": (int(0.90 * max_ts), int(max_ts)),
     }
-    per_stage_cps: Dict[str, np.ndarray] = {}
+    per_stage_cps: dict[str, np.ndarray] = {}
     for label, (lo, hi) in cps.items():
         # Pool all seeds' records that fall inside the window for the best algo.
         pooled = []
-        for (a, s), recs in train_runs.items():
+        for (a, _s), recs in train_runs.items():
             if a != best_algo:
                 continue
             for r in recs:
@@ -192,12 +193,15 @@ def render(
 
     # Headline G5.5 check: per-stage non-degeneracy on the *late* checkpoint.
     late = per_stage_cps["late"]
-    g5_5_violations: Dict[str, Any] = {}
+    g5_5_violations: dict[str, Any] = {}
     for s_idx, name in enumerate(_STAGE_NAMES):
         row = late[s_idx]
         if not np.isfinite(row).all():
-            g5_5_violations[name] = {"max_share": None, "passes": None,
-                                     "note": "no decisions in late window"}
+            g5_5_violations[name] = {
+                "max_share": None,
+                "passes": None,
+                "note": "no decisions in late window",
+            }
             continue
         max_share = float(row.max())
         g5_5_violations[name] = {
@@ -206,19 +210,19 @@ def render(
             "argmax_action_name": ACTION_NAMES[int(row.argmax())],
             "passes": max_share <= 0.70,
         }
-    g5_5_passes = all(
-        v.get("passes") in (True, None) for v in g5_5_violations.values()
-    )
+    g5_5_passes = all(v.get("passes") in (True, None) for v in g5_5_violations.values())
 
     # ---------- render --------------------------------------------------------
     fig = plt.figure(figsize=(14, 9))
-    gs = fig.add_gridspec(2, 5, height_ratios=(1.2, 1.3), hspace=0.45,
-                           wspace=0.2, left=0.07, right=0.98, top=0.92)
+    gs = fig.add_gridspec(
+        2, 5, height_ratios=(1.2, 1.3), hspace=0.45, wspace=0.2, left=0.07, right=0.98, top=0.92
+    )
     # (a) main: stacked area
     ax_main = fig.add_subplot(gs[0, :])
     bin_props_safe = np.nan_to_num(bin_props, nan=0.0)
     ax_main.stackplot(
-        centers, bin_props_safe.T,
+        centers,
+        bin_props_safe.T,
         labels=ACTION_NAMES,
         colors=[_ACTION_COLORS[a] for a in range(5)],
         alpha=0.9,
@@ -239,11 +243,16 @@ def render(
         for k, lab in enumerate(cp_labels):
             row = per_stage_cps[lab][col_idx]
             row_safe = np.nan_to_num(row, nan=0.0)
-            ax.bar(x + (k - 1) * width, row_safe, width=width,
-                   color=[_ACTION_COLORS[a] for a in range(5)],
-                   edgecolor="k", linewidth=(0.6 if lab == "late" else 0.0),
-                   alpha=(1.0 if lab == "late" else 0.55),
-                   label=f"t={lab}")
+            ax.bar(
+                x + (k - 1) * width,
+                row_safe,
+                width=width,
+                color=[_ACTION_COLORS[a] for a in range(5)],
+                edgecolor="k",
+                linewidth=(0.6 if lab == "late" else 0.0),
+                alpha=(1.0 if lab == "late" else 0.55),
+                label=f"t={lab}",
+            )
         ax.set_xticks(x)
         ax.set_xticklabels(ACTION_NAMES, rotation=45, ha="right", fontsize=7)
         ax.set_ylim(0, 1.05)
@@ -257,7 +266,8 @@ def render(
         f"{best_algo.upper()}. Bottom row = per-stage histograms at "
         f"early/mid/late training checkpoints. G5.5 (no action > 70 % per "
         f"stage at late checkpoint): {'PASS' if g5_5_passes else 'FAIL'}.",
-        y=0.99, fontsize=11,
+        y=0.99,
+        fontsize=11,
     )
 
     fig_path = out_dir / "F4_action_distribution.png"
@@ -282,7 +292,8 @@ def render(
             label: {
                 stage_name: (
                     per_stage_cps[label][s_idx].tolist()
-                    if np.isfinite(per_stage_cps[label][s_idx]).all() else None
+                    if np.isfinite(per_stage_cps[label][s_idx]).all()
+                    else None
                 )
                 for s_idx, stage_name in enumerate(_STAGE_NAMES)
             }
@@ -295,12 +306,12 @@ def render(
     summary_path.write_text(json.dumps(summary, indent=2))
     logger.info("wrote %s", summary_path)
 
-    inputs: Dict[str, str] = {}
-    for (a, s), recs in train_runs.items():
+    inputs: dict[str, str] = {}
+    for (a, s), _recs in train_runs.items():
         p = runs_root / a / f"seed_{s}" / "episodes.jsonl"
         if p.exists():
             inputs[str(p)] = _sha256(p)
-    for (a, s), recs in eval_runs.items():
+    for (a, s), _recs in eval_runs.items():
         p = runs_root / a / f"seed_{s}" / "eval.jsonl"
         if p.exists():
             inputs[str(p)] = _sha256(p)
@@ -327,7 +338,7 @@ def render(
     }
 
 
-def main(argv: Optional[list[str]] = None) -> int:
+def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(description="Render F4 action-distribution figure.")
     p.add_argument("--runs-root", required=True)
     p.add_argument("--out-dir", default="docs/results/05_blue_team")

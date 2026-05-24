@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict
+from typing import Any
 
 import numpy as np
 import pytest
@@ -11,7 +11,7 @@ from src.benchmark import latency
 from src.benchmark.latency import measure_inference_latency
 
 
-def _trivial_policy(obs: np.ndarray, info: Dict[str, Any]) -> int:  # noqa: ARG001
+def _trivial_policy(obs: np.ndarray, info: dict[str, Any]) -> int:  # noqa: ARG001
     return 0
 
 
@@ -19,7 +19,10 @@ class TestMeasureInferenceLatency:
     def test_returns_correct_length(self) -> None:
         obs_pool = [np.zeros(10) for _ in range(4)]
         d = measure_inference_latency(
-            _trivial_policy, obs_pool, n_warmup=5, n_measure=20,
+            _trivial_policy,
+            obs_pool,
+            n_warmup=5,
+            n_measure=20,
         )
         assert d.shape == (20,)
         assert d.dtype == np.int64
@@ -29,7 +32,10 @@ class TestMeasureInferenceLatency:
         # exact values depend on hardware.
         obs_pool = [np.zeros(10) for _ in range(2)]
         d = measure_inference_latency(
-            _trivial_policy, obs_pool, n_warmup=10, n_measure=50,
+            _trivial_policy,
+            obs_pool,
+            n_warmup=10,
+            n_measure=50,
         )
         assert (d >= 0).all()
         # At least one call took non-zero time on any sane system.
@@ -47,7 +53,7 @@ class TestMeasureInferenceLatency:
         # is the expected count.
         call_count = {"n": 0}
 
-        def counting_policy(obs: np.ndarray, info: Dict[str, Any]) -> int:  # noqa: ARG001
+        def counting_policy(obs: np.ndarray, info: dict[str, Any]) -> int:  # noqa: ARG001
             call_count["n"] += 1
             return 0
 
@@ -68,7 +74,8 @@ class TestMeasureInferenceLatency:
         assert call_count["n"] == 7 + 11
 
     def test_measurement_uses_default_clock_path(
-        self, monkeypatch: pytest.MonkeyPatch,
+        self,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         # Replace the module-level _DEFAULT_CLOCK so the no-`clock` path
         # is also covered.
@@ -79,7 +86,10 @@ class TestMeasureInferenceLatency:
 
         monkeypatch.setattr(latency, "_DEFAULT_CLOCK", fake_default)
         d = measure_inference_latency(
-            _trivial_policy, [np.zeros(1)], n_warmup=2, n_measure=5,
+            _trivial_policy,
+            [np.zeros(1)],
+            n_warmup=2,
+            n_measure=5,
         )
         assert d.shape == (5,)
         assert (d == 1).all()
@@ -91,13 +101,17 @@ class TestMeasureInferenceLatency:
     def test_negative_warmup_raises(self) -> None:
         with pytest.raises(ValueError, match="n_warmup must be >= 0"):
             measure_inference_latency(
-                _trivial_policy, [np.zeros(1)], n_warmup=-1,
+                _trivial_policy,
+                [np.zeros(1)],
+                n_warmup=-1,
             )
 
     def test_zero_measure_raises(self) -> None:
         with pytest.raises(ValueError, match="n_measure must be >= 1"):
             measure_inference_latency(
-                _trivial_policy, [np.zeros(1)], n_measure=0,
+                _trivial_policy,
+                [np.zeros(1)],
+                n_measure=0,
             )
 
     def test_info_pool_length_mismatch_raises(self) -> None:
@@ -113,15 +127,18 @@ class TestMeasureInferenceLatency:
         # Verify the policy actually receives the info dict it expects.
         seen: list[int] = []
 
-        def reading_policy(obs: np.ndarray, info: Dict[str, Any]) -> int:  # noqa: ARG001
+        def reading_policy(obs: np.ndarray, info: dict[str, Any]) -> int:  # noqa: ARG001
             seen.append(int(info.get("decision_stage", -1)))
             return 0
 
         obs_pool = [np.zeros(1), np.zeros(1)]
         info_pool = [{"decision_stage": 3}, {"decision_stage": 4}]
         measure_inference_latency(
-            reading_policy, obs_pool, info_pool=info_pool,
-            n_warmup=0, n_measure=4,
+            reading_policy,
+            obs_pool,
+            info_pool=info_pool,
+            n_warmup=0,
+            n_measure=4,
         )
         # 4 measure calls round-robin through 2-entry pool: 0,1,0,1.
         assert seen == [3, 4, 3, 4]

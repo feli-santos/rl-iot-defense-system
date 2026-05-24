@@ -29,7 +29,6 @@ import logging
 import time
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 import torch
@@ -52,7 +51,7 @@ class StageDetectorConfig:
 
     num_features: int = 29
     num_classes: int = 5
-    hidden_sizes: Tuple[int, ...] = (64, 32)
+    hidden_sizes: tuple[int, ...] = (64, 32)
     dropout: float = 0.2
 
     # Training
@@ -72,9 +71,9 @@ class StageDetectorConfig:
 class StageDetectorRunInfo:
     """Per-run training telemetry (committed alongside the checkpoint)."""
 
-    train_loss_history: List[float] = field(default_factory=list)
-    val_loss_history: List[float] = field(default_factory=list)
-    val_macro_f1_history: List[float] = field(default_factory=list)
+    train_loss_history: list[float] = field(default_factory=list)
+    val_loss_history: list[float] = field(default_factory=list)
+    val_macro_f1_history: list[float] = field(default_factory=list)
     best_epoch: int = -1
     best_val_macro_f1: float = -1.0
     train_time_seconds: float = 0.0
@@ -92,7 +91,7 @@ class _MLP(nn.Module):
 
     def __init__(self, cfg: StageDetectorConfig) -> None:
         super().__init__()
-        layers: List[nn.Module] = []
+        layers: list[nn.Module] = []
         in_dim = cfg.num_features
         for h in cfg.hidden_sizes:
             layers.append(nn.Linear(in_dim, h))
@@ -123,10 +122,10 @@ class StageDetector:
         (N, 5)
     """
 
-    def __init__(self, config: Optional[StageDetectorConfig] = None) -> None:
+    def __init__(self, config: StageDetectorConfig | None = None) -> None:
         self.config = config or StageDetectorConfig()
         self._device = torch.device("cpu")  # CPU-only by design (latency target).
-        self._model: Optional[_MLP] = None
+        self._model: _MLP | None = None
         self.run_info: StageDetectorRunInfo = StageDetectorRunInfo()
 
     # --------------------------------------------------------------- training
@@ -140,7 +139,7 @@ class StageDetector:
         *,
         seed: int = 0,
         verbose: bool = True,
-    ) -> "StageDetector":
+    ) -> StageDetector:
         """Train the MLP with the locked schedule. Returns self."""
         torch.manual_seed(seed)
         np.random.seed(seed)
@@ -148,8 +147,7 @@ class StageDetector:
         cfg = self.config
         if X_train.shape[1] != cfg.num_features:
             raise ValueError(
-                f"X_train has {X_train.shape[1]} features but config expects "
-                f"{cfg.num_features}"
+                f"X_train has {X_train.shape[1]} features but config expects {cfg.num_features}"
             )
 
         self._model = _MLP(cfg).to(self._device)
@@ -179,7 +177,7 @@ class StageDetector:
         yv_np = np.ascontiguousarray(y_val, dtype=np.int64)
 
         info = StageDetectorRunInfo(n_train=int(X_train.shape[0]), n_val=int(X_val.shape[0]))
-        best_state: Optional[Dict[str, torch.Tensor]] = None
+        best_state: dict[str, torch.Tensor] | None = None
         epochs_without_improve = 0
         t0 = time.perf_counter()
 
@@ -189,9 +187,7 @@ class StageDetector:
             )
 
             val_logits = self._forward_in_batches(Xv, batch_size=cfg.inference_batch_size)
-            val_loss = float(
-                criterion(val_logits, torch.from_numpy(yv_np)).item()
-            )
+            val_loss = float(criterion(val_logits, torch.from_numpy(yv_np)).item())
             val_pred = val_logits.argmax(dim=1).cpu().numpy().astype(np.int64)
             val_f1 = macro_f1(yv_np, val_pred, num_classes=cfg.num_classes)
 
@@ -202,9 +198,7 @@ class StageDetector:
             if val_f1 > info.best_val_macro_f1:
                 info.best_val_macro_f1 = val_f1
                 info.best_epoch = epoch
-                best_state = {
-                    k: v.detach().clone() for k, v in self._model.state_dict().items()
-                }
+                best_state = {k: v.detach().clone() for k, v in self._model.state_dict().items()}
                 epochs_without_improve = 0
             else:
                 epochs_without_improve += 1
@@ -221,9 +215,7 @@ class StageDetector:
 
             if epochs_without_improve >= cfg.patience:
                 if verbose:
-                    logger.info(
-                        "Early stop: no improvement for %d epochs", cfg.patience
-                    )
+                    logger.info("Early stop: no improvement for %d epochs", cfg.patience)
                 break
 
         info.train_time_seconds = time.perf_counter() - t0
@@ -259,16 +251,12 @@ class StageDetector:
 
     # ------------------------------------------------------------- inference
 
-    def predict(
-        self, X: np.ndarray, *, batch_size: Optional[int] = None
-    ) -> np.ndarray:
+    def predict(self, X: np.ndarray, *, batch_size: int | None = None) -> np.ndarray:
         """Return the most likely stage id per row, shape ``(N,)`` int64."""
         proba = self.predict_proba(X, batch_size=batch_size)
         return proba.argmax(axis=1).astype(np.int64)
 
-    def predict_proba(
-        self, X: np.ndarray, *, batch_size: Optional[int] = None
-    ) -> np.ndarray:
+    def predict_proba(self, X: np.ndarray, *, batch_size: int | None = None) -> np.ndarray:
         """Return softmax probabilities, shape ``(N, num_classes)`` float32."""
         if self._model is None:
             raise RuntimeError("StageDetector.predict_proba called before fit()")
@@ -277,13 +265,11 @@ class StageDetector:
         logits = self._forward_in_batches(x, batch_size=bs)
         return torch.softmax(logits, dim=1).cpu().numpy().astype(np.float32)
 
-    def _forward_in_batches(
-        self, x: torch.Tensor, *, batch_size: int
-    ) -> torch.Tensor:
+    def _forward_in_batches(self, x: torch.Tensor, *, batch_size: int) -> torch.Tensor:
         """Forward in batches, no grad, return logits as a CPU tensor."""
         assert self._model is not None
         self._model.eval()
-        outs: List[torch.Tensor] = []
+        outs: list[torch.Tensor] = []
         with torch.no_grad():
             for start in range(0, x.size(0), batch_size):
                 xb = x[start : start + batch_size].to(self._device)
@@ -335,7 +321,7 @@ class StageDetector:
         sidecar.write_text(json.dumps(asdict(self.run_info), indent=2))
 
     @classmethod
-    def from_checkpoint(cls, path: Path) -> "StageDetector":
+    def from_checkpoint(cls, path: Path) -> StageDetector:
         """Re-instantiate from a checkpoint produced by :meth:`save`."""
         path = Path(path)
         ckpt = torch.load(path, map_location="cpu", weights_only=False)

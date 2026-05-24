@@ -42,7 +42,7 @@ import platform
 import subprocess
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import numpy as np
 
@@ -56,16 +56,15 @@ _ROOT = Path(__file__).resolve().parents[2]
 # the JSON output.
 _RL_POLICIES = {"dqn", "ppo", "a2c"}
 _RF_POLICIES = {"rf_acting"}
-_RULE_POLICIES = {"random", "always_observe", "always_block",
-                  "recommended_action"}
+_RULE_POLICIES = {"random", "always_observe", "always_block", "recommended_action"}
 
-_BUDGET_MS: Dict[str, float] = {
+_BUDGET_MS: dict[str, float] = {
     "rl": 5.0,
     "rf": 3.0,
     "rule": 1.0,
 }
 
-_DISPLAY: Dict[str, str] = {
+_DISPLAY: dict[str, str] = {
     "dqn": "DQN",
     "ppo": "PPO",
     "a2c": "A2C",
@@ -78,14 +77,19 @@ _DISPLAY: Dict[str, str] = {
 
 # Plot order (lighter ↔ heavier): rule first, then RL, then RF, so
 # the CDF curves layer with the slowest on top.
-_CDF_ORDER: List[str] = [
-    "always_observe", "always_block", "recommended_action", "random",
-    "dqn", "a2c", "ppo",
+_CDF_ORDER: list[str] = [
+    "always_observe",
+    "always_block",
+    "recommended_action",
+    "random",
+    "dqn",
+    "a2c",
+    "ppo",
     "rf_acting",
 ]
 
 
-def _sha256(path: Path) -> Optional[str]:
+def _sha256(path: Path) -> str | None:
     p = Path(path)
     if not p.exists():
         return None
@@ -98,10 +102,15 @@ def _sha256(path: Path) -> Optional[str]:
 
 def _git_sha() -> str:
     try:
-        return subprocess.check_output(
-            ["git", "rev-parse", "HEAD"], cwd=_ROOT,
-            stderr=subprocess.DEVNULL,
-        ).decode().strip()
+        return (
+            subprocess.check_output(
+                ["git", "rev-parse", "HEAD"],
+                cwd=_ROOT,
+                stderr=subprocess.DEVNULL,
+            )
+            .decode()
+            .strip()
+        )
     except Exception:  # noqa: BLE001
         return "unknown"
 
@@ -124,7 +133,7 @@ def _gather_latency_ms(runs_root: Path, policy: str) -> np.ndarray:
     base = runs_root / policy
     if not base.exists():
         return np.array([], dtype=np.float64)
-    durs_ns: List[int] = []
+    durs_ns: list[int] = []
     for sd in sorted(base.iterdir()):
         if not sd.is_dir() or not sd.name.startswith("seed_"):
             continue
@@ -144,7 +153,7 @@ def _gather_latency_ms(runs_root: Path, policy: str) -> np.ndarray:
 
 def _gather_training_seconds(
     blue_team_runs_root: Path,
-) -> Dict[str, float]:
+) -> dict[str, float]:
     """Sum blue-team ``wallclock_seconds`` per algo from the sweep manifest.
 
     Returns ``{}`` (rather than raising) when the manifest is missing —
@@ -158,7 +167,7 @@ def _gather_training_seconds(
         logger.warning("blue-team sweep_manifest.json missing at %s", manifest_path)
         return {}
     sm = json.loads(manifest_path.read_text())
-    totals: Dict[str, float] = {}
+    totals: dict[str, float] = {}
     for run in sm.get("runs", []):
         if not run.get("ok"):
             continue
@@ -167,11 +176,13 @@ def _gather_training_seconds(
     return totals
 
 
-def _quantiles(arr: np.ndarray) -> Dict[str, float]:
+def _quantiles(arr: np.ndarray) -> dict[str, float]:
     if arr.size == 0:
         return {
-            "p50_ms": math.nan, "p95_ms": math.nan,
-            "p99_ms": math.nan, "mean_ms": math.nan,
+            "p50_ms": math.nan,
+            "p95_ms": math.nan,
+            "p99_ms": math.nan,
+            "mean_ms": math.nan,
             "n_samples": 0,
         }
     return {
@@ -184,8 +195,8 @@ def _quantiles(arr: np.ndarray) -> Dict[str, float]:
 
 
 def _render(
-    latencies: Dict[str, np.ndarray],
-    train_secs: Dict[str, float],
+    latencies: dict[str, np.ndarray],
+    train_secs: dict[str, float],
     out_path: Path,
 ) -> None:
     """Two-panel figure: left CDF, right training-time bar."""
@@ -195,13 +206,16 @@ def _render(
     import matplotlib.pyplot as plt
 
     fig, (ax_cdf, ax_bar) = plt.subplots(
-        1, 2, figsize=(12.5, 5.0), gridspec_kw={"width_ratios": [3, 2]},
+        1,
+        2,
+        figsize=(12.5, 5.0),
+        gridspec_kw={"width_ratios": [3, 2]},
     )
 
     # ---- Left: latency CDF ----
     cmap = plt.get_cmap("tab10")
-    colour_map: Dict[str, Any] = {}
-    plotted: List[str] = []
+    colour_map: dict[str, Any] = {}
+    plotted: list[str] = []
     for i, pol in enumerate([p for p in _CDF_ORDER if p in latencies]):
         arr = latencies[pol]
         if arr.size == 0:
@@ -214,25 +228,26 @@ def _render(
         ls = "-" if pol in _RL_POLICIES else ("-." if pol in _RF_POLICIES else "--")
         c = cmap(i % 10)
         colour_map[pol] = c
-        ax_cdf.plot(sorted_arr, cdf, label=_DISPLAY.get(pol, pol),
-                    color=c, linestyle=ls, linewidth=1.6)
+        ax_cdf.plot(
+            sorted_arr, cdf, label=_DISPLAY.get(pol, pol), color=c, linestyle=ls, linewidth=1.6
+        )
     ax_cdf.set_xscale("log")
     ax_cdf.set_xlabel("Per-step inference latency (ms, log scale)", fontsize=10)
     ax_cdf.set_ylabel("Empirical CDF", fontsize=10)
     ax_cdf.set_title(
-        "Inference Latency Distribution per Policy "
-        "(test_balanced rollouts; CPU, single process)",
+        "Inference Latency Distribution per Policy (test_balanced rollouts; CPU, single process)",
         fontsize=10,
     )
     ax_cdf.grid(True, which="both", linestyle=":", alpha=0.4)
     ax_cdf.set_ylim(0.0, 1.02)
     # Vertical reference lines at the G6.4 budgets.
-    for label, ms in (("rule ≤ 1 ms", _BUDGET_MS["rule"]),
-                      ("RF ≤ 3 ms", _BUDGET_MS["rf"]),
-                      ("RL ≤ 5 ms", _BUDGET_MS["rl"])):
+    for label, ms in (
+        ("rule ≤ 1 ms", _BUDGET_MS["rule"]),
+        ("RF ≤ 3 ms", _BUDGET_MS["rf"]),
+        ("RL ≤ 5 ms", _BUDGET_MS["rl"]),
+    ):
         ax_cdf.axvline(ms, color="grey", linestyle=":", linewidth=1.0, alpha=0.6)
-        ax_cdf.text(ms, 0.04, label, rotation=90, va="bottom", ha="right",
-                    fontsize=7, color="grey")
+        ax_cdf.text(ms, 0.04, label, rotation=90, va="bottom", ha="right", fontsize=7, color="grey")
     ax_cdf.legend(loc="lower right", fontsize=8, framealpha=0.9)
 
     # ---- Right: training-time bar ----
@@ -240,27 +255,34 @@ def _render(
         algos_ordered = sorted(train_secs.keys(), key=lambda a: train_secs[a])
         hours = [train_secs[a] / 3600.0 for a in algos_ordered]
         labels = [_DISPLAY.get(a, a.upper()) for a in algos_ordered]
-        ax_bar.barh(labels, hours, color=[
-            colour_map.get(a, "gray") for a in algos_ordered
-        ], edgecolor="black", linewidth=0.6)
+        ax_bar.barh(
+            labels,
+            hours,
+            color=[colour_map.get(a, "gray") for a in algos_ordered],
+            edgecolor="black",
+            linewidth=0.6,
+        )
         for y, h in enumerate(hours):
             ax_bar.text(h, y, f" {h:.2f} h", va="center", ha="left", fontsize=9)
-        ax_bar.set_xlabel("Total training wallclock, summed over 5 seeds (h)",
-                          fontsize=10)
+        ax_bar.set_xlabel("Total training wallclock, summed over 5 seeds (h)", fontsize=10)
         ax_bar.set_title(
-            "blue-team Training Cost per Algorithm "
-            "(250 K timesteps × 5 seeds, CPU)",
+            "blue-team Training Cost per Algorithm (250 K timesteps × 5 seeds, CPU)",
             fontsize=10,
         )
         ax_bar.grid(True, axis="x", linestyle=":", alpha=0.4)
         ax_bar.set_xlim(0, max(hours) * 1.18)
     else:
         ax_bar.set_axis_off()
-        ax_bar.text(0.5, 0.5,
-                    "blue-team sweep_manifest.json not found.\n"
-                    "Run `make phase-5-sweep` to populate.",
-                    transform=ax_bar.transAxes, ha="center", va="center",
-                    fontsize=10, color="dimgrey")
+        ax_bar.text(
+            0.5,
+            0.5,
+            "blue-team sweep_manifest.json not found.\nRun `make phase-5-sweep` to populate.",
+            transform=ax_bar.transAxes,
+            ha="center",
+            va="center",
+            fontsize=10,
+            color="dimgrey",
+        )
 
     fig.suptitle("F7 — Computational Overhead (Inference + Training)", fontsize=12)
     fig.tight_layout(rect=(0, 0, 1.0, 0.96))
@@ -276,7 +298,7 @@ def _build_argparser() -> argparse.ArgumentParser:
     return p
 
 
-def main(argv: Optional[List[str]] = None) -> int:
+def main(argv: list[str] | None = None) -> int:
     args = _build_argparser().parse_args(argv)
     logging.basicConfig(
         level=logging.INFO,
@@ -289,14 +311,14 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     # Discover policies by directory layout, but keep the canonical
     # F5 ordering for any subset.
-    available: List[str] = []
+    available: list[str] = []
     if runs_root.exists():
         available = [d.name for d in runs_root.iterdir() if d.is_dir()]
     policies = [p for p in _CDF_ORDER if p in available]
 
-    latencies: Dict[str, np.ndarray] = {}
-    in_hashes: Dict[str, str] = {}
-    per_policy_summary: Dict[str, Any] = {}
+    latencies: dict[str, np.ndarray] = {}
+    in_hashes: dict[str, str] = {}
+    per_policy_summary: dict[str, Any] = {}
     for pol in policies:
         arr = _gather_latency_ms(runs_root, pol)
         latencies[pol] = arr
@@ -307,8 +329,7 @@ def main(argv: Optional[List[str]] = None) -> int:
             "budget_ms": budget,
             "g64_pass": bool(np.isfinite(q["p50_ms"]) and q["p50_ms"] <= budget),
             "policy_class": (
-                "rl" if pol in _RL_POLICIES
-                else ("rf" if pol in _RF_POLICIES else "rule")
+                "rl" if pol in _RL_POLICIES else ("rf" if pol in _RF_POLICIES else "rule")
             ),
         }
         # Track input file hashes.
@@ -322,10 +343,12 @@ def main(argv: Optional[List[str]] = None) -> int:
         logger.info(
             "%s: p50=%s ms p95=%s ms p99=%s ms n=%s budget=%s ms pass=%s",
             pol,
-            f"{q['p50_ms']:.3f}" if np.isfinite(q['p50_ms']) else "—",
-            f"{q['p95_ms']:.3f}" if np.isfinite(q['p95_ms']) else "—",
-            f"{q['p99_ms']:.3f}" if np.isfinite(q['p99_ms']) else "—",
-            q["n_samples"], budget, per_policy_summary[pol]["g64_pass"],
+            f"{q['p50_ms']:.3f}" if np.isfinite(q["p50_ms"]) else "—",
+            f"{q['p95_ms']:.3f}" if np.isfinite(q["p95_ms"]) else "—",
+            f"{q['p99_ms']:.3f}" if np.isfinite(q["p99_ms"]) else "—",
+            q["n_samples"],
+            budget,
+            per_policy_summary[pol]["g64_pass"],
         )
 
     train_secs = _gather_training_seconds(blue_team_runs_root)
@@ -346,9 +369,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         },
         "g64_thresholds_ms": _BUDGET_MS,
         "policies": per_policy_summary,
-        "blue_team_training_seconds_per_algo": {
-            algo: float(s) for algo, s in train_secs.items()
-        },
+        "blue_team_training_seconds_per_algo": {algo: float(s) for algo, s in train_secs.items()},
         "blue_team_training_hours_per_algo": {
             algo: float(s) / 3600.0 for algo, s in train_secs.items()
         },
@@ -361,7 +382,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         "figure": "F7",
         "git_sha": _git_sha(),
         "outputs": {
-            "png":  str(png_path),
+            "png": str(png_path),
             "json": str(out_dir / "F7_summary.json"),
         },
         "inputs": {

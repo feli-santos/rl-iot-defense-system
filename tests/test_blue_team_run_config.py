@@ -8,9 +8,9 @@ from pathlib import Path
 import pytest
 
 from src.blue_team.run_config import (
+    _SCHEMA_VERSION,
     BlueTeamRunConfig,
     EnvConfigSerializable,
-    _SCHEMA_VERSION,
 )
 
 
@@ -26,7 +26,8 @@ class TestBlueTeamRunConfig:
 
     def test_to_dict_round_trip(self) -> None:
         cfg = BlueTeamRunConfig(
-            algo="a2c", seed=2,
+            algo="a2c",
+            seed=2,
             total_timesteps=100_000,
             algo_hparams={"lr": 7e-4, "ent_coef": 0.0},
             notes="smoke",
@@ -58,14 +59,15 @@ class TestBlueTeamRunConfig:
 
     def test_write_manifest_round_trip(self, tmp_path: Path) -> None:
         cfg = BlueTeamRunConfig(
-            algo="ppo", seed=1, total_timesteps=10_000,
+            algo="ppo",
+            seed=1,
+            total_timesteps=10_000,
             env=EnvConfigSerializable(split="train", max_steps=50),
             eval_env=EnvConfigSerializable(split="val_balanced", max_steps=50),
             algo_hparams={"lr": 3e-4},
         )
         path = tmp_path / "run_manifest.json"
-        cfg.write_manifest(path, wallclock_seconds=1.0,
-                            n_episodes_train=5, n_episodes_eval=2)
+        cfg.write_manifest(path, wallclock_seconds=1.0, n_episodes_train=5, n_episodes_eval=2)
         loaded = BlueTeamRunConfig.from_manifest(path)
         assert loaded.algo == "ppo"
         assert loaded.seed == 1
@@ -77,7 +79,8 @@ class TestBlueTeamRunConfig:
     def test_from_dict_rejects_bad_schema(self) -> None:
         bad = {
             "schema_version": "0.5",
-            "algo": "ppo", "seed": 0,
+            "algo": "ppo",
+            "seed": 0,
         }
         with pytest.raises(ValueError, match="schema_version"):
             BlueTeamRunConfig.from_dict(bad)
