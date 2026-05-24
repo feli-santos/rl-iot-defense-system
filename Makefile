@@ -310,6 +310,25 @@ evaluate:  ## Evaluate trained agent(s) -> results/benchmark/.
 	$(PYTHON) main.py --mode evaluate --config $(CONFIG) \
 	    --algorithms dqn ppo a2c --eval-episodes 100
 
+##@ Thesis (Docker)
+THESIS_IMAGE ?= rl-iot-thesis
+THESIS_TEX   ?= $(PWD)/tex
+
+.PHONY: thesis-image
+thesis-image:  ## Build the minimal Docker image for thesis compilation (one-off, ~3-4 min first run).
+	docker build --tag $(THESIS_IMAGE) --file tex/Dockerfile tex/
+
+.PHONY: thesis
+thesis:  ## Compile tex/thesis.pdf via Docker (builds image if not present).
+	@if ! docker image inspect $(THESIS_IMAGE) >/dev/null 2>&1; then \
+	  echo "==> Image '$(THESIS_IMAGE)' not found — building first..."; \
+	  $(MAKE) thesis-image; \
+	fi
+	docker run --rm --volume "$(THESIS_TEX)":/work $(THESIS_IMAGE)
+
+.PHONY: thesis-rebuild
+thesis-rebuild: thesis-image thesis  ## Force-rebuild Docker image, then compile thesis.
+
 ##@ Reproducibility
 .PHONY: reproduce-thesis
 reproduce-thesis:  ## End-to-end thesis reproduction (data -> red -> blue -> bench).
