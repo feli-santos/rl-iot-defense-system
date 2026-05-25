@@ -13,11 +13,11 @@ The experiments were run on a single CPU core (no GPU is required for any develo
 \subsection{Dataset Projection and Splits Audit}\label{subsec:dataset_results}
 The CICIoT2023 dataset is projected onto the five kill-chain stages using the per-class mapping documented in Appendix~B. Figure~\ref{fig:dataset_overview} shows (a) the per-class distribution after rebalancing and (b) the per-stage distribution across the four splits.
 
-\begin{figure}[h!]
+\begin{figure}[!htbp]
     \centering
-    \subfloat[Per-class distribution]{\includegraphics[width=0.49\textwidth]{figs/F0_class_distribution.png}\label{fig:f0a}}
+    \subcaptionbox{Per-class distribution\label{fig:f0a}}{\includegraphics[width=0.49\textwidth]{figs/F0_class_distribution.png}}
     \hfill
-    \subfloat[Per-stage distribution per split]{\includegraphics[width=0.49\textwidth]{figs/F0_stage_distribution.png}\label{fig:f0b}}
+    \subcaptionbox{Per-stage distribution per split\label{fig:f0b}}{\includegraphics[width=0.49\textwidth]{figs/F0_stage_distribution.png}}
     \caption{CICIoT2023 dataset overview after kill-chain projection. Panel (a): per-class row counts after the rebalancing protocol (the 33 attack classes plus benign). Panel (b): per-stage row counts across the four partitions (\texttt{train}, \texttt{val\_balanced}, \texttt{test\_balanced}, \texttt{ood}).}
     \label{fig:dataset_overview}
 \end{figure}
@@ -30,11 +30,11 @@ The post-leakage-fix \texttt{train} partition contains 281{,}420 rows (RECON 27{
 \subsection{Red-Team Episode Generator}\label{subsec:red_team_results}
 The single-layer LSTM red team is trained for 15 epochs with early stopping on the validation cross-entropy. Figure~\ref{fig:red_team_results} shows (a) the training and validation curves and (b) the empirical 5$\times$5 stage-transition matrix versus the ground-truth class-conditional priors.
 
-\begin{figure}[h!]
+\begin{figure}[!htbp]
     \centering
-    \subfloat[LSTM learning curves]{\includegraphics[width=0.49\textwidth]{figs/F1_learning_curves.png}\label{fig:f1}}
+    \subcaptionbox{LSTM learning curves\label{fig:f1}}{\includegraphics[width=0.49\textwidth]{figs/F1_learning_curves.png}}
     \hfill
-    \subfloat[Empirical vs.\ ground-truth transition matrix]{\includegraphics[width=0.49\textwidth]{figs/F2_transition_matrix_comparison.png}\label{fig:f2}}
+    \subcaptionbox{Empirical vs.\ ground-truth transition matrix\label{fig:f2}}{\includegraphics[width=0.49\textwidth]{figs/F2_transition_matrix_comparison.png}}
     \caption{Red-team LSTM episode generator. Panel (a): cross-entropy loss and token accuracy on training and validation sets across 15 epochs (shaded bands denote $\pm$1 standard deviation over training runs). Panel (b): empirical 5$\times$5 stage-transition matrix produced by the trained LSTM (left) compared against the ground-truth transition priors built from the \texttt{train} split (right).}
     \label{fig:red_team_results}
 \end{figure}
@@ -55,7 +55,7 @@ The G4 cosine saturation at $0.99999$ is the empirical evidence that the post-le
 \subsection{Supervised Stage Detector}\label{subsec:detector_results}
 The supervised stage detector is evaluated on the held-out \texttt{test\_balanced} split. Figure~\ref{fig:f11} shows the per-stage recall for the production MLP detector and the two reference baselines (RandomForest and 1D-CNN).
 
-\begin{figure}[h!]
+\begin{figure}[!htbp]
     \centering
     \includegraphics[width=0.7\textwidth]{figs/F11_per_stage_recall.png}
     \caption{Per-stage recall on the held-out \texttt{test\_balanced} split for the production MLP stage detector and two reference baselines. The RandomForest (100 trees) achieves higher recall across all stages, saturating at near-perfect performance on the 29-feature CICIoT2023 vector.}
@@ -64,7 +64,7 @@ The supervised stage detector is evaluated on the held-out \texttt{test\_balance
 
 The stage-detector exit-gate scoreboard at the locking commit \texttt{1357ec6} is summarised in Table~\ref{tab:detector_gates}. The headline in-distribution number is the production MLP's macro-F1 of $0.7855$ (RandomForest 0.9045, 1D-CNN 0.7232); the headline out-of-distribution observation is the recall asymmetry across the four held-out OOD classes, which Table~\ref{tab:detector_ood} surfaces.
 
-\begin{table}[h!]
+\begin{table}[!htbp]
 \centering
 \caption{Stage-detector exit-gate scoreboard at locking commit \texttt{1357ec6}.}
 \label{tab:detector_gates}
@@ -81,7 +81,7 @@ G4.5 & inference latency $\leq 1$\,ms / sample & 0.039\,ms & \textsc{pass} \\
 \end{tabular}
 \end{table}
 
-\begin{table}[h!]
+\begin{table}[!htbp]
 \centering
 \caption{Per-class recall of the production MLP stage detector on the four held-out OOD attack classes.}
 \label{tab:detector_ood}
@@ -103,14 +103,14 @@ Class & True stage & Recall & Note \\
 \subsection{Blue-Team Training}\label{subsec:blue_team_results}
 The three DRL algorithms (DQN, PPO, A2C) were trained over ten seeds for $250{,}000$ environment steps each (30 runs total, $\sim$7.7 hours wallclock). Figure~\ref{fig:f3} shows the episodic-reward learning curves; Figure~\ref{fig:f4} shows the action-distribution evolution over training for PPO.
 
-\begin{figure}[h!]
+\begin{figure}[!htbp]
     \centering
     \includegraphics[width=0.85\textwidth]{figs/F3_learning_curves.png}
     \caption{Blue-team learning curves: episodic reward over training for DQN, PPO, A2C across ten seeds each. Shaded bands are 95\,\% bootstrap confidence intervals over seeds.}
     \label{fig:f3}
 \end{figure}
 
-\begin{figure}[h!]
+\begin{figure}[!htbp]
     \centering
     \includegraphics[width=0.85\textwidth]{figs/F4_action_distribution.png}
     \caption{Per-stage action-distribution evolution across training for PPO. The argmax action matches the recommended action exactly on \textsc{recon} (\textsc{log}) and \textsc{maneuver} (\textsc{block}); other stages spread probability mass within the proportionality $\pm 1$ band.}
@@ -137,28 +137,28 @@ The trained PPO agent earns mean reward $+1334.5$, far above the always-\textsc{
 \subsection{Held-Out Benchmark: Trained RL versus Deployable Baselines and the Oracle Reference}\label{subsec:benchmark_results}
 The trained DRL checkpoints were evaluated on the held-out \texttt{test\_balanced} split ($n = 300$ deterministic episodes per DRL policy, $n = 150$ for baselines and oracle) against the four deployable baselines and the oracle reference (Section~\ref{subsec:baselines}). Figure~\ref{fig:f8} shows the mean episodic reward with 95\,\% bootstrap confidence intervals; Figure~\ref{fig:f6} shows the per-policy stage$\times$action confusion matrices; Figure~\ref{fig:f7} the inference-latency CDFs; Figure~\ref{fig:f5} the consolidated per-policy security-metrics table.
 
-\begin{figure}[h!]
+\begin{figure}[!htbp]
     \centering
     \includegraphics[width=0.85\textwidth]{figs/F8_baselines.png}
     \caption{Mean episodic reward with 95\,\% bootstrap confidence intervals on the held-out \texttt{test\_balanced} split. The oracle Recommended-Action rule (open circle, \textcircled{o}) reads the true attack stage from the simulator and is a measurement instrument, not a competing baseline. Among deployable policies the ranking is RF-Acting $>$ trained DRL $>$ Always-\textsc{block} $>$ Random $>$ Always-\textsc{observe}.}
     \label{fig:f8}
 \end{figure}
 
-\begin{figure}[h!]
+\begin{figure}[!htbp]
     \centering
     \includegraphics[width=0.95\textwidth]{figs/F6_stage_action_cm.png}
     \caption{Per-policy stage$\times$action confusion matrices for DQN, PPO, A2C, RF-Acting, oracle Recommended-Action rule, and Random. Each panel reports the per-stage proportionality-band score (gate G6.3) overlaid. The IMPACT row reflects actions taken \emph{when the stage detector observes} \textsc{impact} (not a prediction of the next stage).}
     \label{fig:f6}
 \end{figure}
 
-\begin{figure}[h!]
+\begin{figure}[!htbp]
     \centering
     \includegraphics[width=0.85\textwidth]{figs/F7_overhead.png}
     \caption{Inference-latency CDFs (log-scale x-axis) for all policies. Trained RL inference is 0.065--0.109\,ms (p50); RF-Acting is 13.85\,ms (sklearn per-call overhead on a 100-tree forest); the oracle rule is sub-microsecond. Training wallclock (right panel) is summed over ten seeds.}
     \label{fig:f7}
 \end{figure}
 
-\begin{figure}[h!]
+\begin{figure}[!htbp]
     \centering
     \includegraphics[width=0.95\textwidth]{figs/F5_table.png}
     \caption{Final security-metrics table on \texttt{test\_balanced}: mean reward, 95\,\% bootstrap CI, mitigated-impact rate, mean MTTC, and inference latency for every policy (10 seeds for DRL; 1 seed for baselines and oracle).}
@@ -167,7 +167,7 @@ The trained DRL checkpoints were evaluated on the held-out \texttt{test\_balance
 
 \paragraph{Headline ranking (81\,\% oracle capture).} On \texttt{test\_balanced}, the rank-ordered mean episodic rewards with 95\,\% bootstrap CIs are shown in Table~\ref{tab:benchmark_ranking}.
 
-\begin{table}[h!]
+\begin{table}[!htbp]
 \centering
 \caption{Held-out benchmark final ranking by mean episodic reward on \texttt{test\_balanced} (10 seeds for DRL agents; 1 seed for baselines and oracle). The oracle rule (\textcircled{o}) reads \texttt{info["attack\_stage"]} from the simulator and is reported as a measurement instrument.}
 \label{tab:benchmark_ranking}
@@ -193,7 +193,7 @@ The best deployable DRL agent (PPO, $+1334.5$) captures \textbf{81\,\%} of the o
 
 \paragraph{Statistical separation of DRL algorithms.} Table~\ref{tab:stat_tests} reports pairwise statistical tests between DRL policies on \texttt{test\_balanced} (per-seed episodic rewards, Welch's t-test).
 
-\begin{table}[h!]
+\begin{table}[!htbp]
 \centering
 \caption{Pairwise statistical tests between policies on \texttt{test\_balanced}. Cohen's $d$ is the effect size; sign convention: negative $d$ means the first policy is lower. Welch's t-test is used for all pairwise comparisons.}
 \label{tab:stat_tests}
@@ -212,7 +212,7 @@ All three comparisons are statistically significant ($p < 0.05$). The DQN vs.\ R
 
 \paragraph{Latency--reward trade-off: the deployable frontier.} Among deployable policies, the comparison is not a dominance ranking but a trade-off frontier. Table~\ref{tab:latency_tradeoff} quantifies the deployable trade-off between RF-Acting and trained RL.
 
-\begin{table}[h!]
+\begin{table}[!htbp]
 \centering
 \caption{Deployable policy latency--reward trade-off on \texttt{test\_balanced}. Latency figures are p50 (median) inference time per decision. RF-Acting's size reflects its 100-tree RandomForest; trained RL models have $\sim$4K parameters.}
 \label{tab:latency_tradeoff}
@@ -240,14 +240,14 @@ RF-Acting achieves higher mean reward ($+1486.2$ vs.\ PPO $+1334.5$, $\Delta = +
 \subsection{Reward-Component and Aggressiveness Ablations}\label{subsec:ablation_results}
 The ablation and OOD-robustness evaluations characterise the trained policy's sensitivity to environment design. Figure~\ref{fig:f9} shows the F9 reward-component sweep, Figure~\ref{fig:f10} the F10 aggressiveness sweep.
 
-\begin{figure}[h!]
+\begin{figure}[!htbp]
     \centering
     \includegraphics[width=0.95\textwidth]{figs/F9_reward_ablation.png}
     \caption{F9 reward-component ablation: PPO mean test reward across the 12-cell sweep over five reward coefficients $\times$ $\{0.5\times, 1\times, 2\times\}$ plus the binary \texttt{impact\_is\_terminal} flag. The benchmark oracle ceiling ($+1647.6$) and PPO primary ($+1334.5$) are overlaid as horizontal reference lines. The \texttt{impact\_is\_terminal}$=\mathit{False}$ cell wins at $+1542$ (CI $[1524, 1573]$), closing 71\,\% of the residual gap.}
     \label{fig:f9}
 \end{figure}
 
-\begin{figure}[h!]
+\begin{figure}[!htbp]
     \centering
     \includegraphics[width=0.85\textwidth]{figs/F10_aggressiveness.png}
     \caption{F10 aggressiveness sweep: PPO mean test reward and oracle recommended-action rule reference as a function of the defender de-escalation probability $p_{\mathrm{de\text{-}esc}} \in \{0.0, 0.2, 0.4, 0.6, 0.8, 1.0\}$. PPO grows monotonically from near-floor at $p = 0.0$ to within 200 reward of the oracle at $p = 0.6$.}
@@ -266,7 +266,7 @@ The mechanism is interpretable: under $\texttt{impact\_is\_terminal}=\mathit{Tru
 \subsection{Out-of-Distribution Robustness}\label{subsec:ood_results}
 The four held-out OOD attack classes were evaluated against every benchmark-stage policy using the single-stage OOD-feature injection protocol described in Section~\ref{subsubsec:f15}. Figure~\ref{fig:f15} shows the 4-OOD-class $\times$ 8-policy reward grid with bootstrap confidence intervals.
 
-\begin{figure}[h!]
+\begin{figure}[!htbp]
     \centering
     \includegraphics[width=0.95\textwidth]{figs/F15_ood_robustness.png}
     \caption{F15 single-stage OOD-feature injection evaluation: mean episodic reward with 95\,\% bootstrap CIs on each of the four held-out OOD attack classes (\texttt{DDoS-HTTP\_Flood}, \texttt{Mirai-udpplain}, \texttt{XSS}, \texttt{VulnerabilityScan}) for each of the eight benchmark policies. The headline observation is on \texttt{VulnerabilityScan}: trained PPO ($+1313$) is within seed-noise of its in-distribution mean ($+1334.5$), but does not beat RF-Acting ($+1611$).}

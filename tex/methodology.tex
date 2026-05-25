@@ -24,10 +24,10 @@ The defender observes a 29-dimensional per-flow feature vector derived from the 
 \subsection{Framework Architecture Overview}\label{subsec:framework_architecture}
 The proposed framework is designed to transition IoT security from a reactive to a proactive paradigm. This is achieved through the architecture illustrated in Figure~\ref{fig:framework_overview}, which can be understood as a closed-loop pipeline of two offline preparation stages and one online learning loop.
 
-\begin{figure}[h!]
+\begin{figure}[!htbp]
     \centering
-    \includegraphics[width=0.85\textwidth]{figs/iot_rl_defense_system_diagram_mermaid.png}
-    \caption{High-level architecture of the proactive-adaptive defense system. The dashed boxes are offline (dataset preparation, red-team LSTM training, stage-detector training); the solid box is the online RL loop (environment design, agent training, benchmark and ablation evaluation).}
+    \includegraphics[width=0.92\textwidth]{figs/architecture_diagram.pdf}
+    \caption{High-level architecture of the proactive-adaptive defense framework. \textbf{Stage~I (offline, dashed background):} three preparation lanes — Dataset Pipeline (CICIoT2023 kill-chain projection and split construction), Red-Team LSTM (next-stage token model with upper-triangular monotonic mask), and Supervised Stage Detector (MLP / RandomForest / 1D-CNN). \textbf{Stage~II (online, solid background):} the closed-loop RL training environment comprising the Realization Engine (split-aware feature sampling), AdversarialIoTEnv (kill-chain MDP), stage-action reward function, and the Blue-Team Agent (DQN/PPO/A2C, 10 seeds $\times$ 250k steps). The dashed arrow from the Stage Detector carries the predicted stage $\hat{s}$ used only at evaluation time. \textbf{Stage~III:} held-out benchmark against deployable baselines and the oracle reference, plus reward-component and OOD-robustness ablations.}
     \label{fig:framework_overview}
 \end{figure}
 
@@ -70,7 +70,7 @@ The training data are stage-token sequences derived from per-attack-class sequen
 \subsection{Supervised Stage Detector}\label{subsec:stage_detector}
 The supervised stage detector classifies a 29-feature CICIoT2023 vector into one of the five kill-chain stages. Three architectures are trained and compared; Table~\ref{tab:detector_comparison} summarises their key characteristics.
 
-\begin{table}[h!]
+\begin{table}[!htbp]
 \centering
 \caption{Comparison of supervised stage-detector architectures on the held-out \texttt{test\_balanced} split. ``Production'' indicates the model used in the RL environment's stage-prediction feature. Latency is median per-sample CPU inference on the evaluation host.}
 \label{tab:detector_comparison}
@@ -133,7 +133,7 @@ The environment-design default constants used throughout the dissertation (\text
 
 The action-cost vector $C_{\mathrm{action}}(a)$ uses scale $\alpha = 1.0$ as the default. A sensitivity sweep over $\alpha \in \{0.5, 1.0, 2.0\}$ (Section~\ref{subsubsec:action_cost_justification}) shows that all three settings produce overlapping 95\,\% bootstrap confidence intervals, confirming that the default $\alpha = 1.0$ is robust to $\pm 2\times$ perturbation in action cost.
 
-\begin{table}[h!]
+\begin{table}[!htbp]
 \centering
 \caption[Default reward constants for the environment design.]{Default reward constants for the environment design (\texttt{AdversarialEnvConfig}). Symbols match Equations~\eqref{eq:reward}--\eqref{eq:reward_terminal}.}
 \label{tab:reward_constants}

@@ -13,7 +13,7 @@ This appendix documents the audit-first reproducibility protocol that underpins 
 \subsection{Per-Stage Manifest Pattern}\label{app:manifest_pattern}
 Every development stage of the framework emits one or more \texttt{manifest.json} files under \texttt{docs/results/<phase>/} that record (a) the SHA-256 hash of every input artefact (data splits, trained models, scaler, episode roll-outs, upstream stage manifests), (b) the producing Git commit (\texttt{git\_sha}), and (c) the producing-script invocation (\texttt{produced\_by}). Each manifest also records the SHA-256 hash of every output artefact (figure, summary JSON, scoreboard) so that downstream stages can pin the upstream output by hash, not by filename alone. The per-stage artefact inventory is summarised in Table~\ref{tab:manifest_inventory}.
 
-\begin{table}[h!]
+\begin{table}[!htbp]
 \centering
 \caption{Per-stage reproducibility-artefact inventory under \texttt{docs/results/}. \texttt{F<k>} entries are figures or tables, \texttt{G<n>\_scoreboard.json} are gate-evaluation scoreboards. Run-time roll-out JSONLs (under \texttt{runs/<phase>/}) are gitignored but their SHA-256 hashes are pinned by the stage manifest.}
 \label{tab:manifest_inventory}
@@ -35,7 +35,7 @@ Stage & Path & Key artefacts \\
 \subsection{Gate Scoreboards}\label{app:scoreboards}
 Four \texttt{G<n>\_scoreboard.json} files (one per gated stage) record the threshold-vs.-observed value for every exit gate, the verdict bucketed into \textsc{pass} / \textsc{pass-with-finding} / \textsc{pass-without-stretch} / \textsc{fail-with-finding} / \textsc{fail} / \textsc{skip}, and a finding-id cross-reference where the verdict is contingent on a pre-registered finding-activation rule. Schema version 2.0 (Step-8 unification) is used uniformly across G4/G5/G6/G7. The verdict tally at the head of the dissertation's evaluation chain (commit \texttt{26b8df2}, the post-Step-8 \texttt{main}) is summarised in Table~\ref{tab:scoreboard_summary}.
 
-\begin{table}[h!]
+\begin{table}[!htbp]
 \centering
 \caption{Gate-scoreboard summary across the four gated development stages. Verdicts are reported per-gate; the dissertation's headline-finding gates (G6.2 audit-AF2 reframe, G5.4 reward-hacking, G7.2 reward-component sweep, G7.9 OOD finding-activation) are highlighted.}
 \label{tab:scoreboard_summary}
@@ -117,7 +117,7 @@ All experiments reported in this dissertation were run on a single CPU core. No 
 
 The 34 CICIoT2023 labels (33 attack classes plus \texttt{BenignTraffic}) are projected onto the five Kill Chain stages defined in Section~\ref{subsec:kill_chain} via the closed mapping in Table~\ref{tab:kc_mapping}. The mapping is implemented in \texttt{src/utils/label\_mapper.py::AbstractStateLabelMapper}; an unknown label encountered at processing time raises an explicit \texttt{KeyError} so that any new attack class added to the dataset cannot silently leak into an existing stage. The full design rationale, including why the Lockheed Martin seven-step chain is coarsened to five stages here and why the $\textsc{benign} \to \textsc{recon} \to \textsc{access} \to \textsc{maneuver} \to \textsc{impact}$ ordering is monotone in attacker progress, is provided in \texttt{docs/kill-chain-mapping.md}.
 
-\begin{table}[h!]
+\begin{table}[!htbp]
 \centering
 \caption{Per-class CICIoT2023 to Kill Chain stage mapping. Classes marked $^\star$ are reserved as held-out out-of-distribution attack classes (Section~\ref{subsubsec:splits}) and are never seen during training of either the supervised stage detector or the DRL agents.}
 \label{tab:kc_mapping}
@@ -144,7 +144,7 @@ Stage & CICIoT2023 labels \\
 
 The blue-team training hyperparameter table (T1) for DQN, PPO, and A2C is reproduced in Table~\ref{tab:hparams} from \texttt{docs/results/05\_blue\_team/T1\_hparams.json}, which is the canonical hash-pinned source. All values are Stable~Baselines3 defaults, frozen for the thesis at PLAN \S8 D5.4; the same values are used across the five seeds (\texttt{seed} $\in \{0, 1, 2, 3, 4\}$) and the 250{,}000 environment steps per run. Empty cells indicate hyperparameters that do not apply to the algorithm (e.g.\ off-policy DQN-only fields are blank for the on-policy PPO and A2C rows).
 
-\begin{table}[h!]
+\begin{table}[!htbp]
 \centering
 \caption{Blue-team training per-algorithm hyperparameters. Values are frozen at PLAN \S8 D5.4 and used across all ten seeds and 250{,}000 environment steps per run. N/A indicates the hyperparameter does not apply to the algorithm.}
 \label{tab:hparams}
@@ -175,7 +175,7 @@ This appendix collects the three hyperparameter sensitivity sweep figures refere
 
 Figure~\ref{fig:app_f10} reproduces the F10 aggressiveness sweep from Section~\ref{subsec:ablation_results}. The parameter $p_{\mathrm{de\text{-}esc}}$ controls the probability that a \textsc{block} or \textsc{isolate} action on an active \textsc{access} or \textsc{maneuver} stage resets the chain to \textsc{benign}. The sweep establishes that $p_{\mathrm{de\text{-}esc}} = 0.6$ is the primary operating point where PPO reward is within 200 units of the oracle ceiling while the MDP remains challenging enough to yield useful training signal.
 
-\begin{figure}[h!]
+\begin{figure}[!htbp]
     \centering
     \includegraphics[width=0.85\textwidth]{figs/F10_aggressiveness.png}
     \caption{F10 aggressiveness sweep: PPO mean test reward (10 seeds per point, shaded bands = 95\,\% bootstrap CIs) and oracle recommended-action rule reference across six values of the defender de-escalation probability $p_{\mathrm{de\text{-}esc}} \in \{0.0, 0.2, 0.4, 0.6, 0.8, 1.0\}$. PPO reward grows monotonically with $p$; the primary operating point used throughout this dissertation is $p = 0.6$.}
@@ -186,7 +186,7 @@ Figure~\ref{fig:app_f10} reproduces the F10 aggressiveness sweep from Section~\r
 
 Figure~\ref{fig:app_fa_cost} shows the action-cost scale sensitivity sweep over $\alpha \in \{0.5, 1.0, 2.0\}$. All three settings produce overlapping 95\,\% bootstrap confidence intervals, confirming that the default $\alpha = 1.0$ is robust to $\pm 2\times$ perturbation.
 
-\begin{figure}[h!]
+\begin{figure}[!htbp]
     \centering
     \includegraphics[width=0.75\textwidth]{figs/FA_action_cost_sweep.png}
     \caption{Action-cost scale sensitivity sweep: mean test reward (DQN, seeds 0--2, 63 episodes per seed) at $\alpha \in \{0.5, 1.0, 2.0\}$. Error bars are 95\,\% bootstrap CIs. All CIs overlap; reward varies less than 3\,\% across the full range. Numeric values: $\alpha=0.5$: $+1524$ CI $[1462, 1579]$; $\alpha=1.0$: $+1568$ CI $[1506, 1628]$; $\alpha=2.0$: $+1542$ CI $[1484, 1600]$.}
@@ -197,7 +197,7 @@ Figure~\ref{fig:app_fa_cost} shows the action-cost scale sensitivity sweep over 
 
 Figure~\ref{fig:app_fa_window} shows the window-size ablation over $w \in \{1, 3, 5, 10\}$. Window $w = 5$ achieves the highest mean reward; increasing to $w = 10$ does not improve reward while doubling the observation dimension from 290 to 580 features.
 
-\begin{figure}[h!]
+\begin{figure}[!htbp]
     \centering
     \includegraphics[width=0.75\textwidth]{figs/FA_window_ablation.png}
     \caption{History window-size ablation: mean test reward (DQN, seed 0, 189 episodes) at $w \in \{1, 3, 5, 10\}$. Error bars are 95\,\% bootstrap CIs. Peak at $w = 5$ ($+1568$ CI $[1506, 1628]$); $w = 10$ is lower but CIs overlap ($+1533$ CI $[1472, 1599]$). Observation dimension is listed in parentheses.}
