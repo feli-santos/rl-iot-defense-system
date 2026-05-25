@@ -1,21 +1,23 @@
-# Minimal TeX Live image for compiling the rl-iot-defense-system thesis.
+# Minimal TeX Live image for compiling the FEEC/UNICAMP dissertation
+# (template: FEEC modelo tese CCPG 001-2015, based on abnTeX2).
 #
-# Packages selected to exactly satisfy tex/thesis.cls + tex/thesis.tex:
+# Packages selected to exactly satisfy tex/principal.tex + tex/preambulo.tex +
+# tex/unicamp.sty:
 #   - texlive-latex-base       core LaTeX
-#   - texlive-latex-recommended article, geometry, fancyhdr, setspace, …
-#   - texlive-latex-extra      silence, subfig, enumitem, footmisc, …
-#   - texlive-fonts-extra      libertine, libertinust1math, stix, nomencl fonts
-#   - texlive-bibtex-extra     biblatex, biblatex-abnt, logreq, …
-#   - biber                    biblatex backend
-#   - texlive-lang-portuguese  babel Portuguese (thesis option)
-#   - texlive-science          siunitx, mathtools, …
+#   - texlive-latex-recommended article, geometry, fancyhdr, setspace, ...
+#   - texlive-latex-extra      memoir, multirow, rotating, pdfpages, subfig, ...
+#   - texlive-fonts-extra      stix, lmodern, etc.
+#   - texlive-publishers       abntex2, abntex2cite, abntex2-lipsum (REQUIRED)
+#   - texlive-bibtex-extra     biber, biblatex, biblatex-abnt, logreq, ...
+#   - biber                    biblatex backend (legacy; the template uses BibTeX via abntex2cite)
+#   - texlive-lang-portuguese  babel Portuguese (template default)
+#   - texlive-science          siunitx, mathtools, algorithm, algorithmic, ...
 #   - texlive-pictures         caption, subfig deps
-#   - texlive-plain-generic    xstring, etoolbox, …
-#   - lmodern                  Latin Modern fonts fallback
+#   - texlive-plain-generic    xstring, etoolbox, ...
+#   - lmodern                  Latin Modern fonts (template's default)
 #
-# Build once:  docker build -t rl-iot-thesis -f tex/Dockerfile tex/
-# Then compile: docker run --rm -v "$PWD/tex":/work rl-iot-thesis
-#          (or just: make thesis)
+# Build once:  bash tex/build.sh --rebuild
+# Then compile: bash tex/build.sh
 
 FROM debian:bookworm-slim
 
@@ -27,31 +29,27 @@ RUN apt-get update \
       texlive-latex-base \
       texlive-latex-recommended \
       texlive-latex-extra \
-      # Fonts (libertine + libertinust1math + stix + nomencl)
+      # Fonts
       texlive-fonts-extra \
       texlive-fonts-recommended \
       lmodern \
-      # Bibliography (biblatex + biblatex-abnt + biber)
+      # Publishers (REQUIRED for abntex2 / abntex2cite)
+      texlive-publishers \
+      # Bibliography (biblatex + biblatex-abnt + biber; the template uses BibTeX/abntex2cite too)
       texlive-bibtex-extra \
       biber \
       # Language support
       texlive-lang-portuguese \
-      # Science / math (siunitx, mathtools)
+      texlive-lang-english \
+      # Science / math (siunitx, mathtools, algorithm, algorithmic)
       texlive-science \
-      # Figure / caption (subfig, caption, booktabs)
+      # Figure / caption (subfig, caption, booktabs, epstopdf)
       texlive-pictures \
-      # Misc generic packages (xstring, etoolbox, xpatch …)
+      # Misc generic packages (xstring, etoolbox, xpatch, glossaries ...)
       texlive-plain-generic \
+      # PostScript / EPS conversion (epstopdf shell-out)
+      ghostscript \
  && rm -rf /var/lib/apt/lists/* \
  && echo "TeX Live installation complete."
 
 WORKDIR /work
-
-# Default command: full 3-pass pdflatex + biber compile
-CMD ["bash", "-c", \
-  "set -e && \
-   pdflatex -interaction=nonstopmode thesis.tex && \
-   biber thesis && \
-   pdflatex -interaction=nonstopmode thesis.tex && \
-   pdflatex -interaction=nonstopmode thesis.tex && \
-   echo '==> thesis.pdf compiled successfully.'"]

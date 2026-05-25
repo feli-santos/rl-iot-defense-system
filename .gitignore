@@ -129,21 +129,35 @@ build/
 dist/
 *.egg-info/
 
-# LaTeX build artefacts (tex/ compile output; thesis.pdf committed separately)
+# LaTeX build artefacts (tex/ compile output; principal.pdf / tese.pdf are the
+# committed final outputs and remain tracked separately).
 tex/*.aux
 tex/*.log
 tex/*.bbl
 tex/*.bcf
 tex/*.blg
+tex/*.brf
 tex/*.fdb_latexmk
 tex/*.fls
 tex/*.out
 tex/*.toc
-tex/*.nlo
-tex/*.run.xml
-tex/*.synctex.gz
 tex/*.lof
 tex/*.lot
+tex/*.idx
+tex/*.ilg
+tex/*.ind
+tex/*.glo
+tex/*.gls
+tex/*.glg
+tex/*.nlo
+tex/*.nls
+tex/*.run.xml
+tex/*.synctex.gz
+tex/missfont.log
+tex/texput.log
+# Working directories used by the overleaf sync workflow
+tex/_overleaf_pull/
+tex/_legacy/
 
 # Cline
 .clineignore

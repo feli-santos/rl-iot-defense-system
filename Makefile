@@ -310,24 +310,24 @@ train-all-rl:  ## Train DQN, PPO, A2C sequentially (single seed).
 	    --timesteps $(TIMESTEPS) \
 	    --generator-path $(GEN_DIR) --data-path $(DATA)
 
-##@ Thesis (Docker)
+##@ Thesis (Docker — FEEC CCPG 001-2015 / abnTeX2 template)
 THESIS_IMAGE ?= rl-iot-thesis
-THESIS_TEX   ?= $(PWD)/tex
 
 .PHONY: thesis-image
-thesis-image:  ## Build the minimal Docker image for thesis compilation (one-off, ~3-4 min first run).
-	docker build --tag $(THESIS_IMAGE) --file tex/Dockerfile tex/
+thesis-image:  ## Build the minimal Docker image for thesis compilation (one-off, ~3-6 min first run).
+	bash tex/build.sh --rebuild --draft
 
 .PHONY: thesis
-thesis:  ## Compile tex/thesis.pdf via Docker (builds image if not present).
-	@if ! docker image inspect $(THESIS_IMAGE) >/dev/null 2>&1; then \
-	  echo "==> Image '$(THESIS_IMAGE)' not found — building first..."; \
-	  $(MAKE) thesis-image; \
-	fi
-	docker run --rm --volume "$(THESIS_TEX)":/work $(THESIS_IMAGE)
+thesis:  ## Compile tex/principal.pdf (full: pdflatex × 3 + bibtex) via Docker.
+	bash tex/build.sh
+
+.PHONY: thesis-draft
+thesis-draft:  ## Single fast pdflatex pass (no bibtex, no ToC fix-up).
+	bash tex/build.sh --draft
 
 .PHONY: thesis-rebuild
-thesis-rebuild: thesis-image thesis  ## Force-rebuild Docker image, then compile thesis.
+thesis-rebuild:  ## Force-rebuild Docker image, then compile thesis.
+	bash tex/build.sh --rebuild
 
 ##@ Reproducibility
 .PHONY: reproduce-thesis

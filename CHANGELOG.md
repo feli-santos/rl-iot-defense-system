@@ -1,4 +1,42 @@
-## [0.2.0] — 2026-05-22 (release tag v0.2.0)
+## [0.2.0] — 2026-05-25 (release tag v0.2.0, re-cut)
+
+Template migration: switched the dissertation to the official FEEC CCPG 001-2015
+(abnTeX2) template to resolve an infinite compile-loop in the old custom
+`thesis.cls` (libertinust1math page-break retry bug). Compiled cleanly:
+82 pages, 4.8 MB. Repo cleaned up and Overleaf project synced.
+
+### Changes
+- `tex/`: migrated to FEEC CCPG 001-2015 template (abnTeX2/memoir/lmodern).
+  Main file is now `tex/principal.tex`; build command is `bash tex/build.sh`.
+- `tex/Dockerfile`: rebuilt with `texlive-publishers` (provides `abntex2`,
+  `abntex2cite`). Build toolchain is now `pdflatex × 3 + bibtex + makeindex`.
+- `tex/build.sh`: hardened build script for the new template; per-pass
+  timeouts; `--draft`, `--rebuild`, `--no-docker` flags; purges stale aux files
+  before every compile.
+- Deleted: `tex/thesis.cls`, `tex/thesis.tex`, `tex/references.bib`,
+  `tex/introduction.tex`, `tex/appendices.tex`, `tex/conclusions.tex`,
+  `tex/logotipos/logo-unicamp.pdf`, `uninstall_latex.sh`, and all 17 redundant
+  `.png` figures (PDF versions retained in `tex/figs/`).
+- Added: `tex/principal.tex`, `tex/preambulo.tex`, `tex/unicamp.sty`,
+  `tex/tese.bib`, `tex/eps/unicamp.eps`, `tex/apendice.tex`,
+  `tex/conclusao.tex`, `tex/introducao.tex`, `tex/.olcli.json`,
+  `tex/.olignore`.
+- `Makefile`: updated `thesis`, `thesis-draft`, `thesis-rebuild` targets to
+  use `bash tex/build.sh`.
+- `.gitignore`: added `.idx`/`.ilg`/`.ind`/`.brf`/`.glo`/`.gls`/`.glg`/
+  `.nlo`/`.nls` patterns; added `tex/_overleaf_pull/` and `tex/_legacy/`.
+- `memory-bank/activeContext.md`, `memory-bank/latex-compile-notes.md`:
+  updated to reflect RESOLVED status and root-cause analysis.
+
+### Root-cause summary
+`libertinust1math` lazy-loads math-font encodings (LS1, LS2, OML, OMS, OMX)
+during page composition. Combined with math-mode `\textsc{}` and `\mathbf{1}`
+in the reward-function equations, pdfTeX's page-break retry loop never
+converged. The lmodern-based FEEC template is immune.
+
+---
+
+## [0.2.0] — 2026-05-22 (original release)
 
 Major revision closing all 22 reviewer issues (C1–C22). Primary results
 promoted to `impact_is_terminal=False` with 10-seed headline run.

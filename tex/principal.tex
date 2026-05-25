@@ -1,0 +1,169 @@
+%% --------------------------------------------------------------------------
+%%  Tese de Mestrado - Defesa Final
+%%  Felipe Augusto Oliveira dos Santos
+%%  Faculdade de Engenharia El\'{e}trica e de Computa\c{c}\~{a}o (FEEC)
+%%  Universidade Estadual de Campinas (Unicamp)
+%%
+%%  Template: FEEC modelo tese (CCPG 001-2015) — abnTeX2-based.
+%% --------------------------------------------------------------------------
+
+\input{preambulo}
+
+% --- compila o \'{\i}ndice  ---
+\makeindex
+% ---
+\usepackage[utf8]{inputenc}
+
+% ---- In\'{\i}cio do documento ----
+\begin{document}
+
+% Retira espa\c{c}o extra obsoleto entre as frases.
+\frenchspacing
+
+% ============================================================================
+% ELEMENTOS PR\'{E}-TEXTUAIS
+% ============================================================================
+
+% --- Capa ---
+\imprimircapa
+
+% --- Folha de rosto ---
+\imprimirfolhaderosto
+
+% --- Ficha catalogr\'{a}fica (placeholder) ---
+\begin{fichacatalografica}
+    \vspace*{\fill}
+    \begin{center}
+        \textsc{Inclua aqui o pdf com a ficha catalogr\'{a}fica fornecida pela BAE.}
+    \end{center}
+    \vspace*{\fill}
+    %\includepdf{ficha-catalografica.pdf}
+\end{fichacatalografica}
+
+% --- Folha de aprova\c{c}\~{a}o (placeholder) ---
+\newpage
+\vspace*{\fill}
+\begin{center}
+    \textsc{Inclua aqui a folha de assinaturas.}
+\end{center}
+\vspace*{\fill}
+\newpage
+%\includepdf[pagecommand={\thispagestyle{plain}}]{folha-assinaturas.pdf}
+\cleardoublepage
+
+% --- Dedicat\'{o}ria ---
+\begin{dedicatoria}
+    \vspace*{\fill}
+    \centering
+    \noindent
+    \textit{To my family.}
+    \vspace*{\fill}
+\end{dedicatoria}
+
+% --- Agradecimentos ---
+\begin{agradecimentos}
+    I would like to thank my advisor, Prof.\ Dr.\ Denis Fantinato, for his
+    continuous guidance, patience, and insight throughout this work. I am also
+    grateful to the Faculdade de Engenharia El\'{e}trica e de Computa\c{c}\~{a}o
+    (FEEC) at Unicamp for providing the environment in which this research
+    was carried out, and to my colleagues and family for their unwavering
+    support.
+\end{agradecimentos}
+
+% --- Resumo (PT) e Abstract (EN) ---
+\begin{resumo}
+A proliferação exponencial da Internet das Coisas (IoT) tem produzido uma vasta
+rede de dispositivos interconectados, enquanto o impacto econômico global das
+ameaças cibernéticas continua a crescer. As restrições computacionais e de
+memória de muitos dispositivos IoT tornam ineficazes as soluções de segurança
+tradicionais e motivam mecanismos de defesa adaptativos capazes de operar
+autonomamente. Esta dissertação propõe e avalia rigorosamente um arcabouço de
+defesa adaptativo para redes IoT que combina predição proativa de ataques com
+Aprendizado por Reforço Profundo (DRL). O sistema é avaliado no \emph{dataset}
+CICIoT2023, projetado sobre uma cadeia de eliminação cibernética (Cyber Kill
+Chain) de cinco estágios, com um gerador LSTM, um detector de estágio supervisionado
+e um ambiente Gymnasium customizado expondo um agente defensor com cinco ações.
+Três algoritmos DRL (DQN, PPO, A2C) são treinados ao longo de dez sementes e
+comparados a quatro políticas de referência e a um oráculo. O melhor agente
+implantável (PPO) captura 81\,\% do teto do oráculo com uma vantagem de latência
+de 141$\times$ sobre a baseline supervisionada mais forte, e todos os resultados
+são reprodut\'{\i}veis por uma cadeia de \emph{hashes} SHA-256 verificada de ponta a
+ponta.
+
+    \vspace{\onelineskip}
+
+    \noindent\textbf{Palavras-chaves}: Segurança IoT; Aprendizado por Reforço Profundo;
+    Cyber Kill Chain; Predição de Estágio de Ataque; LSTM; CICIoT2023; Reprodutibilidade.
+
+    \vspace{\onelineskip}
+    \vspace{\onelineskip}
+
+    \begin{otherlanguage*}{english}
+    \begin{center}{\ABNTEXchapterfont\huge Abstract}\end{center}
+
+The exponential proliferation of the Internet of Things (IoT) has produced a
+vast network of interconnected devices while the global economic impact of cyber
+threats continues to grow. The computational and memory constraints of many IoT
+devices render traditional security solutions ineffective and motivate
+intelligent, adaptive defence mechanisms capable of operating autonomously.
+This dissertation designs, implements, and rigorously evaluates an adaptive
+defence framework for IoT networks that combines proactive attack-stage
+prediction with Deep Reinforcement Learning (DRL). The framework is evaluated
+end-to-end on the CICIoT2023 dataset, projected onto a five-stage Cyber Kill
+Chain, with an LSTM red-team generator, a supervised stage detector, and a
+custom Gymnasium environment exposing a five-action defender. Three DRL
+algorithms (DQN, PPO, A2C) are trained over ten seeds and benchmarked against
+four reference policies and an oracle. The best deployable agent (PPO)
+captures 81\,\% of the oracle ceiling at a 141$\times$ latency advantage over
+the strongest supervised baseline, and every reported number is reproducible
+from a SHA-256 hash chain verified end-to-end.
+
+    \vspace{\onelineskip}
+
+    \noindent\textbf{Keywords}: IoT security; Deep Reinforcement Learning; Cyber
+    Kill Chain; Attack Stage Prediction; LSTM; CICIoT2023; Reproducibility.
+
+    \end{otherlanguage*}
+\end{resumo}
+
+% --- Listas (figuras, tabelas, ToC) ---
+\pdfbookmark[0]{\listfigurename}{lof}
+\listoffigures*
+\cleardoublepage
+
+\pdfbookmark[0]{\listtablename}{lot}
+\listoftables*
+\cleardoublepage
+
+\pdfbookmark[0]{\contentsname}{toc}
+\tableofcontents*
+\clearpage
+
+% ============================================================================
+% ELEMENTOS TEXTUAIS
+% ============================================================================
+\pagenumbering{arabic}
+\setcounter{page}{1}
+
+\textual
+
+\include{introducao}
+\include{background}
+\include{methodology}
+\include{results}
+\include{conclusao}
+
+% ============================================================================
+% ELEMENTOS P\'{O}S-TEXTUAIS
+% ============================================================================
+\postextual
+
+% --- Refer\^{e}ncias bibliogr\'{a}ficas ---
+\bibliography{tese}
+
+% --- Ap\^{e}ndices ---
+\begin{apendicesenv}
+    \include{apendice}
+\end{apendicesenv}
+
+\end{document}

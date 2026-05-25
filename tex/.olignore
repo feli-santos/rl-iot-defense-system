@@ -1,0 +1,39 @@
+# .olignore — tells olcli what to skip when syncing with Overleaf.
+# We list only what we DEFINITELY do not want uploaded; everything else goes.
+
+# Local build artefacts (LaTeX compile output)
+*.aux
+*.bbl
+*.blg
+*.brf
+*.fdb_latexmk
+*.fls
+*.idx
+*.ilg
+*.ind
+*.log
+*.lof
+*.lot
+*.glo
+*.gls
+*.glg
+*.nlo
+*.nls
+*.out
+*.toc
+*.run.xml
+*.synctex.gz
+*.bak
+missfont.log
+texput.log
+
+# Compiled outputs (Overleaf produces its own principal.pdf via the cloud compile)
+principal.pdf
+tese.pdf
+
+# Working directories from the migration session
+_legacy/
+_overleaf_pull/
+
+# Editor/OS clutter
+.DS_Store

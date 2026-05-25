@@ -5,12 +5,12 @@
 % Appendix A, B, C, ...
 
 % ====================================================================
-\section{Reproducibility Protocol, Manifest Hash Chain, and Verification Recipe}\label{app:repro}
+\chapter{Reproducibility Protocol, Manifest Hash Chain, and Verification Recipe}\label{app:repro}
 % ====================================================================
 
 This appendix documents the audit-first reproducibility protocol that underpins every numerical claim in this dissertation, following a model-card-style template inspired by the documentation discipline introduced for machine-learning artefacts \cite{Mitchell2019}. The protocol is implemented as a SHA-256 hash chain pinning every figure, table, and benchmark number to its inputs and the producing Git commit, and as a smoke-reproducibility harness that verifies the chain end-to-end on a fresh checkout in approximately five seconds.
 
-\subsection{Per-Stage Manifest Pattern}\label{app:manifest_pattern}
+\section{Per-Stage Manifest Pattern}\label{app:manifest_pattern}
 Every development stage of the framework emits one or more \texttt{manifest.json} files under \texttt{docs/results/<phase>/} that record (a) the SHA-256 hash of every input artefact (data splits, trained models, scaler, episode roll-outs, upstream stage manifests), (b) the producing Git commit (\texttt{git\_sha}), and (c) the producing-script invocation (\texttt{produced\_by}). Each manifest also records the SHA-256 hash of every output artefact (figure, summary JSON, scoreboard) so that downstream stages can pin the upstream output by hash, not by filename alone. The per-stage artefact inventory is summarised in Table~\ref{tab:manifest_inventory}.
 
 \begin{table}[!htbp]
@@ -32,7 +32,7 @@ Stage & Path & Key artefacts \\
 \end{tabular}
 \end{table}
 
-\subsection{Gate Scoreboards}\label{app:scoreboards}
+\section{Gate Scoreboards}\label{app:scoreboards}
 Four \texttt{G<n>\_scoreboard.json} files (one per gated stage) record the threshold-vs.-observed value for every exit gate, the verdict bucketed into \textsc{pass} / \textsc{pass-with-finding} / \textsc{pass-without-stretch} / \textsc{fail-with-finding} / \textsc{fail} / \textsc{skip}, and a finding-id cross-reference where the verdict is contingent on a pre-registered finding-activation rule. Schema version 2.0 (Step-8 unification) is used uniformly across G4/G5/G6/G7. The verdict tally at the head of the dissertation's evaluation chain (commit \texttt{26b8df2}, the post-Step-8 \texttt{main}) is summarised in Table~\ref{tab:scoreboard_summary}.
 
 \begin{table}[!htbp]
@@ -51,7 +51,7 @@ Ablation/OOD (\texttt{G7}) & 7 & --- & 1 & 2 & G7.2 (F9 \texttt{impact\_is\_term
 \end{tabular}
 \end{table}
 
-\subsection{Smoke-Reproducibility Harness}\label{app:r1}
+\section{Smoke-Reproducibility Harness}\label{app:r1}
 The harness \texttt{scripts/reproducibility\_smoke.py} is the canonical end-to-end verification recipe. It walks every committed \texttt{manifest.json} file under \texttt{docs/results/} and verifies, for every recorded input SHA-256, that the on-disk SHA-256 of that input \emph{right now} matches the recorded one. Output is bucketed into four categories:
 
 \begin{description}
@@ -63,7 +63,7 @@ The harness \texttt{scripts/reproducibility\_smoke.py} is the canonical end-to-e
 
 The harness's verdict at the head of the dissertation's evaluation chain (commit \texttt{26b8df2}) is \textbf{\textsc{pass}}: \textbf{458 \textsc{ok} / 0 \textsc{fail} / 2 \textsc{known-divergence} / 6 \textsc{skip}}. A non-zero \textsc{fail} count would block merge of any commit that introduces it.
 
-\subsection{Verification Recipe (Fresh-Checkout Reproduction)}\label{app:recipe}
+\section{Verification Recipe (Fresh-Checkout Reproduction)}\label{app:recipe}
 On a fresh checkout, the empirical record can be re-verified end-to-end without retraining any model:
 
 \begin{verbatim}
@@ -108,18 +108,18 @@ make ablation-close                       # G7 scoreboard + RESULTS.md
 
 After a full re-train the per-stage \texttt{manifest.json} files are re-emitted with new input SHAs corresponding to the freshly trained checkpoints; the harness will then verify the new chain end-to-end.
 
-\subsection{Hardware and Environment}\label{app:hardware}
+\section{Hardware and Environment}\label{app:hardware}
 All experiments reported in this dissertation were run on a single CPU core. No GPU is required for any development stage (the LSTM red team, the MLP stage detector, and the three DRL agents all train within minutes-to-hours on commodity CPU). Software environment: Python 3.9, PyTorch (CPU build), scikit-learn, Stable~Baselines3, Gymnasium. Total wallclock for the full audited evaluation chain (development stages 1--7) is approximately 8.5~h on a single CPU core, dominated by the ablation sweeps; the held-out benchmark and the smoke-reproducibility harness together take less than 11~minutes.
 
 % ====================================================================
-\section{CICIoT2023 Label to Kill Chain Stage Mapping}\label{app:kc_mapping}
+\chapter{CICIoT2023 Label to Kill Chain Stage Mapping}\label{app:kc_mapping}
 % ====================================================================
 
-The 34 CICIoT2023 labels (33 attack classes plus \texttt{BenignTraffic}) are projected onto the five Kill Chain stages defined in Section~\ref{subsec:kill_chain} via the closed mapping in Table~\ref{tab:kc_mapping}. The mapping is implemented in \texttt{src/utils/label\_mapper.py::AbstractStateLabelMapper}; an unknown label encountered at processing time raises an explicit \texttt{KeyError} so that any new attack class added to the dataset cannot silently leak into an existing stage. The full design rationale, including why the Lockheed Martin seven-step chain is coarsened to five stages here and why the $\textsc{benign} \to \textsc{recon} \to \textsc{access} \to \textsc{maneuver} \to \textsc{impact}$ ordering is monotone in attacker progress, is provided in \texttt{docs/kill-chain-mapping.md}.
+The 34 CICIoT2023 labels (33 attack classes plus \texttt{BenignTraffic}) are projected onto the five Kill Chain stages defined in Section~\ref{sec:kill_chain} via the closed mapping in Table~\ref{tab:kc_mapping}. The mapping is implemented in \texttt{src/utils/label\_mapper.py::AbstractStateLabelMapper}; an unknown label encountered at processing time raises an explicit \texttt{KeyError} so that any new attack class added to the dataset cannot silently leak into an existing stage. The full design rationale, including why the Lockheed Martin seven-step chain is coarsened to five stages here and why the $\textsc{benign} \to \textsc{recon} \to \textsc{access} \to \textsc{maneuver} \to \textsc{impact}$ ordering is monotone in attacker progress, is provided in \texttt{docs/kill-chain-mapping.md}.
 
 \begin{table}[!htbp]
 \centering
-\caption{Per-class CICIoT2023 to Kill Chain stage mapping. Classes marked $^\star$ are reserved as held-out out-of-distribution attack classes (Section~\ref{subsubsec:splits}) and are never seen during training of either the supervised stage detector or the DRL agents.}
+\caption{Per-class CICIoT2023 to Kill Chain stage mapping. Classes marked $^\star$ are reserved as held-out out-of-distribution attack classes (Section~\ref{ssec:splits}) and are never seen during training of either the supervised stage detector or the DRL agents.}
 \label{tab:kc_mapping}
 \begin{tabular}{l p{10cm}}
 \hline
@@ -139,7 +139,7 @@ Stage & CICIoT2023 labels \\
 \end{table}
 
 % ====================================================================
-\section{Hyperparameters per Algorithm}\label{app:hparams}
+\chapter{Hyperparameters per Algorithm}\label{app:hparams}
 % ====================================================================
 
 The blue-team training hyperparameter table (T1) for DQN, PPO, and A2C is reproduced in Table~\ref{tab:hparams} from \texttt{docs/results/05\_blue\_team/T1\_hparams.json}, which is the canonical hash-pinned source. All values are Stable~Baselines3 defaults, frozen for the thesis at PLAN \S8 D5.4; the same values are used across the five seeds (\texttt{seed} $\in \{0, 1, 2, 3, 4\}$) and the 250{,}000 environment steps per run. Empty cells indicate hyperparameters that do not apply to the algorithm (e.g.\ off-policy DQN-only fields are blank for the on-policy PPO and A2C rows).
@@ -166,14 +166,14 @@ For DQN-specific off-policy hyperparameters (replay buffer, exploration schedule
 The ablation and OOD-robustness evaluations re-use the PPO hyperparameters above unchanged --- only the environment (\texttt{impact\_is\_terminal}, \texttt{p\_defender\_deescalation}) and the reward coefficients (\texttt{defense\_success\_bonus}, \texttt{penalty\_missed\_impact}, \texttt{reward\_proportional}, \texttt{reward\_benign\_passive}, \texttt{penalty\_disproportionate}) are perturbed.
 
 % ====================================================================
-\section{Sensitivity Sweep Figures}\label{app:sensitivity}
+\chapter{Sensitivity Sweep Figures}\label{app:sensitivity}
 % ====================================================================
 
-This appendix collects the three hyperparameter sensitivity sweep figures referenced in Section~\ref{sec:methodology} (§3.5.4--3.5.6). All sweeps use DQN (single seed) or PPO ($\times$5 seeds) with all other parameters held at their environment-design defaults; mean test reward on \texttt{test\_balanced} is the primary metric. 95\,\% bootstrap confidence intervals are shown as shaded bands.
+This appendix collects the three hyperparameter sensitivity sweep figures referenced in Section~\ref{cap:methodology} (§3.5.4--3.5.6). All sweeps use DQN (single seed) or PPO ($\times$5 seeds) with all other parameters held at their environment-design defaults; mean test reward on \texttt{test\_balanced} is the primary metric. 95\,\% bootstrap confidence intervals are shown as shaded bands.
 
-\subsection{Defender De-escalation Probability Sweep (F10)}\label{app:deesc_sweep}
+\section{Defender De-escalation Probability Sweep (F10)}\label{app:deesc_sweep}
 
-Figure~\ref{fig:app_f10} reproduces the F10 aggressiveness sweep from Section~\ref{subsec:ablation_results}. The parameter $p_{\mathrm{de{-}esc}}$ controls the probability that a \textsc{block} or \textsc{isolate} action on an active \textsc{access} or \textsc{maneuver} stage resets the chain to \textsc{benign}. The sweep establishes that $p_{\mathrm{de{-}esc}} = 0.6$ is the primary operating point where PPO reward is within 200 units of the oracle ceiling while the MDP remains challenging enough to yield useful training signal.
+Figure~\ref{fig:app_f10} reproduces the F10 aggressiveness sweep from Section~\ref{sec:ablation_results}. The parameter $p_{\mathrm{de{-}esc}}$ controls the probability that a \textsc{block} or \textsc{isolate} action on an active \textsc{access} or \textsc{maneuver} stage resets the chain to \textsc{benign}. The sweep establishes that $p_{\mathrm{de{-}esc}} = 0.6$ is the primary operating point where PPO reward is within 200 units of the oracle ceiling while the MDP remains challenging enough to yield useful training signal.
 
 \begin{figure}[!htbp]
     \centering
@@ -182,7 +182,7 @@ Figure~\ref{fig:app_f10} reproduces the F10 aggressiveness sweep from Section~\r
     \label{fig:app_f10}
 \end{figure}
 
-\subsection{Action-Cost Scale Sweep}\label{app:action_cost_sweep}
+\section{Action-Cost Scale Sweep}\label{app:action_cost_sweep}
 
 Figure~\ref{fig:app_fa_cost} shows the action-cost scale sensitivity sweep over $\alpha \in \{0.5, 1.0, 2.0\}$. All three settings produce overlapping 95\,\% bootstrap confidence intervals, confirming that the default $\alpha = 1.0$ is robust to $\pm 2\times$ perturbation.
 
@@ -193,7 +193,7 @@ Figure~\ref{fig:app_fa_cost} shows the action-cost scale sensitivity sweep over 
     \label{fig:app_fa_cost}
 \end{figure}
 
-\subsection{History Window-Size Ablation}\label{app:window_ablation}
+\section{History Window-Size Ablation}\label{app:window_ablation}
 
 Figure~\ref{fig:app_fa_window} shows the window-size ablation over $w \in \{1, 3, 5, 10\}$. Window $w = 5$ achieves the highest mean reward; increasing to $w = 10$ does not improve reward while doubling the observation dimension from 290 to 580 features.
 
