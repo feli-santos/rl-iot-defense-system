@@ -4,7 +4,10 @@
 \addbibresource{references.bib}
 
 \usepackage{subcaption}
-\usepackage{dsfont}
+
+% Prevent infinite page-break retry loops caused by overfull boxes
+% (libertinust1math + on-the-fly font loading can trigger retries otherwise)
+\emergencystretch=3em
 
 \begin{document}
 

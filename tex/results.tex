@@ -1,6 +1,7 @@
 % ====================================================================
 % Section: Results and Discussion
 % ====================================================================
+\clearpage
 \section{Results and Discussion}\label{sec:results}
 
 This chapter presents the empirical results across all stages of the framework. Section~\ref{subsec:exp_setup} fixes the experimental setup. Section~\ref{subsec:dataset_results} reports the kill-chain projection of CICIoT2023 and the splits-protocol audit (including the leakage-bug fix). Section~\ref{subsec:red_team_results} validates the LSTM red-team episode generator; Section~\ref{subsec:detector_results} validates the supervised stage detector. Section~\ref{subsec:blue_team_results} reports the DRL training results, and Section~\ref{subsec:benchmark_results} the held-out benchmarks against deployable baselines and the oracle reference. Section~\ref{subsec:ablation_results} reports the reward-component and aggressiveness ablations, and Section~\ref{subsec:ood_results} the out-of-distribution robustness evaluation. Section~\ref{subsec:discussion} discusses the headline findings and threats to validity.
@@ -15,26 +16,27 @@ The CICIoT2023 dataset is projected onto the five kill-chain stages using the pe
 
 \begin{figure}[!htbp]
     \centering
-    \subcaptionbox{Per-class distribution\label{fig:f0a}}{\includegraphics[width=0.49\textwidth]{figs/F0_class_distribution.png}}
+    \subcaptionbox{Per-class distribution\label{fig:f0a}}{\includegraphics[width=0.49\textwidth]{figs/F0_class_distribution.pdf}}
     \hfill
-    \subcaptionbox{Per-stage distribution per split\label{fig:f0b}}{\includegraphics[width=0.49\textwidth]{figs/F0_stage_distribution.png}}
+    \subcaptionbox{Per-stage distribution per split\label{fig:f0b}}{\includegraphics[width=0.49\textwidth]{figs/F0_stage_distribution.pdf}}
     \caption{CICIoT2023 dataset overview after kill-chain projection. Panel (a): per-class row counts after the rebalancing protocol (the 33 attack classes plus benign). Panel (b): per-stage row counts across the four partitions (\texttt{train}, \texttt{val\_balanced}, \texttt{test\_balanced}, \texttt{ood}).}
     \label{fig:dataset_overview}
 \end{figure}
 
 The post-leakage-fix \texttt{train} partition contains 281{,}420 rows (RECON 27{,}038, ACCESS 23{,}173, MANEUVER 33{,}939, IMPACT 127{,}270, BENIGN balance) after OOD reservation. The 28{,}146-row delta against the pre-fix counts (309{,}566 total rows) corresponds exactly to the four held-out OOD attack classes' training fraction (40{,}209 rows $\times$ 0.70 train ratio $=$ 28{,}146 rows). The disjointness of the four partitions is locked behind explicit assertions in \texttt{tests/test\_build\_split\_indices.py} (\texttt{train} $\cap$ \texttt{ood} $=$ \texttt{val} $\cap$ \texttt{ood} $=$ \texttt{test} $\cap$ \texttt{ood} $=$ $\emptyset$); these assertions are part of the 411-test suite and are checked at every commit.
 
-\paragraph{The leakage-bug fix as a methodological contribution.} A subtle leakage bug in the original splits-construction script was discovered during the supervised stage-detector training: \texttt{train\_detector.py} aborted with the message ``\texttt{LEAKAGE: train $\cap$ ood:DDoS-HTTP\_Flood = 8\,546 rows}'', triggered by a defensive disjointness check added to the producer script before any model training began. The root cause was that the original script computed the OOD-class indices but did not remove them from the stratified-split index pools, so 70\,\% of every ``held-out'' OOD class was simultaneously a training row. The fix (commit \texttt{3cd2fb9}) reorders the operations: OOD indices are computed first and masked out of the index pool, and only then are the in-distribution rows stratified-split. The pre-fix \texttt{splits/manifest.json} SHA (\texttt{82aa1214\ldots}) was preserved in the dataset-preparation and red-team-training stage \texttt{manifest.json} records as the immutable audit-trail anchor; the on-disk post-fix SHA (\texttt{1e99d596\ldots}) is what every later stage consumes. Both are surfaced as \emph{KNOWN-DIVERGENCE} cells by the \texttt{reproducibility\_smoke} harness (Section~\ref{subsec:repro_framework}) with the explanatory note in \texttt{docs/results/02\_red\_team/RESULTS.md} \S5.3. The red-team LSTM was \emph{not} retrained because it consumes only stage tokens (not per-flow features), making the leakage orthogonal to its input space; this is verified empirically by the post-fix cosine-similarity gate (G4 saturation at $0.99999$, Section~\ref{subsec:red_team_results}).
+\paragraph{The leakage-bug fix as a methodological contribution.} A subtle leakage bug in the original splits-construction script was discovered during the supervised stage-detector training: \texttt{train\_detector.py} aborted with the message ``\texttt{LEAKAGE: train}~$\cap$~\texttt{ood:DDoS-HTTP\_Flood = 8{,}546 rows}'', triggered by a defensive disjointness check added to the producer script before any model training began. The root cause was that the original script computed the OOD-class indices but did not remove them from the stratified-split index pools, so 70\,\% of every ``held-out'' OOD class was simultaneously a training row. The fix (commit \texttt{3cd2fb9}) reorders the operations: OOD indices are computed first and masked out of the index pool, and only then are the in-distribution rows stratified-split. The pre-fix \texttt{splits/manifest.json} SHA (\texttt{82aa1214\ldots}) was preserved in the dataset-preparation and red-team-training stage \texttt{manifest.json} records as the immutable audit-trail anchor; the on-disk post-fix SHA (\texttt{1e99d596\ldots}) is what every later stage consumes. Both are surfaced as \emph{KNOWN-DIVERGENCE} cells by the \texttt{reproducibility\_smoke} harness (Section~\ref{subsec:repro_framework}) with the explanatory note in \texttt{docs/results/02\_red\_team/RESULTS.md} \S5.3. The red-team LSTM was \emph{not} retrained because it consumes only stage tokens (not per-flow features), making the leakage orthogonal to its input space; this is verified empirically by the post-fix cosine-similarity gate (G4 saturation at $0.99999$, Section~\ref{subsec:red_team_results}).
 
 % --- Subsection 4.2 ---
+\clearpage
 \subsection{Red-Team Episode Generator}\label{subsec:red_team_results}
 The single-layer LSTM red team is trained for 15 epochs with early stopping on the validation cross-entropy. Figure~\ref{fig:red_team_results} shows (a) the training and validation curves and (b) the empirical 5$\times$5 stage-transition matrix versus the ground-truth class-conditional priors.
 
 \begin{figure}[!htbp]
     \centering
-    \subcaptionbox{LSTM learning curves\label{fig:f1}}{\includegraphics[width=0.49\textwidth]{figs/F1_learning_curves.png}}
+    \subcaptionbox{LSTM learning curves\label{fig:f1}}{\includegraphics[width=0.49\textwidth]{figs/F1_learning_curves.pdf}}
     \hfill
-    \subcaptionbox{Empirical vs.\ ground-truth transition matrix\label{fig:f2}}{\includegraphics[width=0.49\textwidth]{figs/F2_transition_matrix_comparison.png}}
+    \subcaptionbox{Empirical vs.\ ground-truth transition matrix\label{fig:f2}}{\includegraphics[width=0.49\textwidth]{figs/F2_transition_matrix_comparison.pdf}}
     \caption{Red-team LSTM episode generator. Panel (a): cross-entropy loss and token accuracy on training and validation sets across 15 epochs (shaded bands denote $\pm$1 standard deviation over training runs). Panel (b): empirical 5$\times$5 stage-transition matrix produced by the trained LSTM (left) compared against the ground-truth transition priors built from the \texttt{train} split (right).}
     \label{fig:red_team_results}
 \end{figure}
@@ -52,12 +54,13 @@ The red-team LSTM exit-gate scoreboard at the locking commit \texttt{283ca29e} r
 The G4 cosine saturation at $0.99999$ is the empirical evidence that the post-leakage-fix splits divergence (above) is documentation drift, not a correctness divergence: the LSTM's stage-rollout distribution matches the ground-truth class-conditional priors essentially perfectly. The model-selection criterion was \emph{balanced-validation cross-entropy} (rather than raw validation accuracy) because the per-stage class frequencies are heavily imbalanced; this avoids the trap of selecting a model that is excellent at the dominant \textsc{benign} class and indifferent to the other four. The seed used for all randomness during red-team LSTM training is \texttt{seed=42}, justified empirically by a 10-seed sensitivity probe documented in \texttt{docs/results/02\_red\_team/RESULTS.md} \S5.2.
 
 % --- Subsection 4.3 ---
+\clearpage
 \subsection{Supervised Stage Detector}\label{subsec:detector_results}
 The supervised stage detector is evaluated on the held-out \texttt{test\_balanced} split. Figure~\ref{fig:f11} shows the per-stage recall for the production MLP detector and the two reference baselines (RandomForest and 1D-CNN).
 
 \begin{figure}[!htbp]
     \centering
-    \includegraphics[width=0.7\textwidth]{figs/F11_per_stage_recall.png}
+    \includegraphics[width=0.7\textwidth]{figs/F11_per_stage_recall.pdf}
     \caption{Per-stage recall on the held-out \texttt{test\_balanced} split for the production MLP stage detector and two reference baselines. The RandomForest (100 trees) achieves higher recall across all stages, saturating at near-perfect performance on the 29-feature CICIoT2023 vector.}
     \label{fig:f11}
 \end{figure}
@@ -100,24 +103,25 @@ Class & True stage & Recall & Note \\
 \paragraph{The OOD-asymmetry finding.} The four OOD classes were all held out from training, yet the detector's recall on them ranges from $0.001$ to $0.999$ --- a gap of $0.998$. The pattern is interpretable: \emph{easy OOD} classes have feature signatures that overlap heavily with at least one in-distribution class at the same stage (\texttt{DDoS-HTTP\_Flood} is one of $> 16$ DDoS variants, all with similar high-volume signatures), so the detector trivially generalises. \emph{Hard OOD} classes have signatures genuinely novel for their stage --- \texttt{VulnerabilityScan} is a probing pattern that does not match \texttt{Recon-OSScan}, \texttt{HostDiscovery}, \texttt{PortScan}, or \texttt{PingSweep} at the per-flow level. This asymmetry is the canonical illustration of the structural-vs.\ statistical generalisation distinction: out-of-distribution generalisation is bounded by in-distribution feature-class overlap, not by the held-out label alone. The same asymmetry is the input to the RL-level robustness evaluation (Section~\ref{subsec:ood_results}, F15).
 
 % --- Subsection 4.4 ---
+\clearpage
 \subsection{Blue-Team Training}\label{subsec:blue_team_results}
 The three DRL algorithms (DQN, PPO, A2C) were trained over ten seeds for $250{,}000$ environment steps each (30 runs total, $\sim$7.7 hours wallclock). Figure~\ref{fig:f3} shows the episodic-reward learning curves; Figure~\ref{fig:f4} shows the action-distribution evolution over training for PPO.
 
 \begin{figure}[!htbp]
     \centering
-    \includegraphics[width=0.85\textwidth]{figs/F3_learning_curves.png}
+    \includegraphics[width=0.85\textwidth]{figs/F3_learning_curves.pdf}
     \caption{Blue-team learning curves: episodic reward over training for DQN, PPO, A2C across ten seeds each. Shaded bands are 95\,\% bootstrap confidence intervals over seeds.}
     \label{fig:f3}
 \end{figure}
 
 \begin{figure}[!htbp]
     \centering
-    \includegraphics[width=0.85\textwidth]{figs/F4_action_distribution.png}
+    \includegraphics[width=0.85\textwidth]{figs/F4_action_distribution.pdf}
     \caption{Per-stage action-distribution evolution across training for PPO. The argmax action matches the recommended action exactly on \textsc{recon} (\textsc{log}) and \textsc{maneuver} (\textsc{block}); other stages spread probability mass within the proportionality $\pm 1$ band.}
     \label{fig:f4}
 \end{figure}
 
-\paragraph{PPO achieves highest reward on both training and test splits.} Under the primary contract ($\texttt{impact\_is\_terminal}=\mathit{False}$, 10 seeds), PPO attains the highest validation reward ($+1350.7$) and the highest test-set reward ($+1334.5$; Section~\ref{subsec:benchmark_results}), demonstrating consistent generalisation from training to held-out evaluation. A2C converges faster but plateaus at a lower asymptote ($+1296.7$ on test); DQN shows higher variability across seeds (test CI $[1159.4, 1272.4]$) despite its best-seed being competitive with PPO. The pattern is consistent with the known characteristics of on-policy (PPO/A2C) versus off-policy (DQN) RL: DQN's higher seed variance reflects sensitivity to its exploration schedule in the discrete action space, while PPO's clipped objective stabilises training across seeds.
+\paragraph{PPO achieves highest reward on both training and test splits.} Under the primary contract (\texttt{impact\_is\_terminal}${}={}$\textit{False}, 10 seeds), PPO attains the highest validation reward ($+1350.7$) and the highest test-set reward ($+1334.5$; Section~\ref{subsec:benchmark_results}), demonstrating consistent generalisation from training to held-out evaluation. A2C converges faster but plateaus at a lower asymptote ($+1296.7$ on test); DQN shows higher variability across seeds (test CI $[1159.4, 1272.4]$) despite its best-seed being competitive with PPO. The pattern is consistent with the known characteristics of on-policy (PPO/A2C) versus off-policy (DQN) RL: DQN's higher seed variance reflects sensitivity to its exploration schedule in the discrete action space, while PPO's clipped objective stabilises training across seeds.
 
 The exit-gate scoreboard for the blue-team training stage (commit-locked at the eval-step harness) is:
 \begin{itemize}
@@ -131,36 +135,37 @@ The exit-gate scoreboard for the blue-team training stage (commit-locked at the 
 \end{itemize}
 
 \paragraph{Reward Mis-specification: Discovered and Structurally Fixed (G5.4 PASS-WITH-FINDING).}
-The trained PPO agent earns mean reward $+1334.5$, far above the always-\textsc{block} floor ($+530$). However, the agent selects \textsc{block}/\textsc{isolate} at the \textsc{impact} step only $29.7\,\%$ of the time. A reward-decomposition trace explains this as \emph{reward mis-specification}: the agent earns approximately $+1575$ reward per episode from defender-driven de-escalation bonuses (mean $\sim$6.3 de-escalations per episode $\times$ $+250$ each), plus per-step proportionality bonuses; this sum dwarfs the expected loss at the \textsc{impact} step ($\sim$$-246$ expected). The reward-maximising policy under the environment-design reward function is therefore ``rack up de-escalation bonuses and accept the \textsc{impact} loss'' --- a divergence from the intended policy of ``defend the \textsc{impact} step at all costs''. This is a textbook case of reward mis-specification \cite{Sutton2018}: the proxy objective has been correctly optimised in a way that diverges from the human's intended objective. Crucially, this is a \emph{structural} problem that cannot be fixed by adjusting coefficients alone; the reward-component ablation (Section~\ref{subsec:ablation_results}) identifies the structural fix: setting $\texttt{impact\_is\_terminal}=\mathit{False}$, which turns the \textsc{impact} row into an actionable decision step and lifts the mitigated-impact rate from $0.153$ to $0.900$ (a 5.9$\times$ improvement).
+The trained PPO agent earns mean reward $+1334.5$, far above the always-\textsc{block} floor ($+530$). However, the agent selects \textsc{block}/\textsc{isolate} at the \textsc{impact} step only $29.7\,\%$ of the time. A reward-decomposition trace explains this as \emph{reward mis-specification}: the agent earns approximately $+1575$ reward per episode from defender-driven de-escalation bonuses (mean $\sim$6.3 de-escalations per episode $\times$ $+250$ each), plus per-step proportionality bonuses; this sum dwarfs the expected loss at the \textsc{impact} step ($\sim$$-246$ expected). The reward-maximising policy under the environment-design reward function is therefore ``rack up de-escalation bonuses and accept the \textsc{impact} loss'' --- a divergence from the intended policy of ``defend the \textsc{impact} step at all costs''. This is a textbook case of reward mis-specification \cite{Sutton2018}: the proxy objective has been correctly optimised in a way that diverges from the human's intended objective. Crucially, this is a \emph{structural} problem that cannot be fixed by adjusting coefficients alone; the reward-component ablation (Section~\ref{subsec:ablation_results}) identifies the structural fix: setting \texttt{impact\_is\_terminal}${}={}$\textit{False}, which turns the \textsc{impact} row into an actionable decision step and lifts the mitigated-impact rate from $0.153$ to $0.900$ (a 5.9$\times$ improvement).
 
 % --- Subsection 4.5 ---
+\clearpage
 \subsection{Held-Out Benchmark: Trained RL versus Deployable Baselines and the Oracle Reference}\label{subsec:benchmark_results}
 The trained DRL checkpoints were evaluated on the held-out \texttt{test\_balanced} split ($n = 300$ deterministic episodes per DRL policy, $n = 150$ for baselines and oracle) against the four deployable baselines and the oracle reference (Section~\ref{subsec:baselines}). Figure~\ref{fig:f8} shows the mean episodic reward with 95\,\% bootstrap confidence intervals; Figure~\ref{fig:f6} shows the per-policy stage$\times$action confusion matrices; Figure~\ref{fig:f7} the inference-latency CDFs; Figure~\ref{fig:f5} the consolidated per-policy security-metrics table.
 
 \begin{figure}[!htbp]
     \centering
-    \includegraphics[width=0.85\textwidth]{figs/F8_baselines.png}
+    \includegraphics[width=0.85\textwidth]{figs/F8_baselines.pdf}
     \caption{Mean episodic reward with 95\,\% bootstrap confidence intervals on the held-out \texttt{test\_balanced} split. The oracle Recommended-Action rule (open circle, \textcircled{o}) reads the true attack stage from the simulator and is a measurement instrument, not a competing baseline. Among deployable policies the ranking is RF-Acting $>$ trained DRL $>$ Always-\textsc{block} $>$ Random $>$ Always-\textsc{observe}.}
     \label{fig:f8}
 \end{figure}
 
 \begin{figure}[!htbp]
     \centering
-    \includegraphics[width=0.95\textwidth]{figs/F6_stage_action_cm.png}
+    \includegraphics[width=0.95\textwidth]{figs/F6_stage_action_cm.pdf}
     \caption{Per-policy stage$\times$action confusion matrices for DQN, PPO, A2C, RF-Acting, oracle Recommended-Action rule, and Random. Each panel reports the per-stage proportionality-band score (gate G6.3) overlaid. The IMPACT row reflects actions taken \emph{when the stage detector observes} \textsc{impact} (not a prediction of the next stage).}
     \label{fig:f6}
 \end{figure}
 
 \begin{figure}[!htbp]
     \centering
-    \includegraphics[width=0.85\textwidth]{figs/F7_overhead.png}
+    \includegraphics[width=0.85\textwidth]{figs/F7_overhead.pdf}
     \caption{Inference-latency CDFs (log-scale x-axis) for all policies. Trained RL inference is 0.065--0.109\,ms (p50); RF-Acting is 13.85\,ms (sklearn per-call overhead on a 100-tree forest); the oracle rule is sub-microsecond. Training wallclock (right panel) is summed over ten seeds.}
     \label{fig:f7}
 \end{figure}
 
 \begin{figure}[!htbp]
     \centering
-    \includegraphics[width=0.95\textwidth]{figs/F5_table.png}
+    \includegraphics[width=0.95\textwidth]{figs/F5_table.pdf}
     \caption{Final security-metrics table on \texttt{test\_balanced}: mean reward, 95\,\% bootstrap CI, mitigated-impact rate, mean MTTC, and inference latency for every policy (10 seeds for DRL; 1 seed for baselines and oracle).}
     \label{fig:f5}
 \end{figure}
@@ -237,38 +242,40 @@ RF-Acting achieves higher mean reward ($+1486.2$ vs.\ PPO $+1334.5$, $\Delta = +
 \paragraph{Proportionality on non-IMPACT stages (G6.3 PASS).} The F6 confusion matrices (Figure~\ref{fig:f6}) show a clear diagonal structure: \textsc{benign} $\to$ mostly \textsc{observe}/\textsc{log}; \textsc{access} $\to$ \textsc{throttle}; \textsc{maneuver} $\to$ \textsc{block}. All three trained-RL policies clear the 0.70 proportionality threshold on \textsc{benign}/\textsc{recon}/\textsc{access}/\textsc{maneuver} (DQN 0.785, PPO 0.712, A2C 0.746). RL training successfully internalised the kill-chain recommended-action structure for every stage except \textsc{impact}; the \textsc{impact} deficit is structural reward mis-specification, addressed in Section~\ref{subsec:ablation_results}.
 
 % --- Subsection 4.6 ---
+\clearpage
 \subsection{Reward-Component and Aggressiveness Ablations}\label{subsec:ablation_results}
 The ablation and OOD-robustness evaluations characterise the trained policy's sensitivity to environment design. Figure~\ref{fig:f9} shows the F9 reward-component sweep, Figure~\ref{fig:f10} the F10 aggressiveness sweep.
 
 \begin{figure}[!htbp]
     \centering
-    \includegraphics[width=0.95\textwidth]{figs/F9_reward_ablation.png}
+    \includegraphics[width=0.95\textwidth]{figs/F9_reward_ablation.pdf}
     \caption{F9 reward-component ablation: PPO mean test reward across the 12-cell sweep over five reward coefficients $\times$ $\{0.5\times, 1\times, 2\times\}$ plus the binary \texttt{impact\_is\_terminal} flag. The benchmark oracle ceiling ($+1647.6$) and PPO primary ($+1334.5$) are overlaid as horizontal reference lines. The \texttt{impact\_is\_terminal}$=\mathit{False}$ cell wins at $+1542$ (CI $[1524, 1573]$), closing 71\,\% of the residual gap.}
     \label{fig:f9}
 \end{figure}
 
 \begin{figure}[!htbp]
     \centering
-    \includegraphics[width=0.85\textwidth]{figs/F10_aggressiveness.png}
-    \caption{F10 aggressiveness sweep: PPO mean test reward and oracle recommended-action rule reference as a function of the defender de-escalation probability $p_{\mathrm{de\text{-}esc}} \in \{0.0, 0.2, 0.4, 0.6, 0.8, 1.0\}$. PPO grows monotonically from near-floor at $p = 0.0$ to within 200 reward of the oracle at $p = 0.6$.}
+    \includegraphics[width=0.85\textwidth]{figs/F10_aggressiveness.pdf}
+    \caption{F10 aggressiveness sweep: PPO mean test reward and oracle recommended-action rule reference as a function of the defender de-escalation probability $p_{\mathrm{de{-}esc}} \in \{0.0, 0.2, 0.4, 0.6, 0.8, 1.0\}$. PPO grows monotonically from near-floor at $p = 0.0$ to within 200 reward of the oracle at $p = 0.6$.}
     \label{fig:f10}
 \end{figure}
 
-\paragraph{F9 — structural fix closes 71\,\% of the gap (G7.2 PASS-WITHOUT-STRETCH).} Across the 12-cell sparse one-at-a-time sweep, no reward-coefficient cell moves the apples-to-apples raw-reward above the primary benchmark PPO baseline ($+1334.5$) by $\geq 1\sigma$. The 11 reward-coefficient cells stay within $\pm 150$ reward of the centre baseline ($+1304$). The structural $\texttt{impact\_is\_terminal}=\mathit{False}$ cell, in contrast, lifts PPO mean test reward to $+1542$ (CI $[1524, 1573]$), $+207.5$ above the primary baseline and only $-105.6$ below the oracle ceiling --- a \textbf{71\,\% closure} of the $+313$ gap. The same cell lifts the mitigated-impact rate from $0.153$ to $0.900$, a 5.9$\times$ improvement.
+\paragraph{F9 — structural fix closes 71\,\% of the gap (G7.2 PASS-WITHOUT-STRETCH).} Across the 12-cell sparse one-at-a-time sweep, no reward-coefficient cell moves the apples-to-apples raw-reward above the primary benchmark PPO baseline ($+1334.5$) by $\geq 1\sigma$. The 11 reward-coefficient cells stay within $\pm 150$ reward of the centre baseline ($+1304$). The structural \texttt{impact\_is\_terminal}${}={}$\textit{False} cell, in contrast, lifts PPO mean test reward to $+1542$ (CI $[1524, 1573]$), $+207.5$ above the primary baseline and only $-105.6$ below the oracle ceiling --- a \textbf{71\,\% closure} of the $+313$ gap. The same cell lifts the mitigated-impact rate from $0.153$ to $0.900$, a 5.9$\times$ improvement.
 
-The mechanism is interpretable: under $\texttt{impact\_is\_terminal}=\mathit{True}$ (the frozen environment-design default), an \textsc{impact} transition immediately ends the episode with a fixed terminal penalty; the agent has at most one chance to defend, and the de-escalation bonuses earned earlier dominate the expected IMPACT loss. Under $\texttt{impact\_is\_terminal}=\mathit{False}$, the \textsc{impact} row becomes one more decision step, and the agent can now earn the $+b_{\mathrm{success}}$ bonus by choosing \textsc{block}/\textsc{isolate} \emph{during} \textsc{impact}. This resolves the reward mis-specification at its source by making the intended objective ($0.900$ mitigated-impact rate) structurally achievable under the reward function.
+The mechanism is interpretable: under \texttt{impact\_is\_terminal}${}={}$\textit{True} (the frozen environment-design default), an \textsc{impact} transition immediately ends the episode with a fixed terminal penalty; the agent has at most one chance to defend, and the de-escalation bonuses earned earlier dominate the expected IMPACT loss. Under \texttt{impact\_is\_terminal}${}={}$\textit{False}, the \textsc{impact} row becomes one more decision step, and the agent can now earn the $+b_{\mathrm{success}}$ bonus by choosing \textsc{block}/\textsc{isolate} \emph{during} \textsc{impact}. This resolves the reward mis-specification at its source by making the intended objective ($0.900$ mitigated-impact rate) structurally achievable under the reward function.
 
 \paragraph{F9 caveat: post-\textsc{impact} mitigation, not pre-\textsc{impact} prevention.} Every F9 cell still reports \texttt{compromise\_rate} $= 1.0$ on \texttt{test\_balanced}. The F9 win must therefore be read as ``post-\textsc{impact} mitigation'' --- the agent lets one \textsc{impact} row happen, then defends it during the now-non-terminal step --- not as ``pre-\textsc{impact} prevention''. The $+207.5$ reward gain and the $0.153 \to 0.900$ mitigated-impact-rate improvement are real and represent a qualitatively more useful policy; they reflect \emph{how the agent reacts to} the \textsc{impact} step rather than whether it is prevented.
 
-\paragraph{F10 --- monotone response to attacker aggressiveness (G7.3 PASS).} PPO mean reward grows monotonically with the defender de-escalation probability $p_{\mathrm{de\text{-}esc}}$, from near-floor at $p = 0.0$ (CI $[134, 141]$, where the environment never de-escalates) to $p = 0.6$ (CI $[1280, 1359]$). The oracle rule curve is also monotone non-decreasing. This is the cleanest behavioural sanity-check in the ablation stage: on real CICIoT2023 traffic with a 29-feature state and a kill-chain-derived reward, the trained policy responds in the expected direction to attacker aggressiveness.\footnote{The high-$p$ cells of F10 operate in a strictly easier MDP than the primary benchmark contract. At $p = 1.0$ PPO reaches $+2047$, exceeding the primary benchmark ceiling of $+1647.6$; this is not a comparison, because that ceiling is computed at the environment-design default $p_{\mathrm{de\text{-}esc}} = 0.6$. The qualitative claim of F10 is monotonicity in $p$, not absolute level.}
+\paragraph{F10 --- monotone response to attacker aggressiveness (G7.3 PASS).} PPO mean reward grows monotonically with the defender de-escalation probability $p_{\mathrm{de{-}esc}}$, from near-floor at $p = 0.0$ (CI $[134, 141]$, where the environment never de-escalates) to $p = 0.6$ (CI $[1280, 1359]$). The oracle rule curve is also monotone non-decreasing. This is the cleanest behavioural sanity-check in the ablation stage: on real CICIoT2023 traffic with a 29-feature state and a kill-chain-derived reward, the trained policy responds in the expected direction to attacker aggressiveness.\footnote{The high-$p$ cells of F10 operate in a strictly easier MDP than the primary benchmark contract. At $p = 1.0$ PPO reaches $+2047$, exceeding the primary benchmark ceiling of $+1647.6$; this is not a comparison, because that ceiling is computed at the environment-design default $p_{\mathrm{de{-}esc}} = 0.6$. The qualitative claim of F10 is monotonicity in $p$, not absolute level.}
 
 % --- Subsection 4.7 ---
+\clearpage
 \subsection{Out-of-Distribution Robustness}\label{subsec:ood_results}
 The four held-out OOD attack classes were evaluated against every benchmark-stage policy using the single-stage OOD-feature injection protocol described in Section~\ref{subsubsec:f15}. Figure~\ref{fig:f15} shows the 4-OOD-class $\times$ 8-policy reward grid with bootstrap confidence intervals.
 
 \begin{figure}[!htbp]
     \centering
-    \includegraphics[width=0.95\textwidth]{figs/F15_ood_robustness.png}
+    \includegraphics[width=0.95\textwidth]{figs/F15_ood_robustness.pdf}
     \caption{F15 single-stage OOD-feature injection evaluation: mean episodic reward with 95\,\% bootstrap CIs on each of the four held-out OOD attack classes (\texttt{DDoS-HTTP\_Flood}, \texttt{Mirai-udpplain}, \texttt{XSS}, \texttt{VulnerabilityScan}) for each of the eight benchmark policies. The headline observation is on \texttt{VulnerabilityScan}: trained PPO ($+1313$) is within seed-noise of its in-distribution mean ($+1334.5$), but does not beat RF-Acting ($+1611$).}
     \label{fig:f15}
 \end{figure}
@@ -282,7 +289,8 @@ RL is \emph{robust to} (not \emph{better at}) the \texttt{VulnerabilityScan} OOD
 \paragraph{Why RF-Acting wins despite being structurally blind.} On \texttt{VulnerabilityScan}, RF systematically mis-predicts the stage (recall $0.001$ on \textsc{recon}); but the recommended-action mapping defaults RF's wrong predictions to actions that are \emph{cheap} under the environment-design reward function. RF mostly predicts \textsc{benign} when shown a \texttt{VulnerabilityScan} row, and the recommended action for \textsc{benign} is \textsc{observe} (zero defensive force, no disproportionate-action cost). Trained RL agents, having never seen \texttt{VulnerabilityScan} features, react with approximately $30\,\%$ \textsc{block} $+$ $40\,\%$ \textsc{log}; the \textsc{block} actions on a class the reward function treats as \textsc{benign} incur the disproportionate-penalty cost per step. Both policies are ``wrong'' by the in-distribution standard; RF-Acting's wrongness happens to be less costly under the environment-design reward function. Closing the OOD gap requires either explicit attack-class curriculum or train-time OOD-augmented data (future work; Section~\ref{subsec:future_work}).
 
 % --- Subsection 4.8 ---
+\clearpage
 \subsection{Discussion and Threats to Validity}\label{subsec:discussion}
-The headline finding of this dissertation is that, on real CICIoT2023 traffic projected onto a five-stage kill chain, model-free DRL agents trained with no oracle stage knowledge \emph{capture 81\,\% of the value of perfect stage detection} on a held-out test split, dominate every non-RL trivial baseline with non-overlapping confidence intervals, and offer a \textbf{141$\times$ inference-latency advantage} over the strongest deployable supervised baseline (RF-Acting) at an approximately 10\,\% reward cost. The reward mis-specification identified in the primary contract ($\texttt{impact\_is\_terminal}=\mathit{True}$) is understood, structurally fixable, and closed 71\,\% of the residual oracle gap under the ablated contract ($\texttt{impact\_is\_terminal}=\mathit{False}$). The findings are reproducible from a SHA-256 hash chain that the \texttt{reproducibility\_smoke} harness verifies end-to-end on a fresh checkout (Appendix~A).
+The headline finding of this dissertation is that, on real CICIoT2023 traffic projected onto a five-stage kill chain, model-free DRL agents trained with no oracle stage knowledge \emph{capture 81\,\% of the value of perfect stage detection} on a held-out test split, dominate every non-RL trivial baseline with non-overlapping confidence intervals, and offer a \textbf{141$\times$ inference-latency advantage} over the strongest deployable supervised baseline (RF-Acting) at an approximately 10\,\% reward cost. The reward mis-specification identified in the primary contract (\texttt{impact\_is\_terminal}${}={}$\textit{True}) is understood, structurally fixable, and closed 71\,\% of the residual oracle gap under the ablated contract (\texttt{impact\_is\_terminal}${}={}$\textit{False}). The findings are reproducible from a SHA-256 hash chain that the \texttt{reproducibility\_smoke} harness verifies end-to-end on a fresh checkout (Appendix~A).
 
-\paragraph{Threats to validity.} (1) The \texttt{compromise\_rate} $= 1.0$ structural property of the environment under $\texttt{impact\_is\_terminal}=\mathit{True}$ means the security-gain Pareto axis is degenerate; \texttt{mitigated\_impact\_rate} is the meaningful security KPI throughout this dissertation. (2) MTTC values are bounded by the lifecycle-floor \textsc{impact} clamp; mean MTTC of $\sim$19.3 should be read as ``lifecycle-floor-bounded'' rather than ``unconstrained natural'' MTTC. (3) Benign FPR (9.4--12.7\,\%) substantially exceeds the 1\,\% operational threshold; this is a direct consequence of the reward mis-specification and is acknowledged as a limitation requiring future reward-redesign work. (4) The trained agents do \emph{not} beat RF-Acting on \texttt{test\_balanced} or on \texttt{VulnerabilityScan}; the deployable comparison is a latency--reward trade-off frontier, with the oracle rule above as a measurement instrument. (5) The red-team LSTM is upper-triangular by construction (monotonic-attacker assumption; Section~\ref{subsubsec:monotonic_attacker}), which limits realism relative to a real adversary that may retreat or pivot; this is a deliberate, explicitly-bounded simplification consistent with the IoTWarden threat model.
+\paragraph{Threats to validity.} (1) The \texttt{compromise\_rate} $= 1.0$ structural property of the environment under \texttt{impact\_is\_terminal}${}={}$\textit{True} means the security-gain Pareto axis is degenerate; \texttt{mitigated\_impact\_rate} is the meaningful security KPI throughout this dissertation. (2) MTTC values are bounded by the lifecycle-floor \textsc{impact} clamp; mean MTTC of $\sim$19.3 should be read as ``lifecycle-floor-bounded'' rather than ``unconstrained natural'' MTTC. (3) Benign FPR (9.4--12.7\,\%) substantially exceeds the 1\,\% operational threshold; this is a direct consequence of the reward mis-specification and is acknowledged as a limitation requiring future reward-redesign work. (4) The trained agents do \emph{not} beat RF-Acting on \texttt{test\_balanced} or on \texttt{VulnerabilityScan}; the deployable comparison is a latency--reward trade-off frontier, with the oracle rule above as a measurement instrument. (5) The red-team LSTM is upper-triangular by construction (monotonic-attacker assumption; Section~\ref{subsubsec:monotonic_attacker}), which limits realism relative to a real adversary that may retreat or pivot; this is a deliberate, explicitly-bounded simplification consistent with the IoTWarden threat model.

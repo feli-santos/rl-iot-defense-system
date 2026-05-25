@@ -106,26 +106,27 @@ The action space is the ordered five-action defender menu introduced in Section~
 \subsubsection{Episode Lifecycle}\label{subsubsec:lifecycle}
 The episode begins at $t = 0$ in the \textsc{benign} stage. At each step, the agent observes the state and chooses an action; the environment then advances the attacker stage according to one of three rules:
 \begin{enumerate}
-    \item \textbf{Defender-driven de-escalation} (probability $p_{\mathrm{de\text{-}esc}} = 0.6$). If the agent picks \textsc{block} or \textsc{isolate} on an active \textsc{access} or \textsc{maneuver} stage, with probability $p_{\mathrm{de\text{-}esc}}$ the environment resets the stage to \textsc{benign} and grants the agent a $b_{\mathrm{success}} = +250$ bonus. The value $p_{\mathrm{de\text{-}esc}} = 0.6$ is justified by an aggressiveness sweep (Section~\ref{subsubsec:pdeesc_justification}): at $p = 0.6$ the trained PPO policy reaches within 200 reward of the oracle ceiling, and the curve's plateau indicates this is the sweet spot where defensive agency is meaningful but not trivially achieved.
+    \item \textbf{Defender-driven de-escalation} (probability $p_{\mathrm{de{-}esc}} = 0.6$). If the agent picks \textsc{block} or \textsc{isolate} on an active \textsc{access} or \textsc{maneuver} stage, with probability $p_{\mathrm{de{-}esc}}$ the environment resets the stage to \textsc{benign} and grants the agent a $b_{\mathrm{success}} = +250$ bonus. The value $p_{\mathrm{de{-}esc}} = 0.6$ is justified by an aggressiveness sweep (Section~\ref{subsubsec:pdeesc_justification}): at $p = 0.6$ the trained PPO policy reaches within 200 reward of the oracle ceiling, and the curve's plateau indicates this is the sweet spot where defensive agency is meaningful but not trivially achieved.
     \item \textbf{Natural LSTM transition} (otherwise). The red-team LSTM samples the next stage from its conditional distribution given the recent transition history.
-    \item \textbf{Lifecycle-floor \textsc{impact} clamp.} If the natural transition produces \textsc{impact} before $t = \texttt{min\_episode\_length} = 20$, the stage is clamped to \textsc{maneuver} for that step. This reflects the threat-model assumption that real-world \textsc{impact} requires time-to-execute and is not an instantaneous jump from \textsc{recon}.
+    \item \textbf{Lifecycle-floor \textsc{impact} clamp.} If the natural transition produces \textsc{impact} before $t = \mathtt{min\_episode\_length} = 20$, the stage is clamped to \textsc{maneuver} for that step. This reflects the threat-model assumption that real-world \textsc{impact} requires time-to-execute and is not an instantaneous jump from \textsc{recon}.
 \end{enumerate}
 The episode terminates when the chain reaches \textsc{impact} (default environment contract; this can be flipped by the \texttt{impact\_is\_terminal} flag exercised in the F9 ablation, see Section~\ref{subsec:ablations}) or is truncated at \texttt{max\_steps} $= 500$.
 
+\clearpage
 \subsubsection{Reward Function}\label{subsubsec:reward}
 The reward at step $t$ is a piecewise composition of \textbf{six independent reward signals} plus three asymmetric guardrails for cocked-trigger benign-stage policies. Let $a_t$ denote the action chosen at step $t$, $s_t$ the decision-time stage (i.e.\ the stage the agent saw when it chose $a_t$, not the next stage), and $\mathit{rec}(s)$ the recommended-action mapping (\textsc{benign}~$\to$~\textsc{observe}, \textsc{recon}~$\to$~\textsc{log}, \textsc{access}~$\to$~\textsc{throttle}, \textsc{maneuver}~$\to$~\textsc{block}, \textsc{impact}~$\to$~\textsc{isolate}). The per-step reward is:
 \begin{align}\label{eq:reward}
 R_t \;=\; & -C_{\mathrm{action}}(a_t) \cdot \alpha \\
-        & + r_{\mathrm{prop}} \cdot \mathds{1}\!\left[ |a_t - \mathit{rec}(s_t)| \leq 1 \right]
-        - p_{\mathrm{disp}} \cdot \mathds{1}\!\left[ |a_t - \mathit{rec}(s_t)| \geq 2 \right] \nonumber \\
-        & + r_{\mathrm{benign}} \cdot \mathds{1}\!\left[ s_t = \text{\textsc{benign}} \;\wedge\; a_t \leq \text{\textsc{log}} \right] \nonumber \\
-        & - p_{\mathrm{over}} \cdot \mathds{1}\!\left[ s_t = \text{\textsc{benign}} \;\wedge\; a_t \geq \text{\textsc{throttle}} \right] \nonumber \\
-        & - p_{\mathrm{block\text{-}benign}} \cdot \mathds{1}\!\left[ s_t = \text{\textsc{benign}} \;\wedge\; a_t \geq \text{\textsc{block}} \right] \nonumber \\
-        & - p_{\mathrm{block\text{-}recon}} \cdot \mathds{1}\!\left[ s_t = \text{\textsc{recon}} \;\wedge\; a_t \geq \text{\textsc{block}} \right] \nonumber
+        & + r_{\mathrm{prop}} \cdot \mathbf{1}\!\left[ |a_t - \mathit{rec}(s_t)| \leq 1 \right]
+        - p_{\mathrm{disp}} \cdot \mathbf{1}\!\left[ |a_t - \mathit{rec}(s_t)| \geq 2 \right] \nonumber \\
+        & + r_{\mathrm{benign}} \cdot \mathbf{1}\!\left[ s_t = \textsc{benign} \;\wedge\; a_t \leq \textsc{log} \right] \nonumber \\
+        & - p_{\mathrm{over}} \cdot \mathbf{1}\!\left[ s_t = \textsc{benign} \;\wedge\; a_t \geq \textsc{throttle} \right] \nonumber \\
+        & - p_{\mathrm{block{-}benign}} \cdot \mathbf{1}\!\left[ s_t = \textsc{benign} \;\wedge\; a_t \geq \textsc{block} \right] \nonumber \\
+        & - p_{\mathrm{block{-}recon}} \cdot \mathbf{1}\!\left[ s_t = \textsc{recon} \;\wedge\; a_t \geq \textsc{block} \right] \nonumber
 \end{align}
 At terminal-\textsc{impact}, an additional accounting block fires:
 \begin{equation}\label{eq:reward_terminal}
-R^{\mathrm{term}} \;=\; -p_{\mathrm{impact}} \;+\; \begin{cases} +b_{\mathrm{success}} & \text{if } a_t \geq \text{\textsc{block}} \\ -p_{\mathrm{missed}} & \text{if } a_t \leq \text{\textsc{log}} \\ 0 & \text{otherwise} \end{cases}
+R^{\mathrm{term}} \;=\; -p_{\mathrm{impact}} \;+\; \begin{cases} +b_{\mathrm{success}} & \text{if } a_t \geq \textsc{block} \\ -p_{\mathrm{missed}} & \text{if } a_t \leq \textsc{log} \\ 0 & \text{otherwise} \end{cases}
 \end{equation}
 Defender-driven de-escalations award $+b_{\mathrm{success}}$ mid-episode when they fire (independent of the terminal-\textsc{impact} step).
 
@@ -135,7 +136,7 @@ The action-cost vector $C_{\mathrm{action}}(a)$ uses scale $\alpha = 1.0$ as the
 
 \begin{table}[!htbp]
 \centering
-\caption[Default reward constants for the environment design.]{Default reward constants for the environment design (\texttt{AdversarialEnvConfig}). Symbols match Equations~\eqref{eq:reward}--\eqref{eq:reward_terminal}.}
+\caption[Default reward constants for the environment design.]{Default reward constants for the environment design (\texttt{AdversarialEnvConfig}). Symbols match Equations~\eqref{eq:reward} and~\eqref{eq:reward_terminal}.}
 \label{tab:reward_constants}
 \begin{tabular}{lrl}
 \toprule
@@ -146,20 +147,20 @@ $r_{\mathrm{prop}}$              & 5.0   & per-step proportionality bonus ($|a -
 $p_{\mathrm{disp}}$              & 5.0   & per-step disproportionate-action penalty ($|a - \mathit{rec}(s)| \geq 2$) \\
 $r_{\mathrm{benign}}$            & 10.0  & benign-passive bonus (\textsc{benign} + \textsc{observe}/\textsc{log}) \\
 $p_{\mathrm{over}}$              & 50.0  & overreact-on-benign penalty (\textsc{benign} + $a \geq$ \textsc{throttle}) \\
-$p_{\mathrm{block\text{-}benign}}$ & 100.0 & additional block-on-benign penalty \\
-$p_{\mathrm{block\text{-}recon}}$  & 50.0  & block-on-recon penalty \\
+$p_{\mathrm{block{-}benign}}$ & 100.0 & additional block-on-benign penalty \\
+$p_{\mathrm{block{-}recon}}$  & 50.0  & block-on-recon penalty \\
 $p_{\mathrm{impact}}$            & 200.0 & terminal-\textsc{impact} penalty (always applied) \\
 $b_{\mathrm{success}}$           & 250.0 & defense-success bonus (terminal \textsc{block}/\textsc{isolate} or de-esc) \\
 $p_{\mathrm{missed}}$            & 150.0 & terminal-\textsc{impact} miss penalty (action $\leq$ \textsc{log}) \\
-$p_{\mathrm{de\text{-}esc}}$     & 0.6   & defender-driven de-escalation success probability \\
+$p_{\mathrm{de{-}esc}}$     & 0.6   & defender-driven de-escalation success probability \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-The reward is evaluated against the \emph{decision-time} stage $s_t$, not against the next stage; this preserves causal credit assignment. Mean Time To Compromise (MTTC), defined as the number of steps from episode start to the first \textsc{impact} transition (with the lifecycle-floor clamp described above), is exposed as a per-episode telemetry signal but is \emph{not} part of the reward function.\footnote{Because the lifecycle-floor \textsc{impact} clamp downgrades pre-step-20 \textsc{impact} transitions to \textsc{maneuver}, the empirical MTTC distribution is biased toward exactly $\texttt{min\_episode\_length} = 20$ when compromise occurs at all. Mean MTTC values reported in this dissertation should be read as ``lifecycle-floor-bounded'' rather than ``unconstrained natural'' MTTC; see \texttt{docs/results/03\_env/RESULTS.md} \S7 R2 for the full caveat.}
+The reward is evaluated against the \emph{decision-time} stage $s_t$, not against the next stage; this preserves causal credit assignment. Mean Time To Compromise (MTTC), defined as the number of steps from episode start to the first \textsc{impact} transition (with the lifecycle-floor clamp described above), is exposed as a per-episode telemetry signal but is \emph{not} part of the reward function.\footnote{Because the lifecycle-floor \textsc{impact} clamp downgrades pre-step-20 \textsc{impact} transitions to \textsc{maneuver}, the empirical MTTC distribution is biased toward exactly \texttt{min\_episode\_length} $= 20$ when compromise occurs at all. Mean MTTC values reported in this dissertation should be read as ``lifecycle-floor-bounded'' rather than ``unconstrained natural'' MTTC; see \texttt{docs/results/03\_env/RESULTS.md} \S7 R2 for the full caveat.}
 
-\subsubsection{Justification of $p_{\mathrm{de\text{-}esc}} = 0.6$}\label{subsubsec:pdeesc_justification}
-The de-escalation probability $p_{\mathrm{de\text{-}esc}}$ controls how easily the defender can reset an active attack chain to \textsc{benign}. An aggressiveness sweep over $p_{\mathrm{de\text{-}esc}} \in \{0.0, 0.2, 0.4, 0.6, 0.8, 1.0\}$ (Figure~\ref{fig:f10}, Section~\ref{subsec:ablation_results}) shows that PPO mean reward grows monotonically with $p$, reaching within 200 reward of the oracle at $p = 0.6$ (CI $[1280, 1359]$). The value $p_{\mathrm{de\text{-}esc}} = 0.6$ represents the primary operating point where (i) the defender has a non-trivial but sub-certain chance of resetting the chain, (ii) the trained policy's reward is in the same order of magnitude as the oracle ceiling, and (iii) the MDP remains challenging enough that RL training provides useful signal. The full sweep is provided in Appendix~D.
+\subsubsection{Justification of $p_{\mathrm{de{-}esc}} = 0.6$}\label{subsubsec:pdeesc_justification}
+The de-escalation probability $p_{\mathrm{de{-}esc}}$ controls how easily the defender can reset an active attack chain to \textsc{benign}. An aggressiveness sweep over $p_{\mathrm{de{-}esc}} \in \{0.0, 0.2, 0.4, 0.6, 0.8, 1.0\}$ (Figure~\ref{fig:f10}, Section~\ref{subsec:ablation_results}) shows that PPO mean reward grows monotonically with $p$, reaching within 200 reward of the oracle at $p = 0.6$ (CI $[1280, 1359]$). The value $p_{\mathrm{de{-}esc}} = 0.6$ represents the primary operating point where (i) the defender has a non-trivial but sub-certain chance of resetting the chain, (ii) the trained policy's reward is in the same order of magnitude as the oracle ceiling, and (iii) the MDP remains challenging enough that RL training provides useful signal. The full sweep is provided in Appendix~D.
 
 \subsubsection{Justification of $\alpha = 1.0$ (Action-Cost Scale)}\label{subsubsec:action_cost_justification}
 The action-cost scale $\alpha$ determines how strongly the reward function penalises high-disruption actions. A sweep over $\alpha \in \{0.5, 1.0, 2.0\}$ (Appendix~D, Figure~FA\_action\_cost\_sweep) shows mean rewards of $+1524$ (CI $[1462, 1579]$), $+1568$ (CI $[1506, 1628]$), and $+1542$ (CI $[1484, 1600]$) respectively. All three confidence intervals overlap, confirming that the default $\alpha = 1.0$ is robust to $\pm 2\times$ perturbation in action cost. Reward variation across the full range is less than 3\,\%.
@@ -197,7 +198,7 @@ A sparse one-at-a-time sweep perturbs each of the five principal reward coeffici
 The verdict logic for the sweep is two-strand to remain apples-to-apples: cells that scale a reward coefficient also scale the absolute reward number, so they are not directly comparable to the held-out benchmark unscaled baseline; only cells that preserve the original reward function (the centre baseline and the two \texttt{impact\_is\_terminal} cells) are eligible for the apples-to-apples raw-reward gate. Reward-coefficient cells are scored on the \texttt{mitigated\_impact\_rate} security KPI, which is unaffected by reward-coefficient scaling.
 
 \subsubsection{Aggressiveness Sweep (F10)}\label{subsubsec:f10_method}
-A six-point sweep over the defender de-escalation probability $p_{\mathrm{de\text{-}esc}} \in \{0.0, 0.2, 0.4, 0.6, 0.8, 1.0\}$ characterises the trained policy's response to attacker aggressiveness, with the oracle recommended-action rule run as a reference at every $p$ value.
+A six-point sweep over the defender de-escalation probability $p_{\mathrm{de{-}esc}} \in \{0.0, 0.2, 0.4, 0.6, 0.8, 1.0\}$ characterises the trained policy's response to attacker aggressiveness, with the oracle recommended-action rule run as a reference at every $p$ value.
 
 \subsubsection{Single-Stage OOD-Feature Injection Evaluation (F15)}\label{subsubsec:f15}
 The four held-out OOD attack classes (\texttt{DDoS-HTTP\_Flood}, \texttt{Mirai-udpplain}, \texttt{XSS}, \texttt{VulnerabilityScan}) are evaluated against every benchmark-stage policy using a \textbf{single-stage OOD-feature injection} protocol. An in-distribution feature pool drawn from the post-leakage-fix \texttt{train} split is overlaid with the OOD class's rows only at the kill-chain stage that class belongs to: for example, \texttt{VulnerabilityScan} rows replace the \textsc{recon} stage's natural in-distribution feature realiser, while all other four stages continue to draw from in-distribution data. This design isolates the OOD signal to precisely the one stage where it matters, avoiding confounds from forcing stages the OOD class does not occupy to use out-of-distribution features. The pre-registered finding-activation rule \texttt{D7.9.1} narrows the thesis claim if the trained RL policies do not beat the deployable RF-Acting baseline on the hardest OOD class; this finding does activate empirically and is presented in Section~\ref{sec:results}, §4.7.
