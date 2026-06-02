@@ -158,7 +158,3 @@ tex/texput.log
 # Working directories used by the overleaf sync workflow
 tex/_overleaf_pull/
 tex/_legacy/
-
-# Cline
-.clineignore
-.cline/
