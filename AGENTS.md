@@ -75,4 +75,4 @@ Main file is `tex/principal.tex` (abnTeX2/FEEC template), NOT `thesis.tex`. See
 
 `docs/architecture.md`, `docs/environment.md`, `docs/reward-shaping.md`,
 `docs/reproducibility.md`, `docs/decisions.md`; per-phase `docs/results/<NN>_*/PLAN.md`
-+ `RESULTS.md`; project state in `memory-bank/`.
++ `RESULTS.md`.
