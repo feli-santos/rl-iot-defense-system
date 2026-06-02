@@ -2,7 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
-[![Tests: 411 passed](https://img.shields.io/badge/tests-411%20passed-brightgreen.svg)](#)
+[![Tests: 445 passed](https://img.shields.io/badge/tests-445%20passed-brightgreen.svg)](#)
 [![Phases: 0–7 closed](https://img.shields.io/badge/phases-0--7%20closed-brightgreen.svg)](#phases-as-chapters)
 [![Release: v0.2.0](https://img.shields.io/badge/release-v0.2.0-blue.svg)](#)
 
@@ -12,7 +12,7 @@
 > against an LSTM red-team that produces realistic attack kill-chain
 > sequences, and ship the empirical machinery — manifest hash-chains,
 > audit-first PLANs, exit-gate scoreboards — that lets every figure in
-> the thesis be regenerated from raw data with `make phase-N`.
+> the thesis be regenerated from raw data with the named Makefile targets (`make dataset`, `make red-team`, …, `make ablation`).
 
 ---
 
@@ -72,7 +72,7 @@ rl-iot-defense-system/
 ├── scripts/                  # Phase-pinned runners, plotters, gate evaluators
 │   ├── data/  red_team/  detector/  blue_team/  benchmark/  ablation/
 │   └── (each subdir is owned by exactly one phase; see Makefile)
-├── tests/                    # 411 unit + integration tests (pytest)
+├── tests/                    # 445 unit + integration tests (pytest)
 ├── docs/results/             # Canonical thesis figures + RESULTS chapters
 │   ├── 00_phase0_diagnosis.md
 │   ├── 01_dataset/   02_red_team/   03_env/   04_detector/
@@ -120,19 +120,19 @@ tag) is documentation-only.
 ### Phase reproduction recipes
 
 Every phase is reproducible end-to-end with the corresponding
-`make phase-N` target. CPU-only times below assume an Apple-silicon
+named Makefile target. CPU-only times below assume an Apple-silicon
 laptop or comparable.
 
 ```bash
-make phase-1                 # Dataset splits + F0 (~1 min)
-make phase-2                 # LSTM Red Team training + F1/F2 (~80 s)
-make phase-4                 # Stage detector (RF + 1D-CNN) + F11 (~3-5 min)
-make phase-5-smoke           # PPO seed 0, 5K steps — sanity check (~20 s)
-make phase-5                 # Full sweep DQN/PPO/A2C × 5 seeds + F3/F4/T1 (~3-7 h CPU)
-make phase-6-smoke           # 1 algo × 1 seed × 2 episodes (~20 s)
-make phase-6                 # Eval + F5/F6/F7/F8 (~10 min CPU after phase-5)
-make phase-7-ood-smoke       # 1 OOD class × 2 policies × 1 seed × 2 ep (~10 s)
-make phase-7                 # Full F9/F10/F12/F15 + closeout (~7.5 h CPU walk-away)
+make dataset                 # Phase 1: Dataset splits + F0 (~1 min)
+make red-team                # Phase 2: LSTM Red Team training + F1/F2 (~80 s)
+make detector                # Phase 4: Stage detector (RF + 1D-CNN) + F11 (~3-5 min)
+make blue-team-smoke         # Phase 5 smoke: PPO seed 0, 5K steps (~20 s)
+make blue-team               # Phase 5: Full sweep DQN/PPO/A2C × 5 seeds + F3/F4/T1 (~3-7 h CPU)
+make benchmark-smoke         # Phase 6 smoke: 1 algo × 1 seed × 2 episodes (~20 s)
+make benchmark               # Phase 6: Eval + F5/F6/F7/F8 (~10 min CPU after blue-team)
+make ablation-ood-smoke      # Phase 7 smoke: 1 OOD class × 2 policies × 1 seed × 2 ep (~10 s)
+make ablation                # Phase 7: Full F9/F10/F12/F15 + closeout (~7.5 h CPU walk-away)
 ```
 
 `make help` prints every target with a one-line description.
@@ -217,7 +217,7 @@ cd rl-iot-defense-system
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
-make test                    # 411 passed in ~60-90 s on CPU
+make test                    # 445 passed in ~60-90 s on CPU
 ```
 
 ### Dataset
@@ -360,7 +360,7 @@ handoff record.
 ## Tests
 
 ```bash
-make test                    # 411 passed in ~60-90 s on CPU
+make test                    # 445 passed in ~60-90 s on CPU
 make test-cov                # with coverage
 ```
 
@@ -379,7 +379,7 @@ parsers):
 
 Real-data smoke tests are guarded with
 `pytest.skipif(not Path('data/processed/...').exists(), ...)`; the
-411 reported above is the synthetic-only count.
+445 reported above is the synthetic-only count.
 
 ---
 
