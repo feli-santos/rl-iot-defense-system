@@ -79,6 +79,9 @@ class EnvConfigSerializable:
     stage_detector_path: Optional[str] = None
     include_stage_pred: bool = False
 
+    # Non-monotonic attacker stress-test (review 2.4.3)
+    retreat_prob: float = 0.0
+
     # Reward shaping — ablation F9 axes (defaults from environment-design RESULTS §3)
     action_cost_scale: float = 1.0
     reward_proportional: float = 5.0

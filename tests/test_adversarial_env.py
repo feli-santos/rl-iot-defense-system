@@ -802,3 +802,111 @@ class TestStagePredictionAblation:
                 dataset_path=mock_dataset,
                 config=config,
             )
+
+
+class TestRetreatProb:
+    """Tests for non-monotonic attacker stress-test (review 2.4.3)."""
+
+    @pytest.fixture
+    def masked_generator(self, tmp_path):
+        """Mock generator WITH transition mask enabled (monotonic by default)."""
+        from src.generator.attack_sequence_generator import (
+            AttackSequenceGenerator,
+            AttackSequenceGeneratorConfig,
+        )
+        from src.generator.transition_mask import TransitionMask
+
+        config = AttackSequenceGeneratorConfig(
+            num_stages=5,
+            embedding_dim=16,
+            hidden_size=32,
+            num_layers=1,
+            use_transition_mask=True,
+        )
+        generator = AttackSequenceGenerator(config=config)
+        # Build a strict upper-triangular mask (no regression)
+        mask = TransitionMask.from_strict_grammar()
+        generator.set_transition_mask(mask)
+        model_path = tmp_path / "generator" / "attack_sequence_generator.pth"
+        generator.save(model_path, save_config=True)
+        return tmp_path / "generator"
+
+    @pytest.fixture
+    def mock_dataset(self, tmp_path):
+        import json
+
+        dataset_path = tmp_path / "dataset"
+        dataset_path.mkdir(parents=True)
+        features = np.random.randn(100, 46).astype(np.float32)
+        np.save(dataset_path / "features.npy", features)
+        labels = np.random.randint(0, 5, size=100)
+        np.save(dataset_path / "labels.npy", labels)
+        state_indices = {str(i): [] for i in range(5)}
+        for idx, label in enumerate(labels):
+            state_indices[str(label)].append(idx)
+        with open(dataset_path / "state_indices.json", "w") as f:
+            json.dump(state_indices, f)
+        import joblib
+        from sklearn.preprocessing import StandardScaler
+
+        scaler = StandardScaler()
+        scaler.fit(features)
+        joblib.dump(scaler, dataset_path / "scaler.joblib")
+        return dataset_path
+
+    def _set_strict_mask(self, env):
+        """Manually attach a strict monotonic mask to the env's generator."""
+        from src.generator.transition_mask import TransitionMask
+
+        mask = TransitionMask.from_strict_grammar()
+        env._generator.set_transition_mask(mask)
+
+    def test_retreat_prob_zero_is_monotonic(self, masked_generator, mock_dataset):
+        """retreat_prob=0 should never produce retreats."""
+        from src.environment.adversarial_env import (
+            AdversarialEnvConfig,
+            AdversarialIoTEnv,
+        )
+
+        config = AdversarialEnvConfig(retreat_prob=0.0)
+        env = AdversarialIoTEnv(
+            generator_path=masked_generator,
+            dataset_path=mock_dataset,
+            config=config,
+        )
+        self._set_strict_mask(env)
+        env.reset(seed=42)
+        prev_stage = env._current_attack_stage
+        for _ in range(50):
+            env.step(0)
+            new_stage = env._current_attack_stage
+            # A "retreat" is a drop to a non-zero earlier stage.
+            # Drops to 0 are defender de-escalation, not attacker retreat.
+            assert not (0 < new_stage < prev_stage)
+            prev_stage = new_stage
+
+    def test_retreat_prob_nonzero_can_retreat(self, masked_generator, mock_dataset):
+        """retreat_prob>0 should occasionally produce retreats."""
+        from src.environment.adversarial_env import (
+            AdversarialEnvConfig,
+            AdversarialIoTEnv,
+        )
+
+        config = AdversarialEnvConfig(retreat_prob=0.5)
+        env = AdversarialIoTEnv(
+            generator_path=masked_generator,
+            dataset_path=mock_dataset,
+            config=config,
+        )
+        self._set_strict_mask(env)
+        env.reset(seed=42)
+        retreats = 0
+        prev_stage = env._current_attack_stage
+        for _ in range(100):
+            env.step(0)
+            new_stage = env._current_attack_stage
+            if new_stage < prev_stage and new_stage != 0:
+                retreats += 1
+            prev_stage = new_stage
+        # With 50% retreat prob we should see at least one retreat in 100 steps
+        assert retreats > 0, "Expected at least one retreat with retreat_prob=0.5"

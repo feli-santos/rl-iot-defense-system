@@ -238,6 +238,12 @@ class AdversarialEnvConfig:
     num_actions: int = 5
     impact_is_terminal: bool = True
 
+    # Non-monotonic attacker stress-test (review 2.4.3)
+    # After sampling the next stage from the generator, independently
+    # override it with a retreat to a random earlier stage with this
+    # probability.  Default 0.0 preserves the monotonic-attacker contract.
+    retreat_prob: float = 0.0
+
     # Stage-prediction ablation (review 2.4.1)
     # If non-None, the env loads a frozen stage detector and (optionally)
     # appends its predicted stage to the observation vector.
@@ -688,6 +694,16 @@ class AdversarialIoTEnv(gym.Env):
                 self._attack_history[-5:],  # Use last 5 stages
                 temperature=1.0,
             )
+            # Non-monotonic stress-test: independently override with a
+            # retreat to a random earlier stage (review 2.4.3).
+            current_stage = self._current_attack_stage
+            if (
+                self._config.retreat_prob > 0.0
+                and current_stage > 0
+                and self._rng is not None
+                and self._rng.random() < self._config.retreat_prob
+            ):
+                next_stage = int(self._rng.integers(0, current_stage))
             self._current_attack_stage = next_stage
             self._attack_history.append(next_stage)
 

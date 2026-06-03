@@ -121,8 +121,10 @@ class TestAttackSequenceGeneratorForward:
 
         assert logits.shape == (8, 5)  # (batch, num_stages)
 
-    def test_forward_returns_logits(self, model: AttackSequenceGenerator) -> None:
+    def test_forward_returns_logits(self) -> None:
         """Should return raw logits (not probabilities)."""
+        torch.manual_seed(0)  # deterministic to avoid flaky init
+        model = AttackSequenceGenerator()
         x = torch.tensor([[0, 1, 2, 3, 4]], dtype=torch.long)
 
         logits = model(x)

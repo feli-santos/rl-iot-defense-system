@@ -66,6 +66,8 @@ def _build_env_config(spec: EnvConfigSerializable) -> AdversarialEnvConfig:
         # Stage-prediction ablation (review 2.4.1)
         stage_detector_path=spec.stage_detector_path,
         include_stage_pred=spec.include_stage_pred,
+        # Non-monotonic attacker stress-test (review 2.4.3)
+        retreat_prob=spec.retreat_prob,
         # Reward shaping (ablation F9 axes)
         action_cost_scale=spec.action_cost_scale,
         reward_proportional=spec.reward_proportional,
