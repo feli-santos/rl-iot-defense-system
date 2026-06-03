@@ -77,13 +77,13 @@ python -m scripts.reproducibility_smoke         # expect: VERDICT PASS
                                                  #         2 KNOWN-DIVERGENCE / 6 SKIP
 \end{verbatim}
 
-The thesis PDF is compiled via Docker (no host-side \LaTeX{} installation required):
+The dissertation PDF is compiled via Docker (no host-side \LaTeX{} installation required):
 
 \begin{verbatim}
 # First-time image build (one-off, ~3-4 min; requires Docker):
 make thesis-image
 
-# Compile tex/thesis.pdf (auto-builds image if absent):
+# Compile tex/principal.pdf (auto-builds image if absent):
 make thesis
 
 # Force-rebuild image and recompile:

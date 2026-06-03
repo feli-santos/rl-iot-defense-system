@@ -55,7 +55,7 @@ The work has five principal limitations, surfaced honestly in Section~\ref{sec:d
 \section{Future Work and Research Directions}\label{sec:future_work}
 The audit-first protocol that produced this dissertation explicitly delineated work scoped \emph{into} this dissertation from work scoped \emph{out of} it. Six follow-up directions are surfaced here in order of mentor-recommended priority.
 
-SUB\section{Tightly Scoped Extensions of Empirical Findings}
+\subsection{Tightly Scoped Extensions of Empirical Findings}
 
 \paragraph{Direction 1 --- Non-monotonic attacker model.} The current red-team LSTM is upper-triangular by construction: the kill chain advances but never retreats. Relaxing this to a non-monotonic LSTM (or Transformer-based) attacker that allows stage pivots and retreats would produce more realistic episode trajectories and test the defender's robustness to adversarial pivoting. This is the most direct extension of the monotonic-attacker limitation, as the training environment's reward function already supports de-escalation; only the transition generator needs to change. It also directly addresses the threat-model boundary identified in Section~\ref{ssec:monotonic_attacker}.
 
@@ -63,7 +63,7 @@ SUB\section{Tightly Scoped Extensions of Empirical Findings}
 
 \paragraph{Direction 3 --- Train-time OOD-class augmentation.} The complement of the F15 OOD-robustness evaluation: instead of evaluating against held-out classes, \emph{include} a simulacrum of them in training (synthetic feature blending, domain randomisation, or a small adversarial-augmentation generator) and check whether the resulting policy then exceeds RF-Acting on \texttt{VulnerabilityScan}. This directly tests whether the ``robust to, not better at, the OOD class'' framing is a structural limit or a curable training-data limitation (the \texttt{D7.9.1} finding-activation left this question open).
 
-SUB\section{Broader Research Directions}
+\subsection{Broader Research Directions}
 
 \paragraph{Direction 4 --- Multi-agent reinforcement learning and self-play adversary.} A real IoT deployment includes many overlapping defenders (per-segment defenders coordinating with a central Security Operations Centre). This can be modelled as a cooperative multi-agent RL (MARL) system where specialised agents defend different network segments and learn to coordinate. Extending to a self-play adversary --- where the red-team LSTM is jointly trained with the defender to produce adversarial stage trajectories --- would produce a harder, more dynamic training distribution that could close the remaining gap to the oracle ceiling without a structural reward-function change. Both extensions inherit the kill-chain decision frame and the audit-first reproducibility protocol from this dissertation.
 
@@ -71,5 +71,5 @@ SUB\section{Broader Research Directions}
 
 \paragraph{Direction 6 --- Reward-function redesign with explicit FPR constraints.} The elevated benign-FPR (9.4--12.7\,\%) is a direct consequence of the unconstrained de-escalation-bonus farming mechanism. A principled redesign would introduce a hard constraint on the benign-FPR (e.g.\ as a Lagrange multiplier in a constrained MDP) or a hierarchical policy that separates the stage-detection decision from the action-selection decision. This direction is the most directly actionable follow-up to Limitation 4 and would produce a policy that is safe to deploy in environments where false positives have high operational cost.
 
-SUB\section{Note on the Environment-Perturbation Robustness Stage}
+\subsection{Note on the Environment-Perturbation Robustness Stage}
 The audit-first protocol that structured this dissertation defined eight development stages (stages 1--7 delivered; stage 8 reserved for environment-perturbation robustness work including noise-robustness (F13) and OOD-augmentation (F14)). The environment-perturbation robustness stage was \emph{skipped} as a thesis deliverable: the F9 structural change recovered 71\,\% of the residual gap using only the $\texttt{impact\_is\_terminal}$ flag, making a full perturbation sweep less informative for the thesis's headline claim than a precise articulation of the existing ablation-stage findings. The F13 and F14 directions are reframed above as Directions 3 and 2 (post-thesis future work). This decision is documented in \texttt{docs/mentor\_review/07\_ablation.md} and is part of the audit-trail anchored at the four committed \texttt{G[N]\_scoreboard.json} files.
