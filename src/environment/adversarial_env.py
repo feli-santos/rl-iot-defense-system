@@ -273,6 +273,11 @@ class AdversarialEnvConfig:
     penalty_block_benign: float = 100.0
     penalty_block_recon: float = 50.0
 
+    # Lagrangian FPR penalty (review 2.2 / Direction 6)
+    # At episode end, subtract beta * (benign_blocks / benign_steps).
+    # beta=0.0 disables the penalty (default, preserves prior behaviour).
+    fpr_penalty_beta: float = 0.0
+
 
 # =============================================================================
 # ADVERSARIAL ENVIRONMENT
@@ -426,6 +431,9 @@ class AdversarialIoTEnv(gym.Env):
         self._first_attack_step: Optional[int] = None
         self._compromise_step: Optional[int] = None
         self._defender_deescalations: int = 0
+        # FPR-penalty accumulator (review 2.2 / Direction 6)
+        self._benign_steps: int = 0
+        self._benign_blocks: int = 0
 
         logger.info(
             f"AdversarialIoTEnv initialized: "
@@ -472,6 +480,8 @@ class AdversarialIoTEnv(gym.Env):
         self._first_attack_step = None
         self._compromise_step = None
         self._defender_deescalations = 0
+        self._benign_steps = 0
+        self._benign_blocks = 0
 
         # Initialize attack sequence
         # Start with BENIGN or low-level attack
@@ -529,6 +539,7 @@ class AdversarialIoTEnv(gym.Env):
 
         # 2) Reward for this step is decided by stage at decision time.
         reward = self._calculate_reward(action, previous_attack_stage)
+        self._track_benign_fpr(action, previous_attack_stage)
 
         # 3) Advance the attack — possibly overriding with defender-driven
         # de-escalation if the agent chose a strong action at ACCESS+.
@@ -615,6 +626,9 @@ class AdversarialIoTEnv(gym.Env):
             terminated = False
         truncated = self._step_count >= self._config.max_steps
 
+        if terminated or truncated:
+            reward = self._apply_episode_fpr_penalty(reward)
+
         observation = self._build_observation()
         info = self._build_info()
         info["outcome"] = outcome
@@ -642,10 +656,27 @@ class AdversarialIoTEnv(gym.Env):
         if self._compromise_step is None:
             self._compromise_step = self._step_count
 
+        reward = self._apply_episode_fpr_penalty(reward)
         observation = self._build_observation()
         info = self._build_info()
         info["outcome"] = outcome
         return observation, reward, True, False, info
+
+    def _apply_episode_fpr_penalty(self, reward: float) -> float:
+        """Subtract terminal FPR penalty if fpr_penalty_beta > 0."""
+        if self._config.fpr_penalty_beta <= 0.0:
+            return reward
+        if self._benign_steps == 0:
+            return reward
+        fpr = self._benign_blocks / self._benign_steps
+        return reward - self._config.fpr_penalty_beta * fpr
+
+    def _track_benign_fpr(self, action: int, previous_stage: int) -> None:
+        """Increment benign-step / benign-block counters."""
+        if previous_stage == KillChainStage.BENIGN.value:
+            self._benign_steps += 1
+            if action >= 3:  # BLOCK or ISOLATE
+                self._benign_blocks += 1
 
     def _maybe_defender_deescalation(self, action: int, previous_stage: int) -> bool:
         """Return True iff the agent's action forced a stage reset to BENIGN.

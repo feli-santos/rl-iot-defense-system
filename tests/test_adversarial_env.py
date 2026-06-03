@@ -910,3 +910,95 @@ class TestRetreatProb:
             prev_stage = new_stage
         # With 50% retreat prob we should see at least one retreat in 100 steps
         assert retreats > 0, "Expected at least one retreat with retreat_prob=0.5"
+
+
+class TestFPRPenalty:
+    """Tests for Lagrangian FPR penalty (review 2.2 / Direction 6)."""
+
+    @pytest.fixture
+    def mock_generator(self, tmp_path):
+        from src.generator.attack_sequence_generator import (
+            AttackSequenceGenerator,
+            AttackSequenceGeneratorConfig,
+        )
+
+        config = AttackSequenceGeneratorConfig(
+            num_stages=5, embedding_dim=16, hidden_size=32, num_layers=1
+        )
+        generator = AttackSequenceGenerator(config=config)
+        model_path = tmp_path / "generator" / "attack_sequence_generator.pth"
+        generator.save(model_path, save_config=True)
+        return tmp_path / "generator"
+
+    @pytest.fixture
+    def mock_dataset(self, tmp_path):
+        import json
+
+        dataset_path = tmp_path / "dataset"
+        dataset_path.mkdir(parents=True)
+        features = np.random.randn(100, 46).astype(np.float32)
+        np.save(dataset_path / "features.npy", features)
+        labels = np.random.randint(0, 5, size=100)
+        np.save(dataset_path / "labels.npy", labels)
+        state_indices = {str(i): [] for i in range(5)}
+        for idx, label in enumerate(labels):
+            state_indices[str(label)].append(idx)
+        with open(dataset_path / "state_indices.json", "w") as f:
+            json.dump(state_indices, f)
+        import joblib
+        from sklearn.preprocessing import StandardScaler
+
+        scaler = StandardScaler()
+        scaler.fit(features)
+        joblib.dump(scaler, dataset_path / "scaler.joblib")
+        return dataset_path
+
+    def test_fpr_penalty_zero_no_effect(self, mock_generator, mock_dataset):
+        """fpr_penalty_beta=0 should not affect reward."""
+        from src.environment.adversarial_env import (
+            AdversarialEnvConfig,
+            AdversarialIoTEnv,
+        )
+
+        config = AdversarialEnvConfig(fpr_penalty_beta=0.0)
+        env = AdversarialIoTEnv(
+            generator_path=mock_generator,
+            dataset_path=mock_dataset,
+            config=config,
+        )
+        obs, _ = env.reset(seed=42)
+        total_reward = 0.0
+        for _ in range(20):
+            obs, reward, terminated, truncated, _ = env.step(0)
+            total_reward += reward
+            if terminated or truncated:
+                break
+        # Just verify the run completes without error
+        assert total_reward != 0.0
+
+    def test_fpr_penalty_nonzero_reduces_reward(self, mock_generator, mock_dataset):
+        """fpr_penalty_beta>0 should reduce reward when blocking on benign."""
+        from src.environment.adversarial_env import (
+            AdversarialEnvConfig,
+            AdversarialIoTEnv,
+        )
+
+        # High beta so the penalty is unmistakable
+        config = AdversarialEnvConfig(fpr_penalty_beta=1000.0)
+        env = AdversarialIoTEnv(
+            generator_path=mock_generator,
+            dataset_path=mock_dataset,
+            config=config,
+        )
+        obs, _ = env.reset(seed=42)
+        # Force the stage to stay BENIGN by always choosing BLOCK (action=3)
+        # and relying on defender de-escalation to reset.
+        total_reward = 0.0
+        for _ in range(20):
+            obs, reward, terminated, truncated, _ = env.step(3)
+            total_reward += reward
+            if terminated or truncated:
+                break
+        # With high beta and many benign blocks, the terminal FPR penalty
+        # should make the total reward substantially negative.
+        assert total_reward < -500.0

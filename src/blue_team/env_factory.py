@@ -79,6 +79,8 @@ def _build_env_config(spec: EnvConfigSerializable) -> AdversarialEnvConfig:
         penalty_overreact_benign=spec.penalty_overreact_benign,
         penalty_block_benign=spec.penalty_block_benign,
         penalty_block_recon=spec.penalty_block_recon,
+        # Lagrangian FPR penalty (review 2.2 / Direction 6)
+        fpr_penalty_beta=spec.fpr_penalty_beta,
     )
 
 

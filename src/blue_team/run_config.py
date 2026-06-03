@@ -94,6 +94,9 @@ class EnvConfigSerializable:
     penalty_block_benign: float = 100.0
     penalty_block_recon: float = 50.0
 
+    # Lagrangian FPR penalty (review 2.2 / Direction 6)
+    fpr_penalty_beta: float = 0.0
+
 
 @dataclass
 class BlueTeamRunConfig:
