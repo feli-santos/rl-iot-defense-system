@@ -1,22 +1,22 @@
 {
   "version": "1.0",
-  "generated_at": "2026-04-29T16:56:35Z",
-  "git_sha": "3cd2fb90ac7a",
+  "generated_at": "2026-06-03T02:16:36Z",
+  "git_sha": "687a518019ba",
   "inputs": {
     "features.npy": "5d1ff73d8cc1dc3706db4ca0381e9b88c542ec40a5ae5d6e5fd784e4d166dcc7",
     "stages.npy": "607730a5daeb3a17ad4f3dc105247db5a34ca01f9d11be14d71887b2ec94d046",
-    "splits/train.idx.npy": "d4aa79aeea3afbd7c6299764d91cc2362c705e449f09d8433a043aa5b2e89a0b",
-    "splits/val_balanced.idx.npy": "8e175fcd51a312bb29fc33d5e1a41607e30305a650a693e7162f055b26ebaff2",
-    "splits/test_balanced.idx.npy": "7439cd630f8e8904306bc1962c932a931b0780b92e93ab60612212bc0927607e",
-    "splits/test.idx.npy": "a67285136ab2c6fbb83f1b6dd8728dfe77e3b6168ee72cbdb9b327955c042d28"
+    "splits/train.idx.npy": "2a713b830de7abb3fa23e3ff0b6d5d84a43e41e0bb6af33ece884696b87a7a95",
+    "splits/val_balanced.idx.npy": "cf59d3d794b76b21e0765173b2112ed1ee639e9f1b1c9a1f64f9ab3a11cda541",
+    "splits/test_balanced.idx.npy": "2d6b2fadeffe037d8715a1efc5658e92f0c973482d38d4221f1070b6dc6a5a91",
+    "splits/test.idx.npy": "8d574b875a6d433d129a76d81ea703c9c2911f039ec3fd84d07205deefb7b7f6"
   },
   "outputs": {
-    "F11_per_stage_recall.png": "b6bd187177c3976bbfb54ac84b1142713b2f01706bd8972ae41ccc134ea94e51",
-    "F11_summary.json": "955f99ff7d107b35a1c1f3223b6f06ed113ab62d4e7e76cdf39339e408e016b7",
+    "F11_per_stage_recall.png": "44897f43fd304658dfb4513bfcd700ffbc6ce0aade043561b2b036125f1215a1",
+    "F11_summary.json": "84ce8736236183c9fe6363024143a4898c23f91d8c15857477ec0b54b8910924",
     "F11_caption.md": "4250dfb81029c274ff57260de0adc7cc38b0dd8e436eca7d59f928acad19589c",
-    "stage_detector.pt": "71e066161ce6c679699d576ec9e986b08917b52dfda88f974d2dc5a0a9a9080a",
-    "random_forest.joblib": "546a7355da133791432b6c5471c28fe5083b4eb6f37e7a3956797cee50b50667",
-    "cnn1d.pt": "8e7cf63d71b8dd79c580cf4f4618c8c1b4c3d95134bc174677bf3cdfa21af7dc"
+    "stage_detector.pt": "cb2920f075d84f708a03f611dd2fd41470d1b6249e29290d7900ec763ec3ef34",
+    "random_forest.joblib": "e2bf7d1910641134cd743b914d8cb02461e859f39b52a2a27181c1aafbf245fc",
+    "cnn1d.pt": "0f00b04fe6c3b4a31f215570735b66cdfbfaa521e345f0959e4706ffb1a19e57"
   },
   "gates_status": {
     "G4.2": "PASS",
