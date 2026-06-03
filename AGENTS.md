@@ -123,4 +123,11 @@ Held-Out Benchmark / Ablation & Robustness stage).
 | 3.1 primary=False contract | ✅ | — | decision locked in AGENTS.md |
 | 3.2 n=300 all policies | ✅ | f6766ce | BENCHMARK_N_DET_EPISODES=300, ABLATION_OOD_N_DET_EPISODES=300 |
 | 3.3 p_de_esc=0.6 confirmed | ✅ | — | default preserved across all configs |
-| **Next:** Phase 4 re-runs | ☐ | | backup → clean-runs → dataset→red→detector→blue-team@False→bench→ablations |
+| 4.1 backup + clean | ✅ | — | runs/ + artifacts/ + results/ + mlruns/ → .archive/ |
+| 4.2 dataset | ✅ | 23ee841 | build-split-indices + plot-dataset (seed=0, F0 regenerated) |
+| 4.3 red-team | ✅ | 23ee841 | LSTM generator trained, all G1-G4 passed |
+| 4.4 detector | ✅ | 23ee841 | MLP+RF+CNN1D trained, RF macro-F1 0.9077, all G4 passed |
+| 4.5 blue-team@False | 🔄 | | screen session phase4-blue-team running (30 runs, ~3-7h) |
+| 4.6 benchmark | ☐ | | waiting on 4.5 |
+| 4.7 ablation | ☐ | | waiting on 4.5 |
+| **Next:** Complete 4.5-4.7, then verify manifests + full thesis build | ☐ | |
