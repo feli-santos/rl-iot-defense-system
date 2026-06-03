@@ -76,3 +76,26 @@ Main file is `tex/principal.tex` (abnTeX2/FEEC template), NOT `thesis.tex`. See
 `docs/architecture.md`, `docs/environment.md`, `docs/reward-shaping.md`,
 `docs/reproducibility.md`, `docs/decisions.md`; per-phase `docs/results/<NN>_*/PLAN.md`
 + `RESULTS.md`.
+
+## Thesis Revision Progress (active)
+
+Full plan: `docs/review/REVISION_PLAN.md` (read it before touching the thesis).
+
+**Locked decisions:** 10 seeds (`{0..9}`); primary contract `impact_is_terminal=False`;
+all 3 new ablations (stage_pred-in-training, RF tree-count sweep, non-monotonic attacker);
+full Lagrangian FPR penalty (`-beta*FPR`); title revised (no "Proactive Prediction").
+
+**Rules:** pytest green every commit; thesis numbers from JSON macros only (never
+hand-typed); NEVER write "Phase N" in thesis prose — use semantic stage names
+(Red-Team LSTM / Adversarial Environment / Stage Detector / Blue-Team Training /
+Held-Out Benchmark / Ablation & Robustness stage).
+
+**Baseline (pre-revision):** HEAD=`b2644fc`, pytest=445 passed, 2 warnings.
+
+**Current step:** Phase 0 / Phase 1 — cheap text/format fixes (no data dependency)
+
+| Task | Status | Commit SHA | Notes |
+|---|---|---|---|
+| 0.1 plan file | ✅ | | written to docs/review/REVISION_PLAN.md |
+| 0.2 AGENTS.md ledger | ✅ | | this section added |
+| ... | | | |
