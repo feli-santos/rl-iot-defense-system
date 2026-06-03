@@ -98,6 +98,20 @@ def _run_one(args: argparse.Namespace, algo: str, seed: int) -> dict:
     """Spawn a single ``python -m scripts.blue_team.train_agent`` subprocess."""
     out_dir = Path(args.out_root) / algo / f"seed_{seed}"
     out_dir.mkdir(parents=True, exist_ok=True)
+    manifest_path = out_dir / "run_manifest.json"
+    if manifest_path.exists() and not getattr(args, "_force", False):
+        logger.info("skipping algo=%s seed=%d (manifest already exists)", algo, seed)
+        return {
+            "algo": algo,
+            "seed": seed,
+            "ok": True,
+            "wallclock_seconds": 0.0,
+            "out_dir": str(out_dir),
+            "run_manifest": str(manifest_path),
+            "log_path": str(out_dir / "train.log"),
+            "returncode": 0,
+            "skipped": True,
+        }
     log_path = out_dir / "train.log"
 
     cmd: list[str] = [
