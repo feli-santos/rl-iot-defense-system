@@ -50,6 +50,9 @@ from src.generator.attack_sequence_generator import AttackSequenceGenerator
 from src.utils.label_mapper import KillChainStage
 from src.utils.realization_engine import RealizationEngine
 
+# Optional stage-detector loading (lazy to avoid heavy import when unused)
+_StageDetector = Any  # forward ref for type hints
+
 logger = logging.getLogger(__name__)
 
 # =============================================================================
@@ -83,6 +86,41 @@ def get_action_cost(action: int) -> float:
         Cost of the action.
     """
     return ACTION_COSTS[action]
+
+
+def _load_stage_detector(path: Path) -> Any:
+    """Load a frozen stage detector from ``path``.
+
+    Supports ``.pt`` (PyTorch :class:`StageDetector`) and ``.joblib``
+    (sklearn :class:`RandomForestClassifier`) checkpoints.  Returns an
+    object with a ``predict(features_2d) -> stage_ids`` method.
+    """
+    suffix = path.suffix.lower()
+    if suffix == ".pt":
+        from src.detector.stage_detector import StageDetector
+
+        det = StageDetector.from_checkpoint(path)
+        # wrap so caller sees uniform ``predict``
+        return _DetectorWrapper(det.predict)
+    if suffix in (".joblib", ".pkl", ".pickle"):
+        import joblib
+
+        clf = joblib.load(path)
+        return _DetectorWrapper(clf.predict)
+    raise ValueError(
+        f"Unsupported stage-detector checkpoint format: {path} "
+        f"(expected .pt or .joblib)"
+    )
+
+
+class _DetectorWrapper:
+    """Thin wrapper unifying StageDetector.predict and sklearn.predict."""
+
+    def __init__(self, predict_fn):
+        self._predict = predict_fn
+
+    def predict(self, X: np.ndarray) -> np.ndarray:
+        return self._predict(X)
 
 
 def get_action_name(action: int) -> str:
@@ -199,6 +237,12 @@ class AdversarialEnvConfig:
     include_deltas: bool = True
     num_actions: int = 5
     impact_is_terminal: bool = True
+
+    # Stage-prediction ablation (review 2.4.1)
+    # If non-None, the env loads a frozen stage detector and (optionally)
+    # appends its predicted stage to the observation vector.
+    stage_detector_path: Optional[str] = None
+    include_stage_pred: bool = False
 
     # Reward — proportionality core (B2 fix)
     action_cost_scale: float = 1.0
@@ -339,9 +383,22 @@ class AdversarialIoTEnv(gym.Env):
         # Get feature dimension from dataset
         self._num_features = self._realization_engine.num_features
 
+        # Load optional frozen stage detector for stage-prediction ablation
+        self._stage_detector: Any = None
+        if self._config.stage_detector_path is not None:
+            self._stage_detector = _load_stage_detector(
+                Path(self._config.stage_detector_path)
+            )
+
         # Define observation space: flattened window of features (optionally with deltas)
         obs_multiplier = 2 if self._config.include_deltas else 1
         obs_dim = self._config.window_size * self._num_features * obs_multiplier
+        if self._config.include_stage_pred:
+            if self._stage_detector is None:
+                raise ValueError(
+                    "include_stage_pred=True requires stage_detector_path to be set"
+                )
+            obs_dim += self._config.num_actions  # one-hot appended stage
         self.observation_space = spaces.Box(
             low=-np.inf,
             high=np.inf,
@@ -643,6 +700,14 @@ class AdversarialIoTEnv(gym.Env):
             deltas[1:] = window_array[1:] - window_array[:-1]
             window_array = np.concatenate([window_array, deltas], axis=1)
         observation = window_array.flatten().astype(np.float32)
+        # Stage-prediction ablation: append one-hot predicted stage
+        if self._config.include_stage_pred:
+            assert self._stage_detector is not None
+            latest_row = self._observation_window[-1].reshape(1, -1)
+            pred_stage = int(self._stage_detector.predict(latest_row)[0])
+            one_hot = np.zeros(self._config.num_actions, dtype=np.float32)
+            one_hot[pred_stage] = 1.0
+            observation = np.concatenate([observation, one_hot])
         return observation
 
     def _build_info(self) -> dict[str, Any]:

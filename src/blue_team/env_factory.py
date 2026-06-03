@@ -63,6 +63,9 @@ def _build_env_config(spec: EnvConfigSerializable) -> AdversarialEnvConfig:
         include_deltas=spec.include_deltas,
         # ablation D7.3
         impact_is_terminal=spec.impact_is_terminal,
+        # Stage-prediction ablation (review 2.4.1)
+        stage_detector_path=spec.stage_detector_path,
+        include_stage_pred=spec.include_stage_pred,
         # Reward shaping (ablation F9 axes)
         action_cost_scale=spec.action_cost_scale,
         reward_proportional=spec.reward_proportional,

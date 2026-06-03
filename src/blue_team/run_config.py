@@ -39,7 +39,7 @@ import json
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 
 _SCHEMA_VERSION = "1.0"
 
@@ -74,6 +74,10 @@ class EnvConfigSerializable:
     # ablation D7.3: explicit IMPACT-row decision step toggle. Default
     # ``True`` preserves the environment-design/4/5/6 frozen contract.
     impact_is_terminal: bool = True
+
+    # Stage-prediction ablation (review 2.4.1)
+    stage_detector_path: Optional[str] = None
+    include_stage_pred: bool = False
 
     # Reward shaping — ablation F9 axes (defaults from environment-design RESULTS §3)
     action_cost_scale: float = 1.0

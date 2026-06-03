@@ -683,3 +683,122 @@ class TestEnvironmentIntegration:
             check_env(env, warn=True)
         except Exception as e:
             pytest.fail(f"Environment failed Gymnasium check: {e}")
+
+
+class TestStagePredictionAblation:
+    """Tests for the stage-prediction-in-observation ablation (review 2.4.1)."""
+
+    @pytest.fixture
+    def mock_generator(self, tmp_path):
+        """Create a mock Attack Sequence Generator."""
+        from src.generator.attack_sequence_generator import (
+            AttackSequenceGenerator,
+            AttackSequenceGeneratorConfig,
+        )
+
+        config = AttackSequenceGeneratorConfig(
+            num_stages=5, embedding_dim=16, hidden_size=32, num_layers=1
+        )
+        generator = AttackSequenceGenerator(config=config)
+        model_path = tmp_path / "generator" / "attack_sequence_generator.pth"
+        generator.save(model_path, save_config=True)
+        return tmp_path / "generator"
+
+    @pytest.fixture
+    def mock_dataset(self, tmp_path):
+        """Create a mock processed dataset."""
+        import json
+
+        dataset_path = tmp_path / "dataset"
+        dataset_path.mkdir(parents=True)
+        features = np.random.randn(100, 46).astype(np.float32)
+        np.save(dataset_path / "features.npy", features)
+        labels = np.random.randint(0, 5, size=100)
+        np.save(dataset_path / "labels.npy", labels)
+        state_indices = {str(i): [] for i in range(5)}
+        for idx, label in enumerate(labels):
+            state_indices[str(label)].append(idx)
+        with open(dataset_path / "state_indices.json", "w") as f:
+            json.dump(state_indices, f)
+        import joblib
+        from sklearn.preprocessing import StandardScaler
+
+        scaler = StandardScaler()
+        scaler.fit(features)
+        joblib.dump(scaler, dataset_path / "scaler.joblib")
+        return dataset_path
+
+    def test_obs_shape_includes_stage_pred(self, mock_generator, mock_dataset, tmp_path):
+        """When include_stage_pred=True, obs space grows by num_actions."""
+        from src.environment.adversarial_env import (
+            AdversarialEnvConfig,
+            AdversarialIoTEnv,
+        )
+
+        # Save a mock RF detector that always predicts stage 2
+        import joblib
+        from sklearn.ensemble import RandomForestClassifier
+
+        dummy_clf = RandomForestClassifier(n_estimators=1, random_state=0)
+        dummy_clf.fit(np.zeros((10, 46)), np.full(10, 2))
+        det_path = tmp_path / "detector.joblib"
+        joblib.dump(dummy_clf, det_path)
+
+        config = AdversarialEnvConfig(
+            window_size=5,
+            stage_detector_path=str(det_path),
+            include_stage_pred=True,
+        )
+        env = AdversarialIoTEnv(
+            generator_path=mock_generator,
+            dataset_path=mock_dataset,
+            config=config,
+        )
+        expected_shape = (5 * 46 * 2 + 5,)  # +5 for one-hot stage
+        assert env.observation_space.shape == expected_shape
+
+    def test_stage_pred_one_hot_in_observation(self, mock_generator, mock_dataset, tmp_path):
+        """The predicted stage is appended as a one-hot vector at the tail."""
+        from src.environment.adversarial_env import (
+            AdversarialEnvConfig,
+            AdversarialIoTEnv,
+        )
+
+        import joblib
+        from sklearn.ensemble import RandomForestClassifier
+
+        dummy_clf = RandomForestClassifier(n_estimators=1, random_state=0)
+        dummy_clf.fit(np.zeros((10, 46)), np.full(10, 2))
+        det_path = tmp_path / "detector.joblib"
+        joblib.dump(dummy_clf, det_path)
+
+        config = AdversarialEnvConfig(
+            window_size=5,
+            stage_detector_path=str(det_path),
+            include_stage_pred=True,
+        )
+        env = AdversarialIoTEnv(
+            generator_path=mock_generator,
+            dataset_path=mock_dataset,
+            config=config,
+        )
+        obs, _ = env.reset(seed=42)
+        tail = obs[-5:]
+        expected = np.zeros(5, dtype=np.float32)
+        expected[2] = 1.0
+        np.testing.assert_array_equal(tail, expected)
+
+    def test_include_stage_pred_without_path_raises(self, mock_generator, mock_dataset):
+        """include_stage_pred=True without stage_detector_path is an error."""
+        from src.environment.adversarial_env import (
+            AdversarialEnvConfig,
+            AdversarialIoTEnv,
+        )
+
+        config = AdversarialEnvConfig(include_stage_pred=True)
+        with pytest.raises(ValueError, match="stage_detector_path"):
+            AdversarialIoTEnv(
+                generator_path=mock_generator,
+                dataset_path=mock_dataset,
+                config=config,
+            )
