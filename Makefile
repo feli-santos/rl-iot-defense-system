@@ -95,16 +95,18 @@ detector: derive-stages  ## Detector: train MLP + RF + CNN1D, emit F11 (~3-5 min
 # -----------------------------------------------------------------------------
 # Blue Team — DQN/PPO/A2C × 5 seeds + F3/F4/T1
 # -----------------------------------------------------------------------------
-BLUE_TEAM_RUNS_ROOT ?= runs/blue_team
-BLUE_TEAM_TIMESTEPS ?= 250000
-BLUE_TEAM_SEEDS     ?= 0 1 2 3 4 5 6 7 8 9
-BLUE_TEAM_ALGOS     ?= dqn ppo a2c
-BLUE_TEAM_PARALLEL  ?= 1
+BLUE_TEAM_RUNS_ROOT     ?= runs/blue_team
+BLUE_TEAM_TIMESTEPS     ?= 250000
+BLUE_TEAM_SEEDS         ?= 0 1 2 3 4 5 6 7 8 9
+BLUE_TEAM_ALGOS         ?= dqn ppo a2c
+BLUE_TEAM_PARALLEL      ?= 1
+BLUE_TEAM_IMPACT_TERM   ?= true   # Phase 4 primary contract: override to 'false'
 
 .PHONY: blue-team-smoke
 blue-team-smoke:  ## Blue-team smoke: PPO seed 0 only, 5K timesteps (~20 s).
 	$(PYTHON) -m scripts.blue_team.train_agent \
 	    --algo ppo --seed 0 --smoke \
+	    --impact-is-terminal $(BLUE_TEAM_IMPACT_TERM) \
 	    --out-dir runs/smoke/ppo_seed_0
 
 .PHONY: blue-team-sweep
@@ -114,6 +116,7 @@ blue-team-sweep:  ## Blue-team: train DQN/PPO/A2C × 5 seeds (~3-7 h CPU).
 	    --total-timesteps $(BLUE_TEAM_TIMESTEPS) \
 	    --out-root $(BLUE_TEAM_RUNS_ROOT) \
 	    --parallel $(BLUE_TEAM_PARALLEL) \
+	    --impact-is-terminal $(BLUE_TEAM_IMPACT_TERM) \
 	    --continue-on-failure
 
 .PHONY: blue-team-figures
@@ -365,8 +368,8 @@ render-tables:  ## Regenerate tex/generated/*.tex from canonical JSONs.
 reproduce-thesis:  ## End-to-end thesis reproduction (full chain).
 	@echo ">>> 1/7 process-data";   $(MAKE) process-data
 	@echo ">>> 2/7 train-generator"; $(MAKE) train-generator
-	@echo ">>> 3/7 train-detector";  $(MAKE) train-detector
-	@echo ">>> 4/7 blue-team";       $(MAKE) blue-team
+	@echo ">>> 3/7 detector";        $(MAKE) detector
+	@echo ">>> 4/7 blue-team";       $(MAKE) blue-team BLUE_TEAM_IMPACT_TERM=false
 	@echo ">>> 5/7 benchmark";       $(MAKE) benchmark
 	@echo ">>> 6/7 ablation";        $(MAKE) ablation
 	@echo ">>> 7/7 smoke";           $(MAKE) smoke
