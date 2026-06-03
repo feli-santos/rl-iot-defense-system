@@ -310,15 +310,15 @@ train-all-rl:  ## Train DQN, PPO, A2C sequentially (single seed).
 	    --timesteps $(TIMESTEPS) \
 	    --generator-path $(GEN_DIR) --data-path $(DATA)
 
-##@ Thesis (Docker — FEEC CCPG 001-2015 / abnTeX2 template)
+##@ Thesis (Podman/Docker — FEEC CCPG 001-2015 / abnTeX2 template)
 THESIS_IMAGE ?= rl-iot-thesis
 
 .PHONY: thesis-image
-thesis-image:  ## Build the minimal Docker image for thesis compilation (one-off, ~3-6 min first run).
+thesis-image:  ## Build the minimal container image for thesis compilation (one-off, ~3-6 min first run).
 	bash tex/build.sh --rebuild --draft
 
 .PHONY: thesis
-thesis:  ## Compile tex/principal.pdf (full: pdflatex × 3 + bibtex) via Docker.
+thesis:  ## Compile tex/principal.pdf (full: pdflatex × 3 + bibtex) via container engine.
 	bash tex/build.sh
 
 .PHONY: thesis-draft
@@ -326,7 +326,7 @@ thesis-draft:  ## Single fast pdflatex pass (no bibtex, no ToC fix-up).
 	bash tex/build.sh --draft
 
 .PHONY: thesis-rebuild
-thesis-rebuild:  ## Force-rebuild Docker image, then compile thesis.
+thesis-rebuild:  ## Force-rebuild container image, then compile thesis.
 	bash tex/build.sh --rebuild
 
 ##@ Figure / Table Synchronisation (anti-drift)

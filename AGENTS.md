@@ -67,9 +67,10 @@ Kill-chain stages (5): `0 BENIGN, 1 RECON, 2 ACCESS, 3 MANEUVER, 4 IMPACT`
 
 ## Thesis (separate toolchain)
 
-LaTeX under `tex/` builds via Docker only: `make thesis` (wraps `bash tex/build.sh`).
-Main file is `tex/principal.tex` (abnTeX2/FEEC template), NOT `thesis.tex`. See
-`memory-bank/activeContext.md` for the build details and history.
+LaTeX under `tex/` builds via Podman or Docker: `make thesis` (wraps `bash tex/build.sh`).
+Podman is auto-detected and preferred; Docker is the fallback. Main file is `tex/principal.tex`
+(abnTeX2/FEEC template), NOT `thesis.tex`. See `memory-bank/activeContext.md` for the build
+details and history.
 
 ## More context
 
@@ -112,7 +113,7 @@ Held-Out Benchmark / Ablation & Robustness stage).
 | 1.4 thesis→dissertation | ✅ | 315f8c2 | background.tex + 2 stray fixes |
 | 1.5 ToC depth | ✅ | — | SUB fix restores hierarchy; no 0.0.0.0 nesting remains |
 | 1.6 tese.bib | ✅ | fe43557 | titles wrapped, +6 refs, IoTWarden preprint note |
-| 1.7 make thesis | ☐ | | Docker unavailable; compile verification deferred |
+| 1.7 make thesis | ✅ | — | Podman auto-detect added to tex/build.sh; compile verification TBD after Phase 4 |
 | 2.1 stage_pred plumbing | ✅ | b0156e8 | env obs + classifier injection, 3 tests |
 | 2.2 RF tree-count sweep | ✅ | 721c777 | --n-estimators CLI, config pass-through, 2 tests |
 | 2.3 non-monotonic attacker | ✅ | 0a64e07 | retreat_prob param, 2 tests + flaky test fix |
