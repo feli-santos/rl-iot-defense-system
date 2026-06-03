@@ -143,7 +143,7 @@ blue-team: blue-team-sweep blue-team-figures blue-team-gates  ## Blue-team: full
 BENCHMARK_RUNS_ROOT      ?= runs/benchmark
 BENCHMARK_OUT_DIR        ?= docs/results/06_benchmark
 BENCHMARK_N_EPISODES     ?= 30
-BENCHMARK_N_DET_EPISODES ?= 150
+BENCHMARK_N_DET_EPISODES ?= 300
 BENCHMARK_RF_PATH        ?= artifacts/detector/random_forest.joblib
 
 .PHONY: benchmark-smoke
@@ -186,7 +186,7 @@ ABLATION_OOD_RUNS_ROOT   ?= runs/ablation/ood
 ABLATION_OOD_CLASSES     ?= DDoS-HTTP_Flood Mirai-udpplain VulnerabilityScan XSS
 ABLATION_OOD_POLICIES    ?= recommended_action rf_acting dqn ppo a2c random always_observe always_block
 ABLATION_OOD_N_EPISODES  ?= 30
-ABLATION_OOD_N_DET_EPISODES ?= 150
+ABLATION_OOD_N_DET_EPISODES ?= 300
 
 .PHONY: ablation-ood-smoke
 ablation-ood-smoke:  ## Ablation F15 smoke: 1 OOD class × 2 policies × 1 seed × 2 ep (~10 s).

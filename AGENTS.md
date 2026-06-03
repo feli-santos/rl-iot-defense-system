@@ -92,7 +92,13 @@ Held-Out Benchmark / Ablation & Robustness stage).
 
 **Baseline (pre-revision):** HEAD=`b2644fc`, pytest=445 passed, 2 warnings.
 
-**Current step:** Phase 0 / Phase 1 — cheap text/format fixes (no data dependency)
+**Current step:** Phase 4 — big re-runs (walk-away, ~1–2 days CPU)
+
+**Phase 3 decisions (locked):**
+- Primary contract: `impact_is_terminal=False` for training + benchmark
+- Baseline case-study: `impact_is_terminal=True` retained as reward-hacking case study
+- n=300 episodes for ALL policies (fixed BENCHMARK_N_DET_EPISODES=300, ABLATION_OOD_N_DET_EPISODES=300)
+- p_de_esc=0.6 default carried through
 
 | Task | Status | Commit SHA | Notes |
 |---|---|---|---|
@@ -107,4 +113,13 @@ Held-Out Benchmark / Ablation & Robustness stage).
 | 1.5 ToC depth | ✅ | — | SUB fix restores hierarchy; no 0.0.0.0 nesting remains |
 | 1.6 tese.bib | ✅ | fe43557 | titles wrapped, +6 refs, IoTWarden preprint note |
 | 1.7 make thesis | ☐ | | Docker unavailable; compile verification deferred |
-| **Next:** Phase 2 | ☐ | | code changes before re-runs (2.1–2.6) |
+| 2.1 stage_pred plumbing | ✅ | b0156e8 | env obs + classifier injection, 3 tests |
+| 2.2 RF tree-count sweep | ✅ | 721c777 | --n-estimators CLI, config pass-through, 2 tests |
+| 2.3 non-monotonic attacker | ✅ | 0a64e07 | retreat_prob param, 2 tests + flaky test fix |
+| 2.4 Lagrangian FPR penalty | ✅ | 16fc1ea | episode accumulator + terminal -beta*FPR, 2 tests |
+| 2.5 JSON→.tex generator | ✅ | e358e07 | anti-drift macros + tables, 5 tests |
+| 2.6 Makefile updates | ✅ | f6766ce | 10 seeds, sync-figures, stale-check, render-tables, full reproduce-thesis |
+| 3.1 primary=False contract | ✅ | — | decision locked in AGENTS.md |
+| 3.2 n=300 all policies | ✅ | f6766ce | BENCHMARK_N_DET_EPISODES=300, ABLATION_OOD_N_DET_EPISODES=300 |
+| 3.3 p_de_esc=0.6 confirmed | ✅ | — | default preserved across all configs |
+| **Next:** Phase 4 re-runs | ☐ | | backup → clean-runs → dataset→red→detector→blue-team@False→bench→ablations |
