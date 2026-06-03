@@ -96,6 +96,15 @@ Held-Out Benchmark / Ablation & Robustness stage).
 
 | Task | Status | Commit SHA | Notes |
 |---|---|---|---|
-| 0.1 plan file | ✅ | | written to docs/review/REVISION_PLAN.md |
-| 0.2 AGENTS.md ledger | ✅ | | this section added |
-| ... | | | |
+| 0.1 plan file | ✅ | 3f97a22 | written to docs/review/REVISION_PLAN.md |
+| 0.2 AGENTS.md ledger | ✅ | 3f97a22 | this section added |
+| 0.3 baseline | ✅ | b2644fc | 445 passed, 2 warnings |
+| 0.4 commit | ✅ | 3f97a22 | plan + 4 review files committed |
+| 1.1 SUB→subsection | ✅ | 315f8c2 | 25 occ fixed across 3 files |
+| 1.2 rm dup inputenc | ✅ | 315f8c2 | principal.tex:15 removed |
+| 1.3 thesis.pdf→principal.pdf | ✅ | 315f8c2 | apendice.tex 80,86 fixed |
+| 1.4 thesis→dissertation | ✅ | 315f8c2 | background.tex + 2 stray fixes |
+| 1.5 ToC depth | ✅ | — | SUB fix restores hierarchy; no 0.0.0.0 nesting remains |
+| 1.6 tese.bib | ✅ | fe43557 | titles wrapped, +6 refs, IoTWarden preprint note |
+| 1.7 make thesis | ☐ | | Docker unavailable; compile verification deferred |
+| **Next:** Phase 2 | ☐ | | code changes before re-runs (2.1–2.6) |
