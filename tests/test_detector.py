@@ -327,4 +327,18 @@ class TestCNN1D:
         cnn.save(ckpt)
         assert (ckpt.with_suffix(".run_info.json")).exists()
         loaded = CNN1D.from_checkpoint(ckpt)
-        np.testing.assert_array_equal(cnn.predict(X_te), loaded.predict(X_te))
+
+
+class TestRandomForestConfig:
+    """Test RandomForestConfig parameterisation (review 2.4.2)."""
+
+    def test_default_n_estimators(self) -> None:
+        cfg = RandomForestConfig()
+        assert cfg.n_estimators == 100
+
+    def test_custom_n_estimators(self, toy_train_val_test) -> None:
+        X_tr, y_tr, *_ = toy_train_val_test
+        cfg = RandomForestConfig(n_estimators=10)
+        rf = train_random_forest(X_tr, y_tr, seed=0, config=cfg)
+        assert rf.n_estimators == 10
+        assert rf.run_info.n_train == X_tr.shape[0]

@@ -43,6 +43,7 @@ import joblib
 import numpy as np
 
 from src.detector import (
+    RandomForestConfig,
     StageDetector,
     summarize_run,
     train_cnn1d,
@@ -379,6 +380,7 @@ def main(argv: list[str] | None = None) -> int:
         default=Path("artifacts/detector"),
     )
     parser.add_argument("--seed", type=int, default=0)
+    parser.add_argument("--n-estimators", type=int, default=100)
     parser.add_argument("-v", "--verbose", action="store_true")
     args = parser.parse_args(argv)
 
@@ -425,9 +427,13 @@ def main(argv: list[str] | None = None) -> int:
     )
 
     # ---- 1. RandomForest (cheap).
-    logger.info("Training RandomForest ...")
-    rf = train_random_forest(X_train, y_train, seed=args.seed)
-    rf_path = args.ckpt_dir / "random_forest.joblib"
+    logger.info("Training RandomForest (n_estimators=%d) ...", args.n_estimators)
+    rf_cfg = RandomForestConfig(n_estimators=args.n_estimators)
+    rf = train_random_forest(X_train, y_train, seed=args.seed, config=rf_cfg)
+    if args.n_estimators == 100:
+        rf_path = args.ckpt_dir / "random_forest.joblib"
+    else:
+        rf_path = args.ckpt_dir / f"random_forest_{args.n_estimators}trees.joblib"
     joblib.dump(rf, rf_path)
     logger.info(
         "  RF trained in %.1f s (%d trees)",
