@@ -158,3 +158,6 @@ tex/texput.log
 # Working directories used by the overleaf sync workflow
 tex/_overleaf_pull/
 tex/_legacy/
+
+# Auto-generated LaTeX fragments from canonical JSONs (re-runnable)
+tex/generated/
