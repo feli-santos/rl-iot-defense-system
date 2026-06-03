@@ -97,7 +97,7 @@ detector: derive-stages  ## Detector: train MLP + RF + CNN1D, emit F11 (~3-5 min
 # -----------------------------------------------------------------------------
 BLUE_TEAM_RUNS_ROOT ?= runs/blue_team
 BLUE_TEAM_TIMESTEPS ?= 250000
-BLUE_TEAM_SEEDS     ?= 0 1 2 3 4
+BLUE_TEAM_SEEDS     ?= 0 1 2 3 4 5 6 7 8 9
 BLUE_TEAM_ALGOS     ?= dqn ppo a2c
 BLUE_TEAM_PARALLEL  ?= 1
 
@@ -329,13 +329,47 @@ thesis-draft:  ## Single fast pdflatex pass (no bibtex, no ToC fix-up).
 thesis-rebuild:  ## Force-rebuild Docker image, then compile thesis.
 	bash tex/build.sh --rebuild
 
+##@ Figure / Table Synchronisation (anti-drift)
+.PHONY: sync-figures
+sync-figures:  ## Copy regenerated PDFs from docs/results/ → tex/figs/
+	@echo "Syncing figures ..."
+	@cp docs/results/05_blue_team/F3_*.pdf tex/figs/ 2>/dev/null || true
+	@cp docs/results/05_blue_team/F4_*.pdf tex/figs/ 2>/dev/null || true
+	@cp docs/results/06_benchmark/F5_table.pdf tex/figs/ 2>/dev/null || true
+	@cp docs/results/06_benchmark/F6_*.pdf tex/figs/ 2>/dev/null || true
+	@cp docs/results/06_benchmark/F7_*.pdf tex/figs/ 2>/dev/null || true
+	@cp docs/results/06_benchmark/F8_*.pdf tex/figs/ 2>/dev/null || true
+	@cp docs/results/07_ablation/F9_*.pdf tex/figs/ 2>/dev/null || true
+	@cp docs/results/07_ablation/F10_*.pdf tex/figs/ 2>/dev/null || true
+	@cp docs/results/07_ablation/F12_*.pdf tex/figs/ 2>/dev/null || true
+	@cp docs/results/07_ablation/F15_*.pdf tex/figs/ 2>/dev/null || true
+	@echo "Done."
+
+.PHONY: stale-check
+stale-check:  ## List tex/figs PDFs older than their docs/results source.
+	@echo "Checking for stale figures ..."
+	@for src in docs/results/*/*.pdf; do \
+		 tgt="tex/figs/$$(basename $$src)"; \
+		 if [ ! -f "$$tgt" ] || [ "$$src" -nt "$$tgt" ]; then \
+		   echo "STALE: $$src → $$tgt"; \
+		 fi; \
+	done
+	@echo "Stale check complete."
+
+.PHONY: render-tables
+render-tables:  ## Regenerate tex/generated/*.tex from canonical JSONs.
+	$(PYTHON) scripts/thesis/render_tables.py
+
 ##@ Reproducibility
 .PHONY: reproduce-thesis
-reproduce-thesis:  ## End-to-end thesis reproduction (data -> red -> blue -> bench).
-	@echo ">>> 1/4 process-data";   $(MAKE) process-data
-	@echo ">>> 2/4 train-generator"; $(MAKE) train-generator
-	@echo ">>> 3/4 train-all-rl";    $(MAKE) train-all-rl
-	@echo ">>> 4/4 benchmark";       $(MAKE) benchmark
+reproduce-thesis:  ## End-to-end thesis reproduction (full chain).
+	@echo ">>> 1/7 process-data";   $(MAKE) process-data
+	@echo ">>> 2/7 train-generator"; $(MAKE) train-generator
+	@echo ">>> 3/7 train-detector";  $(MAKE) train-detector
+	@echo ">>> 4/7 blue-team";       $(MAKE) blue-team
+	@echo ">>> 5/7 benchmark";       $(MAKE) benchmark
+	@echo ">>> 6/7 ablation";        $(MAKE) ablation
+	@echo ">>> 7/7 smoke";           $(MAKE) smoke
 	@echo "Done. Figures in docs/results/, raw data in $(RUNS_DIR)/."
 
 ##@ Maintenance
