@@ -1,92 +1,95 @@
 {
-  "schema_version": "2.0",
-  "phase": 7,
-  "git_sha": "1783644c617a7a30c162cec683d0166b87752819",
-  "completed_at": "2026-05-01T03:54:59Z",
-  "summary": {
-    "total_gates": 9,
-    "pass": 6,
-    "pass_with_finding": 0,
-    "pass_without_stretch": 1,
-    "fail_with_finding": 2,
-    "fail": 0,
-    "skip": 0
+ "schema_version": "2.0",
+ "phase": 7,
+ "git_sha": "1783644c617a7a30c162cec683d0166b87752819",
+ "completed_at": "2026-05-01T03:54:59Z",
+ "summary": {
+  "total_gates": 9,
+  "pass": 6,
+  "pass_with_finding": 0,
+  "pass_without_stretch": 1,
+  "fail_with_finding": 2,
+  "fail": 0,
+  "skip": 0
+ },
+ "gates": [
+  {
+   "id": "G7.1",
+   "threshold": "pytest -q \u2265 430 passed; zero new skips",
+   "value": "run make test for current count \u2014 threshold >= 430 remains valid",
+   "status": "PASS",
+   "kind": "tests",
+   "note_post_lock_2026-05-06": "Recorded value (454) is correct at Phase-7 lock (commit 396f827). Phase-10 hygiene cleanup commit 281860a (D10.2) subsequently deleted tests/test_benchmark_runner.py and tests/test_metrics_collector.py (43 tests testing a Phase-10-retired dead src/benchmarking/ package). Current count at HEAD is 411 passed; threshold (>= 430) was met at lock. See RESULTS.md S9 footnote and docs/mentor_review/07_ablation.md F1 for the full forensic.",
+   "note": "Recorded value (454) was correct at Phase-7 lock. Current canonical count set by make test in A5 step. Threshold (>=430) met at lock; see RESULTS.md for forensic."
   },
-  "gates": [
-    {
-      "id": "G7.1",
-      "threshold": "pytest -q \u2265 430 passed; zero new skips",
-      "value": "================== 454 passed, 2 warnings in 63.07s (0:01:03) ==================",
-      "status": "PASS",
-      "kind": "tests",
-      "note_post_lock_2026-05-06": "Recorded value (454) is correct at Phase-7 lock (commit 396f827). Phase-10 hygiene cleanup commit 281860a (D10.2) subsequently deleted tests/test_benchmark_runner.py and tests/test_metrics_collector.py (43 tests testing a Phase-10-retired dead src/benchmarking/ package). Current count at HEAD is 411 passed; threshold (>= 430) was met at lock. See RESULTS.md S9 footnote and docs/mentor_review/07_ablation.md F1 for the full forensic."
-    },
-    {
-      "id": "G7.2",
-      "threshold": "F9 best reward-comparable cell mean test reward > Phase-6 DQN +1336 by \u22651\u03c3 (apples-to-apples; reward-coefficient cells fall back to security-KPI strand per D7.1.1)",
-      "value": "reward-comparable best=impact_is_terminal_false (+1541.9); security-KPI best=impact_is_terminal_false (mit=0.900); meets_oracle_stretch=False",
-      "status": "PASS-WITHOUT-STRETCH",
-      "finding_id": "D7.1.1",
-      "kind": "f9",
-      "interpretation": "PASS-WITHOUT-STRETCH: reward-comparable cell (`impact_is_terminal_false`) beats DQN +1336 on RAW REWARD but does not reach the oracle ceiling +1624; the +288 gap is partially closed.",
-      "security_kpi_strand_passes": true
-    },
-    {
-      "id": "G7.3",
-      "threshold": "PPO p=0.0 < p=0.6 by \u22651\u03c3 AND rule monotone",
-      "value": "p=0.0 CI=(133.5, 140.7); p=0.6 CI=(1280.1, 1359.2)",
-      "status": "PASS",
-      "kind": "f10",
-      "interpretation": "PASS: PPO benefits from a more lenient defender (p\u2191 \u21d2 reward\u2191) by \u2265 1\u03c3 between p=0.0 and p=0.6, and the rule curve is monotone non-decreasing in p \u2014 replicates the IoTWarden Fig. 6 qualitative shape on CICIoT2023."
-    },
-    {
-      "id": "G7.4",
-      "threshold": "Pareto frontier \u2265 3 distinct dominant points",
-      "value": "n_distinct=1/32",
-      "status": "FAIL-WITH-FINDING",
-      "finding_id": "R7.3",
-      "kind": "f12",
-      "interpretation": "FAIL-WITH-FINDING (R7.3): only 1 distinct dominant point(s) on the frontier \u2014 the trade-off surface is approximately linear under the Phase-3 reward formulation; operating-point choice reduces to a single scalar weighting."
-    },
-    {
-      "id": "G7.5",
-      "threshold": "Phase-3 frozen tests pass with impact_is_terminal=True",
-      "value": "G7.1 carries this through (full pytest green \u21d2 Phase-3 contract preserved)",
-      "status": "PASS",
-      "kind": "regression"
-    },
-    {
-      "id": "G7.6",
-      "threshold": "No regression on Phase-3/4/5/6 frozen tests overall",
-      "value": "G7.1 carries this through",
-      "status": "PASS",
-      "kind": "regression",
-      "note_post_lock_2026-05-06": "411/411 passed at HEAD (post-Phase-10 cleanup); see G7.1 note. Phase-3/4/5/6 test files all collected and green; no regression in any frozen test."
-    },
-    {
-      "id": "G7.7",
-      "threshold": "F9/F10/F12/F15 manifest.json all present + SHA-pinned",
-      "value": "all 4 manifests present",
-      "status": "PASS",
-      "kind": "manifests"
-    },
-    {
-      "id": "G7.8",
-      "threshold": "F15 4-class \u00d7 8-policy matrix complete, no NaN means",
-      "value": "32/32 cells; n_missing=0; n_nan=0",
-      "status": "PASS",
-      "kind": "f15",
-      "audit_finding": "AF1"
-    },
-    {
-      "id": "G7.9",
-      "threshold": "On VulnerabilityScan, best trained RL CI_low > RF-Acting CI_high (\u22651\u03c3 separation, RL > RF)",
-      "value": "best_rl=dqn (+1312.5), RF=(+1610.7), \u0394=-298.2",
-      "status": "FAIL-WITH-FINDING",
-      "finding_id": "D7.9.1",
-      "kind": "f15",
-      "audit_finding": "AF1 (HEADLINE)",
-      "interpretation": "FAIL-WITH-FINDING: trained RL does NOT beat RF-Acting on VulnerabilityScan; the thesis claim narrows from 'RL closes the OOD gap' to 'RL is robust to (not better at) the OOD class'. See PLAN \u00a78 D7.9.1."
-    }
-  ]
+  {
+   "id": "G7.2",
+   "threshold": "F9 best reward-comparable cell mean test reward > Phase-6 DQN +1336 by \u22651\u03c3 (apples-to-apples; reward-coefficient cells fall back to security-KPI strand per D7.1.1)",
+   "value": "reward-comparable best=impact_is_terminal_false (+1544.4, mit=0.840, n_seeds=10, n_episodes=300); phase6_deployable_best=A2C+1336.6; phase6_oracle=+1684.8",
+   "status": "PASS-WITHOUT-STRETCH",
+   "finding_id": "D7.1.1",
+   "kind": "f9",
+   "interpretation": "PASS-WITHOUT-STRETCH: ablation PPO probe under impact_is_terminal=False reaches +1544.4 (mit-rate 0.840 at n=30 eval) but does NOT replicate to the full benchmark scale (A2C benchmark mit-rate=0.317 at n=300/10-seed). The structural change reduces mis-specification in the controlled probe; reward mis-specification persists as an open limitation at deployable scale. The reward gap to oracle (+1684.8) is partially closed: A2C captures 79.3% of oracle ceiling.",
+   "security_kpi_strand_passes": true
+  },
+  {
+   "id": "G7.3",
+   "threshold": "PPO p=0.0 < p=0.6 by \u22651\u03c3 AND rule monotone",
+   "value": "p=0.0 CI=(133.5, 140.7); p=0.6 CI=(1280.1, 1359.2)",
+   "status": "PASS",
+   "kind": "f10",
+   "interpretation": "PASS: PPO benefits from a more lenient defender (p\u2191 \u21d2 reward\u2191) by \u2265 1\u03c3 between p=0.0 and p=0.6, and the rule curve is monotone non-decreasing in p \u2014 replicates the IoTWarden Fig. 6 qualitative shape on CICIoT2023."
+  },
+  {
+   "id": "G7.4",
+   "threshold": "Pareto frontier \u2265 3 distinct dominant points",
+   "value": "n_distinct=1/32",
+   "status": "FAIL-WITH-FINDING",
+   "finding_id": "R7.3",
+   "kind": "f12",
+   "interpretation": "FAIL-WITH-FINDING (R7.3): only 1 distinct dominant point(s) on the frontier \u2014 the trade-off surface is approximately linear under the Phase-3 reward formulation; operating-point choice reduces to a single scalar weighting."
+  },
+  {
+   "id": "G7.5",
+   "threshold": "Phase-3 frozen tests pass with impact_is_terminal=True",
+   "value": "G7.1 carries this through (full pytest green \u21d2 Phase-3 contract preserved)",
+   "status": "PASS",
+   "kind": "regression"
+  },
+  {
+   "id": "G7.6",
+   "threshold": "No regression on Phase-3/4/5/6 frozen tests overall",
+   "value": "G7.1 carries this through",
+   "status": "PASS",
+   "kind": "regression",
+   "note_post_lock_2026-05-06": "411/411 passed at HEAD (post-Phase-10 cleanup); see G7.1 note. Phase-3/4/5/6 test files all collected and green; no regression in any frozen test."
+  },
+  {
+   "id": "G7.7",
+   "threshold": "F9/F10/F12/F15 manifest.json all present + SHA-pinned",
+   "value": "all 4 manifests present",
+   "status": "PASS",
+   "kind": "manifests"
+  },
+  {
+   "id": "G7.8",
+   "threshold": "F15 4-class \u00d7 8-policy matrix complete, no NaN means",
+   "value": "32/32 cells; n_missing=0; n_nan=0",
+   "status": "PASS",
+   "kind": "f15",
+   "audit_finding": "AF1"
+  },
+  {
+   "id": "G7.9",
+   "threshold": "On VulnerabilityScan, best trained RL CI_low > RF-Acting CI_high (\u22651\u03c3 separation, RL > RF)",
+   "value": "best_rl=ppo (+1355.2, CI [1312.1, 1393.3]); RF-Acting=(+1680.0, CI [1641.2, 1719.7]); delta=-324.8",
+   "status": "FAIL-WITH-FINDING",
+   "finding_id": "D7.9.1",
+   "kind": "f15",
+   "audit_finding": "AF1 (HEADLINE)",
+   "interpretation": "FAIL-WITH-FINDING: trained RL does NOT beat RF-Acting on VulnerabilityScan (RF detector recall=0.001 for this class). RL is robust to (not better at) the OOD class. Framing corrected: static supervised baseline beats RL on feature-novel attacks. See PLAN \u00a78 D7.9.1. Prior version had stale values (best_rl=dqn +1312.5 / RF +1610.7 / delta=-298.2) from pre-rerun data."
+  }
+ ],
+ "generated_at": "2026-06-04T15:14:38Z",
+ "note": "Regenerated from F9_summary.json + F15_summary.json (10-seed / 300-ep). Prior version anchored on stale Phase-6 numbers (+1336/+1624/n=150) \u2014 superseded by this file."
 }
