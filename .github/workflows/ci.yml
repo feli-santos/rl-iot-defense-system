@@ -45,6 +45,9 @@ jobs:
       - name: Run tests
         run: pytest -q --cov=src --cov-report=xml
 
+      - name: Verify derived artifacts are fresh
+        run: python scripts/thesis/verify_fresh.py
+
       - name: Upload coverage to artifacts
         uses: actions/upload-artifact@v4
         with:

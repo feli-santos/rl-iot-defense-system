@@ -104,18 +104,21 @@ def _render_numbers() -> str:
                 r"\newcommand{\FPR" + safe + "}{%0.3f}" % val
             )
 
-    # F9 structural fix
+    # F9 structural fix — F9_summary.json uses key "rows" (list of cell dicts)
     if F9.exists():
         f9 = _load(F9)
-        # F9_summary.json has a list of cells; find impact_is_terminal=False
         structural = None
-        for cell in f9.get("cells", []):
+        # Primary path: iterate "rows" list (canonical key in F9_summary.json)
+        for cell in f9.get("rows", []):
             if cell.get("impact_is_terminal") is False:
                 structural = cell
                 break
+        # Legacy fallback: old key name "cells"
         if structural is None:
-            # Fallback: look for a cell dict keyed by name
-            structural = f9.get("impact_is_terminal_false")
+            for cell in f9.get("cells", []):
+                if cell.get("impact_is_terminal") is False:
+                    structural = cell
+                    break
         if structural:
             lines.append(
                 r"\newcommand{\F9StructuralReward}{%+0.1f}" % structural["mean_reward"]

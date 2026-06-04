@@ -363,6 +363,18 @@ stale-check:  ## List tex/figs PDFs older than their docs/results source.
 render-tables:  ## Regenerate tex/generated/*.tex from canonical JSONs.
 	$(PYTHON) scripts/thesis/render_tables.py
 
+.PHONY: gen-results-index
+gen-results-index:  ## Auto-generate docs/RESULTS_INDEX.md from canonical JSONs.
+	$(PYTHON) scripts/thesis/gen_results_index.py
+
+.PHONY: verify-fresh
+verify-fresh:  ## Fail if any derived artifact is older than its canonical JSON source.
+	$(PYTHON) scripts/thesis/verify_fresh.py
+
+.PHONY: verify-fresh-fix
+verify-fresh-fix:  ## Re-run render-tables + gen-results-index if any artifact is stale.
+	$(PYTHON) scripts/thesis/verify_fresh.py --fix
+
 ##@ Reproducibility
 .PHONY: reproduce-thesis
 reproduce-thesis:  ## End-to-end thesis reproduction (full chain).
