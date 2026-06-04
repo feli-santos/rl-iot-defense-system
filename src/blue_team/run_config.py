@@ -100,6 +100,8 @@ class EnvConfigSerializable:
     action_cost_scale: float = 1.0
     reward_proportional: float = 5.0
     penalty_disproportionate: float = 5.0
+    # Reward mode ablation: "proportional" (default) or "outcome_only".
+    reward_mode: str = "proportional"
     impact_penalty: float = 200.0
     penalty_missed_impact: float = 150.0
     defense_success_bonus: float = 250.0

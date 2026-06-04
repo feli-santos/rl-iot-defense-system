@@ -80,6 +80,7 @@ def _build_env_config(spec: EnvConfigSerializable) -> AdversarialEnvConfig:
         action_cost_scale=spec.action_cost_scale,
         reward_proportional=spec.reward_proportional,
         penalty_disproportionate=spec.penalty_disproportionate,
+        reward_mode=spec.reward_mode,
         impact_penalty=spec.impact_penalty,
         penalty_missed_impact=spec.penalty_missed_impact,
         defense_success_bonus=spec.defense_success_bonus,

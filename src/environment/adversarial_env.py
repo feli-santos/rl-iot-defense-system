@@ -280,6 +280,14 @@ class AdversarialEnvConfig:
     reward_proportional: float = 5.0
     penalty_disproportionate: float = 5.0
 
+    # Reward mode (ablation): ``"proportional"`` is the default kill-chain-aware
+    # shaping; ``"outcome_only"`` strips every stage-conditioned shaping term
+    # (proportionality, benign/recon guardrails, benign-passive bonus) so the
+    # per-step reward is only the action cost. Outcome signals (de-escalation
+    # bonus, impact penalty, prevention bonus, FPR penalty) live outside this
+    # method and are unaffected. Tests whether the shaping is load-bearing.
+    reward_mode: str = "proportional"
+
     # Reward — terminal & extreme cases
     impact_penalty: float = 200.0
     penalty_missed_impact: float = 150.0
@@ -889,6 +897,12 @@ class AdversarialIoTEnv(gym.Env):
 
         # 1) Cost of action.
         reward -= get_action_cost(action) * self._config.action_cost_scale
+
+        # Outcome-only ablation: skip all stage-conditioned shaping (guardrails,
+        # benign-passive bonus, proportionality core). Only the action cost
+        # remains here; outcome signals are applied in step()/_step_at_impact.
+        if self._config.reward_mode == "outcome_only":
+            return reward
 
         # 2) Asymmetric guardrails on extreme errors.
         if decision_stage == KillChainStage.BENIGN.value and action >= 2:

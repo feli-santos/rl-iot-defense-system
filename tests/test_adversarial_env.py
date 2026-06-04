@@ -1349,3 +1349,103 @@ class TestEvasion:
             evasion_prob=0.5,
         )
         assert asdict(spec)["evasion_prob"] == 0.5
+
+
+class TestRewardMode:
+    """Outcome-only reward mode: tests whether the proportionality shaping is
+    load-bearing.
+
+    ``reward_mode="proportional"`` (default) applies the full kill-chain-aware
+    per-step shaping. ``reward_mode="outcome_only"`` strips every
+    stage-conditioned shaping term so the per-step reward is only the action
+    cost; outcome signals (de-escalation bonus, impact penalty, prevention
+    bonus, FPR penalty) live outside ``_calculate_reward`` and are unaffected.
+    """
+
+    @pytest.fixture
+    def generator_path(self, tmp_path):
+        """Ignored generator-path dir (attacker is a first-order Markov chain)."""
+        path = tmp_path / "generator"
+        path.mkdir(parents=True)
+        return path
+
+    @pytest.fixture
+    def mock_dataset(self, tmp_path):
+        import json
+
+        dataset_path = tmp_path / "dataset"
+        dataset_path.mkdir(parents=True)
+        features = np.random.randn(100, 46).astype(np.float32)
+        np.save(dataset_path / "features.npy", features)
+        labels = np.random.randint(0, 5, size=100)
+        np.save(dataset_path / "labels.npy", labels)
+        state_indices = {str(i): [] for i in range(5)}
+        for idx, label in enumerate(labels):
+            state_indices[str(label)].append(idx)
+        with open(dataset_path / "state_indices.json", "w") as f:
+            json.dump(state_indices, f)
+        import joblib
+        from sklearn.preprocessing import StandardScaler
+
+        scaler = StandardScaler()
+        scaler.fit(features)
+        joblib.dump(scaler, dataset_path / "scaler.joblib")
+        return dataset_path
+
+    def _build_env(self, generator_path, mock_dataset, **config_kwargs):
+        from src.environment.adversarial_env import (
+            AdversarialEnvConfig,
+            AdversarialIoTEnv,
+        )
+
+        config = AdversarialEnvConfig(**config_kwargs)
+        env = AdversarialIoTEnv(
+            generator_path=generator_path,
+            dataset_path=mock_dataset,
+            config=config,
+        )
+        env.reset(seed=42)
+        return env
+
+    def test_proportional_default_penalises_disproportionate(
+        self, generator_path, mock_dataset
+    ):
+        from src.utils.label_mapper import KillChainStage
+
+        env = self._build_env(generator_path, mock_dataset)
+        # BENIGN decision-stage + ISOLATE action triggers the benign guardrails
+        # plus the disproportionate-action penalty in the default mode.
+        reward = env._calculate_reward(4, KillChainStage.BENIGN.value)
+        assert reward < -100
+
+    def test_outcome_only_strips_shaping(self, generator_path, mock_dataset):
+        from src.utils.label_mapper import KillChainStage
+
+        env = self._build_env(
+            generator_path, mock_dataset, reward_mode="outcome_only"
+        )
+        # Same BENIGN+ISOLATE step: only the action cost remains (ISOLATE=0.8).
+        reward = env._calculate_reward(4, KillChainStage.BENIGN.value)
+        assert reward == pytest.approx(-0.8)
+
+    def test_outcome_only_observe_is_free(self, generator_path, mock_dataset):
+        from src.utils.label_mapper import KillChainStage
+
+        env = self._build_env(
+            generator_path, mock_dataset, reward_mode="outcome_only"
+        )
+        # OBSERVE costs 0.0 and outcome-only adds no shaping, so reward is 0.
+        reward = env._calculate_reward(0, KillChainStage.RECON.value)
+        assert reward == pytest.approx(0.0)
+
+    def test_env_config_serializable_round_trips_reward_mode(self):
+        from dataclasses import asdict
+
+        from src.blue_team.run_config import EnvConfigSerializable
+
+        spec = EnvConfigSerializable(
+            split="train",
+            exclude_ood=True,
+            reward_mode="outcome_only",
+        )
+        assert asdict(spec)["reward_mode"] == "outcome_only"
