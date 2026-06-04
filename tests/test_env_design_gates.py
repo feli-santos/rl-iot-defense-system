@@ -1,7 +1,7 @@
 """Environment-design exit-gate regression suite (G3.1-G3.7).
 
 Runs ~6-8 s on a laptop. Every gate corresponds to a numbered line in
-``docs/results/03_env/PLAN.md`` §3.2; if a gate fails here, the
+``docs/results/environment/PLAN.md`` §3.2; if a gate fails here, the
 environment-design rewrite in commit 2a526af must be revisited before
 the detector training step is allowed to consume the new env.
 

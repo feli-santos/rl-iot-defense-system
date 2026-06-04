@@ -25,7 +25,7 @@
 > `src.training.generator_trainer.GeneratorTrainer`) emits MLflow
 > entries; the runs are local-only, not committed, and Phase 2's
 > canonical numerical record is `F1_summary.json` (see
-> `docs/results/02_red_team/RESULTS.md` §2). The RL-side
+> `docs/results/red-team-model/RESULTS.md` §2). The RL-side
 > `MLflowCallback` described below is unused in Phase 5 — the
 > Phase-5 callback chain is defined in `src.blue_team.callbacks`
 > with `EpisodeJSONLCallback` as the canonical log.

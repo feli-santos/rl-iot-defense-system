@@ -60,15 +60,15 @@ def _mtime_str(p: Path) -> str:
 
 
 def _section_benchmark() -> str:
-    f5 = _load(RESULTS_DIR / "06_benchmark/F5_summary.json")
-    fpr = _load(RESULTS_DIR / "06_benchmark/benign_fpr.json")
-    man = _load(RESULTS_DIR / "06_benchmark/F5_manifest.json")
+    f5 = _load(RESULTS_DIR / "benchmark/main_results.json")
+    fpr = _load(RESULTS_DIR / "benchmark/benign_fpr.json")
+    man = _load(RESULTS_DIR / "benchmark/main_results_manifest.json")
 
     lines = ["## 06 Held-Out Benchmark\n"]
     lines.append(
-        f"**Source:** `docs/results/06_benchmark/F5_summary.json`  \n"
+        f"**Source:** `docs/results/benchmark/main_results.json`  \n"
         f"**git SHA:** {_git_sha(man)}  \n"
-        f"**File mtime:** {_mtime_str(RESULTS_DIR / '06_benchmark/F5_summary.json')}  \n"
+        f"**File mtime:** {_mtime_str(RESULTS_DIR / 'benchmark/main_results.json')}  \n"
     )
 
     if f5:
@@ -95,19 +95,19 @@ def _section_benchmark() -> str:
 
 
 def _section_ablation() -> str:
-    f9 = _load(RESULTS_DIR / "07_ablation/F9_summary.json")
-    f15 = _load(RESULTS_DIR / "07_ablation/F15_summary.json")
-    man9 = _load(RESULTS_DIR / "07_ablation/F9_manifest.json")
-    man15 = _load(RESULTS_DIR / "07_ablation/F15_manifest.json")
+    f9 = _load(RESULTS_DIR / "ablation/reward_ablation.json")
+    f15 = _load(RESULTS_DIR / "ablation/ood_robustness.json")
+    man9 = _load(RESULTS_DIR / "ablation/reward_ablation_manifest.json")
+    man15 = _load(RESULTS_DIR / "ablation/ood_robustness_manifest.json")
 
     lines = ["## 07 Ablation & OOD Robustness\n"]
     lines.append(
-        f"**F9 source:** `docs/results/07_ablation/F9_summary.json`  \n"
+        f"**F9 source:** `docs/results/ablation/reward_ablation.json`  \n"
         f"**F9 git SHA:** {_git_sha(man9)}  \n"
-        f"**F9 mtime:** {_mtime_str(RESULTS_DIR / '07_ablation/F9_summary.json')}  \n\n"
-        f"**F15 source:** `docs/results/07_ablation/F15_summary.json`  \n"
+        f"**F9 mtime:** {_mtime_str(RESULTS_DIR / 'ablation/reward_ablation.json')}  \n\n"
+        f"**F15 source:** `docs/results/ablation/ood_robustness.json`  \n"
         f"**F15 git SHA:** {_git_sha(man15)}  \n"
-        f"**F15 mtime:** {_mtime_str(RESULTS_DIR / '07_ablation/F15_summary.json')}  \n"
+        f"**F15 mtime:** {_mtime_str(RESULTS_DIR / 'ablation/ood_robustness.json')}  \n"
     )
 
     if f9:
@@ -142,14 +142,14 @@ def _section_ablation() -> str:
 
 
 def _section_detector() -> str:
-    f11 = _load(RESULTS_DIR / "04_detector/F11_summary.json")
-    man = _load(RESULTS_DIR / "04_detector/manifest.json")
+    f11 = _load(RESULTS_DIR / "stage-detector/detector_summary.json")
+    man = _load(RESULTS_DIR / "stage-detector/manifest.json")
 
     lines = ["## 04 Stage Detector\n"]
     lines.append(
-        f"**Source:** `docs/results/04_detector/F11_summary.json`  \n"
+        f"**Source:** `docs/results/stage-detector/detector_summary.json`  \n"
         f"**git SHA:** {_git_sha(man)}  \n"
-        f"**mtime:** {_mtime_str(RESULTS_DIR / '04_detector/F11_summary.json')}  \n"
+        f"**mtime:** {_mtime_str(RESULTS_DIR / 'stage-detector/detector_summary.json')}  \n"
     )
     if f11:
         for k in ("macro_f1", "accuracy", "weighted_f1"):
@@ -159,13 +159,13 @@ def _section_detector() -> str:
 
 
 def _section_red_team() -> str:
-    man = _load(RESULTS_DIR / "02_red_team/manifest.json")
+    man = _load(RESULTS_DIR / "red-team-model/manifest.json")
 
     lines = ["## 02 Red-Team LSTM\n"]
     lines.append(
-        f"**Source:** `docs/results/02_red_team/F1_summary.json`  \n"
+        f"**Source:** `docs/results/red-team-model/red_team_gates.json`  \n"
         f"**git SHA:** {_git_sha(man)}  \n"
-        f"**mtime:** {_mtime_str(RESULTS_DIR / '02_red_team/F1_summary.json')}  \n"
+        f"**mtime:** {_mtime_str(RESULTS_DIR / 'red-team-model/red_team_gates.json')}  \n"
     )
     return "".join(lines)
 

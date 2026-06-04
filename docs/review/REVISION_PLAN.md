@@ -247,8 +247,8 @@ can detect when the re-run has landed (numbers + n_seeds will change).
 - F9 `impact_is_terminal=False`: +1541.9, mit-rate 0.900.
 - benign_fpr.json: PPO 9.6%, A2C 9.4%, DQN 12.7%.
 - compromise_rate ≡ 1.0 across all policies (structural).
-- Source files: docs/results/06_benchmark/F5_summary.json, G6_scoreboard.json;
-  05_blue_team/G5_scoreboard.json; 07_ablation/F9_summary.json, F15_summary.json.
+- Source files: docs/results/benchmark/main_results.json, G6_scoreboard.json;
+  blue-team-training/blue_team_acceptance.json; ablation/reward_ablation.json, F15_summary.json.
 
 ---
 

@@ -5,14 +5,14 @@
 > document described a v1 reward (action-vs-previous-action change,
 > `correct_escalation_reward`, `patience_bonus`) that was retired
 > at the **B2 fix** in Phase 3 — see
-> `docs/results/03_env/RESULTS.md` §2.B2 for the rationale.
+> `docs/results/environment/RESULTS.md` §2.B2 for the rationale.
 
 This system uses a piecewise reward to balance **security** and
 **availability**. The reward is computed in
 `AdversarialIoTEnv._calculate_reward` (per-step) and
 `AdversarialIoTEnv.step` / `_step_at_impact` (terminal). The
 canonical numerical reference is
-`docs/results/03_env/RESULTS.md` §3 (formulae) + §4 (gate-tested
+`docs/results/environment/RESULTS.md` §3 (formulae) + §4 (gate-tested
 calibration).
 
 ## Decomposition: six reward signals + three asymmetric guardrails
@@ -109,7 +109,7 @@ two CLI mechanisms:
   pathway visibility (Phase-7 F9 / D7.3).
 
 Phase 7 swept all three under controlled conditions; see
-`docs/results/07_ablation/RESULTS.md` §6.1 (F9 reward-component
+`docs/results/ablation/RESULTS.md` §6.1 (F9 reward-component
 sweep) and §6.3 (F10 aggressiveness sweep).
 
 ## Configuration keys (`config.yml`)

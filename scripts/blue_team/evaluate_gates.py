@@ -1,7 +1,7 @@
 """blue-team exit-gate evaluator.
 
 Reads ``runs/blue_team/`` + ``F3_summary.json`` + ``F4_summary.json`` and
-emits a per-gate scoreboard ``docs/results/05_blue_team/G5_scoreboard.json``
+emits a per-gate scoreboard ``docs/results/blue-team-training/blue_team_acceptance.json``
 with PASS/FAIL/PASS-WITH-FINDING + headline numbers.
 
 This is the final step before RESULTS.md / CHANGELOG.
@@ -10,7 +10,7 @@ Usage::
 
     python -m scripts.blue_team.evaluate_gates \\
         --runs-root runs/blue_team \\
-        --out-dir docs/results/05_blue_team
+        --out-dir docs/results/blue-team-training
 """
 
 from __future__ import annotations
@@ -291,7 +291,7 @@ def evaluate(runs_root: Path, out_dir: Path, fraction: float = 0.10) -> dict[str
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(description="blue-team gate evaluator.")
     p.add_argument("--runs-root", required=True)
-    p.add_argument("--out-dir", default="docs/results/05_blue_team")
+    p.add_argument("--out-dir", default="docs/results/blue-team-training")
     p.add_argument("--fraction", type=float, default=0.10)
     args = p.parse_args(argv)
     logging.basicConfig(

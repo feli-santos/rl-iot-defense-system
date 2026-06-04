@@ -59,7 +59,7 @@ The progression `BENIGN → RECON → ACCESS → MANEUVER → IMPACT` is
 a closer approach to the operational objective (service denial). The
 order also induces a natural ordering on the recommended action
 (OBSERVE < LOG < THROTTLE < BLOCK < ISOLATE) used by the proportional
-reward shape and tested by Phase-3 gate G3 (`docs/results/03_env/RESULTS.md`).
+reward shape and tested by Phase-3 gate G3 (`docs/results/environment/RESULTS.md`).
 
 ## 3 — Label → Stage table (canonical)
 
@@ -248,7 +248,7 @@ reward shape that handles the attack stages avoids special-case logic
 in the environment (`src/environment/adversarial_env.py`). The
 trade-off is that aggregate confusion matrices include a BENIGN row /
 column; this is reported transparently in F6
-(`docs/results/06_benchmark/F6_caption.md`).
+(`docs/results/benchmark/stage_action_proportionality.caption.md`).
 
 ## 5 — Properties enforced by the implementation
 

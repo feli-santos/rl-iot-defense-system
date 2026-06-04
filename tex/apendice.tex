@@ -176,7 +176,7 @@ Figure~\ref{fig:app_f10} reproduces the F10 aggressiveness sweep from Section~\r
 
 \begin{figure}[!htbp]
     \centering
-    \includegraphics[width=0.85\textwidth]{figs/F10_aggressiveness.pdf}
+    \includegraphics[width=0.85\textwidth]{figs/aggressiveness.pdf}
     \caption{F10 aggressiveness sweep: PPO mean test reward (10 seeds per point, shaded bands = 95\,\% bootstrap CIs) and oracle recommended-action rule reference across six values of the defender de-escalation probability $p_{\mathrm{de{-}esc}} \in \{0.0, 0.2, 0.4, 0.6, 0.8, 1.0\}$. PPO reward grows monotonically with $p$; the primary operating point used throughout this dissertation is $p = 0.6$.}
     \label{fig:app_f10}
 \end{figure}
@@ -187,7 +187,7 @@ Figure~\ref{fig:app_fa_cost} shows the action-cost scale sensitivity sweep over 
 
 \begin{figure}[!htbp]
     \centering
-    \includegraphics[width=0.75\textwidth]{figs/FA_action_cost_sweep.pdf}
+    \includegraphics[width=0.75\textwidth]{figs/action_cost_sweep.pdf}
     \caption{Action-cost scale sensitivity sweep: mean test reward (DQN, seeds 0--2, 63 episodes per seed) at $\alpha \in \{0.5, 1.0, 2.0\}$. Error bars are 95\,\% bootstrap CIs. All CIs overlap; reward varies less than 3\,\% across the full range. Numeric values: $\alpha=0.5$: $+1524$ CI $[1462, 1579]$; $\alpha=1.0$: $+1568$ CI $[1506, 1628]$; $\alpha=2.0$: $+1542$ CI $[1484, 1600]$.}
     \label{fig:app_fa_cost}
 \end{figure}
@@ -198,7 +198,7 @@ Figure~\ref{fig:app_fa_window} shows the window-size ablation over $w \in \{1, 3
 
 \begin{figure}[!htbp]
     \centering
-    \includegraphics[width=0.75\textwidth]{figs/FA_window_ablation.pdf}
+    \includegraphics[width=0.75\textwidth]{figs/window_ablation.pdf}
     \caption{History window-size ablation: mean test reward (DQN, seed 0, 189 episodes) at $w \in \{1, 3, 5, 10\}$. Error bars are 95\,\% bootstrap CIs. Peak at $w = 5$ ($+1568$ CI $[1506, 1628]$); $w = 10$ is lower but CIs overlap ($+1533$ CI $[1472, 1599]$). Observation dimension is listed in parentheses.}
     \label{fig:app_fa_window}
 \end{figure}

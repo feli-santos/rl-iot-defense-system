@@ -30,15 +30,15 @@ pre-registered finding, all backed by gate-passing artefacts under
    the oracle ceiling. Among deployable policies, any trained RL algo achieves **~146× faster
    inference** than RF-Acting (0.095 ms vs 13.83 ms p50). Benign FPR: DQN 6.1 %, PPO 10.2 %,
    A2C 11.5 %. Non-RL trivial baselines (random, always-OBSERVE, always-BLOCK) never come within
-   1 σ. *See [`docs/results/06_benchmark/RESULTS.md`](docs/results/06_benchmark/RESULTS.md) and
-   `docs/results/06_benchmark/F5_summary.json`.*
+   1 σ. *See [`docs/results/benchmark/RESULTS.md`](docs/results/benchmark/RESULTS.md) and
+   `docs/results/benchmark/main_results.json`.*
 
 2. **(Phase 7, G7.3)** With the Phase-3 reward function held fixed, PPO
    mean reward grows **monotonically** with the
    `p_defender_de-escalation` parameter, increasing roughly tenfold from
    p = 0.0 (CI 134, 141) to p = 0.6 (CI 1280, 1359). The trend is
    monotone non-decreasing across the full sweep. *See
-   [`docs/results/07_ablation/F10_aggressiveness.png`](docs/results/07_ablation/F10_aggressiveness.png).*
+   [`docs/results/ablation/aggressiveness.png`](docs/results/ablation/aggressiveness.png).*
 
 3. **(G7.2 / D7.1.1 partial)** Within the Phase-3 reward formulation,
    no single-axis 0.5×/2× perturbation of any reward coefficient closes
@@ -50,7 +50,7 @@ pre-registered finding, all backed by gate-passing artefacts under
    policies under this primary contract achieve mitigated-impact rates of
    **0.26–0.32** — a genuine improvement over the mis-specified baseline,
    while demonstrating that reward-mis-specification is the principal
-   limitation. *See [`docs/results/07_ablation/F9_reward_ablation.png`](docs/results/07_ablation/F9_reward_ablation.png).*
+   limitation. *See [`docs/results/ablation/reward_ablation.png`](docs/results/ablation/reward_ablation.png).*
 
 **Pre-registered finding (G7.9, D7.9.1).** On the held-out OOD class
 `VulnerabilityScan`, RL is **robust to** but not **better at** the
@@ -59,7 +59,7 @@ of its in-distribution mean (+1320.2). RF-acting's higher OOD reward
 (+1680.0, Δ = −324.8 vs PPO) is *not* evidence of RF working
 (detector recall = 0.001) — it is evidence that "do nothing" is locally
 rewarded when the reward is dominated by avoiding disproportionate-penalty
-costs. *See [`docs/results/07_ablation/F15_ood_robustness.png`](docs/results/07_ablation/F15_ood_robustness.png) and §6.2 of `docs/results/07_ablation/RESULTS.md`.*
+costs. *See [`docs/results/ablation/ood_robustness.png`](docs/results/ablation/ood_robustness.png) and §6.2 of `docs/results/ablation/RESULTS.md`.*
 
 ---
 
@@ -82,9 +82,9 @@ rl-iot-defense-system/
 ├── tests/                    # 459 unit + integration tests (pytest)
 ├── docs/results/             # Canonical thesis figures + RESULTS chapters
 │   ├── 00_phase0_diagnosis.md
-│   ├── 01_dataset/   02_red_team/   03_env/   04_detector/
-│   ├── 05_blue_team/ 06_benchmark/  07_ablation/
-│   └── (each chapter has PLAN.md + RESULTS.md + G<N>_scoreboard.json
+│   ├── dataset/   red-team-model/   environment/   stage-detector/
+│   ├── blue-team-training/ benchmark/  ablation/
+│   └── (each chapter has PLAN.md + RESULTS.md + <area>_acceptance.json
 │        + manifests + figures)
 ├── docs/                     # Method/architecture/decisions docs
 │   ├── archive/HANDOFF.md    # Historical Phase-7→10 handoff (archived)
@@ -110,7 +110,7 @@ re-create them from raw CSV is in [§ Reproducibility](#reproducibility).
 The thesis chapter is organised as **eight closed phases** (0–7), each
 with a locked `PLAN.md`, an exit-gate scoreboard `G<N>_scoreboard.json`,
 a hand-written `RESULTS.md`, and at least one canonical figure under
-`docs/results/<NN>_<name>/`. Phase 10 (this README, code-cleanup, release
+`docs/results/<area>/`. Phase 10 (this README, code-cleanup, release
 tag) is documentation-only.
 
 | # | Phase | What it produces | Headline gate |
@@ -158,7 +158,7 @@ make ablation                # Phase 7: Full F9/F10/F12/F15 + closeout (~7.5 h C
 | **G7.8** | F15 4 × 8 OOD matrix complete, no NaN | **PASS** | 32 / 32 cells |
 | **G7.9** | On VulnerabilityScan, trained RL > RF-acting by ≥ 1 σ | **FAIL-WITH-FINDING (D7.9.1)** | PPO +1355.2 vs RF +1680.0 (Δ = −324.8) |
 
-Both FAIL gates were **pre-registered** in `docs/results/07_ablation/PLAN.md` §6/§8 — neither is a goalpost move.
+Both FAIL gates were **pre-registered** in `docs/results/ablation/PLAN.md` §6/§8 — neither is a goalpost move.
 
 ---
 
@@ -275,7 +275,7 @@ Every thesis figure ships with a sibling `manifest.json` containing:
 ```
 
 The manifests form a **hash chain** anchored at `data/processed/ciciot2023/`
-(Phase 1) and reaching every figure in `docs/results/<NN>_<name>/`. Verify
+(Phase 1) and reaching every figure in `docs/results/<area>/`. Verify
 the chain end-to-end with:
 
 ```bash

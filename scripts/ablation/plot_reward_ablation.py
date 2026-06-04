@@ -514,7 +514,7 @@ def _build_argparser() -> argparse.ArgumentParser:
         description="ablation F9 — reward-component ablation plot + summary.",
     )
     p.add_argument("--runs-root", default="runs/ablation/reward_sweep")
-    p.add_argument("--out-dir", default="docs/results/07_ablation")
+    p.add_argument("--out-dir", default="docs/results/ablation")
     p.add_argument(
         "--phase6-eval-manifest",
         default="runs/benchmark/eval_manifest.json",
@@ -527,7 +527,7 @@ def _build_argparser() -> argparse.ArgumentParser:
     )
     p.add_argument(
         "--phase1-splits-manifest",
-        default="docs/results/01_dataset/manifest.json",
+        default="docs/results/dataset/manifest.json",
         help="dataset-prep splits manifest.json (post-3cd2fb9; SHA 1e99d596...).",
     )
     return p

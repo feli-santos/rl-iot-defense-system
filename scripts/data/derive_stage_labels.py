@@ -1,6 +1,6 @@
 """Derive a frozen ``stages.npy`` from ``state_indices.json``.
 
-detector step 4.2 (see ``docs/results/04_detector/PLAN.md`` §A2).
+detector step 4.2 (see ``docs/results/stage-detector/PLAN.md`` §A2).
 
 The dataset-prep dataset already groups every row by Kill Chain stage in
 ``state_indices.json``. For detector we want a flat ``(N,)`` int8 array of

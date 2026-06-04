@@ -5,7 +5,7 @@ This is a derived-only emitter. It reads the locked detector artefacts —
 ``scripts/detector/train_detector.py``) and ``manifest.json`` (input/output
 hash chain) — and writes ``G4_scoreboard.json`` in the benchmark-native
 schema (``status`` enum + ``finding_id``), mirroring
-``docs/results/06_benchmark/G6_scoreboard.json``.
+``docs/results/benchmark/benchmark_acceptance.json``.
 
 This script does NOT retrain anything. It does NOT touch
 ``F11_summary.json`` (the producer of the gate verdicts is
@@ -14,7 +14,7 @@ are the canonical numerical record).
 
 Usage::
 
-    python -m scripts.detector.close_detector [--out-dir docs/results/04_detector]
+    python -m scripts.detector.close_detector [--out-dir docs/results/stage-detector]
 """
 
 from __future__ import annotations
@@ -33,7 +33,7 @@ _ROOT = Path(__file__).resolve().parents[2]
 
 
 # Canonical scoreboard-status enum (benchmark-native; see
-# docs/results/06_benchmark/G6_scoreboard.json + 07_HANDOFF.md L196).
+# docs/results/benchmark/benchmark_acceptance.json + 07_HANDOFF.md L196).
 _STATUS_PASS = "PASS"
 _STATUS_PASS_WITH_FINDING = "PASS-WITH-FINDING"
 _STATUS_PASS_WITHOUT_STRETCH = "PASS-WITHOUT-STRETCH"
@@ -88,7 +88,7 @@ def _git_sha() -> str:
 
 
 def _build_g4_1(out_dir: Path) -> dict[str, Any]:
-    """G4.1 — full pytest suite green. docs/results/04_detector/RESULTS.md
+    """G4.1 — full pytest suite green. docs/results/stage-detector/RESULTS.md
     L20 records ``329 / 329 PASS`` at the detector lock. A later dead-code
     cleanup (commit 281860a) reduced the count to 411 by deleting tests for
     a retired src/benchmarking/ package; the detector frozen tests remain
@@ -207,7 +207,7 @@ def build_scoreboard(out_dir: Path) -> dict[str, Any]:
 
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(description="Detector closer: G4_scoreboard.json")
-    p.add_argument("--out-dir", default="docs/results/04_detector")
+    p.add_argument("--out-dir", default="docs/results/stage-detector")
     args = p.parse_args(argv)
     logging.basicConfig(
         level=logging.INFO,

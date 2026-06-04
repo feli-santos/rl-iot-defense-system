@@ -41,7 +41,7 @@ Kill-chain stages (5): `0 BENIGN, 1 RECON, 2 ACCESS, 3 MANEUVER, 4 IMPACT`
 - **`config.yml` is the single source of hyperparameters.** `main.py` reads it and
   passes values into dataclass configs; there are many `.get(key, default)` fallbacks,
   so a missing key silently uses the code default — grep both places when changing a param.
-- **Reproducibility = hash chains.** Every thesis figure under `docs/results/<NN>_*/`
+- **Reproducibility = hash chains.** Every thesis figure under `docs/results/<area>/`
   ships a sibling `manifest.json` (git SHA + input/output SHA-256). A figure without a
   reconciling manifest is not "defense-ready". Verify with
   `python -m scripts.benchmark.run_test_eval --verify-manifests` and
@@ -74,7 +74,7 @@ Podman is auto-detected and preferred; Docker is the fallback. Main file is `tex
 for build history.
 
 **Numbers in the thesis are macro-driven, never hand-typed.** Canonical experiment JSONs
-live under `docs/results/<NN>_*/` (e.g. `06_benchmark/F5_summary.json`). `make render-tables`
+live under `docs/results/<area>/` (e.g. `benchmark/main_results.json`). `make render-tables`
 (`scripts/thesis/render_tables.py`) regenerates `tex/generated/{numbers,tables}.tex` from them;
 `tex/generated/` is **gitignored** (rebuild before any thesis edit/build). `tex/preambulo.tex`
 must `\input{generated/numbers}` and `\input{generated/tables}` for the macros to resolve in
@@ -93,7 +93,7 @@ Held-Out Benchmark / Ablation & Robustness). "Phase N" is fine in dev docs and `
 ## More context
 
 `docs/architecture.md`, `docs/environment.md`, `docs/reward-shaping.md`,
-`docs/reproducibility.md`, `docs/decisions.md`; per-phase `docs/results/<NN>_*/PLAN.md`
+`docs/reproducibility.md`, `docs/decisions.md`; per-area `docs/results/<area>/PLAN.md`
 + `RESULTS.md`. Full thesis-revision plan: `docs/review/REVISION_PLAN.md`.
 
 ## Locked experiment decisions
@@ -108,7 +108,7 @@ These are fixed contracts; do not silently change them.
 - **10 seeds `{0..9}`** for DRL; baselines/oracle run 1 seed. **n=300 episodes for ALL
   policies** (`BENCHMARK_N_DET_EPISODES=300`, `ABLATION_OOD_N_DET_EPISODES=300`).
   `p_de_esc=0.6` default. `make reproduce-thesis` overrides `BLUE_TEAM_IMPACT_TERM=false`.
-- **Canonical headline numbers** (from `06_benchmark/F5_summary.json`): best deployable RL =
+- **Canonical headline numbers** (from `benchmark/main_results.json`): best deployable RL =
   **A2C +1336.6**; oracle ceiling +1684.8 (79.3% capture); RF-Acting +1516.0 @ 13.83 ms p50
   (~146× slower than A2C); benign FPR DQN 6.1% / PPO 10.2% / A2C 11.5%; `compromise_rate=1.0`
   for every policy (reactive mitigation only). The reward ablation's mit-rate 0.840 is a

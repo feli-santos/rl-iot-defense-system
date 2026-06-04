@@ -294,7 +294,7 @@ def _build_argparser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(description="benchmark F7 — overhead figure.")
     p.add_argument("--runs-root", default="runs/benchmark")
     p.add_argument("--phase5-runs-root", default="runs/blue_team")
-    p.add_argument("--out-dir", default="docs/results/06_benchmark")
+    p.add_argument("--out-dir", default="docs/results/benchmark")
     return p
 
 

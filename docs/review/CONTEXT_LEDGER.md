@@ -255,7 +255,7 @@ stage by the RealizationEngine (this is the dataset's load-bearing role).
   Coupling map (read from source): the 3 thesis scripts use HARDCODED paths spanning multiple dirs —
   `render_tables.py:22-26` (F5/F7/F9/G6/benign_fpr), `verify_fresh.py:27-63` DERIVED registry
   (numbers.tex/tables.tex/G6/G7/RESULTS_INDEX.md ← source JSONs), `gen_results_index.py` explicit
-  `RESULTS_DIR/"06_benchmark/F5_summary.json"` etc. Other functional path strings: argparse
+  `RESULTS_DIR/"benchmark/main_results.json"` etc. Other functional path strings: argparse
   `--out-dir` defaults in every `scripts/*/plot_*.py`+`close_*.py`+`train_*.py`+`build_summary_table.py`;
   `reproducibility_smoke.py:91-108` manifest+scoreboard registry; `Makefile` `*_OUT_DIR` vars +
   `sync-figures` cp targets (:339-348); `tests/test_render_tables.py:16-25` hardcoded F5 path;

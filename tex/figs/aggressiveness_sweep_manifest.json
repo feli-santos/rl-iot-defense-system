@@ -1,0 +1,65 @@
+{
+  "schema_version": "1.0",
+  "figure": "F10",
+  "git_sha": "469d91c7fe4926026b5b72bcac5d64a4b863e75e",
+  "outputs": {
+    "png": "tex/figs/F10_aggressiveness.png",
+    "json": "tex/figs/aggressiveness_sweep.json"
+  },
+  "inputs": {
+    "phase7_aggressiveness_sweep_manifest": {
+      "path": "runs/phase7/aggressiveness/sweep_manifest.json",
+      "sha256": "3d67e039d4ffc02a1df0d7b5602cbed7276dca1df9c231b13fe72be9920d49a4"
+    },
+    "phase5_sweep_manifest": {
+      "path": "runs/phase5_primary/sweep_manifest.json",
+      "sha256": "736d42fdb563a53d60fc9e0b412deab75514ef3f28e6ef0fcfe6e7fd050fd968"
+    },
+    "phase6_eval_manifest": {
+      "path": "runs/phase6_primary/eval_manifest.json",
+      "sha256": "393202e232cfe730f4c9ce45c3b6bfe76bec6d8d86c09755d530c383a169b060"
+    },
+    "phase1_splits_manifest": {
+      "path": "docs/results/dataset/manifest.json",
+      "sha256": "c8574094e7b914fdf5ecb16e107facbf2f073ac3f4ec1b80b5284c49f96e19e5"
+    },
+    "eval_jsonls_sha256": {
+      "runs/phase7/aggressiveness/ppo_p0p0/seed_0/eval_test.jsonl": "0401d9cf2d49187a343f0639b3dedcba456d5320c3621529e7d3f51b07ae517b",
+      "runs/phase7/aggressiveness/ppo_p0p0/seed_1/eval_test.jsonl": "60b18d36be883d5101d3072a32cffd13289e586af0847fcea62b2677e3bd248c",
+      "runs/phase7/aggressiveness/ppo_p0p0/seed_2/eval_test.jsonl": "4ebc0ba8aea56d41c77f39e2f60f4afb14d875c55c55555c909c637ead409517",
+      "runs/phase7/aggressiveness/ppo_p0p0/seed_3/eval_test.jsonl": "d4f46370057384059f2fa457a1e95a2571c9e89d82a775b775764f2aa8ecc8b2",
+      "runs/phase7/aggressiveness/ppo_p0p0/seed_4/eval_test.jsonl": "a714effa276bc795da4a07c9526ec199404d33eb08cf8d2faf38444ba084bf95",
+      "runs/phase7/aggressiveness/ppo_p0p2/seed_0/eval_test.jsonl": "4ff502dee9f578d1f6a7bf4ee89106093daa6378c3676c9ad218587c1cce9a2f",
+      "runs/phase7/aggressiveness/ppo_p0p2/seed_1/eval_test.jsonl": "5935a5cf14fa297484b8a3f1f69df81fe9a4e47aca9c9fd37f098e5f14c0d297",
+      "runs/phase7/aggressiveness/ppo_p0p2/seed_2/eval_test.jsonl": "a7c352a32454596ba1adc057e851f9388c0638ddedb57f8a108dfbc192e8ef2c",
+      "runs/phase7/aggressiveness/ppo_p0p2/seed_3/eval_test.jsonl": "02b84b5fca14eaece3d1513055b818998b6e2ddba83ca0ad81431ef656b61c09",
+      "runs/phase7/aggressiveness/ppo_p0p2/seed_4/eval_test.jsonl": "c7d98b25d193f933ed74053d6e5d77834733b9a07ee6917f320c88a993ceb72a",
+      "runs/phase7/aggressiveness/ppo_p0p4/seed_0/eval_test.jsonl": "4e13df45fc3800373a4cc5be0c253c60d7cc9abb0efe3653eae96931dfa82d10",
+      "runs/phase7/aggressiveness/ppo_p0p4/seed_1/eval_test.jsonl": "6e6fa7e2890b58f4abf9c653dd59510d77eea6bf63726b7b90b9c45dd04c6315",
+      "runs/phase7/aggressiveness/ppo_p0p4/seed_2/eval_test.jsonl": "6a18b8e44f18174bffd34c2fd3906f4b687cdfe88c3879cba46b9a130fbbd944",
+      "runs/phase7/aggressiveness/ppo_p0p4/seed_3/eval_test.jsonl": "85bc4e19ca1308f71b2d7e5b246c0fd41b00d98e9472d50bd66542c4d8094213",
+      "runs/phase7/aggressiveness/ppo_p0p4/seed_4/eval_test.jsonl": "c82ef9d569b574b6d915a96c4d617a08b4c34bd3a39ffe26cf1f10aef752ed66",
+      "runs/phase7/aggressiveness/ppo_p0p6/seed_0/eval_test.jsonl": "02e1d26ba4150e9481a641b2ab52902a875484f7d1ad87d23e860b8a701fca7f",
+      "runs/phase7/aggressiveness/ppo_p0p6/seed_1/eval_test.jsonl": "366a91d0bc34f64c3e010fab4f3460d9a5f75f550212d65e17c6b41614646e54",
+      "runs/phase7/aggressiveness/ppo_p0p6/seed_2/eval_test.jsonl": "bfbcf89c13762d7a1a16aee295cdc619dc86fab154e52ab26459ff5bff318fe6",
+      "runs/phase7/aggressiveness/ppo_p0p6/seed_3/eval_test.jsonl": "9c4266a48372c839012bc15303374eda4146b7e7832473da9117388f4c8abf04",
+      "runs/phase7/aggressiveness/ppo_p0p6/seed_4/eval_test.jsonl": "34e9942d6fd1ae768bae685e8af9c14a5efb2402715ca4e900c87853b2788512",
+      "runs/phase7/aggressiveness/ppo_p0p8/seed_0/eval_test.jsonl": "62f2d28165e37c634bd38c15d69b2c6735f3de06a5e8fb6d11996b3e8a2d79b6",
+      "runs/phase7/aggressiveness/ppo_p0p8/seed_1/eval_test.jsonl": "54b0fd1fa25c3437544b3740ff34575101f4f97c2bf0292fc772d2d746b6652e",
+      "runs/phase7/aggressiveness/ppo_p0p8/seed_2/eval_test.jsonl": "0eb815839290f32ff2638489f0b8cbcaa9ccbc1da49adccd7e9b9bd3db7a0923",
+      "runs/phase7/aggressiveness/ppo_p0p8/seed_3/eval_test.jsonl": "f6001e2642239d5d922cf8e99d6521bfc1ee2c68561a148f6aacb007b7c1de13",
+      "runs/phase7/aggressiveness/ppo_p0p8/seed_4/eval_test.jsonl": "346f6d2b20045ceb052dfc20319e617a856205e514d85b17d082585c65546e9e",
+      "runs/phase7/aggressiveness/ppo_p1p0/seed_0/eval_test.jsonl": "58c9504ffee5d55420540c13745d3e56aee2cfd87cf495002376be2bc9db8f4a",
+      "runs/phase7/aggressiveness/ppo_p1p0/seed_1/eval_test.jsonl": "137991bb0edf7efe7cd13b57130389393b3bec43f39945b4b85a4fcd0948be0a",
+      "runs/phase7/aggressiveness/ppo_p1p0/seed_2/eval_test.jsonl": "0ff367984e779b34256b183178496237dd6e2c902406a9a6d717f6f0d8d8365e",
+      "runs/phase7/aggressiveness/ppo_p1p0/seed_3/eval_test.jsonl": "9a13bf5cb8c14a0dc29380edf5eb52078a534f31e9bc0e67f166e13cea75d835",
+      "runs/phase7/aggressiveness/ppo_p1p0/seed_4/eval_test.jsonl": "d65de97edf07b52e3f65864610111df349d2edd04a803fef7b0d58b7c4f4b437",
+      "runs/phase7/aggressiveness/rule_p0p0/seed_0/eval_test.jsonl": "16f5d79db07c33cb4b530a1375800d65521bee1ccf816f33ece4a62eece4c589",
+      "runs/phase7/aggressiveness/rule_p0p2/seed_0/eval_test.jsonl": "9f07ed9de4134e6bf7614b5e670226834e137ca32c31f402e1f747bac6fe422c",
+      "runs/phase7/aggressiveness/rule_p0p4/seed_0/eval_test.jsonl": "4a1ae4a3de02cbeab3a25f7da122a7de9a7704a81a37095e6870c8336c45d783",
+      "runs/phase7/aggressiveness/rule_p0p6/seed_0/eval_test.jsonl": "95bf4b623c0e3f9bb2af18ec44130e499d0d6e01d51a127ee9bb8e2c157af9f1",
+      "runs/phase7/aggressiveness/rule_p0p8/seed_0/eval_test.jsonl": "cd70987c72151b50443c7c388af2715a824e786e6ad1ce36ae052001826bbfb2",
+      "runs/phase7/aggressiveness/rule_p1p0/seed_0/eval_test.jsonl": "01c73b655ff76ce1f71e06e4a12fa63562447b2fbf81d27bfab90e2ac69cafa1"
+    }
+  }
+}

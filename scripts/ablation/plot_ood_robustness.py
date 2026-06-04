@@ -415,7 +415,7 @@ def _build_argparser() -> argparse.ArgumentParser:
     )
     p.add_argument(
         "--out-dir",
-        default="docs/results/07_ablation",
+        default="docs/results/ablation",
         help="Where to write F15_*.{png,json,md}.",
     )
     p.add_argument(
@@ -441,7 +441,7 @@ def _build_argparser() -> argparse.ArgumentParser:
     # self-contained (matches the F9/F10/F12 pattern landed in Step 8).
     p.add_argument(
         "--phase1-splits-manifest",
-        default="docs/results/01_dataset/manifest.json",
+        default="docs/results/dataset/manifest.json",
         help="dataset-prep splits manifest.json (post-3cd2fb9; SHA 1e99d596...).",
     )
     return p

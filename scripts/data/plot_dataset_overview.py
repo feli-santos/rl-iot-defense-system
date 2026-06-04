@@ -3,15 +3,15 @@ dataset-prep figure F0 — Dataset overview.
 
 Reads the processed CICIoT2023 snapshot and the splits manifest, and produces:
 
-- ``docs/results/01_dataset/F0_class_distribution.png``
+- ``docs/results/dataset/class_distribution.png``
   Bar chart: 34 CICIoT2023 attack classes (sorted by Kill Chain stage),
   showing the post-rebalance counts.
-- ``docs/results/01_dataset/F0_stage_distribution.png``
+- ``docs/results/dataset/stage_distribution.png``
   Bar chart: 5 Kill Chain stages, with split-by-split overlay
   (train / val / test).
 
 A side-effect of this script is also a small JSON
-``docs/results/01_dataset/F0_summary.json`` with the numbers used in the
+``docs/results/dataset/dataset_summary.json`` with the numbers used in the
 captions.
 """
 
@@ -154,7 +154,7 @@ def _plot_stage_distribution(
 def _parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--processed-dir", type=Path, default=Path("data/processed/ciciot2023"))
-    p.add_argument("--out-dir", type=Path, default=Path("docs/results/01_dataset"))
+    p.add_argument("--out-dir", type=Path, default=Path("docs/results/dataset"))
     p.add_argument("-v", "--verbose", action="store_true")
     return p.parse_args(argv)
 

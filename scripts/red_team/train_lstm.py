@@ -15,16 +15,16 @@ Pipeline
    sequences and the ground-truth synthetic transition matrix; report KL
    divergence (G3 gate from PLAN.md).
 6. Emit:
-   - ``docs/results/02_red_team/F1_learning_curves.png``
-   - ``docs/results/02_red_team/F2_transition_matrix_comparison.png``
-   - ``docs/results/02_red_team/F1_summary.json`` (loss/F1/G* gate values)
-   - ``docs/results/02_red_team/manifest.json`` (figure→inputs hash chain)
+   - ``docs/results/red-team-model/learning_curves.png``
+   - ``docs/results/red-team-model/transition_matrix_comparison.png``
+   - ``docs/results/red-team-model/red_team_gates.json`` (loss/F1/G* gate values)
+   - ``docs/results/red-team-model/manifest.json`` (figure→inputs hash chain)
 
 Usage
 -----
     PYTHONPATH=. python -m scripts.red_team.train_lstm \\
         --processed-dir data/processed/ciciot2023 \\
-        --out-dir docs/results/02_red_team \\
+        --out-dir docs/results/red-team-model \\
         --epochs 30 --num-episodes 8000 --seed 42
 
 Or via the Makefile (added in this commit): ``make phase-2``.
@@ -64,7 +64,7 @@ from src.training.generator_trainer import (  # noqa: E402
 LOG = logging.getLogger("train_lstm")
 NUM_STAGES = 5
 
-# red-team exit gates (from docs/results/02_red_team/PLAN.md §3.2)
+# red-team exit gates (from docs/results/red-team-model/PLAN.md §3.2)
 DEFAULT_GATES = {
     "G1_max_train_val_gap": 0.25,  # max abs(train-val)/val per epoch
     "G2_min_token_accuracy": 0.55,  # token-level top-1 on synthetic val
@@ -265,7 +265,7 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
     )
     p.add_argument("--processed-dir", type=Path, default=Path("data/processed/ciciot2023"))
-    p.add_argument("--out-dir", type=Path, default=Path("docs/results/02_red_team"))
+    p.add_argument("--out-dir", type=Path, default=Path("docs/results/red-team-model"))
     p.add_argument("--artifact-dir", type=Path, default=Path("artifacts/generator/red_team"))
     p.add_argument("--seed", type=int, default=42)
     p.add_argument("--epochs", type=int, default=15)

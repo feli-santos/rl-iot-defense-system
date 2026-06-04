@@ -17,21 +17,21 @@ Usage::
 
 What it checks (per step, in order):
 
-- Dataset prep: ``docs/results/01_dataset/manifest.json`` ↔ on-disk
+- Dataset prep: ``docs/results/dataset/manifest.json`` ↔ on-disk
   ``F0_*.png`` / ``F0_summary.json`` outputs.
-- Red-team: ``docs/results/02_red_team/manifest.json`` ↔ on-disk
+- Red-team: ``docs/results/red-team-model/manifest.json`` ↔ on-disk
   ``F1_*.png`` / ``F1_summary.json`` / ``F2_*.png`` outputs.
   *Note*: the red-team manifest's recorded splits-manifest input SHA
   is the pre-`3cd2fb9` `82aa1214...` — see RESULTS.md §5.3 for why
   this divergence is documented as a non-correctness drift.
-- Detector: ``docs/results/04_detector/manifest.json`` ↔ on-disk
+- Detector: ``docs/results/stage-detector/manifest.json`` ↔ on-disk
   outputs. Inputs (features.npy etc.) are gitignored; if missing,
   the harness skips them with a warning rather than failing.
-- Benchmark: ``docs/results/06_benchmark/F[5-8]_manifest.json`` —
+- Benchmark: ``docs/results/benchmark/F[5-8]_manifest.json`` —
   per-figure manifest each pins ``runs/benchmark/eval_manifest.json``
   by SHA. The run-side artefact is gitignored; if missing, the
   harness skips the upstream-pin check with a warning.
-- Ablation: ``docs/results/07_ablation/F[9,10,12,15]_manifest.json``
+- Ablation: ``docs/results/ablation/F[9,10,12,15]_manifest.json``
   ↔ on-disk outputs (PNG + summary JSON). Upstream pins
   (``blue_team_sweep_manifest`` / ``benchmark_eval_manifest`` /
   ``dataset_splits_manifest``) checked against on-disk if present;
@@ -88,24 +88,24 @@ def _sha256(path: Path) -> str | None:
 # missing input is FAIL (committed → must exist) or SKIP (gitignored →
 # best-effort).
 _TARGETS: list[tuple[str, Path, bool]] = [
-    ("dataset", _ROOT / "docs/results/01_dataset/manifest.json", True),
-    ("red_team", _ROOT / "docs/results/02_red_team/manifest.json", True),
-    ("detector", _ROOT / "docs/results/04_detector/manifest.json", True),
-    ("benchmark/F5", _ROOT / "docs/results/06_benchmark/F5_manifest.json", True),
-    ("benchmark/F6", _ROOT / "docs/results/06_benchmark/F6_manifest.json", True),
-    ("benchmark/F7", _ROOT / "docs/results/06_benchmark/F7_manifest.json", True),
-    ("benchmark/F8", _ROOT / "docs/results/06_benchmark/F8_manifest.json", True),
-    ("ablation/F9", _ROOT / "docs/results/07_ablation/F9_manifest.json", True),
-    ("ablation/F10", _ROOT / "docs/results/07_ablation/F10_manifest.json", True),
-    ("ablation/F12", _ROOT / "docs/results/07_ablation/F12_manifest.json", True),
-    ("ablation/F15", _ROOT / "docs/results/07_ablation/F15_manifest.json", True),
+    ("dataset", _ROOT / "docs/results/dataset/manifest.json", True),
+    ("red_team", _ROOT / "docs/results/red-team-model/manifest.json", True),
+    ("detector", _ROOT / "docs/results/stage-detector/manifest.json", True),
+    ("benchmark/F5", _ROOT / "docs/results/benchmark/main_results_manifest.json", True),
+    ("benchmark/F6", _ROOT / "docs/results/benchmark/stage_action_proportionality_manifest.json", True),
+    ("benchmark/F7", _ROOT / "docs/results/benchmark/latency_profile_manifest.json", True),
+    ("benchmark/F8", _ROOT / "docs/results/benchmark/reward_ranking_manifest.json", True),
+    ("ablation/F9", _ROOT / "docs/results/ablation/reward_ablation_manifest.json", True),
+    ("ablation/F10", _ROOT / "docs/results/ablation/aggressiveness_sweep_manifest.json", True),
+    ("ablation/F12", _ROOT / "docs/results/ablation/pareto_frontier_manifest.json", True),
+    ("ablation/F15", _ROOT / "docs/results/ablation/ood_robustness_manifest.json", True),
 ]
 
 _SCOREBOARDS: list[tuple[str, Path]] = [
-    ("G4", _ROOT / "docs/results/04_detector/G4_scoreboard.json"),
-    ("G5", _ROOT / "docs/results/05_blue_team/G5_scoreboard.json"),
-    ("G6", _ROOT / "docs/results/06_benchmark/G6_scoreboard.json"),
-    ("G7", _ROOT / "docs/results/07_ablation/G7_scoreboard.json"),
+    ("G4", _ROOT / "docs/results/stage-detector/detector_acceptance.json"),
+    ("G5", _ROOT / "docs/results/blue-team-training/blue_team_acceptance.json"),
+    ("G6", _ROOT / "docs/results/benchmark/benchmark_acceptance.json"),
+    ("G7", _ROOT / "docs/results/ablation/ablation_acceptance.json"),
 ]
 
 
@@ -176,7 +176,7 @@ _KNOWN_DIVERGENCES: dict[str, dict[str, str]] = {
         "note": (
             "pre-3cd2fb9 (leaky) splits manifest SHA recorded; on-disk is "
             "post-3cd2fb9 (leakage-fixed) splits manifest. Documented in "
-            "docs/results/02_red_team/RESULTS.md S5.3."
+            "docs/results/red-team-model/RESULTS.md S5.3."
         ),
     },
     (
@@ -191,7 +191,7 @@ _KNOWN_DIVERGENCES: dict[str, dict[str, str]] = {
             "the leakage-fix is orthogonal to its input space. G4 cosine "
             "0.99999 saturation empirically confirms the divergence is "
             "documentation drift, not correctness divergence. See "
-            "docs/results/02_red_team/RESULTS.md S5.3."
+            "docs/results/red-team-model/RESULTS.md S5.3."
         ),
     },
 }

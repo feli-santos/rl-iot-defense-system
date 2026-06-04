@@ -73,7 +73,7 @@ build-split-indices:  ## Dataset prep: build immutable train/val/test/OOD indice
 .PHONY: plot-dataset
 plot-dataset:  ## Dataset prep: regenerate dataset overview figures (F0).
 	$(PYTHON) -m scripts.data.plot_dataset_overview \
-	    --processed-dir $(DATA) --out-dir docs/results/01_dataset
+	    --processed-dir $(DATA) --out-dir docs/results/dataset
 
 .PHONY: derive-stages
 derive-stages:  ## Detector prep: build stages.npy + manifest from state_indices.json.
@@ -123,19 +123,19 @@ blue-team-sweep:  ## Blue-team: train DQN/PPO/A2C × 10 seeds (~3-7 h CPU).
 blue-team-figures:  ## Blue-team: render F3, F4, T1 from runs/blue_team/.
 	$(PYTHON) -m scripts.blue_team.plot_learning_curves \
 	    --runs-root $(BLUE_TEAM_RUNS_ROOT) \
-	    --out-dir docs/results/05_blue_team
+	    --out-dir docs/results/blue-team-training
 	$(PYTHON) -m scripts.blue_team.plot_action_dist \
 	    --runs-root $(BLUE_TEAM_RUNS_ROOT) \
-	    --out-dir docs/results/05_blue_team
+	    --out-dir docs/results/blue-team-training
 	$(PYTHON) -m scripts.blue_team.dump_hparams \
 	    --runs-root $(BLUE_TEAM_RUNS_ROOT) \
-	    --out-dir docs/results/05_blue_team
+	    --out-dir docs/results/blue-team-training
 
 .PHONY: blue-team-gates
 blue-team-gates:  ## Blue-team: evaluate G5.2-G5.7 against runs/blue_team/.
 	$(PYTHON) -m scripts.blue_team.evaluate_gates \
 	    --runs-root $(BLUE_TEAM_RUNS_ROOT) \
-	    --out-dir docs/results/05_blue_team
+	    --out-dir docs/results/blue-team-training
 
 .PHONY: blue-team
 blue-team: blue-team-sweep blue-team-figures blue-team-gates  ## Blue-team: full sweep + figures + gate scoreboard.
@@ -144,7 +144,7 @@ blue-team: blue-team-sweep blue-team-figures blue-team-gates  ## Blue-team: full
 # Benchmark — F5 + F6 + F7 + F8 from frozen blue-team checkpoints
 # -----------------------------------------------------------------------------
 BENCHMARK_RUNS_ROOT      ?= runs/benchmark
-BENCHMARK_OUT_DIR        ?= docs/results/06_benchmark
+BENCHMARK_OUT_DIR        ?= docs/results/benchmark
 BENCHMARK_N_EPISODES     ?= 30
 BENCHMARK_N_DET_EPISODES ?= 300
 BENCHMARK_RF_PATH        ?= artifacts/detector/random_forest.joblib
@@ -183,8 +183,8 @@ benchmark-figures:  ## Benchmark: render F5, F6, F7, F8 from runs/benchmark/.
 .PHONY: benchmark
 benchmark: benchmark-eval benchmark-figures  ## Benchmark: full eval sweep + F5/F6/F7/F8 figures.
 
-##@ Ablation — reward-component sweep + OOD-class robustness (PLAN: docs/results/07_ablation/PLAN.md)
-ABLATION_OUT_DIR         ?= docs/results/07_ablation
+##@ Ablation — reward-component sweep + OOD-class robustness (PLAN: docs/results/ablation/PLAN.md)
+ABLATION_OUT_DIR         ?= docs/results/ablation
 ABLATION_OOD_RUNS_ROOT   ?= runs/ablation/ood
 ABLATION_OOD_CLASSES     ?= DDoS-HTTP_Flood Mirai-udpplain VulnerabilityScan XSS
 ABLATION_OOD_POLICIES    ?= recommended_action rf_acting dqn ppo a2c random always_observe always_block
@@ -336,16 +336,16 @@ thesis-rebuild:  ## Force-rebuild container image, then compile thesis.
 .PHONY: sync-figures
 sync-figures:  ## Copy regenerated PDFs from docs/results/ → tex/figs/
 	@echo "Syncing figures ..."
-	@cp docs/results/05_blue_team/F3_*.pdf tex/figs/ 2>/dev/null || true
-	@cp docs/results/05_blue_team/F4_*.pdf tex/figs/ 2>/dev/null || true
-	@cp docs/results/06_benchmark/F5_table.pdf tex/figs/ 2>/dev/null || true
-	@cp docs/results/06_benchmark/F6_*.pdf tex/figs/ 2>/dev/null || true
-	@cp docs/results/06_benchmark/F7_*.pdf tex/figs/ 2>/dev/null || true
-	@cp docs/results/06_benchmark/F8_*.pdf tex/figs/ 2>/dev/null || true
-	@cp docs/results/07_ablation/F9_*.pdf tex/figs/ 2>/dev/null || true
-	@cp docs/results/07_ablation/F10_*.pdf tex/figs/ 2>/dev/null || true
-	@cp docs/results/07_ablation/F12_*.pdf tex/figs/ 2>/dev/null || true
-	@cp docs/results/07_ablation/F15_*.pdf tex/figs/ 2>/dev/null || true
+	@cp docs/results/blue-team-training/F3_*.pdf tex/figs/ 2>/dev/null || true
+	@cp docs/results/blue-team-training/F4_*.pdf tex/figs/ 2>/dev/null || true
+	@cp docs/results/benchmark/F5_table.pdf tex/figs/ 2>/dev/null || true
+	@cp docs/results/benchmark/F6_*.pdf tex/figs/ 2>/dev/null || true
+	@cp docs/results/benchmark/F7_*.pdf tex/figs/ 2>/dev/null || true
+	@cp docs/results/benchmark/F8_*.pdf tex/figs/ 2>/dev/null || true
+	@cp docs/results/ablation/F9_*.pdf tex/figs/ 2>/dev/null || true
+	@cp docs/results/ablation/F10_*.pdf tex/figs/ 2>/dev/null || true
+	@cp docs/results/ablation/F12_*.pdf tex/figs/ 2>/dev/null || true
+	@cp docs/results/ablation/F15_*.pdf tex/figs/ 2>/dev/null || true
 	@echo "Done."
 
 .PHONY: stale-check

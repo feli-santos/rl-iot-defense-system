@@ -316,12 +316,12 @@ python -m scripts.reproducibility_smoke
 # ===== STEP 10: Re-derive all prose numbers from new JSONs =====
 # Do NOT hand-copy numbers. Use the JSONs as the single source of truth.
 # Key files to read:
-#   docs/results/05_blue_team/G5_scoreboard.json   -> best algo on val
-#   docs/results/06_benchmark/F5_summary.json     -> all benchmark numbers
-#   docs/results/06_benchmark/F8_summary.json     -> ranking
-#   docs/results/06_benchmark/G6_scoreboard.json   -> oracle capture %
-#   docs/results/07_ablation/F9_summary.json       -> structural fix numbers
-#   docs/results/07_ablation/F15_summary.json      -> OOD numbers
+#   docs/results/blue-team-training/blue_team_acceptance.json   -> best algo on val
+#   docs/results/benchmark/main_results.json     -> all benchmark numbers
+#   docs/results/benchmark/reward_ranking.json     -> ranking
+#   docs/results/benchmark/benchmark_acceptance.json   -> oracle capture %
+#   docs/results/ablation/reward_ablation.json       -> structural fix numbers
+#   docs/results/ablation/ood_robustness.json      -> OOD numbers
 ```
 
 ### 5.3 What stays fixed (no re-run needed)
@@ -442,23 +442,23 @@ This is a full-day walk-away run. Plan accordingly.
 
 | Figure | File | Status | Action needed |
 |---|---|---|---|
-| F0a (class distribution) | `figs/F0_class_distribution.pdf` | ✅ OK | Regenerate from `make plot-dataset` if needed |
-| F0b (stage distribution) | `figs/F0_stage_distribution.pdf` | ✅ OK | Same as above |
-| F1 (LSTM curves) | `figs/F1_learning_curves.pdf` | ✅ OK | No change |
-| F2 (transition matrix) | `figs/F2_transition_matrix_comparison.pdf` | ✅ OK | No change |
-| F3 (learning curves) | `figs/F3_learning_curves.pdf` | ⚠️ REGENERATE | Must be regenerated from 10-seed re-run |
-| F4 (action distribution) | `figs/F4_action_distribution.pdf` | ⚠️ REGENERATE | Must be regenerated from 10-seed re-run |
-| F5 (benchmark table) | `figs/F5_table.pdf` | ⚠️ REGENERATE | Must be regenerated from 10-seed benchmark |
-| F6 (stage×action CM) | `figs/F6_stage_action_cm.pdf` | ⚠️ REGENERATE | Must be regenerated from 10-seed benchmark |
-| F7 (latency CDF) | `figs/F7_overhead.pdf` | ⚠️ REGENERATE | Must be regenerated from 10-seed benchmark |
-| F8 (baselines bar) | `figs/F8_baselines.pdf` | ⚠️ REGENERATE | Must be regenerated from 10-seed benchmark |
-| F9 (reward ablation) | `figs/F9_reward_ablation.pdf` | ⚠️ REGENERATE | Must be regenerated from 10-seed ablation |
-| F10 (aggressiveness) | `figs/F10_aggressiveness.pdf` | ⚠️ REGENERATE | Must be regenerated from 10-seed ablation |
-| F11 (per-stage recall) | `figs/F11_per_stage_recall.pdf` | ✅ OK | Detector unchanged |
-| F12 (Pareto) | `figs/F12_pareto.pdf` | ❌ DISCARD or REDO | Only 1 dominant point — uninformative. Either remove from thesis or expand trade-off space to ≥3 points |
-| F15 (OOD robustness) | `figs/F15_ood_robustness.pdf` | ⚠️ REGENERATE | Must be regenerated from 10-seed OOD eval |
-| FA_action_cost | `figs/FA_action_cost_sweep.pdf` | ✅ OK | Appendix D; no change |
-| FA_window | `figs/FA_window_ablation.pdf` | ✅ OK | Appendix D; no change |
+| F0a (class distribution) | `figs/class_distribution.pdf` | ✅ OK | Regenerate from `make plot-dataset` if needed |
+| F0b (stage distribution) | `figs/stage_distribution.pdf` | ✅ OK | Same as above |
+| F1 (LSTM curves) | `figs/red_team_learning_curves.pdf` | ✅ OK | No change |
+| F2 (transition matrix) | `figs/transition_matrix_comparison.pdf` | ✅ OK | No change |
+| F3 (learning curves) | `figs/training_curves.pdf` | ⚠️ REGENERATE | Must be regenerated from 10-seed re-run |
+| F4 (action distribution) | `figs/action_distribution.pdf` | ⚠️ REGENERATE | Must be regenerated from 10-seed re-run |
+| F5 (benchmark table) | `figs/main_results_table.pdf` | ⚠️ REGENERATE | Must be regenerated from 10-seed benchmark |
+| F6 (stage×action CM) | `figs/stage_action_cm.pdf` | ⚠️ REGENERATE | Must be regenerated from 10-seed benchmark |
+| F7 (latency CDF) | `figs/overhead.pdf` | ⚠️ REGENERATE | Must be regenerated from 10-seed benchmark |
+| F8 (baselines bar) | `figs/baselines.pdf` | ⚠️ REGENERATE | Must be regenerated from 10-seed benchmark |
+| F9 (reward ablation) | `figs/reward_ablation.pdf` | ⚠️ REGENERATE | Must be regenerated from 10-seed ablation |
+| F10 (aggressiveness) | `figs/aggressiveness.pdf` | ⚠️ REGENERATE | Must be regenerated from 10-seed ablation |
+| F11 (per-stage recall) | `figs/per_stage_recall.pdf` | ✅ OK | Detector unchanged |
+| F12 (Pareto) | `figs/pareto.pdf` | ❌ DISCARD or REDO | Only 1 dominant point — uninformative. Either remove from thesis or expand trade-off space to ≥3 points |
+| F15 (OOD robustness) | `figs/ood_robustness.pdf` | ⚠️ REGENERATE | Must be regenerated from 10-seed OOD eval |
+| FA_action_cost | `figs/action_cost_sweep.pdf` | ✅ OK | Appendix D; no change |
+| FA_window | `figs/window_ablation.pdf` | ✅ OK | Appendix D; no change |
 | Arch diagram | `figs/architecture_diagram.pdf` | ✅ OK | No change |
 
 ### Tables
@@ -598,7 +598,7 @@ This checklist is ordered by dependency. Do not skip steps.
 - [ ] **P2.12** Measure actual wallclock and record it.
 
 ### Phase 3: Regenerate Prose from New Data
-- [ ] **P3.1** Read `docs/results/06_benchmark/F5_summary.json` — identify best deployable RL agent.
+- [ ] **P3.1** Read `docs/results/benchmark/main_results.json` — identify best deployable RL agent.
 - [ ] **P3.2** Compute oracle capture % = best_RL_mean / oracle_mean.
 - [ ] **P3.3** Compute latency ratio = RF_p50 / best_RL_p50.
 - [ ] **P3.4** Rewrite abstract with new numbers.
@@ -639,19 +639,19 @@ This map connects every thesis claim to its canonical data source. Use it to ver
 
 | Thesis claim | Canonical source | File path |
 |---|---|---|
-| Best deployable agent | `best_policy_by_mean_reward` (excluding oracle & RF) | `docs/results/06_benchmark/F5_summary.json` |
-| Oracle ceiling | `recommended_action_floor` or `recommended_action` row | `docs/results/06_benchmark/F5_summary.json` |
+| Best deployable agent | `best_policy_by_mean_reward` (excluding oracle & RF) | `docs/results/benchmark/main_results.json` |
+| Oracle ceiling | `recommended_action_floor` or `recommended_action` row | `docs/results/benchmark/main_results.json` |
 | Oracle capture % | Computed: best_RL_mean / oracle_mean | Derived from above |
-| Latency p50 | `p50_inference_latency_ms` per policy | `docs/results/06_benchmark/F5_summary.json` |
-| Mitigated-impact rate | `mitigated_impact_rate` per policy | `docs/results/06_benchmark/F5_summary.json` |
-| Mean MTTC | `mean_mttc` per policy | `docs/results/06_benchmark/F5_summary.json` |
-| Reward CIs | `mean_reward_ci_low`, `mean_reward_ci_high` | `docs/results/06_benchmark/F5_summary.json` |
-| F9 structural fix reward | `impact_is_terminal_false.mean_reward` | `docs/results/07_ablation/F9_summary.json` |
-| F9 structural fix mit-rate | `impact_is_terminal_false.mitigated_impact_rate` | `docs/results/07_ablation/F9_summary.json` |
-| F10 p=0.6 reward | PPO row at p=0.6 | `docs/results/07_ablation/F10_summary.json` |
-| OOD per-class reward | `mean_reward` per (ood_class, policy) | `docs/results/07_ablation/F15_summary.json` |
-| Red-team G4 cosine | `G4` value | `docs/results/02_red_team/RESULTS.md` + gate JSON |
-| Detector macro-F1 | `macro_f1` | `docs/results/04_detector/G4_scoreboard.json` |
+| Latency p50 | `p50_inference_latency_ms` per policy | `docs/results/benchmark/main_results.json` |
+| Mitigated-impact rate | `mitigated_impact_rate` per policy | `docs/results/benchmark/main_results.json` |
+| Mean MTTC | `mean_mttc` per policy | `docs/results/benchmark/main_results.json` |
+| Reward CIs | `mean_reward_ci_low`, `mean_reward_ci_high` | `docs/results/benchmark/main_results.json` |
+| F9 structural fix reward | `impact_is_terminal_false.mean_reward` | `docs/results/ablation/reward_ablation.json` |
+| F9 structural fix mit-rate | `impact_is_terminal_false.mitigated_impact_rate` | `docs/results/ablation/reward_ablation.json` |
+| F10 p=0.6 reward | PPO row at p=0.6 | `docs/results/ablation/aggressiveness_sweep.json` |
+| OOD per-class reward | `mean_reward` per (ood_class, policy) | `docs/results/ablation/ood_robustness.json` |
+| Red-team G4 cosine | `G4` value | `docs/results/red-team-model/RESULTS.md` + gate JSON |
+| Detector macro-F1 | `macro_f1` | `docs/results/stage-detector/detector_acceptance.json` |
 | Test suite count | `pytest -q` output at final commit | Run at HEAD |
 | Repro harness verdict | `python -m scripts.reproducibility_smoke` | Run at HEAD |
 

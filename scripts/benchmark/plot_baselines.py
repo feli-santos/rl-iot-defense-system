@@ -210,10 +210,10 @@ def _render(
 def _build_argparser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(description="benchmark F8 — baselines bar chart.")
     p.add_argument("--runs-root", default="runs/benchmark")
-    p.add_argument("--out-dir", default="docs/results/06_benchmark")
+    p.add_argument("--out-dir", default="docs/results/benchmark")
     p.add_argument(
         "--f5-summary",
-        default="docs/results/06_benchmark/F5_summary.json",
+        default="docs/results/benchmark/main_results.json",
         help="Path to F5_summary.json (the source of per-policy means + CIs).",
     )
     return p

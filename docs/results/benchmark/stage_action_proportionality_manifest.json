@@ -1,0 +1,59 @@
+{
+  "schema_version": "1.0",
+  "figure": "F6",
+  "git_sha": "52a67c3c85f93d3f605c84e5147a3cf26143668c",
+  "outputs": {
+    "png": "docs/results/benchmark/stage_action_cm.png",
+    "json": "docs/results/benchmark/stage_action_proportionality.json"
+  },
+  "inputs": {
+    "eval_manifest": {
+      "path": "runs/benchmark/eval_manifest.json",
+      "sha256": "1cd93c63cd8cf63af582ac7d35b6843fc366aeb130bd41fad2914a2790201d7a"
+    },
+    "eval_jsonl_sha256": {
+      "runs/benchmark/dqn/seed_0/eval_test.jsonl": "3b7ffba7af352d4f0b8ba2e07f30ee4fad2a437fdf04f27fa4c228a0daef59b0",
+      "runs/benchmark/dqn/seed_1/eval_test.jsonl": "2835ab4a59f8988fd7bd171ad5a2d85dd4699f3db84c2c4a16cba56459c2ed32",
+      "runs/benchmark/dqn/seed_2/eval_test.jsonl": "eaa1a5ac2a9f7675c1ac4abfe0a405cc1e3e846dc19b94e76928edc1e88beab3",
+      "runs/benchmark/dqn/seed_3/eval_test.jsonl": "74239c72c9a7ea2c6b19b358f06a581972a6f6faf96e2fd5a3c5a899eb4be24e",
+      "runs/benchmark/dqn/seed_4/eval_test.jsonl": "2cda3c9abc8d039895bdfd491b4382929387ecbdea74417cfa63ddfa01e69a5d",
+      "runs/benchmark/dqn/seed_5/eval_test.jsonl": "a96169ac9e04ea9c0ce9e19b815a7c382265ada6081e421e08f5924d6c4941ca",
+      "runs/benchmark/dqn/seed_6/eval_test.jsonl": "f748373e10170960d42c64aa4f5730f0719e690f12498fdecb6e91be99da7a6d",
+      "runs/benchmark/dqn/seed_7/eval_test.jsonl": "e619dcd894f421cd2d3d92be5be0b06ade1caeb283e083ab97c5af3f107ee69a",
+      "runs/benchmark/dqn/seed_8/eval_test.jsonl": "36b43e69173b4dbeca52a7dc92955f0ca5c964af6ef8cfb7157be2a251431682",
+      "runs/benchmark/dqn/seed_9/eval_test.jsonl": "134c6ef487f00c57ade7f8f0ba9f59f6e2d08e8d9847901d5cb8a45117aacf0d",
+      "runs/benchmark/ppo/seed_0/eval_test.jsonl": "e153fde04455914007c6af004a9b4b670c0c2e13c9dde0a1078b5a3ed1322245",
+      "runs/benchmark/ppo/seed_1/eval_test.jsonl": "4c00dce5ea393d8f817858279fda4643a223132ed0225fc46e21c97b7635b6d3",
+      "runs/benchmark/ppo/seed_2/eval_test.jsonl": "7c44898ff6ebe4183b5594a71a27284345adeb4496192e2354de2bd6c3e66119",
+      "runs/benchmark/ppo/seed_3/eval_test.jsonl": "9ca6d29628c947709794f9ddc81672e293d8578557ae2438be79e2ae2a846d18",
+      "runs/benchmark/ppo/seed_4/eval_test.jsonl": "1cb1201cc924432cab423a9b8d5dae3e6e56079fa3546ae67d44634a7e1e7a01",
+      "runs/benchmark/ppo/seed_5/eval_test.jsonl": "6145110446c720556e4d05fd861036d824d99da71d2e202929f260adc63f5356",
+      "runs/benchmark/ppo/seed_6/eval_test.jsonl": "c2ebf295275af3a4185636e13311c1ef0bd3c7f13b71d2a883c53058d820b5cc",
+      "runs/benchmark/ppo/seed_7/eval_test.jsonl": "ba63df264fd9ea8a94d3e19fe77bf6b77a6232c89463b1858f319a3d355430f3",
+      "runs/benchmark/ppo/seed_8/eval_test.jsonl": "5a1f0a2a45f876a20a9366835ada94091a15e65931d052d0d2ee1c2912ab6f22",
+      "runs/benchmark/ppo/seed_9/eval_test.jsonl": "08e80e5e3eca68170fcd6f1127458583f28d8e0516b28ee57c5e00b36ba6302b",
+      "runs/benchmark/a2c/seed_0/eval_test.jsonl": "4c376ea47a59465dd2c6afa203626016b1469dc29e00631f85b17235daeb3e36",
+      "runs/benchmark/a2c/seed_1/eval_test.jsonl": "030553025629af443d3c5398ba167dc0c3a87bc006a48aa95b2617027f5fe6a4",
+      "runs/benchmark/a2c/seed_2/eval_test.jsonl": "689d669ec74c2df1da91ea727b50da769687941bcabdd47669cfcb4d226b7b11",
+      "runs/benchmark/a2c/seed_3/eval_test.jsonl": "bea0df08443027ff5e4d07bebb1bce1a5e54d7dcf8f18ef6f6e058510c6d95de",
+      "runs/benchmark/a2c/seed_4/eval_test.jsonl": "b547036e27c56a4a261a887249a1d60a68bb12b93028801886f122b0de6430ef",
+      "runs/benchmark/a2c/seed_5/eval_test.jsonl": "3aecf0fb8fcc730db6ff3c0bb57c287406dea9cecdbee5aabebb3fe0f82bfdce",
+      "runs/benchmark/a2c/seed_6/eval_test.jsonl": "d94e86d63015918d6bfbf3d2c3ddcdcdb7504adf4429e966ccf2e0fbf1c631a3",
+      "runs/benchmark/a2c/seed_7/eval_test.jsonl": "878ac2664e43725cabc9c9d29c71e2bcd5584d2160c3e7619fdbda8be2ddba7b",
+      "runs/benchmark/a2c/seed_8/eval_test.jsonl": "d2069eaa8fbffbae9d56a05835c3e5f445b3c095e318661d7ca4d4d943463467",
+      "runs/benchmark/a2c/seed_9/eval_test.jsonl": "805484a071662263f57f7946f7eac7223f91f10492ed71d4266ff53960b2993a",
+      "runs/benchmark/random/seed_0/eval_test.jsonl": "5f24060564db84a02b9af775acf1f311b82776a8dd2608e3787434e460a129d3",
+      "runs/benchmark/random/seed_1/eval_test.jsonl": "db94d229dfbbd94770af99539f4f30b64e4120bf85b651c92d0f2a345a981989",
+      "runs/benchmark/random/seed_2/eval_test.jsonl": "5d9fa74a5747e385a0bdb53ede99fe935bb12c2dd3ac45608ff405701f92b21c",
+      "runs/benchmark/random/seed_3/eval_test.jsonl": "ebb2865de716c652fb583866eaab4f7cfdcaf462dfd557cae44c51ed025c6bbd",
+      "runs/benchmark/random/seed_4/eval_test.jsonl": "d4ba3cbbd65e8fd521870a11baa6e89c3783213e661697817f21f98748ec6a01",
+      "runs/benchmark/random/seed_5/eval_test.jsonl": "af50d02e1026096b72563e76470ea634075ba54f18125881ca6d7851a991eefa",
+      "runs/benchmark/random/seed_6/eval_test.jsonl": "2a18a8da3923f937969134c88d33fa92379891c1b91acba69b8bc679990b46f4",
+      "runs/benchmark/random/seed_7/eval_test.jsonl": "24ba1e66746ad95c2d506bad7a733fbd62c6dde21fdb1d4c11b69d83f76da3a3",
+      "runs/benchmark/random/seed_8/eval_test.jsonl": "4fafe3b059fed980e676216374c7c36944c4d3694e176ce891f4cf16fd0f7636",
+      "runs/benchmark/random/seed_9/eval_test.jsonl": "c1bcd57ca81116d4d69dc141f3f6e63254d14080631f6c55767ad20eb44a4c34",
+      "runs/benchmark/always_observe/seed_0/eval_test.jsonl": "a791a5fb36772736472294dfdce89cba21dd9610a9fe86211786f15da2d26d52",
+      "runs/benchmark/always_block/seed_0/eval_test.jsonl": "cd89e5bf6317a56d7d1b53243d5b5cbf10d447f426edaf4b001775be5146c024"
+    }
+  }
+}

@@ -19,7 +19,7 @@ Key Design
             R_progress_blocked
 
   This replaces the previous action-vs-previous-action heuristic; see
-  ``docs/results/03_env/PLAN.md`` (B2 fix).
+  ``docs/results/environment/PLAN.md`` (B2 fix).
 - **Lifecycle (environment-design v2).**
     - The episode runs for **at least** ``min_episode_length`` steps and at
       most ``max_steps`` (truncation). Choosing BLOCK or ISOLATE on an
@@ -168,7 +168,7 @@ def _recommended_action(stage: int) -> int:
 class AdversarialEnvConfig:
     """Configuration for the Adversarial Environment.
 
-    See ``docs/results/03_env/PLAN.md`` for the rationale behind every reward
+    See ``docs/results/environment/PLAN.md`` for the rationale behind every reward
     constant. Most fields are tunable in Phase 8 (sensitivity ablation); the
     defaults below are the values used to lock the environment-design exit gates.
 

@@ -1,14 +1,14 @@
 """Ablation closer (C9): assemble G7_scoreboard.json + RESULTS.md skeleton + CHANGELOG entry.
 
 Run once all four figures (F9/F10/F12/F15) and their *_summary.json
-files exist under ``docs/results/07_ablation/``. This script does
+files exist under ``docs/results/ablation/``. This script does
 NOT run any new computation — it simply aggregates the gate
 verdicts that the four plotters already wrote into their
 ``F<N>_summary.json#gates`` blocks.
 
 Usage::
 
-    python -m scripts.ablation.close_ablation [--out-dir docs/results/07_ablation]
+    python -m scripts.ablation.close_ablation [--out-dir docs/results/ablation]
 
 Outputs:
 
@@ -415,7 +415,7 @@ _STATUS_SKIP = "SKIP"
 # Per-gate (gate_id → finding_id) override table for G7.x. Keeps the
 # free-text `interpretation` field readable while ensuring the
 # scoreboard exposes the same finding_id Phase-6 ships natively
-# (see docs/results/06_benchmark/G6_scoreboard.json::gates.G6.2).
+# (see docs/results/benchmark/benchmark_acceptance.json::gates.G6.2).
 # Step-8 task #2 (07_HANDOFF.md §5 F3) acceptance: jq '.gates[].status'
 # returns enum members and finding_id is present where status is
 # {PASS-WITH-FINDING, PASS-WITHOUT-STRETCH, FAIL-WITH-FINDING}.
@@ -774,7 +774,7 @@ Tally: **{n_pass} PASS / {n_fail} FAIL-WITH-FINDING** across G7.1–G7.9.
 
 {_summary_table(gates)}
 
-### Headline findings (see `docs/results/07_ablation/RESULTS.md` for full text)
+### Headline findings (see `docs/results/ablation/RESULTS.md` for full text)
 
 - **G7.2 (F9 reward-component sweep)**: see RESULTS §6.1 — either the
   +288 deployable gap was closed at one or more cells, or the
@@ -788,7 +788,7 @@ Tally: **{n_pass} PASS / {n_fail} FAIL-WITH-FINDING** across G7.1–G7.9.
 ### What ships
 
 - F9 / F10 / F12 / F15 figures + summaries + manifests under
-  `docs/results/07_ablation/`.
+  `docs/results/ablation/`.
 - `G7_scoreboard.json` per-gate JSON record.
 - `runs/ablation/{{ood,reward_sweep,aggressiveness}}/` raw eval JSONLs
   (gitignored; ~7.5 h CPU walk-away to regenerate via `make ablation`).
@@ -809,7 +809,7 @@ def _build_argparser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         description="Ablation closer: assemble G7_scoreboard + RESULTS + CHANGELOG.",
     )
-    p.add_argument("--out-dir", default="docs/results/07_ablation")
+    p.add_argument("--out-dir", default="docs/results/ablation")
     p.add_argument(
         "--no-pytest",
         action="store_true",

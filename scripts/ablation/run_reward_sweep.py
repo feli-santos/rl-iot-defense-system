@@ -73,7 +73,7 @@ logger = logging.getLogger("scripts.ablation.run_reward_sweep")
 _ROOT = Path(__file__).resolve().parents[2]
 
 
-# environment-design defaults (from RESULTS §3 of docs/results/03_env/RESULTS.md)
+# environment-design defaults (from RESULTS §3 of docs/results/environment/RESULTS.md)
 _PHASE3_DEFAULTS: dict[str, float] = {
     "defense_success_bonus": 250.0,
     "penalty_missed_impact": 150.0,

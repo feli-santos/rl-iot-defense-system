@@ -12,9 +12,9 @@ Pipeline (deterministic given --seed):
     4. Render F11: bar chart per-stage recall × 3 models | StageDetector
        confusion matrix on test_balanced.
     5. Dump:
-       - docs/results/04_detector/F11_per_stage_recall.png + caption
-       - docs/results/04_detector/F11_summary.json
-       - docs/results/04_detector/manifest.json (hash chain)
+       - docs/results/stage-detector/per_stage_recall.png + caption
+       - docs/results/stage-detector/detector_summary.json
+       - docs/results/stage-detector/manifest.json (hash chain)
        - artifacts/detector/{stage_detector.pt, random_forest.joblib,
          cnn1d.pt} (consumed by blue-team+)
 
@@ -22,7 +22,7 @@ Usage
 -----
     python -m scripts.detector.train_detector \
         [--processed-dir data/processed/ciciot2023] \
-        [--out-dir docs/results/04_detector] \
+        [--out-dir docs/results/stage-detector] \
         [--ckpt-dir artifacts/detector] \
         [--seed 0]
 
@@ -209,7 +209,7 @@ correctly identifies most stage transitions, with the bulk of confusion
 concentrated near MANEUVER↔IMPACT — exactly the boundary the RL agent
 will have to act on. Per-stage and per-attack-class numbers, plus
 results on the full (BENIGN-heavy) test split, are committed in
-`F11_summary.json`. See `docs/results/04_detector/RESULTS.md` for the
+`F11_summary.json`. See `docs/results/stage-detector/RESULTS.md` for the
 exit-gate scoreboard and the OOD-class generalisation analysis (G4.4).
 """
 
@@ -372,7 +372,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--out-dir",
         type=Path,
-        default=Path("docs/results/04_detector"),
+        default=Path("docs/results/stage-detector"),
     )
     parser.add_argument(
         "--ckpt-dir",

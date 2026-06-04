@@ -93,7 +93,7 @@ There are profound, irreconcilable discrepancies between the numbers plotted in 
 To bring this thesis to a publishable, defensible Level A status, the executing agent must implement the following specific modifications:
 
 ### 1. Re-run or Re-generate Data Visualizations (Highest Priority)
-* **Triage Figure 4.6:** Check the underlying plotting script (likely in `scripts/visualize_benchmark.py` or `docs/results/06_benchmark/`). Determine why Figure 4.6 lists DQN at 1336 and PPO at 1313 while Table 4.3 and Figure 4.9 state PPO is 1335 and DQN is 1219. Correct the data array bindings or labels so they match the tables exactly.
+* **Triage Figure 4.6:** Check the underlying plotting script (likely in `scripts/visualize_benchmark.py` or `docs/results/benchmark/`). Determine why Figure 4.6 lists DQN at 1336 and PPO at 1313 while Table 4.3 and Figure 4.9 state PPO is 1335 and DQN is 1219. Correct the data array bindings or labels so they match the tables exactly.
 * **Fix the Timestep Axis Mismatch:** If the models were truly trained for 250k steps (as justified by the scaling study), crop the x-axis of Figure 4.4 and Figure 4.5 to `250,000`. If they were trained for 500k steps, rewrite Section 3.19 and Chapter 4 text to accurately reflect the 500k step horizon.
 
 ### 2. Deepen Technical Critiques and Discussion Prose

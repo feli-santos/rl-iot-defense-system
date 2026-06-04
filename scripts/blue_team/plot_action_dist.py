@@ -341,7 +341,7 @@ def render(
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(description="Render F4 action-distribution figure.")
     p.add_argument("--runs-root", required=True)
-    p.add_argument("--out-dir", default="docs/results/05_blue_team")
+    p.add_argument("--out-dir", default="docs/results/blue-team-training")
     p.add_argument("--n-bins", type=int, default=25)
     p.add_argument("--fraction", type=float, default=0.10)
     args = p.parse_args(argv)

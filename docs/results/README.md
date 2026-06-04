@@ -10,18 +10,18 @@ directory is considered exploratory.
 docs/results/
 ├── README.md                 # this file
 ├── 00_phase0_diagnosis.md    # baseline diagnosis of pre-restart results
-├── 01_dataset/               # Phase 1 — dataset card + EDA-derived plots
-├── 02_red_team/              # Phase 2 — LSTM Red Team curves and analysis
-├── 03_env/                   # Phase 3 — env sanity checks, reward shape
-├── 04_detector/              # Phase 4 — supervised detector + RF / 1D-CNN
-├── 05_blue_team/             # Phase 5 — DQN/PPO/A2C learning curves
-├── 06_benchmark/             # Phase 6 — RL algorithm benchmark (F5/F6/F7/F8)
-└── 07_ablation/              # Phase 7 — sensitivity and ablation (F9/F10/F12/F15)
+├── dataset/                  # dataset card + EDA-derived plots
+├── red-team-model/           # Red-Team kill-chain stochastic process + analysis
+├── environment/              # env sanity checks, reward shape
+├── stage-detector/           # supervised detector + RF / 1D-CNN
+├── blue-team-training/       # DQN/PPO/A2C learning curves
+├── benchmark/                # held-out RL algorithm benchmark
+└── ablation/                 # sensitivity and ablation studies
 ```
 
 ## Phase-1 has no `PLAN.md` / `RESULTS.md` (intentional)
 
-`docs/results/01_dataset/` carries only the F0 figures, captions, the F0
+`docs/results/dataset/` carries only the F0 figures, captions, the F0
 summary JSON, and the figure manifest. Unlike Phases 02–10 it does **not**
 contain a `PLAN.md` or `RESULTS.md`. This is intentional, not an oversight,
 and is documented here so that future agents do not "fix" the asymmetry by
@@ -41,7 +41,7 @@ canonical documents that pre-date the per-phase audit-trail convention:
   selection rules.
 
 The numerical record for Phase 1 is the F0 figures plus
-`docs/results/01_dataset/F0_summary.json` and `manifest.json`; the
+`docs/results/dataset/dataset_summary.json` and `manifest.json`; the
 narrative is in the two documents above. Step 9 (LaTeX rebuild) draws
 its §3.1 (Methodology — Dataset preparation) and §4.1 introductory
 paragraph from `dataset_card.md` directly, and the Phase-2 results

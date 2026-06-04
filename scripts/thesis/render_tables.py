@@ -19,11 +19,11 @@ from pathlib import Path
 # Paths (canonical data)
 # ---------------------------------------------------------------------------
 
-F5 = Path("docs/results/06_benchmark/F5_summary.json")
-F7 = Path("docs/results/06_benchmark/F7_summary.json")
-F9 = Path("docs/results/07_ablation/F9_summary.json")
-G6 = Path("docs/results/06_benchmark/G6_scoreboard.json")
-BENIGN_FPR = Path("docs/results/06_benchmark/benign_fpr.json")
+F5 = Path("docs/results/benchmark/main_results.json")
+F7 = Path("docs/results/benchmark/latency_profile.json")
+F9 = Path("docs/results/ablation/reward_ablation.json")
+G6 = Path("docs/results/benchmark/benchmark_acceptance.json")
+BENIGN_FPR = Path("docs/results/benchmark/benign_fpr.json")
 
 # ---------------------------------------------------------------------------
 # Helpers
