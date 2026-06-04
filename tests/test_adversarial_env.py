@@ -808,28 +808,11 @@ class TestRetreatProb:
     """Tests for non-monotonic attacker stress-test (review 2.4.3)."""
 
     @pytest.fixture
-    def masked_generator(self, tmp_path):
-        """Mock generator WITH transition mask enabled (monotonic by default)."""
-        from src.generator.attack_sequence_generator import (
-            AttackSequenceGenerator,
-            AttackSequenceGeneratorConfig,
-        )
-        from src.generator.transition_mask import TransitionMask
-
-        config = AttackSequenceGeneratorConfig(
-            num_stages=5,
-            embedding_dim=16,
-            hidden_size=32,
-            num_layers=1,
-            use_transition_mask=True,
-        )
-        generator = AttackSequenceGenerator(config=config)
-        # Build a strict upper-triangular mask (no regression)
-        mask = TransitionMask.from_strict_grammar()
-        generator.set_transition_mask(mask)
-        model_path = tmp_path / "generator" / "attack_sequence_generator.pth"
-        generator.save(model_path, save_config=True)
-        return tmp_path / "generator"
+    def generator_path(self, tmp_path):
+        """Ignored generator-path dir (attacker is now a first-order Markov chain)."""
+        path = tmp_path / "generator"
+        path.mkdir(parents=True)
+        return path
 
     @pytest.fixture
     def mock_dataset(self, tmp_path):
@@ -854,15 +837,13 @@ class TestRetreatProb:
         joblib.dump(scaler, dataset_path / "scaler.joblib")
         return dataset_path
 
-    def _set_strict_mask(self, env):
-        """Manually attach a strict monotonic mask to the env's generator."""
-        from src.generator.transition_mask import TransitionMask
+    def test_retreat_prob_zero_is_monotonic(self, generator_path, mock_dataset):
+        """retreat_prob=0 should never produce retreats.
 
-        mask = TransitionMask.from_strict_grammar()
-        env._generator.set_transition_mask(mask)
-
-    def test_retreat_prob_zero_is_monotonic(self, masked_generator, mock_dataset):
-        """retreat_prob=0 should never produce retreats."""
+        The Markov attacker's transition matrix is upper-triangular for attack
+        stages (no regression), so without the retreat override the visible
+        chain never drops to an earlier non-zero stage.
+        """
         from src.environment.adversarial_env import (
             AdversarialEnvConfig,
             AdversarialIoTEnv,
@@ -870,11 +851,10 @@ class TestRetreatProb:
 
         config = AdversarialEnvConfig(retreat_prob=0.0)
         env = AdversarialIoTEnv(
-            generator_path=masked_generator,
+            generator_path=generator_path,
             dataset_path=mock_dataset,
             config=config,
         )
-        self._set_strict_mask(env)
         env.reset(seed=42)
         prev_stage = env._current_attack_stage
         for _ in range(50):
@@ -885,7 +865,7 @@ class TestRetreatProb:
             assert not (0 < new_stage < prev_stage)
             prev_stage = new_stage
 
-    def test_retreat_prob_nonzero_can_retreat(self, masked_generator, mock_dataset):
+    def test_retreat_prob_nonzero_can_retreat(self, generator_path, mock_dataset):
         """retreat_prob>0 should occasionally produce retreats."""
         from src.environment.adversarial_env import (
             AdversarialEnvConfig,
@@ -894,11 +874,10 @@ class TestRetreatProb:
 
         config = AdversarialEnvConfig(retreat_prob=0.5)
         env = AdversarialIoTEnv(
-            generator_path=masked_generator,
+            generator_path=generator_path,
             dataset_path=mock_dataset,
             config=config,
         )
-        self._set_strict_mask(env)
         env.reset(seed=42)
         retreats = 0
         prev_stage = env._current_attack_stage
@@ -916,19 +895,11 @@ class TestFPRPenalty:
     """Tests for Lagrangian FPR penalty (review 2.2 / Direction 6)."""
 
     @pytest.fixture
-    def mock_generator(self, tmp_path):
-        from src.generator.attack_sequence_generator import (
-            AttackSequenceGenerator,
-            AttackSequenceGeneratorConfig,
-        )
-
-        config = AttackSequenceGeneratorConfig(
-            num_stages=5, embedding_dim=16, hidden_size=32, num_layers=1
-        )
-        generator = AttackSequenceGenerator(config=config)
-        model_path = tmp_path / "generator" / "attack_sequence_generator.pth"
-        generator.save(model_path, save_config=True)
-        return tmp_path / "generator"
+    def generator_path(self, tmp_path):
+        """Ignored generator-path dir (attacker is now a first-order Markov chain)."""
+        path = tmp_path / "generator"
+        path.mkdir(parents=True)
+        return path
 
     @pytest.fixture
     def mock_dataset(self, tmp_path):
@@ -953,7 +924,7 @@ class TestFPRPenalty:
         joblib.dump(scaler, dataset_path / "scaler.joblib")
         return dataset_path
 
-    def test_fpr_penalty_zero_no_effect(self, mock_generator, mock_dataset):
+    def test_fpr_penalty_zero_no_effect(self, generator_path, mock_dataset):
         """fpr_penalty_beta=0 should not affect reward."""
         from src.environment.adversarial_env import (
             AdversarialEnvConfig,
@@ -962,7 +933,7 @@ class TestFPRPenalty:
 
         config = AdversarialEnvConfig(fpr_penalty_beta=0.0)
         env = AdversarialIoTEnv(
-            generator_path=mock_generator,
+            generator_path=generator_path,
             dataset_path=mock_dataset,
             config=config,
         )
@@ -976,29 +947,38 @@ class TestFPRPenalty:
         # Just verify the run completes without error
         assert total_reward != 0.0
 
-    def test_fpr_penalty_nonzero_reduces_reward(self, mock_generator, mock_dataset):
-        """fpr_penalty_beta>0 should reduce reward when blocking on benign."""
+    def _build_env(self, generator_path, mock_dataset, beta):
+        """Construct an env with a given fpr_penalty_beta."""
         from src.environment.adversarial_env import (
             AdversarialEnvConfig,
             AdversarialIoTEnv,
         )
 
-        # High beta so the penalty is unmistakable
-        config = AdversarialEnvConfig(fpr_penalty_beta=1000.0)
+        config = AdversarialEnvConfig(fpr_penalty_beta=beta)
         env = AdversarialIoTEnv(
-            generator_path=mock_generator,
+            generator_path=generator_path,
             dataset_path=mock_dataset,
             config=config,
         )
-        obs, _ = env.reset(seed=42)
-        # Force the stage to stay BENIGN by always choosing BLOCK (action=3)
-        # and relying on defender de-escalation to reset.
-        total_reward = 0.0
-        for _ in range(20):
-            obs, reward, terminated, truncated, _ = env.step(3)
-            total_reward += reward
-            if terminated or truncated:
-                break
-        # With high beta and many benign blocks, the terminal FPR penalty
-        # should make the total reward substantially negative.
-        assert total_reward < -500.0
+        env.reset(seed=42)
+        return env
+
+    def test_fpr_penalty_nonzero_reduces_reward(self, generator_path, mock_dataset):
+        """fpr_penalty_beta>0 must reduce reward by beta * (benign_blocks/steps).
+
+        Tested directly against the terminal-penalty formula so the assertion
+        does not depend on the attacker's stochastic trajectory: a high penalty
+        with a nonzero benign false-positive rate yields a strictly lower reward,
+        while beta=0 leaves the reward unchanged.
+        """
+        env_penalised = self._build_env(generator_path, mock_dataset, beta=1000.0)
+        env_penalised._benign_steps = 10
+        env_penalised._benign_blocks = 4
+        # penalty = -beta * (benign_blocks / benign_steps) = -1000 * 0.4 = -400.
+        assert env_penalised._apply_episode_fpr_penalty(0.0) == pytest.approx(-400.0)
+
+        env_free = self._build_env(generator_path, mock_dataset, beta=0.0)
+        env_free._benign_steps = 10
+        env_free._benign_blocks = 4
+        # beta=0 disables the penalty entirely; reward is returned unchanged.
+        assert env_free._apply_episode_fpr_penalty(0.0) == 0.0
