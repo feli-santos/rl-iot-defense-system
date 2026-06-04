@@ -93,7 +93,7 @@ detector: derive-stages  ## Detector: train MLP + RF + CNN1D, emit F11 (~3-5 min
 	    --processed-dir $(DATA) --seed $(SEED)
 
 # -----------------------------------------------------------------------------
-# Blue Team — DQN/PPO/A2C × 5 seeds + F3/F4/T1
+# Blue Team — DQN/PPO/A2C × 10 seeds + F3/F4/T1
 # -----------------------------------------------------------------------------
 BLUE_TEAM_RUNS_ROOT     ?= runs/blue_team
 BLUE_TEAM_TIMESTEPS     ?= 250000
@@ -110,7 +110,7 @@ blue-team-smoke:  ## Blue-team smoke: PPO seed 0 only, 5K timesteps (~20 s).
 	    --out-dir runs/smoke/ppo_seed_0
 
 .PHONY: blue-team-sweep
-blue-team-sweep:  ## Blue-team: train DQN/PPO/A2C × 5 seeds (~3-7 h CPU).
+blue-team-sweep:  ## Blue-team: train DQN/PPO/A2C × 10 seeds (~3-7 h CPU).
 	$(PYTHON) -m scripts.blue_team.run_sweep \
 	    --algos $(BLUE_TEAM_ALGOS) --seeds $(BLUE_TEAM_SEEDS) \
 	    --total-timesteps $(BLUE_TEAM_TIMESTEPS) \
@@ -231,7 +231,7 @@ ablation-reward-smoke:  ## Ablation F9 smoke: 1 cell × 1 seed × 5K (~30 s).
 	    --out-root $(ABLATION_REWARD_RUNS_ROOT)
 
 .PHONY: ablation-reward-sweep
-ablation-reward-sweep:  ## Ablation F9: PPO × 5 seeds × 12 cells (~6 h CPU).
+ablation-reward-sweep:  ## Ablation F9: PPO × 10 seeds × 12 cells (~6 h CPU).
 	$(PYTHON) -m scripts.ablation.run_reward_sweep \
 	    --algo $(ABLATION_REWARD_ALGO) \
 	    --seeds $(BLUE_TEAM_SEEDS) \
@@ -248,7 +248,7 @@ ablation-reward-figure:  ## Ablation: render F9 from runs/ablation/reward_sweep/
 .PHONY: ablation-reward
 ablation-reward: ablation-reward-sweep ablation-reward-figure  ## Ablation F9: full sweep + figure.
 
-# F10 — Attack-aggressiveness sweep (PPO + oracle rule × 6 p values × 5 seeds)
+# F10 — Attack-aggressiveness sweep (PPO + oracle rule × 6 p values × 10 seeds)
 ABLATION_AGGR_RUNS_ROOT ?= runs/ablation/aggressiveness
 
 .PHONY: ablation-aggressiveness-smoke
@@ -257,7 +257,7 @@ ablation-aggressiveness-smoke:  ## Ablation F10 smoke: 2 p values × 1 seed × 5
 	    --smoke --out-root $(ABLATION_AGGR_RUNS_ROOT)
 
 .PHONY: ablation-aggressiveness-sweep
-ablation-aggressiveness-sweep:  ## Ablation F10: PPO × 6 p values × 5 seeds + oracle rule (~1.5 h CPU).
+ablation-aggressiveness-sweep:  ## Ablation F10: PPO × 6 p values × 10 seeds + oracle rule (~1.5 h CPU).
 	$(PYTHON) -m scripts.ablation.run_aggressiveness_sweep \
 	    --seeds $(BLUE_TEAM_SEEDS) \
 	    --total-timesteps $(ABLATION_REWARD_TIMESTEPS) \

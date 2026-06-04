@@ -19,12 +19,12 @@ by a mentor-mode audit on 2026-04-30. All three drive a single
 chapter: *what does the trained RL policy actually accomplish, and
 where does it fail?*
 
-**Strand A — close the deployable +288 gap (D6.2.1, audit AF2).**
-On `test_balanced` the best deployable agent (DQN, +1336) captures
-**82 % of the oracle ceiling** set by the recommended-action rule
-(+1624) — a rule that has *free oracle access* to
+**Strand A — close the deployable gap (D6.2.1, audit AF2).**
+On `test_balanced` (10 seeds × 300 episodes) the best deployable agent
+(A2C, +1336.6) captures **79.3 % of the oracle ceiling** set by the
+recommended-action rule (+1684.8) — a rule that has *free oracle access* to
 `info["attack_stage"]` and is therefore not a deployable defender.
-The remaining +288 reward is the **Phase-7 target**, not the
+The remaining ~+348 reward is the **Phase-7 target**, not the
 Phase-6 loss. Phase 5 D5.4.1 already named the mechanism — the
 Phase-3 de-escalation bonus rewards a strategy that scores well
 in-distribution but does not generalise — so the diagnostic is
@@ -328,10 +328,10 @@ Emits:
   panel (5 panels + 1 binary panel for `impact_is_terminal`),
   each panel showing mean test reward at 0.5× / 1× / 2× with
   95 % bootstrap CIs and a horizontal reference line at the
-  **Phase-6 oracle ceiling +1624** and a second reference line
-  at **Phase-6 deployable best DQN +1336**. The plot makes it
-  visually obvious which component, if any, lifts trained PPO
-  past its own Phase-6 ceiling.
+  **Phase-6 oracle ceiling +1684.8** and a second reference line
+  at **Phase-6 deployable best A2C +1336.6** (10 seeds × 300 ep).
+  The plot makes it visually obvious which component, if any, lifts
+  trained PPO past its own Phase-6 ceiling.
 - `docs/results/07_ablation/F9_summary.json` — per-cell
   aggregate (n_episodes, mean_reward, ci_low, ci_high) +
   per-component slope estimate (linear fit through the 3 points)
@@ -430,7 +430,7 @@ acceptance test for F15; G7.2 for F9; G7.3 for F10; G7.4 for F12).
 | Gate | Threshold | Evaluator |
 |---|---|---|
 | **G7.1** | `pytest -q` ≥ 430 passed; zero new skips | tests run on every commit |
-| **G7.2** | F9 best cell mean test reward ≥ Phase-6 deployable best (DQN +1336) by ≥ 1σ | F9 plotter; **stretch goal**: meet Phase-6 oracle ceiling +1624 |
+| **G7.2** | F9 best cell mean test reward ≥ Phase-6 deployable best (A2C +1336.6) by ≥ 1σ | F9 plotter; **stretch goal**: meet Phase-6 oracle ceiling +1684.8 |
 | **G7.3** | F10 PPO mean test reward at p=0.0 < at p=0.6 by ≥ 1σ; rule curve monotone non-decreasing | F10 plotter |
 | **G7.4** | F12 Pareto frontier has ≥ 3 distinct dominant points (no single config dominates {security, availability}) | F12 plotter |
 | **G7.5** | All Phase-3 frozen tests still PASS with `impact_is_terminal=True` (default); `False` codepath has its own tests (T7.31) | `pytest tests/test_phase3_env_gates.py tests/test_adversarial_env.py tests/test_phase31_impact_terminal.py` |
@@ -540,7 +540,7 @@ D6.8.1).
 | **D7.6** | F15 reuses the **frozen Phase-5 trained checkpoints** (no retraining, even with `impact_is_terminal=True/False` variants). | F15 measures "does the policy already trained on in-distribution data generalise to OOD?" — retraining contaminates that question with "did it learn the OOD class implicitly?" The headline number is what the deployed policy from Phase 5 actually achieves on OOD, full stop. |
 | **D7.7** | All Phase-7 manifests SHA-pin the upstream Phase-5 `sweep_manifest.json` AND the Phase-6 `eval_manifest.json` (where reused). | Reproducibility chain: F15 result → F15_manifest → Phase-6 eval_manifest → Phase-5 sweep_manifest → Phase-1 splits manifest. Same idiom as Phase-6 D6.9. |
 | **D7.8** | F9 / F10 retrains use **`total-timesteps = 250 000`** (Phase-5 D5.3.1) per cell, NOT 500 000. | D5.3.1 locked the 250K budget after the empirical observation that PPO converges between 100K and 250K. Phase-7 sweeps the *env*, not the *training horizon*; comparing cells at the same horizon is the right protocol. The thesis would be confounded if some cells got 250K and others got 500K. |
-| **D7.9** | The G7.2 success criterion uses **DQN's Phase-6 +1336 (deployable best) as the lower bar**, not PPO's +1313. | "Beating Phase-7's own untrained-cell baseline" is the meaningful claim. DQN +1336 is the best deployable Phase-6 number; F9 must move PPO past DQN under at least one sweep cell to count as a positive finding. The +1624 oracle ceiling is the stretch target, not the threshold. |
+| **D7.9** | The G7.2 success criterion uses **A2C's Phase-6 +1336.6 (deployable best, 10 seeds × 300 ep) as the lower bar**. | "Beating Phase-6's deployable baseline" is the meaningful claim. A2C +1336.6 is the best deployable Phase-6 number; F9 must move PPO past A2C under at least one sweep cell to count as a positive finding. The +1684.8 oracle ceiling is the stretch target, not the threshold. |
 | **D7.10** | Phase-7 figures live under `docs/results/07_ablation/` (singular `07_ablation`, not `07_ablations`). | Consistent with `02_red_team`, `03_env`, `04_detector`, `05_blue_team`, `06_benchmark` (each is a single noun-phrase). |
 
 ### Pre-emptive D-decisions (logged here so future agents can find them)

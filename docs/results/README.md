@@ -12,14 +12,11 @@ docs/results/
 ├── 00_phase0_diagnosis.md    # baseline diagnosis of pre-restart results
 ├── 01_dataset/               # Phase 1 — dataset card + EDA-derived plots
 ├── 02_red_team/              # Phase 2 — LSTM Red Team curves and analysis
-├── 03_environment/           # Phase 3 — env sanity checks, reward shape
+├── 03_env/                   # Phase 3 — env sanity checks, reward shape
 ├── 04_detector/              # Phase 4 — supervised detector + RF / 1D-CNN
 ├── 05_blue_team/             # Phase 5 — DQN/PPO/A2C learning curves
 ├── 06_benchmark/             # Phase 6 — RL algorithm benchmark (F5/F6/F7/F8)
-├── 07_ablation/              # Phase 7 — sensitivity and ablation (F9/F10/F12/F15)
-├── 08_robustness/            # Phase 8 — perturbation / drift studies (F13/F14)  [reserved]
-├── 10_release/               # Phase 10 — open-source hygiene + v0.1.0 release tag
-└── thesis_figures.md         # Index: figure id ↔ filename ↔ caption
+└── 07_ablation/              # Phase 7 — sensitivity and ablation (F9/F10/F12/F15)
 ```
 
 ## Phase-1 has no `PLAN.md` / `RESULTS.md` (intentional)
@@ -154,9 +151,9 @@ Every figure committed under `docs/results/<phase>/` MUST be paired with:
     "figure_id": "F3",
     "title": "RL learning curves",
     "produced_by": "scripts/plot_learning_curves.py",
-    "mlflow_run_ids": ["..."],
-    "data_hash": "<sha256 of underlying CSV/JSON>",
-    "git_sha": "<sha at generation time>"
+    "git_sha": "<sha at generation time>",
+    "inputs":  [{"path": "...", "sha256": "<hash>"}],
+    "outputs": [{"path": "F3_learning_curves.png", "sha256": "<hash>"}]
   }
   ```
 

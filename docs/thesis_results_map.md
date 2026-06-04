@@ -8,8 +8,7 @@ be reproducible from the corresponding `produced_by` script.
 > **Convention.** Figures are labeled `F1, F2, …` and tables `T1, T2, …`
 > The labels match the filenames committed under
 > `docs/results/<phase>/`. Chapter and section identifiers refer to the
-> 5-chapter structure locked in
-> [`mentor_review/00_framing.md`](mentor_review/00_framing.md).
+> 5-chapter structure of the dissertation.
 
 ## Thesis-blocking figures (must ship)
 
@@ -20,7 +19,7 @@ be reproducible from the corresponding `produced_by` script.
 | F1  | LSTM Red Team learning curves (loss + token-acc) on synthetic episodes | 2     | Ch. 4   | §4.1    | `scripts/red_team/train_lstm.py` |
 | F2  | LSTM empirical 5×5 transition matrix vs ground truth                   | 2     | Ch. 4   | §4.1    | `scripts/red_team/train_lstm.py` |
 | F11 | Per-stage detection recall (Random Forest + 1D-CNN)                    | 4     | Ch. 4   | §4.2    | `scripts/detector/train_detector.py` (+ plotter) |
-| F3  | RL episodic reward curves (DQN/PPO/A2C × 5 seeds)                      | 5     | Ch. 4   | §4.3    | `scripts/blue_team/plot_learning_curves.py` |
+| F3  | RL episodic reward curves (DQN/PPO/A2C × 10 seeds)                     | 5     | Ch. 4   | §4.3    | `scripts/blue_team/plot_learning_curves.py` |
 | F4  | Action-distribution evolution over training                            | 5     | Ch. 4   | §4.3    | `scripts/blue_team/plot_action_dist.py` |
 | F5  | Final security metrics table (8 policies, bootstrap CIs)               | 6     | Ch. 4   | §4.4    | `scripts/benchmark/build_summary_table.py` |
 | F6  | Stage × action confusion matrices per algorithm                        | 6     | Ch. 4   | §4.4    | `scripts/benchmark/plot_stage_action_cm.py` |
@@ -65,9 +64,8 @@ When a figure is regenerated:
 ## Note on prior IoTWarden alignment claims
 
 Earlier revisions of this file annotated several figures (F1 / F3 /
-F4 / F7 / F10 / T1) as "aligned with IoTWarden Fig. X" or "Tab. I". Per
-[`mentor_review/00_framing.md`](mentor_review/00_framing.md), IoTWarden
-is now scoped as inspiration only and no head-to-head visual or
+F4 / F7 / F10 / T1) as "aligned with IoTWarden Fig. X" or "Tab. I".
+IoTWarden is now scoped as inspiration only; no head-to-head visual or
 numerical comparison is part of the thesis contract. Those alignment
 annotations have been removed; the figures stand on their own as
 direct empirical results on CICIoT2023.

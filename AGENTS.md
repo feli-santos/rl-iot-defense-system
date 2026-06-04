@@ -26,7 +26,7 @@ Pre-commit hooks (ruff, ruff-format, black, isort) run on commit; `make install-
 Adversarial loop: an LSTM **Red Team** (`src/generator/`) emits kill-chain stage
 sequences -> `RealisationEngine` (`src/utils/`) samples a real CICIoT2023 feature
 row for that stage -> `AdversarialIoTEnv` (`src/environment/`, Gymnasium API, 29-feat
-obs, 5 actions OBSERVE/ALERT/ISOLATE/RATE-LIMIT/BLOCK) -> **Blue Team** SB3 agent
+obs, 5 actions OBSERVE/LOG/THROTTLE/BLOCK/ISOLATE) -> **Blue Team** SB3 agent
 (DQN/PPO/A2C via `src/algorithms/`) acts -> kill-chain reward.
 
 `src/` modules map to phases: `generator/`=Phase2, `environment/`=Phase3,

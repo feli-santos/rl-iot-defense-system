@@ -3,12 +3,7 @@
 Welcome to the technical documentation for the **Adversarial IoT
 Defense System**. This doc set targets internal engineers and the
 thesis defense committee, and is aligned with the current
-implementation on branch `feature/reward-shaping`.
-
-> **Looking for the thesis-mentor walkthrough?** See
-> [`mentor_review/`](mentor_review/) — that directory tracks the
-> end-to-end review of every phase / figure / claim that finalises
-> the dissertation.
+implementation on the `main` branch.
 
 ## What this system does
 
@@ -29,11 +24,9 @@ Start with architecture and data flow, then drill into the subsystems and math.
 5. **Environment** → `environment.md`
 6. **Reward shaping** → `reward-shaping.md`
 7. **RL training** → `rl-training.md`
-8. **Benchmarking** → `benchmarking-results.md`
-9. **Configuration & CLI** → `configuration.md`
-10. **Experiments & MLflow** → `experiments-mlflow.md`
-11. **Metrics glossary** → `metrics-glossary.md`
-12. **Design decisions** → `decisions.md`
+8. **Configuration & CLI** → `configuration.md`
+9. **Experiments & MLflow** → `experiments-mlflow.md`
+10. **Design decisions** → `decisions.md`
 13. **Reproducibility** → `reproducibility.md`
 14. **Step-by-step walkthrough** → `walkthrough.md`
 
@@ -42,7 +35,7 @@ Start with architecture and data flow, then drill into the subsystems and math.
 All descriptions are derived from these entry points and modules:
 
 - `main.py`
-- `config.yml`, `config_dry_run.yml`
+- `config.yml`
 - `src/utils/*` (dataset processing, label mapping, realization engine)
 - `src/generator/*` (episode generator, LSTM, transition mask)
 - `src/environment/adversarial_env.py`

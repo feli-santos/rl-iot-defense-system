@@ -2,7 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
-[![Tests: 445 passed](https://img.shields.io/badge/tests-445%20passed-brightgreen.svg)](#)
+[![Tests: 459 passed](https://img.shields.io/badge/tests-459%20passed-brightgreen.svg)](#)
 [![Phases: 0–7 closed](https://img.shields.io/badge/phases-0--7%20closed-brightgreen.svg)](#phases-as-chapters)
 [![Release: v0.2.0](https://img.shields.io/badge/release-v0.2.0-blue.svg)](#)
 
@@ -22,14 +22,16 @@ The thesis chapter rests on **three primary claims** plus one
 pre-registered finding, all backed by gate-passing artefacts under
 [`docs/results/`](docs/results/):
 
-1. **(Phase 6, G6.2 — v0.2.0 primary, 10 seeds)** On `test_balanced` (CICIoT2023, 5-stage kill chain
-   abstraction), trained RL defenders earn **PPO +1334.5 (CI [1317.3, 1352.3]) / A2C +1296.7 /
-   DQN +1218.9 mean reward** vs. an oracle recommended-action ceiling of
-   **+1647.6** (CI [1593.0, 1700.5]) that has free access to the hidden `attack_stage` — i.e.
-   the best deployable RL agent (PPO) captures **81 %** of the oracle ceiling.
-   Among deployable policies, PPO achieves **141× faster inference** than RF-Acting (0.098 ms vs 13.85 ms p50).
-   Non-RL trivial baselines (random, always-OBSERVE, always-BLOCK) never come within 1 σ.
-   *See [`docs/results/06_benchmark/RESULTS.md`](docs/results/06_benchmark/RESULTS.md) and `tex/figs/F5_summary.json`.*
+1. **(G6.2 — primary contract `impact_is_terminal=False`, 10 seeds × 300 episodes)** On `test_balanced`
+   (CICIoT2023, 5-stage kill chain), trained RL defenders earn
+   **A2C +1336.6 (CI [+1286.0, +1376.9]) / PPO +1320.2 / DQN +1313.0 mean reward** vs. an
+   oracle recommended-action ceiling of **+1684.8** (CI [+1645.6, +1723.6]) that has free access
+   to the hidden `attack_stage` — i.e., the best deployable RL agent (A2C) captures **79.3 %** of
+   the oracle ceiling. Among deployable policies, any trained RL algo achieves **~146× faster
+   inference** than RF-Acting (0.095 ms vs 13.83 ms p50). Benign FPR: DQN 6.1 %, PPO 10.2 %,
+   A2C 11.5 %. Non-RL trivial baselines (random, always-OBSERVE, always-BLOCK) never come within
+   1 σ. *See [`docs/results/06_benchmark/RESULTS.md`](docs/results/06_benchmark/RESULTS.md) and
+   `docs/results/06_benchmark/F5_summary.json`.*
 
 2. **(Phase 7, G7.3)** With the Phase-3 reward function held fixed, PPO
    mean reward grows **monotonically** with the
@@ -38,21 +40,26 @@ pre-registered finding, all backed by gate-passing artefacts under
    monotone non-decreasing across the full sweep. *See
    [`docs/results/07_ablation/F10_aggressiveness.png`](docs/results/07_ablation/F10_aggressiveness.png).*
 
-3. **(Phase 7, G7.2 / D7.1.1 partial)** Within the Phase-3 reward
-   formulation, no single-axis 0.5×/2× perturbation of any reward
-   coefficient closes the +288 deployable gap to the oracle ceiling.
-   Recovering **71 %** of the gap required a *structural* env-semantics
-   change (`impact_is_terminal=False`), which raises the **mitigated-
-   impact rate** from DQN's 0.153 to **0.900 (5.9 ×)** while keeping
-   mean reward within seed-noise of the oracle. *See [`docs/results/07_ablation/F9_reward_ablation.png`](docs/results/07_ablation/F9_reward_ablation.png).*
+3. **(G7.2 / D7.1.1 partial)** Within the Phase-3 reward formulation,
+   no single-axis 0.5×/2× perturbation of any reward coefficient closes
+   the deployable gap to the oracle ceiling. A *structural* env-semantics
+   change (`impact_is_terminal=False`) is the highest-impact lever: in an
+   ablation probe (PPO-only, n=30 episodes), it raises the mitigated-impact
+   rate from 0.153 to **0.840** (5.5×) and mean reward to **+1544.4**. At
+   full benchmark scale (n=300, 10 seeds, all three algorithms), the trained
+   policies under this primary contract achieve mitigated-impact rates of
+   **0.26–0.32** — a genuine improvement over the mis-specified baseline,
+   while demonstrating that reward-mis-specification is the principal
+   limitation. *See [`docs/results/07_ablation/F9_reward_ablation.png`](docs/results/07_ablation/F9_reward_ablation.png).*
 
 **Pre-registered finding (G7.9, D7.9.1).** On the held-out OOD class
 `VulnerabilityScan`, RL is **robust to** but not **better at** the
-distribution shift: DQN's mean OOD reward (+1313) is within seed-noise
-of its in-distribution mean (+1336). RF-acting's higher OOD reward
-(+1611) is *not* evidence of RF working (recall = 0.001) — it is
-evidence that "do nothing" is locally good when the reward is dominated
-by avoiding disproportionate-penalty costs. *See [`docs/results/07_ablation/F15_ood_robustness.png`](docs/results/07_ablation/F15_ood_robustness.png) and §6.2 of `docs/results/07_ablation/RESULTS.md`.*
+distribution shift: PPO's mean OOD reward (+1355.2) is within seed-noise
+of its in-distribution mean (+1320.2). RF-acting's higher OOD reward
+(+1680.0, Δ = −324.8 vs PPO) is *not* evidence of RF working
+(detector recall = 0.001) — it is evidence that "do nothing" is locally
+rewarded when the reward is dominated by avoiding disproportionate-penalty
+costs. *See [`docs/results/07_ablation/F15_ood_robustness.png`](docs/results/07_ablation/F15_ood_robustness.png) and §6.2 of `docs/results/07_ablation/RESULTS.md`.*
 
 ---
 
@@ -72,11 +79,11 @@ rl-iot-defense-system/
 ├── scripts/                  # Phase-pinned runners, plotters, gate evaluators
 │   ├── data/  red_team/  detector/  blue_team/  benchmark/  ablation/
 │   └── (each subdir is owned by exactly one phase; see Makefile)
-├── tests/                    # 445 unit + integration tests (pytest)
+├── tests/                    # 459 unit + integration tests (pytest)
 ├── docs/results/             # Canonical thesis figures + RESULTS chapters
 │   ├── 00_phase0_diagnosis.md
 │   ├── 01_dataset/   02_red_team/   03_env/   04_detector/
-│   ├── 05_blue_team/ 06_benchmark/  07_ablation/  10_release/
+│   ├── 05_blue_team/ 06_benchmark/  07_ablation/
 │   └── (each chapter has PLAN.md + RESULTS.md + G<N>_scoreboard.json
 │        + manifests + figures)
 ├── docs/                     # Method/architecture/decisions docs
@@ -113,8 +120,8 @@ tag) is documentation-only.
 | **2** | LSTM Red Team | F1 (training curves) · F2 (5×5 transition matrix vs ground-truth) | G2: token-acc ≥ chance + transition L1 ≤ τ |
 | **3** | Environment v2 | `AdversarialIoTEnv` (Gymnasium); 29-feature obs; 5 actions; kill-chain reward | G3.1–G3.6 PASS (env contracts + reward shape) |
 | **4** | Stage detector | F11 per-stage recall (Random Forest + 1D-CNN); RF-acting baseline export | G4 PASS — but `VulnerabilityScan` recall = 0.001 (audit-AF1 surface) |
-| **5** | RL Blue Team | F3 (reward curves DQN/PPO/A2C × 5 seeds) · F4 (action distribution evolution) · T1 (hyperparams) | G5 PASS — all three algorithms converge above random |
-| **6** | RL benchmark | F5 (security metrics) · F6 (stage × action confusion) · F7 (latency CDF + train time) · F8 (RL vs non-RL baselines) | G6 PASS — DQN/PPO/A2C beat all 5 baselines; oracle ceiling reframed (D6.2.1, audit-AF2) |
+| **5** | RL Blue Team | F3 (reward curves DQN/PPO/A2C × 10 seeds) · F4 (action distribution evolution) · T1 (hyperparams) | G5 PASS — all three algorithms converge above random |
+| **6** | RL benchmark | F5 (security metrics) · F6 (stage × action confusion) · F7 (latency CDF + train time) · F8 (RL vs non-RL baselines) | G6 PASS — A2C best deployable RL (+1336.6); oracle ceiling +1684.8 (reframed D6.2.1, audit-AF2) |
 | **7** | Ablations + OOD | F9 (reward sweep) · F10 (aggressiveness) · F12 (Pareto) · F15 (held-out OOD class) | **7 PASS / 2 FAIL-WITH-FINDING** — both FAIL gates pre-registered (R7.3, D7.9.1) |
 
 ### Phase reproduction recipes
@@ -128,7 +135,7 @@ make dataset                 # Phase 1: Dataset splits + F0 (~1 min)
 make red-team                # Phase 2: LSTM Red Team training + F1/F2 (~80 s)
 make detector                # Phase 4: Stage detector (RF + 1D-CNN) + F11 (~3-5 min)
 make blue-team-smoke         # Phase 5 smoke: PPO seed 0, 5K steps (~20 s)
-make blue-team               # Phase 5: Full sweep DQN/PPO/A2C × 5 seeds + F3/F4/T1 (~3-7 h CPU)
+make blue-team               # Phase 5: Full sweep DQN/PPO/A2C × 10 seeds + F3/F4/T1 (~3-7 h CPU)
 make benchmark-smoke         # Phase 6 smoke: 1 algo × 1 seed × 2 episodes (~20 s)
 make benchmark               # Phase 6: Eval + F5/F6/F7/F8 (~10 min CPU after blue-team)
 make ablation-ood-smoke      # Phase 7 smoke: 1 OOD class × 2 policies × 1 seed × 2 ep (~10 s)
@@ -141,15 +148,15 @@ make ablation                # Phase 7: Full F9/F10/F12/F15 + closeout (~7.5 h C
 
 | Gate | Threshold | Status | Headline value |
 |---|---|:---:|---|
-| **G7.1** | `pytest -q` ≥ 430 passed; zero new skips | **PASS** | 411 passed (Phase-10 baseline; was 454 pre-cleanup) |
-| **G7.2** | F9 best reward-comparable mean test reward > Phase-6 DQN +1336 by ≥ 1 σ | **PASS-WITHOUT-STRETCH** | reward-comparable best = `impact_is_terminal_false` (+1542); security-KPI mit-rate = 0.900 |
+| **G7.1** | `pytest -q` ≥ 430 passed; zero new skips | **PASS** | 459 passed |
+| **G7.2** | F9 best reward-comparable mean test reward > Phase-6 deployable best by ≥ 1 σ | **PASS-WITHOUT-STRETCH** | ablation probe best = `impact_is_terminal_false` PPO +1544.4; benchmark-scale mit-rate = 0.26–0.32 |
 | **G7.3** | PPO p = 0.0 < p = 0.6 by ≥ 1 σ AND rule monotone | **PASS** | p = 0.0 CI (134, 141); p = 0.6 CI (1280, 1359) |
 | **G7.4** | Pareto frontier ≥ 3 distinct dominant points | **FAIL-WITH-FINDING (R7.3)** | n_distinct = 1 / 32 — trade-off surface is ~linear |
 | **G7.5** | Phase-3 frozen tests pass with `impact_is_terminal=True` | **PASS** | full pytest green |
 | **G7.6** | No regression on Phase-3/4/5/6 frozen tests | **PASS** | — |
 | **G7.7** | F9 / F10 / F12 / F15 manifests SHA-pinned | **PASS** | all 4 present |
 | **G7.8** | F15 4 × 8 OOD matrix complete, no NaN | **PASS** | 32 / 32 cells |
-| **G7.9** | On VulnerabilityScan, trained RL > RF-acting by ≥ 1 σ | **FAIL-WITH-FINDING (D7.9.1)** | DQN +1313 vs RF +1611 (Δ = −298) |
+| **G7.9** | On VulnerabilityScan, trained RL > RF-acting by ≥ 1 σ | **FAIL-WITH-FINDING (D7.9.1)** | PPO +1355.2 vs RF +1680.0 (Δ = −324.8) |
 
 Both FAIL gates were **pre-registered** in `docs/results/07_ablation/PLAN.md` §6/§8 — neither is a goalpost move.
 
@@ -172,9 +179,9 @@ Both FAIL gates were **pre-registered** in `docs/results/07_ablation/PLAN.md` §
 │   │  chain episodes     │         │   (window=5, deltas on)        │ │
 │   └─────────────────────┘         │                                │ │
 │            │                      │   5 actions (force continuum): │ │
-│            │ stage label          │     OBSERVE / ALERT /          │ │
-│            ▼                      │     ISOLATE / RATE-LIMIT /     │ │
-│   ┌─────────────────────┐         │     BLOCK                      │ │
+│            │ stage label          │     OBSERVE / LOG /            │ │
+│            ▼                      │     THROTTLE / BLOCK /         │ │
+│   ┌─────────────────────┐         │     ISOLATE                    │ │
 │   │  RealisationEngine  │         └────────────────────────────────┘ │
 │   │  (Phase 1)          │                       │                    │
 │   ├─────────────────────┤                       │ action             │
@@ -217,7 +224,7 @@ cd rl-iot-defense-system
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
-make test                    # 445 passed in ~60-90 s on CPU
+make test                    # 459 passed in ~60-90 s on CPU
 ```
 
 ### Dataset
@@ -287,7 +294,7 @@ authoring conventions.
 - **Deterministic**: dataset splits (Phase 1), kill-chain stage labels
   (Phase 4 prep), all `manifest.json` hashes (modulo Python and library
   patch versions; see `requirements.txt` for pinned versions).
-- **Seeded**: RL training (5 seeds per algo, exposed via
+- **Seeded**: RL training (10 seeds per algo, exposed via
   `--seed N`), evaluation episode rollouts (per-seed RNG; bootstrap CIs
   reported throughout RESULTS).
 
@@ -317,8 +324,8 @@ Notable differences from IoTWarden's setup:
   kill-chain episodes (Phase 2) and use its sampled stage trajectory
   to drive the realisation engine.
 - **Action space.** IoTWarden uses a binary block-or-not action. We
-  use a 5-level graduated **force continuum** (OBSERVE → ALERT →
-  ISOLATE → RATE-LIMIT → BLOCK), which lets the policy under- and
+  use a 5-level graduated **force continuum** (OBSERVE → LOG →
+  THROTTLE → BLOCK → ISOLATE), which lets the policy under- and
   over-react in measurable ways.
 - **Reproducibility.** We ship a hash-chain-pinned set of
   `make phase-N` recipes that regenerate every figure end-to-end.
@@ -333,8 +340,8 @@ seeds our oracle baseline policy.
 ## Operating principles
 
 The eight closed phases share a common protocol that the codebase enforces.
-The current state-of-the-thesis review is tracked in
-[`docs/mentor_review/`](docs/mentor_review/); see also
+The revision history and all locked empirical decisions are tracked in
+[`docs/results/`](docs/results/) (per-phase `PLAN.md` + `RESULTS.md`); see also
 [`docs/archive/HANDOFF.md`](docs/archive/HANDOFF.md) for the historical Phase-7→10
 handoff record.
 
@@ -360,7 +367,7 @@ handoff record.
 ## Tests
 
 ```bash
-make test                    # 445 passed in ~60-90 s on CPU
+make test                    # 459 passed in ~60-90 s on CPU
 make test-cov                # with coverage
 ```
 
@@ -379,7 +386,7 @@ parsers):
 
 Real-data smoke tests are guarded with
 `pytest.skipif(not Path('data/processed/...').exists(), ...)`; the
-445 reported above is the synthetic-only count.
+459 reported above is the synthetic-only count.
 
 ---
 

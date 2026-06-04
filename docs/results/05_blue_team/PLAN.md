@@ -14,7 +14,7 @@ in-distribution split, can defend an IoT host through the kill chain.
 
 It supplies two of the three Tier-1 thesis figures:
 
-- **F3** — RL episodic reward curves (DQN / PPO / A2C × 5 seeds), aligned
+- **F3** — RL episodic reward curves (DQN / PPO / A2C × 10 seeds), aligned
   with IoTWarden Fig. 4(a).
 - **F4** — Action-distribution evolution over training, aligned with
   IoTWarden Fig. 5.

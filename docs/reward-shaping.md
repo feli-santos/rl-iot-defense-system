@@ -29,8 +29,9 @@ The reward has **six independent reward signals**:
 3. **Terminal-IMPACT penalty** ``- impact_penalty`` — applied
    unconditionally when the episode terminates at IMPACT (either
    via the inline-terminal path with `impact_is_terminal=True`
-   default, or via `_step_at_impact` when the env passes through
-   IMPACT and grants the agent a final mitigation turn).
+   [reward-mis-specification case study], or via `_step_at_impact` when
+   the env passes through IMPACT and grants the agent a final mitigation
+   turn [primary contract: `impact_is_terminal=False`]).
 4. **Terminal-IMPACT mitigation bonus** ``+ defense_success_bonus``
    — earned when the agent picks BLOCK or ISOLATE at IMPACT *and*
    when the env de-escalates from MANEUVER/IMPACT to BENIGN
