@@ -249,3 +249,18 @@ stage by the RealizationEngine (this is the dataset's load-bearing role).
   5-pillar shape, LSTM→Markov drop, finite-budget spec, evasion-before-commit reactive attacker,
   kill-chain-stays + face-validity strategy, rename taxonomy (pure-delete; this file = sole record),
   drift register D1–D10 + D-OOD/D-MIRAI, caveat ledger C1–C9 (incl. confirmed C9 eval-env bug).
+- Phase B — scope LOCKED by user: **full rename now** (code + all artifacts + docs), landed as
+  **ONE atomic green-verified commit** (user choices m0083, m0092). Contract: `pytest` (459) +
+  `make verify-fresh` GREEN before and after; OLD data only (no experiment re-run).
+  Coupling map (read from source): the 3 thesis scripts use HARDCODED paths spanning multiple dirs —
+  `render_tables.py:22-26` (F5/F7/F9/G6/benign_fpr), `verify_fresh.py:27-63` DERIVED registry
+  (numbers.tex/tables.tex/G6/G7/RESULTS_INDEX.md ← source JSONs), `gen_results_index.py` explicit
+  `RESULTS_DIR/"06_benchmark/F5_summary.json"` etc. Other functional path strings: argparse
+  `--out-dir` defaults in every `scripts/*/plot_*.py`+`close_*.py`+`train_*.py`+`build_summary_table.py`;
+  `reproducibility_smoke.py:91-108` manifest+scoreboard registry; `Makefile` `*_OUT_DIR` vars +
+  `sync-figures` cp targets (:339-348); `tests/test_render_tables.py:16-25` hardcoded F5 path;
+  `tex/` prose (`apendice/methodology/results.tex`) + dual manifests under `tex/figs/F*_manifest.json`.
+  Mostly functional (argparse defaults/registries/loads), NOT just prose. verify_fresh treats
+  G6/G7 scoreboards + RESULTS_INDEX.md as DERIVED — registry must move in lockstep.
+  Plan: `git mv` dirs+files → fix all refs → `make render-tables gen-results-index` (regen from
+  EXISTING JSON, no re-run) → pytest + verify-fresh → single commit.
