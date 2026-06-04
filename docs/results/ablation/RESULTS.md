@@ -98,10 +98,10 @@ and PLAN §8 (D7.9.1 placeholder → G7.9); neither is a late goalpost-move.
 | `scripts/ablation/run_aggressiveness_sweep.py` | F10 6-p-value PPO sweep + oracle-rule reference rolls. |
 | `scripts/ablation/plot_aggressiveness.py` | F10 plotter + G7.3 evaluator. |
 | `scripts/ablation/plot_pareto.py` | F12 Pareto-frontier plot + G7.4 evaluator. |
-| `scripts/ablation/close_phase7.py` | Closer: assembles `ablation_acceptance.json` + CHANGELOG block. |
+| `scripts/ablation/close_ablation.py` | Closer: assembles `ablation_acceptance.json` + CHANGELOG block. |
 | `tests/test_phase31_impact_terminal.py` | Tests pinning the `impact_is_terminal` codepath. |
 | `tests/test_train_agent_reward_overrides.py` | Tests pinning the CLI override plumbing. |
-| `tests/test_close_phase7_parsers.py` | Tests pinning the two-strand G7.2 evaluator. |
+| `tests/test_close_ablation_parsers.py` | Tests pinning the two-strand G7.2 evaluator. |
 
 ## 5 — Cross-stage findings discovered during ablation
 
@@ -130,7 +130,7 @@ G7.2 PASSES iff strand 1 holds (it does — `impact_is_terminal_false` at +1544.
 
 ### 5.3 Stage-7 closer pytest-summary parser bug
 
-The first `close_phase7` run reported G7.1 `passes: false` despite "442
+The first `close_ablation` run reported G7.1 `passes: false` despite "442
 passed, 2 warnings". Cause: parser gated on `proc.returncode == 0`
 (unreliable). Fixed to gate on `passed > 0 and failed == 0 and errors == 0`.
 
@@ -261,7 +261,7 @@ To regenerate from scratch on a fresh checkout:
 make blue-team               # ~1.3 h CPU (30 runs)
 make benchmark               # ~10 min CPU
 make ablation                # ~7.5 h CPU walk-away
-python -m scripts.ablation.close_phase7  # assemble G7 scoreboard
+python -m scripts.ablation.close_ablation  # assemble G7 scoreboard
 make render-tables           # regenerate tex/generated/*.tex
 make verify-fresh            # CI gate: derived artifacts match canonical JSONs
 ```

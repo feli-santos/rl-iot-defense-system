@@ -47,8 +47,8 @@
 > **Reproducibility:** F8 is generated *from* `main_results.json`
 > (single source of truth for per-policy means + bootstrap CIs).
 > `reward_ranking_manifest.json` hash-pins main_results.json and the upstream
-> `runs/phase6/eval_manifest.json` plus the producing git SHA. No
-> retraining occurred; checkpoints are the Phase-5 `runs/phase5/`
+> `runs/benchmark/eval_manifest.json` plus the producing git SHA. No
+> retraining occurred; checkpoints are the Phase-5 `runs/blue_team/`
 > artefacts evaluated deterministically on test_balanced.
 
 **Files:**

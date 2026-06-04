@@ -279,8 +279,8 @@ The manifests form a **hash chain** anchored at `data/processed/ciciot2023/`
 the chain end-to-end with:
 
 ```bash
-python -m scripts.benchmark.run_test_eval --verify-manifests   # Phase 6
-python -m scripts.ablation.close_phase7   --verify-manifests   # Phase 7
+python -m scripts.reproducibility_smoke           # verify all manifests
+python -m scripts.reproducibility_smoke --strict  # exit 1 on any hash miss
 ```
 
 A figure that doesn't have a manifest (or whose hashes don't reconcile)
@@ -382,7 +382,7 @@ parsers):
 | `test_detector.py` | Phase 4 — supervised stage detector |
 | `test_blue_team_*.py` · `test_train_agent_reward_overrides.py` | Phase 5/7 — Blue Team training |
 | `test_baseline_policies.py` · `test_benchmark_eval_runner.py` · `test_benchmark_latency.py` | Phase 6 — RL benchmark |
-| `test_close_phase7_parsers.py` | Phase 7 — gate-evaluator parsers (audit-fix `7537493`) |
+| `test_close_ablation_parsers.py` | Phase 7 — gate-evaluator parsers (audit-fix `7537493`) |
 
 Real-data smoke tests are guarded with
 `pytest.skipif(not Path('data/processed/...').exists(), ...)`; the

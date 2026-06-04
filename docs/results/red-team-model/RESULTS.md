@@ -62,7 +62,7 @@ same attack-class distribution the model was trained on.
 | **F2** | `transition_matrix_comparison.png` | 5×5 transition-matrix grid: LSTM-implied (right) vs. ground-truth-from-corpus (left); the visual G3+G4 evidence. |
 | **Captions** | `learning_curves.caption.md`, `transition_matrix_comparison.caption.md` | One-paragraph thesis-paper captions per figure. |
 | **Manifest** | `manifest.json` | SHA-256 hash chain over the Phase-1 splits manifest input + the three deliverable outputs + git SHA `283ca29e`. |
-| **Trained checkpoint** (gitignored) | `artifacts/generator/phase2/attack_sequence_generator.pth` | Final LSTM weights (SHA `afd70432...`); consumed at runtime by every downstream phase via `RealizationEngine` + `AttackSequenceGenerator`. Step-6 F3 / Step-8 task #3 explicitly pins this SHA in `runs/phase6/eval_manifest.json::input_hashes.phase2_lstm` (post-Step-8 schema v1.1 of `run_test_eval.py`). |
+| **Trained checkpoint** (gitignored) | `artifacts/generator/phase2/attack_sequence_generator.pth` | Final LSTM weights (SHA `afd70432...`); consumed at runtime by every downstream phase via `RealizationEngine` + `AttackSequenceGenerator`. Step-6 F3 / Step-8 task #3 explicitly pins this SHA in `runs/benchmark/eval_manifest.json::input_hashes.phase2_lstm` (post-Step-8 schema v1.1 of `run_test_eval.py`). |
 
 ## 4 — Code summary
 
@@ -219,7 +219,7 @@ byte-perfect at commit `283ca29e`, the manifest input SHA
 `82aa1214...` is preserved as the historically-accurate input the
 weights were fitted against, and this RESULTS §5.3 paragraph
 records the rationale for not re-running. The Phase-2 LSTM SHA
-(`afd70432...`) is now explicitly pinned in `runs/phase6/eval_manifest.json::
+(`afd70432...`) is now explicitly pinned in `runs/benchmark/eval_manifest.json::
 input_hashes.phase2_lstm` (Step-6 F3 / Step-8 task #3) so the
 *Phase-6* hash chain references the LSTM directly rather than
 relying on Phase-2's pre-`3cd2fb9` Phase-1 reference.

@@ -105,7 +105,7 @@ or scoped their numerical record into a different artefact:
 
 ⁵ Phase 5 emits per-figure manifests (`F3_manifest.json`,
   `F4_manifest.json`, `T1_hparams.json`) plus
-  `runs/phase5/<algo>/seed_<k>/run_manifest.json` records on the
+  `runs/blue_team/<algo>/seed_<k>/run_manifest.json` records on the
   per-run side. The hash chain back to the post-`3cd2fb9` Phase-1
   splits manifest is *implicit* (path strings in run-manifests, not
   SHAs in a top-level Phase-5 manifest). Step-5 F2 surfaced this;
@@ -114,7 +114,7 @@ or scoped their numerical record into a different artefact:
   are unchanged byte-for-byte).
 
 ⁶ Phase 6 emits per-figure manifests (`F5/F6/F7/F8_manifest.json`)
-  + the run-side `runs/phase6/eval_manifest.json` (gitignored).
+  + the run-side `runs/benchmark/eval_manifest.json` (gitignored).
   Each per-figure manifest pins the run-side `eval_manifest.json`
   by SHA; the chain is explicit at the figure level.
 

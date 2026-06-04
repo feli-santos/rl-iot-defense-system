@@ -328,7 +328,7 @@ def _evaluate_g72(
         "deployable_best_mitigated": deployable_best_mitigated,
         "oracle_ceiling": oracle_ceiling,
         "meets_oracle_ceiling_stretch": meets_oracle_strand1,
-        # Legacy fields preserved (close_phase7 reads these). They
+        # Legacy fields preserved (close_ablation reads these). They
         # now point at the reward-comparable strand to match the
         # canonical gate.
         "best_cell": best_rc["cell_id"] if best_rc else raw_winner["cell_id"],

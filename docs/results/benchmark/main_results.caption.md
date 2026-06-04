@@ -35,10 +35,10 @@
 > revision).
 >
 > *Reproducibility:* every input JSONL and the upstream
-> `runs/phase6/eval_manifest.json` are SHA-256 hash-pinned in
+> `runs/benchmark/eval_manifest.json` are SHA-256 hash-pinned in
 > `main_results_manifest.json`; the producing git SHA is recorded there. No
 > retraining was performed — checkpoints are the Phase-5
-> `runs/phase5/<algo>/seed_<k>/model.zip` artefacts evaluated
+> `runs/blue_team/<algo>/seed_<k>/model.zip` artefacts evaluated
 > deterministically on `test_balanced`.
 
 **Files:**

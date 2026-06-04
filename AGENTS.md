@@ -20,6 +20,8 @@ pytest tests/test_adversarial_env.py::TestX::test_y   # single test
 Order that matters for commits/CI: **format -> lint -> test**. CI (`.github/workflows/ci.yml`)
 runs `ruff check`, `black --check`, then `pytest -q --cov` on Python 3.10 and 3.11.
 Pre-commit hooks (ruff, ruff-format, black, isort) run on commit; `make install-dev` installs them.
+The dev lint/format tools (ruff, black, pre-commit) are **not** in the project `.venv` — they are
+system-level only. Run `make install-dev` to install them into the dev environment.
 
 ## Architecture (phase = chapter)
 
@@ -43,9 +45,9 @@ Kill-chain stages (5): `0 BENIGN, 1 RECON, 2 ACCESS, 3 MANEUVER, 4 IMPACT`
   so a missing key silently uses the code default — grep both places when changing a param.
 - **Reproducibility = hash chains.** Every thesis figure under `docs/results/<area>/`
   ships a sibling `manifest.json` (git SHA + input/output SHA-256). A figure without a
-  reconciling manifest is not "defense-ready". Verify with
-  `python -m scripts.benchmark.run_test_eval --verify-manifests` and
-  `python -m scripts.ablation.close_phase7 --verify-manifests`.
+  reconciling manifest is not "defense-ready". Verify the chain end-to-end via the
+  reproducibility-smoke harness: `python -m scripts.reproducibility_smoke`
+  (`--strict` to exit 1 on any hash miss).
 - **Gitignored / machine-local:** `data/`, `runs/`, `artifacts/`, `mlruns/`, `results/`.
   Raw CICIoT2023 CSVs are NOT in the repo (CIC license); they go in `data/raw/ciciot2023/`.
 - **Generator path auto-detection:** `main.py:get_generator_path` finds the latest

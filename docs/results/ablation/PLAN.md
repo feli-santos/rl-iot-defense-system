@@ -65,10 +65,10 @@ the answer.
 ### 2.1 — What exists on disk and is reusable
 
 - **15 trained Phase-5 PPO/DQN/A2C checkpoints** at
-  `runs/phase5/<algo>/seed_<k>/model.zip` (verified present
+  `runs/blue_team/<algo>/seed_<k>/model.zip` (verified present
   locally; `sweep_manifest.json` SHA-pins all 15).
 - **8 Phase-6 baseline rollouts** at
-  `runs/phase6/<policy>/seed_<k>/{eval_test,latency}.jsonl`
+  `runs/benchmark/<policy>/seed_<k>/{eval_test,latency}.jsonl`
   (verified present; `eval_manifest.json` is the canonical pin).
 - **Phase-6 `eval_runner.run_policy(...)`** accepts any
   `Policy`-Protocol callable and any `gymnasium.Env`. The signature
@@ -220,8 +220,8 @@ CLI:
 ```
 --ood-classes STR[,STR,...]     # default 'DDoS-HTTP_Flood,Mirai-udpplain,VulnerabilityScan,XSS'
 --policies STR[,STR,...]        # default all 8
---phase5-runs DIR               # default runs/phase5
---phase6-runs DIR               # default runs/phase6
+--phase5-runs DIR               # default runs/blue_team
+--phase6-runs DIR               # default runs/benchmark
 --out-dir DIR                   # default runs/phase7/ood
 --n-episodes INT                # default 30 (Phase-6 D6.3)
 --seeds INT[,INT,...]           # default 0,1,2,3,4
@@ -235,7 +235,7 @@ CLI:
 `RealizationEngine.from_split_manifest(..., split_name=f"ood_attack/{class}", exclude_ood=False)`,
 build `AdversarialEnv` with the Phase-3 frozen config, load the
 policy (rule, RF-Acting, DQN/PPO/A2C from
-`runs/phase5/<algo>/seed_<k>/model.zip`, random,
+`runs/blue_team/<algo>/seed_<k>/model.zip`, random,
 always-OBSERVE, always-BLOCK), and call `run_policy(...)` for
 30 episodes. Emit
 `runs/phase7/ood/<class>/<policy>/seed_<k>/eval_test.jsonl`
@@ -565,7 +565,7 @@ D6.8.1).
   G7.2 evaluator gained a two-strand definition (raw-reward
   apples-to-apples + security-KPI fallback) so future Phase-7
   re-runs cannot mistake reward-coefficient scaling for policy
-  improvement (see `tests/test_close_phase7_parsers.py` for the
+  improvement (see `tests/test_close_ablation_parsers.py` for the
   pinned logic). Original G7.2 threshold preserved verbatim in
   `ablation_acceptance.json#gates[1].threshold`. See RESULTS.md §6.1
   for the full chapter narrative.

@@ -67,8 +67,8 @@ rule-based baseline.
 - **`run_config.py::EnvConfigSerializable`** — freezes the env config
   hash so eval-time env matches training-time env.
 
-`runs/phase5/<algo>/seed_<k>/model.zip` — 15 trained checkpoints
-(3 algos × 5 seeds), with `runs/phase5/sweep_manifest.json` recording
+`runs/blue_team/<algo>/seed_<k>/model.zip` — 15 trained checkpoints
+(3 algos × 5 seeds), with `runs/blue_team/sweep_manifest.json` recording
 training wallclock per run (input to F7's right panel).
 
 ### A2. The Phase-3 env exposes everything Phase 6 baselines need
@@ -107,7 +107,7 @@ defense.
 ### A4. The Phase-5 frozen checkpoints are on disk
 
 ```
-runs/phase5/
+runs/blue_team/
 ├── a2c/seed_{0..4}/model.zip
 ├── dqn/seed_{0..4}/model.zip
 ├── ppo/seed_{0..4}/model.zip
@@ -153,10 +153,10 @@ treats them as **read-only inputs**; no retraining.
 | `src/benchmark/eval_runner.py` | `run_policy(policy, env, n_episodes, jsonl_path, run_id, *, latency_path=None, deterministic=True, seed=None)` — rolls the policy, writes EpisodeRecord-v1.0 JSONL, optional sidecar latency JSONL. | ~120 |
 | `src/benchmark/latency.py` | `measure_inference_latency(policy_callable, obs_pool, *, n_warmup=100, n_measure=1000) -> np.ndarray` (ns-precision via `time.perf_counter_ns`). | ~60 |
 | `scripts/benchmark/__init__.py` | empty | 1 |
-| `scripts/benchmark/run_test_eval.py` | CLI: rolls the 15 trained checkpoints + 5 baselines on `test_balanced` (30 episodes × 5 seeds for non-deterministic baselines, or 1 seed × 30 episodes for deterministic ones); writes to `runs/phase6/<policy>/seed_<k>/eval_test.jsonl` (+ `latency.jsonl`); produces `runs/phase6/eval_manifest.json` with SHA-256 of every input + git SHA. | ~180 |
+| `scripts/benchmark/run_test_eval.py` | CLI: rolls the 15 trained checkpoints + 5 baselines on `test_balanced` (30 episodes × 5 seeds for non-deterministic baselines, or 1 seed × 30 episodes for deterministic ones); writes to `runs/benchmark/<policy>/seed_<k>/eval_test.jsonl` (+ `latency.jsonl`); produces `runs/benchmark/eval_manifest.json` with SHA-256 of every input + git SHA. | ~180 |
 | `scripts/benchmark/build_summary_table.py` (**F5**) | reads all eval JSONLs + latency JSONLs → `docs/results/benchmark/main_results.{json,md,csv,png}` + `main_results_manifest.json`. Columns: `mean_reward`, `mean_mttc`, `compromise_rate`, `mitigated_impact_rate`, `mean_episode_length`, `mean_inference_latency_ms`, `p95_inference_latency_ms`. | ~150 |
 | `scripts/benchmark/plot_stage_action_cm.py` (**F6**) | one 5×5 row-normalised heatmap per algo from `action_counts_by_stage` aggregated across 5 seeds × 30 episodes; → `stage_action_cm.png` + `stage_action_proportionality.json` + `stage_action_proportionality_manifest.json`. | ~120 |
-| `scripts/benchmark/plot_overhead.py` (**F7**) | left panel: per-step inference latency CDF (one curve per policy) from `latency.jsonl`; right panel: training-time bar from `runs/phase5/sweep_manifest.json` (sum-over-seeds wallclock per algo). → `overhead.png` + `latency_profile.json` + `latency_profile_manifest.json`. | ~140 |
+| `scripts/benchmark/plot_overhead.py` (**F7**) | left panel: per-step inference latency CDF (one curve per policy) from `latency.jsonl`; right panel: training-time bar from `runs/blue_team/sweep_manifest.json` (sum-over-seeds wallclock per algo). → `overhead.png` + `latency_profile.json` + `latency_profile_manifest.json`. | ~140 |
 | `scripts/benchmark/plot_baselines.py` (**F8**) | bar of `mean_reward` across all 8 policies with 95 % bootstrap CI; horizontal line at `recommended_action` floor for visual reference. → `baselines.png` + `reward_ranking.json` + `reward_ranking_manifest.json`. | ~110 |
 
 ### 3.2 OPTIONAL — Phase-3.1 patch (`impact_is_terminal`) — DEFERRED
@@ -202,7 +202,7 @@ Target: **376 → 388–392 passed** (12–16 new tests).
   recommended-action; RF-acting-policy = Phase-4 RandomForest stage
   classifier composed with the recommended-action mapping). Bold = best
   per column; † = within 95 % bootstrap CI of the best. No retraining
-  was performed; checkpoints are the Phase-5 `runs/phase5/` artefacts."
+  was performed; checkpoints are the Phase-5 `runs/blue_team/` artefacts."
 - **F6** — 1×3 grid of 5×5 row-normalised heatmaps (rows: kill-chain
   stage 0=BENIGN..4=IMPACT; cols: action 0=OBSERVE..4=ISOLATE). Diagonal
   band (|a−rec(s)|≤1) highlighted; G6.3 score printed as a sub-caption
@@ -251,7 +251,7 @@ Total: ~1 day author time; <30 min CPU wallclock.
 | **R6.3** | Latency measurement is noisy on macOS (no isolated CPUs, JIT warmup). | `measure_inference_latency` uses n_warmup=100 + n_measure=1000; figures use **CDF + median + p95 + p99** (robust to outliers); accept 2–3× pessimism vs. server hardware; document the measurement environment in F7 manifest (`platform.platform()`, `platform.processor()`). |
 | **R6.4** | F6 G6.3 fails because trained agents over-de-escalate (G5.4 finding) and the action histogram lives outside the proportionality band. | Gate G6.3 already excludes IMPACT stages by construction (D6.7). If still fails, escalate to `PASS-WITH-FINDING` like G5.4 — narrow gate further to BENIGN-only and document in §8 as `D6.3.1`. Do **not** silently relax. |
 | **R6.5** | Phase-3 frozen tests start failing because something Phase 6 touched in `src/environment/` regressed the contract. | Hard-stop: G6.6 forbids any change to `src/environment/`. Phase 6 is purely a consumer. CI: `pytest -q tests/test_phase3_env_gates.py tests/test_adversarial_env.py` runs after every Phase-6 commit. |
-| **R6.6** | `runs/phase5/` is missing on the machine (gitignored), blocking the C3 sweep. | C3 will refuse to run with a clear error message pointing to `make phase-5-sweep PHASE5_TIMESTEPS=250000` (~108 min CPU). Does not block C2 (synthetic-only tests). |
+| **R6.6** | `runs/blue_team/` is missing on the machine (gitignored), blocking the C3 sweep. | C3 will refuse to run with a clear error message pointing to `make phase-5-sweep PHASE5_TIMESTEPS=250000` (~108 min CPU). Does not block C2 (synthetic-only tests). |
 | **R6.7** | The RF model loaded from `artifacts/detector/random_forest.joblib` was fitted on a different feature scaler than the one the env uses. | The Phase-4 RF was trained on the same `data/processed/ciciot2023/` scaler that Phase-3 env consumes; Phase 6's `RFActingPolicy` reads features through the env's emitted obs slice (the per-step row of the window) without re-scaling. Tested in `tests/test_baseline_policies.py` with a stub RF + stub env emitting a known feature vector. If the SHA of the scaler changes between training and eval, F5_manifest catches it. |
 
 ## 7 — Cross-references to thesis chapter outline

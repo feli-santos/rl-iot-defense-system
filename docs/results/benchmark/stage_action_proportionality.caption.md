@@ -37,7 +37,7 @@
 >
 > *Reproducibility:* per-policy 5×5 matrices in `stage_action_proportionality.json`;
 > input JSONLs SHA-256 hash-pinned in `stage_action_proportionality_manifest.json`. Same
-> input artefacts as F5 (`runs/phase6/eval_manifest.json`).
+> input artefacts as F5 (`runs/benchmark/eval_manifest.json`).
 
 **Files:**
 - `stage_action_cm.png` — multi-panel figure (2×3, trained-RL on top).

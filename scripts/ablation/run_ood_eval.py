@@ -153,6 +153,7 @@ def _ood_eval_env_spec() -> EnvConfigSerializable:
     return EnvConfigSerializable(
         split="train",
         exclude_ood=True,  # base pool is in-distribution; OOD overlay is added below
+        impact_is_terminal=False,  # match the primary training contract
     )
 
 

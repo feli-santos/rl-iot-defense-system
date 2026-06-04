@@ -159,7 +159,7 @@ results written to `eval.jsonl`.
 **3.1.7** `scripts/blue_team/run_phase5.sh` (or
 `scripts/blue_team/run_phase5.py` driver) — fans out the 3 × 5 grid
 via subprocess, captures stdout/stderr per run, aggregates manifests
-into `runs/phase5_manifest.json`. Subprocess (not VecEnv) so each run
+into `runs/blue_team_manifest.json`. Subprocess (not VecEnv) so each run
 has a clean JSONL we can hash-pin (D5.6).
 
 **3.1.8** `scripts/blue_team/plot_learning_curves.py` — produces

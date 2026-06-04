@@ -5,7 +5,7 @@
 > scaled in milliseconds. The grey vertical reference lines are the
 > G6.4 budgets (rule-based ≤ 1 ms, RF ≤ 3 ms, RL ≤ 5 ms; see D6.8).
 > *Right:* total Phase-5 training wallclock per algorithm, summed
-> over the 5 seeds (read from `runs/phase5/sweep_manifest.json`).
+> over the 5 seeds (read from `runs/blue_team/sweep_manifest.json`).
 > Non-RL baselines have zero training time and are intentionally
 > absent from the right panel — F7's contrast is "RL training cost"
 > versus "rule-based zero-training" (the rule policies' upfront cost

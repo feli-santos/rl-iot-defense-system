@@ -143,8 +143,18 @@ def _eval_env_spec() -> EnvConfigSerializable:
 
     Reward-shaping fields stay at the environment-design frozen defaults; only the
     split changes vs. blue-team's ``val_balanced`` eval.
+
+    ``impact_is_terminal=False`` is set explicitly to match the training
+    contract: agents are trained with ``impact_is_terminal=False`` (the primary
+    reward contract), so the eval env must terminate IMPACT the same way.
+    Without this the eval env would default to ``True`` and silently evaluate
+    under a different terminal contract than training.
     """
-    return EnvConfigSerializable(split="test_balanced", exclude_ood=True)
+    return EnvConfigSerializable(
+        split="test_balanced",
+        exclude_ood=True,
+        impact_is_terminal=False,
+    )
 
 
 def _build_eval_env(args: argparse.Namespace, seed: int | None = None) -> Any:
