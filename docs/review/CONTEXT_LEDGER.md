@@ -264,3 +264,33 @@ stage by the RealizationEngine (this is the dataset's load-bearing role).
   G6/G7 scoreboards + RESULTS_INDEX.md as DERIVED — registry must move in lockstep.
   Plan: `git mv` dirs+files → fix all refs → `make render-tables gen-results-index` (regen from
   EXISTING JSON, no re-run) → pytest + verify-fresh → single commit.
+- `8bd629b` — Phase B COMPLETE: atomic semantic rename of all result artifacts (dirs + files + ~167
+  refs); regenerated derived from OLD JSON; `pytest` 459 + `make verify-fresh` GREEN.
+- `6b3c251` — Phase C1: env attacker rewired LSTM → first-order `MarkovAttacker`
+  (`src/generator/markov_attacker.py`, builds the same 5×5 upper-triangular matrix as
+  `EpisodeGenerator`; `generator_path` retained-but-ignored). 471 tests green.
+- `321eeb8` — Phase C2: deleted all dead LSTM modules (attack_sequence_generator, generator_trainer,
+  transition_mask, dataset_loader, `scripts/red_team/`, `main.py:train_generator`, torch from env) +
+  4 LSTM test files. 471 → 404 tests green.
+- `a3eba2a` — Phase C3: finite attacker budget (`attacker_budget`/`budget_step_cost=1`/
+  `budget_reset_cost=5`/`budget_cost_model='hybrid'`/`prevention_bonus=0.0`). Exhaustion-before-IMPACT
+  ⇒ `outcome='prevented'`, `compromised=False`. +14 tests = 418.
+- `8221c22` — Phase C4: evasion-before-commit reactive attacker (`evasion_prob`; defender-action-coupled
+  anticipatory stall at RECON/ACCESS when recently blocked). +6 tests = 424.
+- `cda1ccc` — Phase C5: `reward_mode` ablation (`'outcome_only'` strips stage-conditioned shaping,
+  leaving only the action cost). +4 tests = 428.
+- `c0b39d0` — Phase C6: fixed **C9** (eval-env `impact_is_terminal` defaulted True while training used
+  False) in `run_test_eval`/`run_ood_eval`/`run_aggressiveness_sweep`; provenance **D8** (runs/phase5→
+  runs/blue_team, runs/phase6→runs/benchmark in prose), **D9** (close_phase7→close_ablation; bogus
+  `--verify-manifests` → real `scripts.reproducibility_smoke --strict`), **D10** (dev-tools doc note).
+  `test_count.json` 459 → 428. **D1 resolved** (canonical count now 428).
+- `727e21f` — Phase C-cal HARD GATE COMPLETE: `scripts/ablation/run_budget_sweep.py` (n=200, real data)
+  → `docs/review/budget_calibration.json`. **GATE CONFIRMED → PREVENTION headline holds** (H1). At the
+  calibrated **`attacker_budget=40`** (LOCKED), the post-grace prevention metric `prevent_pg`
+  (prevention conditioned on terminal step ≥ `min_episode_length`=20) tracks defender policy quality:
+  active `always_block` 0.515 / `recommended_action` 0.430 ≫ `random` 0.150 ≫ passive `always_observe`
+  0.000; `budget=None` recovers `compromise_rate`=1.000 exactly (control). **Headline metric =
+  `prevent_pg`, NOT raw `compromise_rate`** (low-budget raw numbers are grace-window-degenerate per
+  caveat C2 — must be documented in prose). Fine oracle-vs-block ordering is within noise / not
+  load-bearing. **Drift D8/D9/D10 resolved (C6); D1 resolved.** Phase C + calibration gate DONE; next is
+  the ~17–21 h Phase-D clean-slate re-run on the Markov+budget=40 MDP.
