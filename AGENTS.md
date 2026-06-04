@@ -93,7 +93,7 @@ Held-Out Benchmark / Ablation & Robustness stage).
 
 **Baseline (pre-revision):** HEAD=`b2644fc`, pytest=445 passed, 2 warnings.
 
-**Current step:** Phase 4 complete — all pipeline stages done, manifests verified, thesis builds (81 pages)
+**Current step:** Phase 5+6 complete — full prose rewrite done, thesis builds clean (86 pages, 0 errors)
 
 **Phase 3 decisions (locked):**
 - Primary contract: `impact_is_terminal=False` for training + benchmark
@@ -131,4 +131,12 @@ Held-Out Benchmark / Ablation & Robustness stage).
 | 4.6 benchmark | ✅ | — | eval + figures F5/F6/F7/F8 done; best=recommended_action (1684.8); a2c best RL (1336.6) |
 | 4.7 ablation | ✅ | 52a67c3 | OOD+reward+aggressiveness+pareto done; 7 PASS / 2 FAIL-WITH-FINDING; thesis builds (81pp) |
 | **Bug fixes (pre-run):** argparse dest mismatches in 10 scripts + render_tables FPR nesting | ✅ | — | `args.blue_team_*` → `args.phase5_*`, `args.benchmark_*` → `args.phase6_*`; benign_fpr.json nested structure |
-| **Next:** Commit Phase 4 results + update thesis prose with ablation findings | ☐ | |
+| **Repo cleanup:** .archive/ + figs.bak + results.bak deleted; 10_release removed; verify-fresh CI gate; gen-results-index; G6/G7/F9 scoreboards rewritten; render_tables.py F9 cells→rows + FPR digit fix | ✅ | ce2b6fe..309394b | canonical numbers: A2C +1336.6, oracle +1684.8, 79.3%, ~146×, FPR 6.1-11.5%, n=459 tests |
+| **A6 narration docs:** 06/05/07 RESULTS.md+PLAN.md rewritten; README.md; docs/*.md touch-ups; AGENTS.md action names; Makefile 5→10 seeds | ✅ | 616f680 | all stale numbers purged from dev docs |
+| **B1 title+intro:** preambulo.tex title Candidate #4; introducao.tex Section 1.2 full rewrite (5 contributions, reward-misspec added, A2C+1336.6, ~146×, SHA-256 chain) | ✅ | — | |
+| **B2 results.tex:** pivot to F5 macros; 0.900→ablation probe caveat; FPR column; compromise_rate=1.0 limitation; n=300 all; OOD delta-324.8 | ✅ | — | |
+| **B3 methodology.tex:** i.i.d. disclosure; Algorithm 1; MLP-vs-RF justification; oracle=current-stage; n=300 all; contract framing | ✅ | — | |
+| **B4 conclusao.tex+background.tex:** 'Principal Empirical Findings'; A2C macros; ablation probe vs benchmark framing; OOD delta-324.8; +17 bib entries; algo-choice rationale | ✅ | — | |
+| **B5 apendice.tex:** seed 5→10; Python 3.9→3.10-3.11; G5.4 mit-rate 0.317; G6.2 \OracleCapturePct macro | ✅ | — | |
+| **B6 principal.tex:** abstract+resumo full rewrite; all macros; 'SHA-256-verified artifact chain'; FPR trade-off; reward-misspec | ✅ | — | |
+| **B7 verify:** preambulo.tex \input{generated/numbers}+tables; fix \FPRa2c→\FPRatc + \F9Structural→\Fnine; remove \num{}; 86pp 0 errors; 459 passed; 21 lint (↓1 from baseline) | ✅ | — | thesis builds clean |

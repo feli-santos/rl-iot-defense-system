@@ -93,12 +93,27 @@ def _render_numbers() -> str:
         r"\newcommand{\NumSeeds}{%d}" % best.get("n_seeds", 5)
     )
 
+    # Test count — read from a sidecar JSON if present, else fall back to hardcoded value
+    _test_count_file = Path("docs/results/test_count.json")
+    if _test_count_file.exists():
+        _tc = json.loads(_test_count_file.read_text())
+        _num_tests = _tc.get("num_tests", 459)
+    else:
+        _num_tests = 459  # canonical value; update when pytest count changes
+    lines.append(r"\newcommand{\NumTests}{%d}" % _num_tests)
+
     # FPR numbers
     if BENIGN_FPR.exists():
         fpr = _load(BENIGN_FPR)
         policies_fpr = fpr.get("policies", fpr)
         for policy, data in policies_fpr.items():
-            safe = policy.replace("-", "")
+            # Make LaTeX-safe command name: remove hyphens/underscores; replace
+            # digits with spelled-out letters (LaTeX control sequences must be
+            # all-letter after the backslash — digits terminate the name).
+            _digit_map = {"0": "z", "1": "o", "2": "t", "3": "r", "4": "f",
+                          "5": "v", "6": "s", "7": "e", "8": "g", "9": "n"}
+            safe = policy.replace("-", "").replace("_", "")
+            safe = "".join(_digit_map[c] if c in _digit_map else c for c in safe)
             val = data["benign_fpr"] if isinstance(data, dict) else data
             lines.append(
                 r"\newcommand{\FPR" + safe + "}{%0.3f}" % val
@@ -121,10 +136,10 @@ def _render_numbers() -> str:
                     break
         if structural:
             lines.append(
-                r"\newcommand{\F9StructuralReward}{%+0.1f}" % structural["mean_reward"]
+                r"\newcommand{\FnineStructuralReward}{%+0.1f}" % structural["mean_reward"]
             )
             lines.append(
-                r"\newcommand{\F9StructuralMitRate}{%0.3f}" % structural.get("mitigated_impact_rate", 0.0)
+                r"\newcommand{\FnineStructuralMitRate}{%0.3f}" % structural.get("mitigated_impact_rate", 0.0)
             )
 
     return "\n".join(lines) + "\n"

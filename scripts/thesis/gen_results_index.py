@@ -159,7 +159,6 @@ def _section_detector() -> str:
 
 
 def _section_red_team() -> str:
-    f1 = _load(RESULTS_DIR / "02_red_team/F1_summary.json")
     man = _load(RESULTS_DIR / "02_red_team/manifest.json")
 
     lines = ["## 02 Red-Team LSTM\n"]

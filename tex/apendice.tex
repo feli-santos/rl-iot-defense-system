@@ -44,8 +44,8 @@ Four \texttt{G<n>\_scoreboard.json} files (one per gated stage) record the thres
 Stage & \textsc{pass} & \textsc{pass-w/-finding} & \textsc{pass-w/o-stretch} & \textsc{fail-w/-finding} & Headline-gate ID \\
 \hline
 Stage detector (\texttt{G4}) & 4 & 1 & --- & --- & G4.4 (OOD recall asymmetry, $\Delta = 0.998$) \\
-Blue-team DRL (\texttt{G5}) & 6 & 1 & --- & --- & G5.4 (reward-hacking, mit-rate $0.263$) \\
-Benchmark (\texttt{G6}) & 4 & 1 & --- & 1 & G6.2 (audit-AF2 reframe, 82\,\% of oracle ceiling) \\
+Blue-team DRL (\texttt{G5}) & 6 & 1 & --- & --- & G5.4 (reward-hacking; benchmark mit-rate A2C $0.317$) \\
+Benchmark (\texttt{G6}) & 4 & 1 & --- & 1 & G6.2 (audit-AF2 reframe, \OracleCapturePct\,\% of oracle ceiling) \\
 Ablation/OOD (\texttt{G7}) & 7 & --- & 1 & 2 & G7.2 (F9 \texttt{impact\_is\_terminal}=False), G7.9 (D7.9.1 OOD) \\
 \hline
 \end{tabular}
@@ -61,7 +61,7 @@ The harness \texttt{scripts/reproducibility\_smoke.py} is the canonical end-to-e
     \item[\textsc{skip}] An input declared by the manifest is gitignored and not on disk on this checkout. Typical case: large feature arrays (\texttt{features.npy}, \texttt{stages.npy}) and split index files that are derived from the raw CICIoT2023 dataset and therefore not committed.
 \end{description}
 
-The harness's verdict at the head of the dissertation's evaluation chain (commit \texttt{26b8df2}) is \textbf{\textsc{pass}}: \textbf{458 \textsc{ok} / 0 \textsc{fail} / 2 \textsc{known-divergence} / 6 \textsc{skip}}. A non-zero \textsc{fail} count would block merge of any commit that introduces it.
+The harness's verdict at the head of the dissertation's evaluation chain is \textbf{\textsc{pass}}: all SHA-256 checks pass, with 0 \textsc{fail} verdicts; the pre-registered 2 \textsc{known-divergence} entries (the pre- and post-leakage-fix splits manifests) and a small number of \textsc{skip} verdicts (gitignored raw-data artefacts) are the expected outcome on a fresh checkout. A non-zero \textsc{fail} count would block merge of any commit that introduces it.
 
 \section{Verification Recipe (Fresh-Checkout Reproduction)}\label{app:recipe}
 On a fresh checkout, the empirical record can be re-verified end-to-end without retraining any model:
@@ -71,10 +71,9 @@ git clone <repo-url> rl-iot-defense-system
 cd rl-iot-defense-system
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
-pytest -q                                        # expect: 411 passed
+pytest -q                                        # expect: \NumTests{} passed
 python -m scripts.reproducibility_smoke         # expect: VERDICT PASS
-                                                 #         458 OK / 0 FAIL
-                                                 #         2 KNOWN-DIVERGENCE / 6 SKIP
+                                                 #         0 FAIL / 2 KNOWN-DIVERGENCE
 \end{verbatim}
 
 The dissertation PDF is compiled via Docker (no host-side \LaTeX{} installation required):
@@ -109,7 +108,7 @@ make ablation-close                       # G7 scoreboard + RESULTS.md
 After a full re-train the per-stage \texttt{manifest.json} files are re-emitted with new input SHAs corresponding to the freshly trained checkpoints; the harness will then verify the new chain end-to-end.
 
 \section{Hardware and Environment}\label{app:hardware}
-All experiments reported in this dissertation were run on a single CPU core. No GPU is required for any development stage (the LSTM red team, the MLP stage detector, and the three DRL agents all train within minutes-to-hours on commodity CPU). Software environment: Python 3.9, PyTorch (CPU build), scikit-learn, Stable~Baselines3, Gymnasium. Total wallclock for the full audited evaluation chain (development stages 1--7) is approximately 8.5~h on a single CPU core, dominated by the ablation sweeps; the held-out benchmark and the smoke-reproducibility harness together take less than 11~minutes.
+All experiments reported in this dissertation were run on a single CPU core. No GPU is required for any development stage (the LSTM red team, the MLP stage detector, and the three DRL agents all train within minutes-to-hours on commodity CPU). Software environment: Python 3.10--3.11 (CI-verified), PyTorch (CPU build), scikit-learn, Stable~Baselines3, Gymnasium. Total wallclock for the full audited evaluation chain (development stages 1--7) is approximately 8.5~h on a single CPU core, dominated by the ablation sweeps; the held-out benchmark and the smoke-reproducibility harness together take less than 11~minutes.
 
 % ====================================================================
 \chapter{CICIoT2023 Label to Kill Chain Stage Mapping}\label{app:kc_mapping}
@@ -142,11 +141,11 @@ Stage & CICIoT2023 labels \\
 \chapter{Hyperparameters per Algorithm}\label{app:hparams}
 % ====================================================================
 
-The blue-team training hyperparameter table (T1) for DQN, PPO, and A2C is reproduced in Table~\ref{tab:hparams} from \texttt{docs/results/05\_blue\_team/T1\_hparams.json}, which is the canonical hash-pinned source. All values are Stable~Baselines3 defaults, frozen for the thesis at PLAN \S8 D5.4; the same values are used across the five seeds (\texttt{seed} $\in \{0, 1, 2, 3, 4\}$) and the 250{,}000 environment steps per run. Empty cells indicate hyperparameters that do not apply to the algorithm (e.g.\ off-policy DQN-only fields are blank for the on-policy PPO and A2C rows).
+The blue-team training hyperparameter table (T1) for DQN, PPO, and A2C is reproduced in Table~\ref{tab:hparams} from \texttt{docs/results/05\_blue\_team/T1\_hparams.json}, which is the canonical hash-pinned source. All values are Stable~Baselines3 defaults, frozen for the thesis at PLAN \S8 D5.4; the same values are used across the ten seeds (\texttt{seed} $\in \{0, 1, \ldots, 9\}$) and the 250{,}000 environment steps per run. Empty cells indicate hyperparameters that do not apply to the algorithm (e.g.\ off-policy DQN-only fields are blank for the on-policy PPO and A2C rows).
 
 \begin{table}[!htbp]
 \centering
-\caption{Blue-team training per-algorithm hyperparameters. Values are frozen at PLAN \S8 D5.4 and used across all ten seeds and 250{,}000 environment steps per run. N/A indicates the hyperparameter does not apply to the algorithm.}
+\caption{Blue-team training per-algorithm hyperparameters. Values are frozen at PLAN \S8 D5.4 and used across all \NumSeeds{} seeds and 250{,}000 environment steps per run. N/A indicates the hyperparameter does not apply to the algorithm.}
 \label{tab:hparams}
 \small
 \begin{tabular}{l r r r r r r r r}
@@ -169,7 +168,7 @@ The ablation and OOD-robustness evaluations re-use the PPO hyperparameters above
 \chapter{Sensitivity Sweep Figures}\label{app:sensitivity}
 % ====================================================================
 
-This appendix collects the three hyperparameter sensitivity sweep figures referenced in Section~\ref{cap:methodology} (§3.5.4--3.5.6). All sweeps use DQN (single seed) or PPO ($\times$5 seeds) with all other parameters held at their environment-design defaults; mean test reward on \texttt{test\_balanced} is the primary metric. 95\,\% bootstrap confidence intervals are shown as shaded bands.
+This appendix collects the three hyperparameter sensitivity sweep figures referenced in Section~\ref{cap:methodology} (§3.5.4--3.5.6). All sweeps use DQN (single seed) or PPO ($\times$10 seeds) with all other parameters held at their environment-design defaults; mean test reward on \texttt{test\_balanced} is the primary metric. 95\,\% bootstrap confidence intervals are shown as shaded bands.
 
 \section{Defender De-escalation Probability Sweep (F10)}\label{app:deesc_sweep}
 
