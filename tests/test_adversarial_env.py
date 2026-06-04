@@ -1203,3 +1203,149 @@ class TestAttackerBudget:
         assert d["budget_reset_cost"] == 7
         assert d["budget_cost_model"] == "hybrid"
         assert d["prevention_bonus"] == 4.0
+
+
+class TestEvasion:
+    """Evasion-before-commit reactive attacker (the one adaptive-attacker axis).
+
+    When the defender has *just* applied force (BLOCK/ISOLATE) and the attacker
+    is still at a pre-trigger stage (RECON/ACCESS), it probabilistically stalls
+    in anticipation instead of progressing. This is coupled to the defender's
+    action, unlike the random (defender-independent) ``retreat_prob`` override
+    and unlike de-escalation (which resets to BENIGN on force at ACCESS+).
+    """
+
+    @pytest.fixture
+    def generator_path(self, tmp_path):
+        """Ignored generator-path dir (attacker is a first-order Markov chain)."""
+        path = tmp_path / "generator"
+        path.mkdir(parents=True)
+        return path
+
+    @pytest.fixture
+    def mock_dataset(self, tmp_path):
+        import json
+
+        dataset_path = tmp_path / "dataset"
+        dataset_path.mkdir(parents=True)
+        features = np.random.randn(100, 46).astype(np.float32)
+        np.save(dataset_path / "features.npy", features)
+        labels = np.random.randint(0, 5, size=100)
+        np.save(dataset_path / "labels.npy", labels)
+        state_indices = {str(i): [] for i in range(5)}
+        for idx, label in enumerate(labels):
+            state_indices[str(label)].append(idx)
+        with open(dataset_path / "state_indices.json", "w") as f:
+            json.dump(state_indices, f)
+        import joblib
+        from sklearn.preprocessing import StandardScaler
+
+        scaler = StandardScaler()
+        scaler.fit(features)
+        joblib.dump(scaler, dataset_path / "scaler.joblib")
+        return dataset_path
+
+    def _build_env(self, generator_path, mock_dataset, **config_kwargs):
+        from src.environment.adversarial_env import (
+            AdversarialEnvConfig,
+            AdversarialIoTEnv,
+        )
+
+        config = AdversarialEnvConfig(**config_kwargs)
+        env = AdversarialIoTEnv(
+            generator_path=generator_path,
+            dataset_path=mock_dataset,
+            config=config,
+        )
+        env.reset(seed=42)
+        return env
+
+    def test_evasion_prob_zero_is_noop(self, generator_path, mock_dataset):
+        """evasion_prob=0 leaves the attacker advancing normally."""
+        from src.utils.label_mapper import KillChainStage
+
+        env = self._build_env(generator_path, mock_dataset, evasion_prob=0.0)
+        # Force a deterministic forward advance.
+        env._attacker.sample_next = lambda stage, rng: stage + 1
+        env._recent_block = True
+        env._current_attack_stage = KillChainStage.RECON.value
+        env._attack_history = [KillChainStage.RECON.value]
+        env._advance_attack()
+        assert env._current_attack_stage == KillChainStage.RECON.value + 1
+
+    def test_evasion_stalls_when_recently_blocked(
+        self, generator_path, mock_dataset
+    ):
+        """evasion_prob=1.0 + recent block + pre-trigger stage -> stall."""
+        from src.utils.label_mapper import KillChainStage
+
+        for stage in (KillChainStage.RECON.value, KillChainStage.ACCESS.value):
+            env = self._build_env(
+                generator_path,
+                mock_dataset,
+                evasion_prob=1.0,
+                retreat_prob=0.0,
+            )
+            env._attacker.sample_next = lambda s, rng: s + 1
+            env._recent_block = True
+            env._current_attack_stage = stage
+            env._attack_history = [stage]
+            env._advance_attack()
+            assert env._current_attack_stage == stage  # stalled
+
+    def test_evasion_requires_recent_block(self, generator_path, mock_dataset):
+        """Without a recent defender block, evasion never fires (defender-coupled)."""
+        from src.utils.label_mapper import KillChainStage
+
+        env = self._build_env(
+            generator_path,
+            mock_dataset,
+            evasion_prob=1.0,
+            retreat_prob=0.0,
+        )
+        env._attacker.sample_next = lambda stage, rng: stage + 1
+        env._recent_block = False  # defender did NOT just apply force
+        env._current_attack_stage = KillChainStage.RECON.value
+        env._attack_history = [KillChainStage.RECON.value]
+        env._advance_attack()
+        # Advanced normally — proves the stall is coupled to the defender action.
+        assert env._current_attack_stage == KillChainStage.RECON.value + 1
+
+    def test_evasion_only_at_pretrigger_stages(
+        self, generator_path, mock_dataset
+    ):
+        """Evasion does not fire once the attacker is past the pre-trigger band."""
+        from src.utils.label_mapper import KillChainStage
+
+        env = self._build_env(
+            generator_path,
+            mock_dataset,
+            evasion_prob=1.0,
+            retreat_prob=0.0,
+        )
+        env._attacker.sample_next = lambda stage, rng: min(stage + 1, 4)
+        env._recent_block = True
+        env._current_attack_stage = KillChainStage.MANEUVER.value
+        env._attack_history = [KillChainStage.MANEUVER.value]
+        env._advance_attack()
+        assert env._current_attack_stage == KillChainStage.MANEUVER.value + 1
+
+    def test_step_sets_recent_block_flag(self, generator_path, mock_dataset):
+        """step() records whether the current action was BLOCK/ISOLATE."""
+        env = self._build_env(generator_path, mock_dataset)
+        env.step(3)  # BLOCK
+        assert env._recent_block is True
+        env.step(0)  # OBSERVE
+        assert env._recent_block is False
+
+    def test_env_config_serializable_round_trips_evasion(self):
+        from dataclasses import asdict
+
+        from src.blue_team.run_config import EnvConfigSerializable
+
+        spec = EnvConfigSerializable(
+            split="train",
+            exclude_ood=True,
+            evasion_prob=0.5,
+        )
+        assert asdict(spec)["evasion_prob"] == 0.5

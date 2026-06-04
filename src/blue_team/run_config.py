@@ -82,6 +82,9 @@ class EnvConfigSerializable:
     # Non-monotonic attacker stress-test (review 2.4.3)
     retreat_prob: float = 0.0
 
+    # Evasion-before-commit reactive attacker (defender-action-coupled stall).
+    evasion_prob: float = 0.0
+
     # Finite attacker budget (prevention model). ``attacker_budget=None``
     # preserves the unbounded contract (compromise_rate == 1.0); a finite
     # budget drains by ``budget_step_cost`` per active progression step and

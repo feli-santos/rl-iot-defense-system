@@ -243,6 +243,15 @@ class AdversarialEnvConfig:
     # probability.  Default 0.0 preserves the monotonic-attacker contract.
     retreat_prob: float = 0.0
 
+    # Evasion-before-commit reactive attacker (the one adaptive-attacker axis).
+    # When the defender has *just* applied force (BLOCK/ISOLATE) and the attacker
+    # is still at a pre-trigger stage (RECON/ACCESS), it probabilistically stalls
+    # (does not progress) in anticipation, with this probability. Unlike
+    # ``retreat_prob`` (random, defender-independent) and de-escalation (resets to
+    # BENIGN on force at ACCESS+), this is *coupled to the defender's action*.
+    # Default 0.0 disables it.
+    evasion_prob: float = 0.0
+
     # Finite attacker budget (prevention model).
     # The attacker has a finite pool of effort units. Each active-attacker
     # step drains ``budget_step_cost``; each defender-forced de-escalation
@@ -429,6 +438,8 @@ class AdversarialIoTEnv(gym.Env):
         self._attack_history: list[int] = []
         self._observation_window: list[np.ndarray] = []
         self._last_action: int = 0
+        # Evasion-before-commit: did the defender just apply force this step?
+        self._recent_block: bool = False
         self._rng: Optional[np.random.Generator] = None
         # environment-design: MTTC tracking & defender-driven de-escalation
         self._first_attack_step: Optional[int] = None
@@ -481,6 +492,7 @@ class AdversarialIoTEnv(gym.Env):
         # Reset episode state
         self._step_count = 0
         self._last_action = 0
+        self._recent_block = False
         self._first_attack_step = None
         self._compromise_step = None
         self._defender_deescalations = 0
@@ -546,6 +558,10 @@ class AdversarialIoTEnv(gym.Env):
         # 2) Reward for this step is decided by stage at decision time.
         reward = self._calculate_reward(action, previous_attack_stage)
         self._track_benign_fpr(action, previous_attack_stage)
+
+        # Record whether the defender just applied force, so the attacker can
+        # react (evasion-before-commit) when it advances this step.
+        self._recent_block = action >= 3  # BLOCK or ISOLATE
 
         # 3) Advance the attack — possibly overriding with defender-driven
         # de-escalation if the agent chose a strong action at ACCESS+.
@@ -757,9 +773,22 @@ class AdversarialIoTEnv(gym.Env):
             next_stage = self._attacker.sample_next(
                 self._current_attack_stage, self._rng
             )
+            current_stage = self._current_attack_stage
+            # Evasion-before-commit: if the defender just applied force and the
+            # attacker is still at a pre-trigger stage (RECON/ACCESS), it stalls
+            # in anticipation instead of progressing. This is coupled to the
+            # defender's action, unlike the random ``retreat_prob`` override.
+            if (
+                self._config.evasion_prob > 0.0
+                and self._recent_block
+                and current_stage
+                in (KillChainStage.RECON.value, KillChainStage.ACCESS.value)
+                and self._rng is not None
+                and self._rng.random() < self._config.evasion_prob
+            ):
+                next_stage = current_stage  # stall (do not progress)
             # Non-monotonic stress-test: independently override with a
             # retreat to a random earlier stage (review 2.4.3).
-            current_stage = self._current_attack_stage
             if (
                 self._config.retreat_prob > 0.0
                 and current_stage > 0
