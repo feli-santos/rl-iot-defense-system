@@ -82,6 +82,17 @@ class EnvConfigSerializable:
     # Non-monotonic attacker stress-test (review 2.4.3)
     retreat_prob: float = 0.0
 
+    # Finite attacker budget (prevention model). ``attacker_budget=None``
+    # preserves the unbounded contract (compromise_rate == 1.0); a finite
+    # budget drains by ``budget_step_cost`` per active progression step and
+    # ``budget_reset_cost`` per defender de-escalation, and an attacker that
+    # exhausts its budget before IMPACT is prevented.
+    attacker_budget: Optional[int] = None
+    budget_step_cost: int = 1
+    budget_reset_cost: int = 5
+    budget_cost_model: str = "hybrid"
+    prevention_bonus: float = 0.0
+
     # Reward shaping — ablation F9 axes (defaults from environment-design RESULTS §3)
     action_cost_scale: float = 1.0
     reward_proportional: float = 5.0

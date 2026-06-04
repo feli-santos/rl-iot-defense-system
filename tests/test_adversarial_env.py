@@ -888,3 +888,318 @@ class TestFPRPenalty:
         env_free._benign_blocks = 4
         # beta=0 disables the penalty entirely; reward is returned unchanged.
         assert env_free._apply_episode_fpr_penalty(0.0) == 0.0
+
+
+class TestAttackerBudget:
+    """Finite attacker budget: prevention becomes a function of policy quality.
+
+    With ``attacker_budget=None`` the environment preserves the unbounded
+    contract (``compromise_rate == 1.0``). A finite budget drains by
+    ``budget_step_cost`` per active progression step and ``budget_reset_cost``
+    per defender de-escalation; an attacker that exhausts its budget before
+    IMPACT is *prevented* (``outcome == "prevented"``, ``compromised == False``).
+    """
+
+    @pytest.fixture
+    def generator_path(self, tmp_path):
+        """Ignored generator-path dir (attacker is a first-order Markov chain)."""
+        path = tmp_path / "generator"
+        path.mkdir(parents=True)
+        return path
+
+    @pytest.fixture
+    def mock_dataset(self, tmp_path):
+        import json
+
+        dataset_path = tmp_path / "dataset"
+        dataset_path.mkdir(parents=True)
+        features = np.random.randn(100, 46).astype(np.float32)
+        np.save(dataset_path / "features.npy", features)
+        labels = np.random.randint(0, 5, size=100)
+        np.save(dataset_path / "labels.npy", labels)
+        state_indices = {str(i): [] for i in range(5)}
+        for idx, label in enumerate(labels):
+            state_indices[str(label)].append(idx)
+        with open(dataset_path / "state_indices.json", "w") as f:
+            json.dump(state_indices, f)
+        import joblib
+        from sklearn.preprocessing import StandardScaler
+
+        scaler = StandardScaler()
+        scaler.fit(features)
+        joblib.dump(scaler, dataset_path / "scaler.joblib")
+        return dataset_path
+
+    def _build_env(self, generator_path, mock_dataset, **config_kwargs):
+        from src.environment.adversarial_env import (
+            AdversarialEnvConfig,
+            AdversarialIoTEnv,
+        )
+
+        config = AdversarialEnvConfig(**config_kwargs)
+        env = AdversarialIoTEnv(
+            generator_path=generator_path,
+            dataset_path=mock_dataset,
+            config=config,
+        )
+        env.reset(seed=42)
+        return env
+
+    def test_budget_none_is_noop(self, generator_path, mock_dataset):
+        """attacker_budget=None leaves the budget disabled (unbounded contract)."""
+        env = self._build_env(generator_path, mock_dataset, attacker_budget=None)
+        assert env._attacker_budget_remaining is None
+        assert env._attacker_exhausted is False
+        # Stepping never engages budget bookkeeping.
+        env.step(0)
+        assert env._attacker_budget_remaining is None
+
+    def test_reset_initialises_budget_from_config(self, generator_path, mock_dataset):
+        env = self._build_env(generator_path, mock_dataset, attacker_budget=40)
+        assert env._attacker_budget_remaining == 40
+        assert env._attacker_exhausted is False
+
+    def test_step_cost_drains_on_active_progression(
+        self, generator_path, mock_dataset
+    ):
+        """An advancing attacker at stage >= RECON pays budget_step_cost."""
+        from src.utils.label_mapper import KillChainStage
+
+        env = self._build_env(
+            generator_path,
+            mock_dataset,
+            attacker_budget=100,
+            budget_step_cost=3,
+            # Disable de-escalation so the step takes the _advance_attack branch.
+            p_defender_deescalation=0.0,
+        )
+        # Force the attacker into an active stage so the next advance lands at
+        # stage >= RECON (the Markov chain is non-regressing for attack rows).
+        env._current_attack_stage = KillChainStage.RECON.value
+        env._attack_history = [KillChainStage.RECON.value]
+        before = env._attacker_budget_remaining
+        env.step(0)  # OBSERVE: no de-escalation, attacker advances
+        assert env._current_attack_stage >= KillChainStage.RECON.value
+        assert env._attacker_budget_remaining == before - 3
+
+    def test_step_cost_does_not_drain_during_benign(
+        self, generator_path, mock_dataset
+    ):
+        """If the attacker stays BENIGN, no step cost is charged."""
+        from src.utils.label_mapper import KillChainStage
+
+        env = self._build_env(
+            generator_path,
+            mock_dataset,
+            attacker_budget=100,
+            budget_step_cost=3,
+            p_defender_deescalation=0.0,
+        )
+        # Force the env to keep the attacker at BENIGN by monkeypatching advance.
+        env._current_attack_stage = KillChainStage.BENIGN.value
+        env._attack_history = [KillChainStage.BENIGN.value]
+        env._advance_attack = lambda: None  # stays BENIGN
+        before = env._attacker_budget_remaining
+        env.step(0)
+        assert env._current_attack_stage == KillChainStage.BENIGN.value
+        assert env._attacker_budget_remaining == before
+
+    def test_deescalation_drains_reset_cost(self, generator_path, mock_dataset):
+        from src.utils.label_mapper import KillChainStage
+
+        env = self._build_env(
+            generator_path,
+            mock_dataset,
+            attacker_budget=100,
+            budget_reset_cost=7,
+            p_defender_deescalation=1.0,
+        )
+        env._current_attack_stage = KillChainStage.ACCESS.value
+        remaining0 = env._attacker_budget_remaining
+        deesc0 = env._defender_deescalations
+        forced = env._maybe_defender_deescalation(3, KillChainStage.ACCESS.value)
+        assert forced is True
+        assert env._defender_deescalations == deesc0 + 1
+        assert env._attacker_budget_remaining == remaining0 - 7
+
+    def test_exhaustion_prevents_compromise(self, generator_path, mock_dataset):
+        from src.utils.label_mapper import KillChainStage
+
+        env = self._build_env(
+            generator_path,
+            mock_dataset,
+            attacker_budget=100,
+            p_defender_deescalation=0.0,
+        )
+        # Clear the grace period and place the attacker mid-chain with no budget.
+        env._step_count = env._config.min_episode_length
+        env._current_attack_stage = KillChainStage.RECON.value
+        env._attack_history = [KillChainStage.RECON.value]
+        env._attacker_budget_remaining = 0
+        _, _, terminated, _, info = env.step(0)
+        assert terminated is True
+        assert info["outcome"] == "prevented"
+        assert info["compromised"] is False
+        assert info["attacker_exhausted"] is True
+
+    @pytest.mark.parametrize("impact_is_terminal", [True, False])
+    def test_exhaustion_fires_regardless_of_impact_terminal(
+        self, generator_path, mock_dataset, impact_is_terminal
+    ):
+        from src.utils.label_mapper import KillChainStage
+
+        env = self._build_env(
+            generator_path,
+            mock_dataset,
+            attacker_budget=100,
+            impact_is_terminal=impact_is_terminal,
+            p_defender_deescalation=0.0,
+        )
+        env._step_count = env._config.min_episode_length
+        env._current_attack_stage = KillChainStage.ACCESS.value
+        env._attack_history = [KillChainStage.ACCESS.value]
+        env._attacker_budget_remaining = 0
+        _, _, terminated, _, info = env.step(0)
+        assert terminated is True
+        assert info["outcome"] == "prevented"
+
+    def test_impact_wins_tie_break(self, generator_path, mock_dataset):
+        """If the attacker reaches IMPACT, exhaustion does not fire (IMPACT wins)."""
+        from src.utils.label_mapper import KillChainStage
+
+        env = self._build_env(
+            generator_path,
+            mock_dataset,
+            attacker_budget=100,
+            impact_is_terminal=True,
+            p_defender_deescalation=0.0,
+        )
+        env._step_count = env._config.min_episode_length
+        env._current_attack_stage = KillChainStage.IMPACT.value
+        env._attack_history = [KillChainStage.IMPACT.value]
+        env._attacker_budget_remaining = 0
+        # Force the attacker to remain at IMPACT for this step.
+        env._advance_attack = lambda: None
+        _, _, terminated, _, info = env.step(0)
+        assert terminated is True
+        assert info["compromised"] is True
+        assert info["attacker_exhausted"] is False
+        assert info["outcome"] != "prevented"
+
+    def test_prevention_bonus_applied_once(self, generator_path, mock_dataset):
+        from src.utils.label_mapper import KillChainStage
+
+        env = self._build_env(
+            generator_path,
+            mock_dataset,
+            attacker_budget=100,
+            prevention_bonus=7.0,
+            p_defender_deescalation=0.0,
+            fpr_penalty_beta=0.0,
+        )
+        env._step_count = env._config.min_episode_length
+        env._current_attack_stage = KillChainStage.RECON.value
+        env._attack_history = [KillChainStage.RECON.value]
+        env._attacker_budget_remaining = 0
+        env._advance_attack = lambda: None
+        # Baseline reward (no prevention bonus) for the same OBSERVE action.
+        env_free = self._build_env(
+            generator_path,
+            mock_dataset,
+            attacker_budget=100,
+            prevention_bonus=0.0,
+            p_defender_deescalation=0.0,
+            fpr_penalty_beta=0.0,
+        )
+        env_free._step_count = env_free._config.min_episode_length
+        env_free._current_attack_stage = KillChainStage.RECON.value
+        env_free._attack_history = [KillChainStage.RECON.value]
+        env_free._attacker_budget_remaining = 0
+        env_free._advance_attack = lambda: None
+        _, reward_bonus, _, _, info_bonus = env.step(0)
+        _, reward_free, _, _, _ = env_free.step(0)
+        assert info_bonus["outcome"] == "prevented"
+        assert reward_bonus == pytest.approx(reward_free + 7.0)
+
+    def test_build_info_exposes_budget_fields(self, generator_path, mock_dataset):
+        env = self._build_env(generator_path, mock_dataset, attacker_budget=40)
+        info = env._build_info()
+        assert "attacker_budget_remaining" in info
+        assert "attacker_exhausted" in info
+        assert info["attacker_budget_remaining"] == 40
+        assert info["attacker_exhausted"] is False
+
+    def test_degeneracy_floor_prevents_everything(
+        self, generator_path, mock_dataset
+    ):
+        """A budget below the grace floor prevents (almost) every episode."""
+        compromises = 0
+        n_episodes = 20
+        for seed in range(n_episodes):
+            env = self._build_env(
+                generator_path,
+                mock_dataset,
+                attacker_budget=5,  # < min_episode_length (20) * step_cost (1)
+            )
+            terminated = truncated = False
+            info = {}
+            while not (terminated or truncated):
+                _, _, terminated, truncated, info = env.step(3)  # BLOCK
+            if info.get("compromised"):
+                compromises += 1
+        assert compromises == 0
+
+    def test_compromise_rate_below_one_with_finite_budget(
+        self, generator_path, mock_dataset
+    ):
+        """A finite budget lets a blocking policy drive compromise_rate < 1.0,
+        whereas the unbounded contract always compromises."""
+        # Unbounded: every episode compromises.
+        unbounded_compromises = 0
+        for seed in range(15):
+            env = self._build_env(generator_path, mock_dataset, attacker_budget=None)
+            terminated = truncated = False
+            info = {}
+            while not (terminated or truncated):
+                _, _, terminated, truncated, info = env.step(3)
+            if info.get("compromised"):
+                unbounded_compromises += 1
+        assert unbounded_compromises == 15
+
+        # Finite budget with an aggressive de-escalating policy: some prevented.
+        finite_compromises = 0
+        for seed in range(15):
+            env = self._build_env(
+                generator_path,
+                mock_dataset,
+                attacker_budget=40,
+                p_defender_deescalation=1.0,
+            )
+            terminated = truncated = False
+            info = {}
+            while not (terminated or truncated):
+                _, _, terminated, truncated, info = env.step(4)  # ISOLATE
+            if info.get("compromised"):
+                finite_compromises += 1
+        assert finite_compromises < 15
+
+    def test_env_config_serializable_round_trips_budget(self):
+        from dataclasses import asdict
+
+        from src.blue_team.run_config import EnvConfigSerializable
+
+        spec = EnvConfigSerializable(
+            split="train",
+            exclude_ood=True,
+            attacker_budget=30,
+            budget_step_cost=2,
+            budget_reset_cost=7,
+            budget_cost_model="hybrid",
+            prevention_bonus=4.0,
+        )
+        d = asdict(spec)
+        assert d["attacker_budget"] == 30
+        assert d["budget_step_cost"] == 2
+        assert d["budget_reset_cost"] == 7
+        assert d["budget_cost_model"] == "hybrid"
+        assert d["prevention_bonus"] == 4.0

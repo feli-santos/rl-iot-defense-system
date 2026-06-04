@@ -68,6 +68,12 @@ def _build_env_config(spec: EnvConfigSerializable) -> AdversarialEnvConfig:
         include_stage_pred=spec.include_stage_pred,
         # Non-monotonic attacker stress-test (review 2.4.3)
         retreat_prob=spec.retreat_prob,
+        # Finite attacker budget (prevention model)
+        attacker_budget=spec.attacker_budget,
+        budget_step_cost=spec.budget_step_cost,
+        budget_reset_cost=spec.budget_reset_cost,
+        budget_cost_model=spec.budget_cost_model,
+        prevention_bonus=spec.prevention_bonus,
         # Reward shaping (ablation F9 axes)
         action_cost_scale=spec.action_cost_scale,
         reward_proportional=spec.reward_proportional,

@@ -243,6 +243,23 @@ class AdversarialEnvConfig:
     # probability.  Default 0.0 preserves the monotonic-attacker contract.
     retreat_prob: float = 0.0
 
+    # Finite attacker budget (prevention model).
+    # The attacker has a finite pool of effort units. Each active-attacker
+    # step drains ``budget_step_cost``; each defender-forced de-escalation
+    # (reset to BENIGN) drains ``budget_reset_cost`` because the attacker must
+    # re-establish its foothold. If the budget is exhausted before IMPACT is
+    # reached, the attack fails and the episode terminates as a defender win
+    # (``outcome="prevented"``, ``compromised=False``). ``attacker_budget=None``
+    # disables the mechanic entirely, preserving the unbounded contract.
+    attacker_budget: Optional[int] = None
+    budget_step_cost: int = 1
+    budget_reset_cost: int = 5
+    budget_cost_model: str = "hybrid"
+    # Explicit, ablatable terminal reward for a prevented attack. Default 0.0
+    # keeps the prevention signal implicit (accumulated de-escalation bonuses
+    # plus the dodged impact penalty) so the cocked-trigger spine stays clean.
+    prevention_bonus: float = 0.0
+
     # Stage-prediction ablation (review 2.4.1)
     # If non-None, the env loads a frozen stage detector and (optionally)
     # appends its predicted stage to the observation vector.
@@ -420,6 +437,9 @@ class AdversarialIoTEnv(gym.Env):
         # FPR-penalty accumulator (review 2.2 / Direction 6)
         self._benign_steps: int = 0
         self._benign_blocks: int = 0
+        # Finite attacker budget (prevention model)
+        self._attacker_budget_remaining: Optional[int] = None
+        self._attacker_exhausted: bool = False
 
         logger.info(
             f"AdversarialIoTEnv initialized: "
@@ -466,6 +486,8 @@ class AdversarialIoTEnv(gym.Env):
         self._defender_deescalations = 0
         self._benign_steps = 0
         self._benign_blocks = 0
+        self._attacker_budget_remaining = self._config.attacker_budget
+        self._attacker_exhausted = False
 
         # Initialize attack sequence
         # Start with BENIGN or low-level attack
@@ -534,6 +556,15 @@ class AdversarialIoTEnv(gym.Env):
         else:
             self._advance_attack()
             outcome = "ongoing"
+            # Drain attacker budget for an active progression step. Only an
+            # attacker that is actually attacking (stage >= RECON) pays the
+            # step cost; a passive defender that leaves the attacker at BENIGN
+            # cannot win by attrition.
+            if (
+                self._attacker_budget_remaining is not None
+                and self._current_attack_stage >= KillChainStage.RECON.value
+            ):
+                self._attacker_budget_remaining -= self._config.budget_step_cost
 
         # Lifecycle-floor clamp: real-world IMPACT requires time-to-execute.
         # Until the agent has had its grace period, the attacker is not allowed
@@ -580,7 +611,23 @@ class AdversarialIoTEnv(gym.Env):
             self._current_attack_stage == KillChainStage.IMPACT.value
             and self._step_count >= self._config.min_episode_length
         )
-        if impact_arrived and self._config.impact_is_terminal:
+        # Prevention: if the attacker has exhausted its finite budget before
+        # reaching IMPACT, the campaign fails -> defender win. This is checked
+        # *before* the IMPACT branch and after the grace clamp, and fires
+        # regardless of ``impact_is_terminal``. The tie-break (budget hits 0 on
+        # the same step IMPACT arrives) favours the attacker automatically:
+        # the ``stage < IMPACT`` guard sends that case to the IMPACT branch.
+        attacker_exhausted_now = (
+            self._attacker_budget_remaining is not None
+            and self._attacker_budget_remaining <= 0
+            and self._current_attack_stage < KillChainStage.IMPACT.value
+        )
+        if attacker_exhausted_now:
+            self._attacker_exhausted = True
+            reward += self._config.prevention_bonus
+            outcome = "prevented"
+            terminated = True
+        elif impact_arrived and self._config.impact_is_terminal:
             # environment-design frozen contract (default).
             # Apply the terminal IMPACT penalty inline. The kill chain has
             # consummated this step; we do *not* hand the agent a separate
@@ -677,10 +724,13 @@ class AdversarialIoTEnv(gym.Env):
         assert self._rng is not None  # invariant after reset
         if self._rng.random() >= self._config.p_defender_deescalation:
             return False
-        # Override the natural Red-Team transition.
+        # Override the natural attacker transition.
         self._current_attack_stage = KillChainStage.BENIGN.value
         self._attack_history.append(self._current_attack_stage)
         self._defender_deescalations += 1
+        # The attacker must re-establish its foothold: drain extra budget.
+        if self._attacker_budget_remaining is not None:
+            self._attacker_budget_remaining -= self._config.budget_reset_cost
         return True
 
     def render(self) -> None:
@@ -773,6 +823,8 @@ class AdversarialIoTEnv(gym.Env):
             "first_attack_step": self._first_attack_step,
             "compromise_step": self._compromise_step,
             "defender_deescalations": self._defender_deescalations,
+            "attacker_budget_remaining": self._attacker_budget_remaining,
+            "attacker_exhausted": self._attacker_exhausted,
             "recommended_action": _recommended_action(self._current_attack_stage),
         }
 
