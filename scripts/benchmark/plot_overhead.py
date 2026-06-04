@@ -305,7 +305,7 @@ def main(argv: list[str] | None = None) -> int:
         format="%(asctime)s %(levelname)s %(name)s %(message)s",
     )
     runs_root = Path(args.runs_root)
-    blue_team_runs_root = Path(args.blue_team_runs_root)
+    blue_team_runs_root = Path(args.phase5_runs_root)
     out_dir = Path(args.out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
 

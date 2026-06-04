@@ -362,7 +362,7 @@ def _roll_rl(
     seed: int,
 ) -> dict[str, Any]:
     """One (ood_class, RL_algo, seed) cell."""
-    model_path = Path(args.blue_team_runs) / algo / f"seed_{seed}" / "model.zip"
+    model_path = Path(args.phase5_runs) / algo / f"seed_{seed}" / "model.zip"
     out_dir = Path(args.out_root) / ood_class / algo / f"seed_{seed}"
     out_dir.mkdir(parents=True, exist_ok=True)
     eval_jsonl = out_dir / "eval_test.jsonl"
@@ -632,8 +632,8 @@ def main(argv: list[str] | None = None) -> int:
     splits_manifest = Path(args.splits_manifest)
     scaler_path = Path(args.dataset_path) / "scaler.joblib"
     rf_path = Path(args.rf_path)
-    blue_team_sweep_manifest = Path(args.blue_team_runs) / "sweep_manifest.json"
-    benchmark_eval_manifest = Path(args.benchmark_eval_manifest)
+    blue_team_sweep_manifest = Path(args.phase5_runs) / "sweep_manifest.json"
+    benchmark_eval_manifest = Path(args.phase6_eval_manifest)
 
     eval_manifest = {
         "schema_version": "1.0",

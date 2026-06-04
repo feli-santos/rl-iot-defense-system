@@ -93,7 +93,7 @@ Held-Out Benchmark / Ablation & Robustness stage).
 
 **Baseline (pre-revision):** HEAD=`b2644fc`, pytest=445 passed, 2 warnings.
 
-**Current step:** Phase 4 — big re-runs (walk-away, ~1–2 days CPU)
+**Current step:** Phase 4 complete — all pipeline stages done, manifests verified, thesis builds (81 pages)
 
 **Phase 3 decisions (locked):**
 - Primary contract: `impact_is_terminal=False` for training + benchmark
@@ -127,7 +127,8 @@ Held-Out Benchmark / Ablation & Robustness stage).
 | 4.2 dataset | ✅ | 23ee841 | build-split-indices + plot-dataset (seed=0, F0 regenerated) |
 | 4.3 red-team | ✅ | 23ee841 | LSTM generator trained, all G1-G4 passed |
 | 4.4 detector | ✅ | 23ee841 | MLP+RF+CNN1D trained, RF macro-F1 0.9077, all G4 passed |
-| 4.5 blue-team@False | 🔄 | | screen session phase4-blue-team running (30 runs, ~3-7h) |
-| 4.6 benchmark | ☐ | | waiting on 4.5 |
-| 4.7 ablation | ☐ | | waiting on 4.5 |
-| **Next:** Complete 4.5-4.7, then verify manifests + full thesis build | ☐ | |
+| 4.5 blue-team@False | ✅ | — | 30 runs complete (3 algos × 10 seeds, impact_is_terminal=false) |
+| 4.6 benchmark | ✅ | — | eval + figures F5/F6/F7/F8 done; best=recommended_action (1684.8); a2c best RL (1336.6) |
+| 4.7 ablation | ✅ | 52a67c3 | OOD+reward+aggressiveness+pareto done; 7 PASS / 2 FAIL-WITH-FINDING; thesis builds (81pp) |
+| **Bug fixes (pre-run):** argparse dest mismatches in 10 scripts + render_tables FPR nesting | ✅ | — | `args.blue_team_*` → `args.phase5_*`, `args.benchmark_*` → `args.phase6_*`; benign_fpr.json nested structure |
+| **Next:** Commit Phase 4 results + update thesis prose with ablation findings | ☐ | |

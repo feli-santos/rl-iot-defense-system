@@ -13,18 +13,18 @@
   "phase6_deployable_best": 1336.3,
   "rows": [
     {
-      "cell_id": "baseline_phase5_defaults",
+      "cell_id": "baseline_defaults",
       "axis": "baseline",
       "component": null,
       "multiplier": 1.0,
       "impact_is_terminal": true,
-      "n_seeds": 5,
-      "n_episodes": 150,
-      "mean_reward": 1303.8619999999999,
-      "ci_low": 1237.1526666666668,
-      "ci_high": 1368.454,
+      "n_seeds": 10,
+      "n_episodes": 300,
+      "mean_reward": 1380.2863333333335,
+      "ci_low": 1329.9857916666667,
+      "ci_high": 1428.6297916666667,
       "compromise_rate": 1.0,
-      "mitigated_impact_rate": 0.2733333333333333
+      "mitigated_impact_rate": 0.37666666666666665
     },
     {
       "cell_id": "defense_success_bonus_x0p5",
@@ -32,13 +32,13 @@
       "component": "defense_success_bonus",
       "multiplier": 0.5,
       "impact_is_terminal": true,
-      "n_seeds": 5,
-      "n_episodes": 150,
-      "mean_reward": 537.0866666666667,
-      "ci_low": 495.4366666666666,
-      "ci_high": 568.2393333333333,
+      "n_seeds": 10,
+      "n_episodes": 300,
+      "mean_reward": 518.0563333333332,
+      "ci_low": 492.12915,
+      "ci_high": 545.8359916666666,
       "compromise_rate": 1.0,
-      "mitigated_impact_rate": 0.26666666666666666
+      "mitigated_impact_rate": 0.25
     },
     {
       "cell_id": "defense_success_bonus_x2p0",
@@ -46,13 +46,13 @@
       "component": "defense_success_bonus",
       "multiplier": 2.0,
       "impact_is_terminal": true,
-      "n_seeds": 5,
-      "n_episodes": 150,
-      "mean_reward": 2926.4093333333335,
-      "ci_low": 2872.1980000000003,
-      "ci_high": 2998.9506666666666,
+      "n_seeds": 10,
+      "n_episodes": 300,
+      "mean_reward": 2925.682666666667,
+      "ci_low": 2842.8417249999998,
+      "ci_high": 3002.99885,
       "compromise_rate": 1.0,
-      "mitigated_impact_rate": 0.5466666666666666
+      "mitigated_impact_rate": 0.4766666666666667
     },
     {
       "cell_id": "impact_is_terminal_false",
@@ -60,13 +60,13 @@
       "component": "impact_is_terminal",
       "multiplier": null,
       "impact_is_terminal": false,
-      "n_seeds": 5,
-      "n_episodes": 150,
-      "mean_reward": 1541.8933333333334,
-      "ci_low": 1524.336,
-      "ci_high": 1572.842,
+      "n_seeds": 10,
+      "n_episodes": 300,
+      "mean_reward": 1544.4363333333333,
+      "ci_low": 1506.1588916666665,
+      "ci_high": 1585.6964666666665,
       "compromise_rate": 1.0,
-      "mitigated_impact_rate": 0.9
+      "mitigated_impact_rate": 0.84
     },
     {
       "cell_id": "penalty_disproportionate_x0p5",
@@ -74,13 +74,13 @@
       "component": "penalty_disproportionate",
       "multiplier": 0.5,
       "impact_is_terminal": true,
-      "n_seeds": 5,
-      "n_episodes": 150,
-      "mean_reward": 1314.5986666666665,
-      "ci_low": 1234.616,
-      "ci_high": 1394.5813333333333,
+      "n_seeds": 10,
+      "n_episodes": 300,
+      "mean_reward": 1290.2616666666668,
+      "ci_low": 1243.2911833333335,
+      "ci_high": 1336.6791916666664,
       "compromise_rate": 1.0,
-      "mitigated_impact_rate": 0.23333333333333334
+      "mitigated_impact_rate": 0.26
     },
     {
       "cell_id": "penalty_disproportionate_x2p0",
@@ -88,13 +88,13 @@
       "component": "penalty_disproportionate",
       "multiplier": 2.0,
       "impact_is_terminal": true,
-      "n_seeds": 5,
-      "n_episodes": 150,
-      "mean_reward": 1314.902,
-      "ci_low": 1241.8153333333335,
-      "ci_high": 1387.9886666666666,
+      "n_seeds": 10,
+      "n_episodes": 300,
+      "mean_reward": 1306.7986666666668,
+      "ci_low": 1269.3389916666667,
+      "ci_high": 1343.0561083333337,
       "compromise_rate": 1.0,
-      "mitigated_impact_rate": 0.3333333333333333
+      "mitigated_impact_rate": 0.33666666666666667
     },
     {
       "cell_id": "penalty_missed_impact_x0p5",
@@ -102,13 +102,13 @@
       "component": "penalty_missed_impact",
       "multiplier": 0.5,
       "impact_is_terminal": true,
-      "n_seeds": 5,
-      "n_episodes": 150,
-      "mean_reward": 1357.0086666666666,
-      "ci_low": 1277.952,
-      "ci_high": 1441.1499999999996,
+      "n_seeds": 10,
+      "n_episodes": 300,
+      "mean_reward": 1358.73,
+      "ci_low": 1304.6783916666668,
+      "ci_high": 1415.1347749999998,
       "compromise_rate": 1.0,
-      "mitigated_impact_rate": 0.32
+      "mitigated_impact_rate": 0.37
     },
     {
       "cell_id": "penalty_missed_impact_x2p0",
@@ -116,13 +116,13 @@
       "component": "penalty_missed_impact",
       "multiplier": 2.0,
       "impact_is_terminal": true,
-      "n_seeds": 5,
-      "n_episodes": 150,
-      "mean_reward": 1175.9293333333333,
-      "ci_low": 1113.2473333333335,
-      "ci_high": 1241.3340000000003,
+      "n_seeds": 10,
+      "n_episodes": 300,
+      "mean_reward": 1151.5926666666667,
+      "ci_low": 1093.4018333333333,
+      "ci_high": 1201.1519583333334,
       "compromise_rate": 1.0,
-      "mitigated_impact_rate": 0.31333333333333335
+      "mitigated_impact_rate": 0.31
     },
     {
       "cell_id": "reward_benign_passive_x0p5",
@@ -130,13 +130,13 @@
       "component": "reward_benign_passive",
       "multiplier": 0.5,
       "impact_is_terminal": true,
-      "n_seeds": 5,
-      "n_episodes": 150,
-      "mean_reward": 1277.6746666666666,
-      "ci_low": 1228.1069333333332,
-      "ci_high": 1329.9006666666667,
+      "n_seeds": 10,
+      "n_episodes": 300,
+      "mean_reward": 1282.9826666666665,
+      "ci_low": 1221.843333333333,
+      "ci_high": 1360.0525,
       "compromise_rate": 1.0,
-      "mitigated_impact_rate": 0.3333333333333333
+      "mitigated_impact_rate": 0.2866666666666667
     },
     {
       "cell_id": "reward_benign_passive_x2p0",
@@ -144,13 +144,13 @@
       "component": "reward_benign_passive",
       "multiplier": 2.0,
       "impact_is_terminal": true,
-      "n_seeds": 5,
-      "n_episodes": 150,
-      "mean_reward": 1409.4666666666667,
-      "ci_low": 1355.6713333333332,
-      "ci_high": 1462.223483333333,
+      "n_seeds": 10,
+      "n_episodes": 300,
+      "mean_reward": 1411.4306666666666,
+      "ci_low": 1361.7276333333336,
+      "ci_high": 1466.2699249999998,
       "compromise_rate": 1.0,
-      "mitigated_impact_rate": 0.24666666666666667
+      "mitigated_impact_rate": 0.31
     },
     {
       "cell_id": "reward_proportional_x0p5",
@@ -158,13 +158,13 @@
       "component": "reward_proportional",
       "multiplier": 0.5,
       "impact_is_terminal": true,
-      "n_seeds": 5,
-      "n_episodes": 150,
-      "mean_reward": 1310.1973333333333,
-      "ci_low": 1288.5013333333334,
-      "ci_high": 1331.8933333333332,
+      "n_seeds": 10,
+      "n_episodes": 300,
+      "mean_reward": 1268.491,
+      "ci_low": 1233.70995,
+      "ci_high": 1301.75455,
       "compromise_rate": 1.0,
-      "mitigated_impact_rate": 0.24
+      "mitigated_impact_rate": 0.32
     },
     {
       "cell_id": "reward_proportional_x2p0",
@@ -172,45 +172,45 @@
       "component": "reward_proportional",
       "multiplier": 2.0,
       "impact_is_terminal": true,
-      "n_seeds": 5,
-      "n_episodes": 150,
-      "mean_reward": 1452.9653333333333,
-      "ci_low": 1407.9513333333332,
-      "ci_high": 1495.5146666666667,
+      "n_seeds": 10,
+      "n_episodes": 300,
+      "mean_reward": 1403.4783333333332,
+      "ci_low": 1373.447525,
+      "ci_high": 1436.2738083333334,
       "compromise_rate": 1.0,
-      "mitigated_impact_rate": 0.3
+      "mitigated_impact_rate": 0.31666666666666665
     }
   ],
   "gates": {
     "G7.2": {
       "passes": true,
       "best_reward_comparable_cell": "impact_is_terminal_false",
-      "best_reward_comparable_mean": 1541.8933333333334,
+      "best_reward_comparable_mean": 1544.4363333333333,
       "best_reward_comparable_ci": [
-        1524.336,
-        1572.842
+        1506.1588916666665,
+        1585.6964666666665
       ],
-      "best_reward_comparable_mitigated": 0.9,
+      "best_reward_comparable_mitigated": 0.84,
       "best_security_kpi_cell": "impact_is_terminal_false",
-      "best_security_kpi_mitigated": 0.9,
-      "best_security_kpi_reward": 1541.8933333333334,
+      "best_security_kpi_mitigated": 0.84,
+      "best_security_kpi_reward": 1544.4363333333333,
       "security_kpi_strand_passes": true,
       "security_kpi_threshold": 0.22949999999999998,
       "raw_reward_winner_cell": "defense_success_bonus_x2p0",
-      "raw_reward_winner_mean": 2926.4093333333335,
-      "raw_reward_winner_note": "raw-reward winner across ALL cells; NOT directly comparable to Phase-6 if axis='reward' because reward-coefficient cells use a different reward function. See best_reward_comparable_* for the apples-to-apples row.",
+      "raw_reward_winner_mean": 2925.682666666667,
+      "raw_reward_winner_note": "raw-reward winner across ALL cells; NOT directly comparable to benchmark if axis='reward' because reward-coefficient cells use a different reward function. See best_reward_comparable_* for the apples-to-apples row.",
       "deployable_best_threshold": 1336.3,
       "deployable_best_mitigated": 0.153,
       "oracle_ceiling": 1624.4,
       "meets_oracle_ceiling_stretch": false,
       "best_cell": "impact_is_terminal_false",
-      "best_mean_reward": 1541.8933333333334,
+      "best_mean_reward": 1544.4363333333333,
       "best_ci": [
-        1524.336,
-        1572.842
+        1506.1588916666665,
+        1585.6964666666665
       ],
-      "delta_to_deployable": 205.59333333333348,
-      "delta_to_oracle": -82.50666666666666,
+      "delta_to_deployable": 208.13633333333337,
+      "delta_to_oracle": -79.96366666666677,
       "interpretation": "PASS-WITHOUT-STRETCH: reward-comparable cell (`impact_is_terminal_false`) beats DQN +1336 on RAW REWARD but does not reach the oracle ceiling +1624; the +288 gap is partially closed."
     }
   },

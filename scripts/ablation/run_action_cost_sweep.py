@@ -306,7 +306,7 @@ def main(argv: list | None = None) -> int:  # type: ignore[type-arg]
         splits_manifest=args.splits_manifest,
         parallel=args.parallel,
         smoke=args.smoke,
-        blue_team_primary_root=args.blue_team_primary_root,
+        blue_team_primary_root=args.phase5_primary_root,
     )
     print(
         f"OK: {manifest['n_ok']} / Failed: {manifest['n_failed']} / Reused: {manifest['n_reused']}"

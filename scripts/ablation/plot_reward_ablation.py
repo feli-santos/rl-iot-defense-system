@@ -614,14 +614,14 @@ def main(argv: list[str] | None = None) -> int:
                 "sha256": _sha256(sweep_manifest_path),
             },
             "benchmark_eval_manifest": {
-                "path": str(args.benchmark_eval_manifest),
-                "sha256": _sha256(Path(args.benchmark_eval_manifest)),
+                "path": str(args.phase6_eval_manifest),
+                "sha256": _sha256(Path(args.phase6_eval_manifest)),
             },
             # Step-8 F2: explicit upstream-manifest SHA pins so the F9
             # hash chain is self-contained (no transitive lookups).
             "blue_team_sweep_manifest": {
-                "path": str(args.blue_team_sweep_manifest),
-                "sha256": _sha256(Path(args.blue_team_sweep_manifest)),
+                "path": str(args.phase5_sweep_manifest),
+                "sha256": _sha256(Path(args.phase5_sweep_manifest)),
             },
             "phase1_splits_manifest": {
                 "path": str(args.phase1_splits_manifest),

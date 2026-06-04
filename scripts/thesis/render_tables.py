@@ -96,8 +96,10 @@ def _render_numbers() -> str:
     # FPR numbers
     if BENIGN_FPR.exists():
         fpr = _load(BENIGN_FPR)
-        for policy, val in fpr.items():
+        policies_fpr = fpr.get("policies", fpr)
+        for policy, data in policies_fpr.items():
             safe = policy.replace("-", "")
+            val = data["benign_fpr"] if isinstance(data, dict) else data
             lines.append(
                 r"\newcommand{\FPR" + safe + "}{%0.3f}" % val
             )

@@ -241,7 +241,7 @@ def _roll_trained(
     The function is the inner loop's worker; it owns env construction
     and tear-down so a per-run failure can never leak resources.
     """
-    model_path = Path(args.blue_team_runs_root) / algo / f"seed_{seed}" / "model.zip"
+    model_path = Path(args.phase5_runs_root) / algo / f"seed_{seed}" / "model.zip"
     out_dir = Path(args.out_root) / algo / f"seed_{seed}"
     out_dir.mkdir(parents=True, exist_ok=True)
     eval_jsonl = out_dir / "eval_test.jsonl"

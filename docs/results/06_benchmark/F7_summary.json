@@ -3,7 +3,7 @@
   "phase": 6,
   "figure": "F7",
   "platform": {
-    "platform": "macOS-26.4.1-arm64-arm-64bit",
+    "platform": "macOS-26.5-arm64-arm-64bit",
     "processor": "arm",
     "machine": "arm64",
     "python_version": "3.9.6"
@@ -15,94 +15,94 @@
   },
   "policies": {
     "always_observe": {
-      "p50_ms": 0.00075,
-      "p95_ms": 0.000958,
-      "p99_ms": 0.001125,
-      "mean_ms": 0.0007853591250408098,
-      "n_samples": 3063,
+      "p50_ms": 0.000708,
+      "p95_ms": 0.000833,
+      "p99_ms": 0.000958,
+      "mean_ms": 0.0007030859867464037,
+      "n_samples": 6187,
       "budget_ms": 1.0,
       "g64_pass": true,
       "policy_class": "rule"
     },
     "always_block": {
-      "p50_ms": 0.00075,
-      "p95_ms": 0.000958,
-      "p99_ms": 0.001083,
-      "mean_ms": 0.0007653536036036037,
-      "n_samples": 3108,
+      "p50_ms": 0.000708,
+      "p95_ms": 0.000833,
+      "p99_ms": 0.000917,
+      "mean_ms": 0.0006992138463964673,
+      "n_samples": 6341,
       "budget_ms": 1.0,
       "g64_pass": true,
       "policy_class": "rule"
     },
     "recommended_action": {
-      "p50_ms": 0.000792,
-      "p95_ms": 0.001083,
-      "p99_ms": 0.0013762299999999896,
-      "mean_ms": 0.0008526213686249192,
-      "n_samples": 3098,
+      "p50_ms": 0.00075,
+      "p95_ms": 0.000958,
+      "p99_ms": 0.001208,
+      "mean_ms": 0.0007772072997313951,
+      "n_samples": 6329,
       "budget_ms": 1.0,
       "g64_pass": true,
       "policy_class": "rule"
     },
     "random": {
-      "p50_ms": 0.002125,
-      "p95_ms": 0.002791,
-      "p99_ms": 0.003866600000000008,
-      "mean_ms": 0.002234868952258891,
-      "n_samples": 3121,
+      "p50_ms": 0.001959,
+      "p95_ms": 0.0022910999999999995,
+      "p99_ms": 0.00275,
+      "mean_ms": 0.0020034487937370185,
+      "n_samples": 6259,
       "budget_ms": 1.0,
       "g64_pass": true,
       "policy_class": "rule"
     },
     "dqn": {
-      "p50_ms": 0.067625,
-      "p95_ms": 0.08157684999999999,
-      "p99_ms": 0.11585123999999984,
-      "mean_ms": 0.07038882570876288,
-      "n_samples": 3104,
+      "p50_ms": 0.06325,
+      "p95_ms": 0.069292,
+      "p99_ms": 0.07474538000000001,
+      "mean_ms": 0.06385820041191381,
+      "n_samples": 6312,
       "budget_ms": 5.0,
       "g64_pass": true,
       "policy_class": "rl"
     },
     "a2c": {
-      "p50_ms": 0.1005625,
-      "p95_ms": 0.11075,
-      "p99_ms": 0.13539933999999965,
-      "mean_ms": 0.10241125531914894,
-      "n_samples": 3102,
+      "p50_ms": 0.094833,
+      "p95_ms": 0.10253279999999997,
+      "p99_ms": 0.10932468000000001,
+      "mean_ms": 0.09549394591593974,
+      "n_samples": 6305,
       "budget_ms": 5.0,
       "g64_pass": true,
       "policy_class": "rl"
     },
     "ppo": {
-      "p50_ms": 0.100417,
-      "p95_ms": 0.11259594999999997,
-      "p99_ms": 0.1865085400000012,
-      "mean_ms": 0.1050925945595855,
-      "n_samples": 3088,
+      "p50_ms": 0.094875,
+      "p95_ms": 0.10188339999999999,
+      "p99_ms": 0.10701803999999998,
+      "mean_ms": 0.09541550055057417,
+      "n_samples": 6357,
       "budget_ms": 5.0,
       "g64_pass": true,
       "policy_class": "rl"
     },
     "rf_acting": {
-      "p50_ms": 13.975833,
-      "p95_ms": 14.372808,
-      "p99_ms": 14.98979064,
-      "mean_ms": 13.688663569958186,
-      "n_samples": 3109,
+      "p50_ms": 13.83025,
+      "p95_ms": 14.0462836,
+      "p99_ms": 14.16378372,
+      "mean_ms": 13.55586878511613,
+      "n_samples": 6329,
       "budget_ms": 3.0,
       "g64_pass": false,
       "policy_class": "rf"
     }
   },
-  "phase5_training_seconds_per_algo": {
-    "dqn": 2147.478315114975,
-    "ppo": 2172.352454185486,
-    "a2c": 2193.806931734085
+  "blue_team_training_seconds_per_algo": {
+    "dqn": 4571.427026987076,
+    "ppo": 4635.468019723892,
+    "a2c": 4719.117948293686
   },
-  "phase5_training_hours_per_algo": {
-    "dqn": 0.5965217541986042,
-    "ppo": 0.603431237273746,
-    "a2c": 0.6093908143705792
+  "blue_team_training_hours_per_algo": {
+    "dqn": 1.2698408408297432,
+    "ppo": 1.287630005478859,
+    "a2c": 1.3108660967482462
   }
 }

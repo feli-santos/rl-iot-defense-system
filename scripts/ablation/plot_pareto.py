@@ -420,9 +420,9 @@ def main(argv: list[str] | None = None) -> int:
 
     sha_collector: dict[str, str] = {}
     points: list[dict[str, Any]] = []
-    points += _collect_phase6_points(Path(args.benchmark_runs), sha_collector)
-    points += _collect_f9_points(Path(args.ablation_f9_runs), sha_collector)
-    points += _collect_f10_points(Path(args.ablation_f10_runs), sha_collector)
+    points += _collect_phase6_points(Path(args.phase6_runs), sha_collector)
+    points += _collect_f9_points(Path(args.phase7_f9_runs), sha_collector)
+    points += _collect_f10_points(Path(args.phase7_f10_runs), sha_collector)
     logger.info("F12: collected %d points (phase6 + F9 + F10)", len(points))
 
     if not points:
@@ -462,22 +462,22 @@ def main(argv: list[str] | None = None) -> int:
         },
         "inputs": {
             "benchmark_eval_manifest": {
-                "path": str(Path(args.benchmark_runs) / "eval_manifest.json"),
-                "sha256": _sha256(Path(args.benchmark_runs) / "eval_manifest.json"),
+                "path": str(Path(args.phase6_runs) / "eval_manifest.json"),
+                "sha256": _sha256(Path(args.phase6_runs) / "eval_manifest.json"),
             },
             "phase7_f9_sweep_manifest": {
-                "path": str(Path(args.ablation_f9_runs) / "sweep_manifest.json"),
-                "sha256": _sha256(Path(args.ablation_f9_runs) / "sweep_manifest.json"),
+                "path": str(Path(args.phase7_f9_runs) / "sweep_manifest.json"),
+                "sha256": _sha256(Path(args.phase7_f9_runs) / "sweep_manifest.json"),
             },
             "phase7_f10_sweep_manifest": {
-                "path": str(Path(args.ablation_f10_runs) / "sweep_manifest.json"),
-                "sha256": _sha256(Path(args.ablation_f10_runs) / "sweep_manifest.json"),
+                "path": str(Path(args.phase7_f10_runs) / "sweep_manifest.json"),
+                "sha256": _sha256(Path(args.phase7_f10_runs) / "sweep_manifest.json"),
             },
             # Step-8 F2: explicit upstream-manifest SHA pins so the F12
             # hash chain is self-contained (no transitive lookups).
             "blue_team_sweep_manifest": {
-                "path": str(args.blue_team_sweep_manifest),
-                "sha256": _sha256(Path(args.blue_team_sweep_manifest)),
+                "path": str(args.phase5_sweep_manifest),
+                "sha256": _sha256(Path(args.phase5_sweep_manifest)),
             },
             "phase1_splits_manifest": {
                 "path": str(args.phase1_splits_manifest),
