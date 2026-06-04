@@ -13,23 +13,20 @@ from sklearn.preprocessing import StandardScaler
 from src.blue_team.env_factory import make_eval_env, make_train_env
 from src.blue_team.run_config import EnvConfigSerializable
 from src.environment.adversarial_env import AdversarialIoTEnv
-from src.generator.attack_sequence_generator import (
-    AttackSequenceGenerator,
-    AttackSequenceGeneratorConfig,
-)
 
 # --------------------------------------------------------------- fixtures
 
 
 @pytest.fixture
 def synthetic_paths(tmp_path: Path) -> tuple[Path, Path]:
-    """Create a synthetic generator + tiny dataset, no dataset-prep manifest."""
-    # Generator
+    """Create a tiny dataset, no dataset-prep manifest.
+
+    ``gen_dir`` is an ignored generator-path directory (attacker is now a
+    first-order Markov chain).
+    """
+    # Ignored generator-path dir
     gen_dir = tmp_path / "generator"
     gen_dir.mkdir(parents=True)
-    cfg = AttackSequenceGeneratorConfig(num_stages=5, embedding_dim=8, hidden_size=16, num_layers=1)
-    gen = AttackSequenceGenerator(config=cfg)
-    gen.save(gen_dir / "attack_sequence_generator.pth", save_config=True)
 
     # Dataset
     ds_dir = tmp_path / "dataset"

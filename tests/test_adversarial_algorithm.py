@@ -20,23 +20,10 @@ class TestAlgorithmFactory:
         from sklearn.preprocessing import StandardScaler
 
         from src.environment.adversarial_env import AdversarialIoTEnv
-        from src.generator.attack_sequence_generator import (
-            AttackSequenceGenerator,
-            AttackSequenceGeneratorConfig,
-        )
 
-        # Create generator
+        # Ignored generator-path dir (attacker is now a first-order Markov chain)
         generator_path = tmp_path / "generator"
         generator_path.mkdir(parents=True)
-
-        config = AttackSequenceGeneratorConfig(
-            num_stages=5,
-            embedding_dim=16,
-            hidden_size=32,
-            num_layers=1,
-        )
-        generator = AttackSequenceGenerator(config=config)
-        generator.save(generator_path / "attack_sequence_generator.pth", save_config=True)
 
         # Create dataset
         dataset_path = tmp_path / "dataset"
@@ -166,23 +153,10 @@ class TestAdversarialAlgorithm:
         from sklearn.preprocessing import StandardScaler
 
         from src.environment.adversarial_env import AdversarialIoTEnv
-        from src.generator.attack_sequence_generator import (
-            AttackSequenceGenerator,
-            AttackSequenceGeneratorConfig,
-        )
 
-        # Create generator
+        # Ignored generator-path dir (attacker is now a first-order Markov chain)
         generator_path = tmp_path / "generator"
         generator_path.mkdir(parents=True)
-
-        config = AttackSequenceGeneratorConfig(
-            num_stages=5,
-            embedding_dim=16,
-            hidden_size=32,
-            num_layers=1,
-        )
-        generator = AttackSequenceGenerator(config=config)
-        generator.save(generator_path / "attack_sequence_generator.pth", save_config=True)
 
         # Create dataset
         dataset_path = tmp_path / "dataset"

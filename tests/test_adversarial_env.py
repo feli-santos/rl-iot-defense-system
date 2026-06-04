@@ -50,25 +50,10 @@ class TestAdversarialEnvInitialization:
 
     @pytest.fixture
     def mock_generator(self, tmp_path):
-        """Create a mock Attack Sequence Generator."""
-        from src.generator.attack_sequence_generator import (
-            AttackSequenceGenerator,
-            AttackSequenceGeneratorConfig,
-        )
-
-        # Create and save a simple generator
-        config = AttackSequenceGeneratorConfig(
-            num_stages=5,
-            embedding_dim=16,
-            hidden_size=32,
-            num_layers=1,
-        )
-        generator = AttackSequenceGenerator(config=config)
-
-        model_path = tmp_path / "generator" / "attack_sequence_generator.pth"
-        generator.save(model_path, save_config=True)
-
-        return tmp_path / "generator"
+        """Ignored generator-path dir (attacker is now a first-order Markov chain)."""
+        path = tmp_path / "generator"
+        path.mkdir(parents=True)
+        return path
 
     @pytest.fixture
     def mock_dataset(self, tmp_path):
@@ -182,23 +167,9 @@ class TestAdversarialEnvReset:
         from sklearn.preprocessing import StandardScaler
 
         from src.environment.adversarial_env import AdversarialIoTEnv
-        from src.generator.attack_sequence_generator import (
-            AttackSequenceGenerator,
-            AttackSequenceGeneratorConfig,
-        )
-
-        # Create generator
+        # Ignored generator-path dir (attacker is now a first-order Markov chain)
         generator_path = tmp_path / "generator"
         generator_path.mkdir(parents=True)
-
-        config = AttackSequenceGeneratorConfig(
-            num_stages=5,
-            embedding_dim=16,
-            hidden_size=32,
-            num_layers=1,
-        )
-        generator = AttackSequenceGenerator(config=config)
-        generator.save(generator_path / "attack_sequence_generator.pth", save_config=True)
 
         # Create dataset
         dataset_path = tmp_path / "dataset"
@@ -273,23 +244,9 @@ class TestAdversarialEnvStep:
         from sklearn.preprocessing import StandardScaler
 
         from src.environment.adversarial_env import AdversarialIoTEnv
-        from src.generator.attack_sequence_generator import (
-            AttackSequenceGenerator,
-            AttackSequenceGeneratorConfig,
-        )
-
-        # Create generator
+        # Ignored generator-path dir (attacker is now a first-order Markov chain)
         generator_path = tmp_path / "generator"
         generator_path.mkdir(parents=True)
-
-        config = AttackSequenceGeneratorConfig(
-            num_stages=5,
-            embedding_dim=16,
-            hidden_size=32,
-            num_layers=1,
-        )
-        generator = AttackSequenceGenerator(config=config)
-        generator.save(generator_path / "attack_sequence_generator.pth", save_config=True)
 
         # Create dataset
         dataset_path = tmp_path / "dataset"
@@ -390,23 +347,9 @@ class TestAdversarialEnvHiddenState:
         from sklearn.preprocessing import StandardScaler
 
         from src.environment.adversarial_env import AdversarialIoTEnv
-        from src.generator.attack_sequence_generator import (
-            AttackSequenceGenerator,
-            AttackSequenceGeneratorConfig,
-        )
-
-        # Create generator
+        # Ignored generator-path dir (attacker is now a first-order Markov chain)
         generator_path = tmp_path / "generator"
         generator_path.mkdir(parents=True)
-
-        config = AttackSequenceGeneratorConfig(
-            num_stages=5,
-            embedding_dim=16,
-            hidden_size=32,
-            num_layers=1,
-        )
-        generator = AttackSequenceGenerator(config=config)
-        generator.save(generator_path / "attack_sequence_generator.pth", save_config=True)
 
         # Create dataset
         dataset_path = tmp_path / "dataset"
@@ -465,23 +408,9 @@ class TestAdversarialEnvTermination:
             AdversarialEnvConfig,
             AdversarialIoTEnv,
         )
-        from src.generator.attack_sequence_generator import (
-            AttackSequenceGenerator,
-            AttackSequenceGeneratorConfig,
-        )
-
-        # Create generator
+        # Ignored generator-path dir (attacker is now a first-order Markov chain)
         generator_path = tmp_path / "generator"
         generator_path.mkdir(parents=True)
-
-        config = AttackSequenceGeneratorConfig(
-            num_stages=5,
-            embedding_dim=16,
-            hidden_size=32,
-            num_layers=1,
-        )
-        generator = AttackSequenceGenerator(config=config)
-        generator.save(generator_path / "attack_sequence_generator.pth", save_config=True)
 
         # Create dataset
         dataset_path = tmp_path / "dataset"
@@ -570,23 +499,9 @@ class TestEnvironmentIntegration:
         from sklearn.preprocessing import StandardScaler
 
         from src.environment.adversarial_env import AdversarialIoTEnv
-        from src.generator.attack_sequence_generator import (
-            AttackSequenceGenerator,
-            AttackSequenceGeneratorConfig,
-        )
-
-        # Create generator
+        # Ignored generator-path dir (attacker is now a first-order Markov chain)
         generator_path = tmp_path / "generator"
         generator_path.mkdir(parents=True)
-
-        config = AttackSequenceGeneratorConfig(
-            num_stages=5,
-            embedding_dim=16,
-            hidden_size=32,
-            num_layers=1,
-        )
-        generator = AttackSequenceGenerator(config=config)
-        generator.save(generator_path / "attack_sequence_generator.pth", save_config=True)
 
         # Create dataset
         dataset_path = tmp_path / "dataset"
@@ -690,19 +605,10 @@ class TestStagePredictionAblation:
 
     @pytest.fixture
     def mock_generator(self, tmp_path):
-        """Create a mock Attack Sequence Generator."""
-        from src.generator.attack_sequence_generator import (
-            AttackSequenceGenerator,
-            AttackSequenceGeneratorConfig,
-        )
-
-        config = AttackSequenceGeneratorConfig(
-            num_stages=5, embedding_dim=16, hidden_size=32, num_layers=1
-        )
-        generator = AttackSequenceGenerator(config=config)
-        model_path = tmp_path / "generator" / "attack_sequence_generator.pth"
-        generator.save(model_path, save_config=True)
-        return tmp_path / "generator"
+        """Ignored generator-path dir (attacker is now a first-order Markov chain)."""
+        path = tmp_path / "generator"
+        path.mkdir(parents=True)
+        return path
 
     @pytest.fixture
     def mock_dataset(self, tmp_path):

@@ -518,11 +518,6 @@ def main(argv: list[str] | None = None) -> int:
     splits_manifest = Path(args.splits_manifest)
     scaler_path = Path(args.dataset_path) / "scaler.joblib"
     rf_path = Path(args.rf_path)
-    # Step-6 F3 + Step-8 task #3 (07_HANDOFF.md §5): pin the red-team
-    # LSTM checkpoint that drives the env's attack-sequence generator.
-    # Path is `<generator_path>/attack_sequence_generator.pth` per the
-    # default `--generator-path artifacts/generator/red_team`.
-    lstm_pth = Path(args.generator_path) / "attack_sequence_generator.pth"
 
     eval_manifest = {
         "schema_version": "1.1",
@@ -539,11 +534,6 @@ def main(argv: list[str] | None = None) -> int:
             "splits_manifest": _sha256(splits_manifest),
             "scaler": _sha256(scaler_path),
             "rf_model": _sha256(rf_path),
-            # Step-6 F3 fix: pin the red-team LSTM checkpoint so the
-            # benchmark hash chain explicitly chains back to the
-            # red-team artefact (was implicit pre-Step-8).
-            "phase2_lstm": _sha256(lstm_pth) if lstm_pth.exists() else None,
-            "phase2_lstm_path": str(lstm_pth),
         },
         "eval_env": {
             "split": _eval_env_spec().split,

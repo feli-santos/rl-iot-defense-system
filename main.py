@@ -3,12 +3,11 @@
 IoT Defense System - Adversarial Training Pipeline
 
 Main entry point for the adversarial RL defense system. This system uses:
-- Red Team: Attack Sequence Generator (LSTM) to produce attack sequences
+- Attacker: first-order Markov chain over kill-chain stages (see MarkovAttacker)
 - Blue Team: RL agents (DQN/PPO/A2C) to learn defense policies
 
 Modes:
 - process-data: Prepare CICIoT2023 dataset for adversarial environment
-- train-generator: Train the Attack Sequence Generator (Red Team)
 - train-rl: Train single RL defense agent (Blue Team)
 - train-all-rl: Train all RL algorithms (DQN, PPO, A2C)
 - train-all: Run complete training pipeline
@@ -116,9 +115,6 @@ Examples:
   # Process raw CICIoT2023 dataset
   python main.py --mode process-data
   
-  # Train Attack Sequence Generator (Red Team)
-  python main.py --mode train-generator
-  
   # Train single RL agent (Blue Team)
   python main.py --mode train-rl --algorithm ppo
   
@@ -137,7 +133,7 @@ Examples:
     # Mode selection
     parser.add_argument(
         "--mode",
-        choices=["process-data", "train-generator", "train-rl", "train-all-rl", "train-all"],
+        choices=["process-data", "train-rl", "train-all-rl", "train-all"],
         default="train-all",
         help="Training mode",
     )
@@ -271,130 +267,6 @@ def process_data(config: dict, args: argparse.Namespace) -> bool:
     except Exception as e:
         logger.error(f"Dataset processing failed: {e}")
         print(f"❌ Dataset processing failed: {e}")
-        return False
-
-
-def train_generator(config: dict, args: argparse.Namespace) -> bool:
-    """Train the Attack Sequence Generator (Red Team)."""
-    print("\n🔴 Training Attack Sequence Generator (Red Team)")
-    print("=" * 60)
-
-    try:
-        from src.generator.attack_sequence_generator import AttackSequenceGeneratorConfig
-        from src.generator.episode_generator import EpisodeGenerator, EpisodeGeneratorConfig
-        from src.training.generator_trainer import GeneratorTrainer, GeneratorTrainingConfig
-
-        # Check if already trained
-        generator_path = Path(args.generator_path)
-        model_file = generator_path / "attack_sequence_generator.pth"
-
-        if model_file.exists() and not args.force:
-            print(f"✅ Generator already trained at {model_file}. Use --force to retrain.")
-            return True
-
-        # Get config values
-        ep_config = config.get("episode_generation", {})
-        gen_config = config.get("attack_generator", {})
-
-        # Load stage distribution from metadata
-        data_path = Path(args.data_path)
-        metadata_path = data_path / "metadata.json"
-        stage_distribution = None
-
-        if metadata_path.exists():
-            import json
-
-            with open(metadata_path) as f:
-                metadata = json.load(f)
-            stage_distribution = metadata.get(
-                "stage_counts", metadata.get("stage_distribution", {})
-            )
-            # Convert string keys to int
-            if stage_distribution:
-                stage_distribution = {int(k): v for k, v in stage_distribution.items()}
-                print(f"   Loaded stage distribution: {stage_distribution}")
-
-        # Create episode generator
-        episode_config = EpisodeGeneratorConfig(
-            num_episodes=args.num_episodes or ep_config.get("num_episodes", 10000),
-            min_length=ep_config.get("min_length", 5),
-            max_length=ep_config.get("max_length", 30),
-            benign_start_prob=ep_config.get("benign_start_prob", 0.8),
-            distribution_temperature=ep_config.get("distribution_temperature", 1.0),
-            min_stage_coverage=ep_config.get("min_stage_coverage", None),
-        )
-
-        print(f"   Generating {episode_config.num_episodes:,} training episodes...")
-        print(
-            f"   Temperature={episode_config.distribution_temperature}, Coverage={episode_config.min_stage_coverage}"
-        )
-        episode_generator = EpisodeGenerator(
-            config=episode_config,
-            stage_distribution=stage_distribution,
-            seed=42,
-        )
-        episodes = episode_generator.generate_all()
-
-        # Create model config
-        model_config_dict = gen_config.get("model", {})
-        model_config = AttackSequenceGeneratorConfig(
-            num_stages=model_config_dict.get("num_stages", 5),
-            embedding_dim=model_config_dict.get("embedding_dim", 32),
-            hidden_size=model_config_dict.get("hidden_size", 64),
-            num_layers=model_config_dict.get("num_layers", 2),
-            dropout=model_config_dict.get("dropout", 0.1),
-            temperature=model_config_dict.get("temperature", 1.0),
-        )
-
-        # Create training config
-        training_config_dict = gen_config.get("training", {})
-        training_config = GeneratorTrainingConfig(
-            epochs=args.generator_epochs or training_config_dict.get("epochs", 50),
-            batch_size=training_config_dict.get("batch_size", 32),
-            learning_rate=training_config_dict.get("learning_rate", 0.001),
-            sequence_length=training_config_dict.get("sequence_length", 5),
-            val_split=training_config_dict.get("val_split", 0.2),
-            early_stopping_patience=training_config_dict.get("early_stopping_patience", 10),
-            output_dir=generator_path,
-            device=args.device,
-            # Imbalance mitigation
-            use_class_weights=training_config_dict.get("use_class_weights", True),
-            use_weighted_sampler=training_config_dict.get("use_weighted_sampler", True),
-            class_weight_smoothing=training_config_dict.get("class_weight_smoothing", 0.5),
-            grad_clip_norm=training_config_dict.get("grad_clip_norm", 1.0),
-            use_lr_scheduler=training_config_dict.get("use_lr_scheduler", True),
-            scheduler_patience=training_config_dict.get("scheduler_patience", 5),
-            seed=training_config_dict.get("seed", 42),
-            # Balanced validation
-            balanced_validation=training_config_dict.get("balanced_validation", False),
-            val_samples_per_class=training_config_dict.get("val_samples_per_class", 80),
-            # Macro-F1 early stopping with recall gates
-            use_macro_f1_stopping=training_config_dict.get("use_macro_f1_stopping", False),
-            min_recall_stage_1=training_config_dict.get("min_recall_stage_1", 0.5),
-            min_recall_stage_2=training_config_dict.get("min_recall_stage_2", 0.5),
-        )
-
-        # Train generator
-        trainer = GeneratorTrainer(config=training_config, model_config=model_config)
-
-        print(f"   Training for {training_config.epochs} epochs...")
-        results = trainer.train(episodes)
-
-        print("✅ Generator training completed!")
-        if training_config.use_macro_f1_stopping and results.get("best_macro_f1") is not None:
-            print(f"   - Best macro F1: {results['best_macro_f1']:.4f}")
-        print(f"   - Best validation loss: {results['best_val_loss']:.4f}")
-        print(f"   - Epochs trained: {results['epochs_trained']}")
-        print(f"   - Model saved to: {generator_path}")
-
-        return True
-
-    except Exception as e:
-        logger.error(f"Generator training failed: {e}")
-        print(f"❌ Generator training failed: {e}")
-        import traceback
-
-        traceback.print_exc()
         return False
 
 
@@ -665,9 +537,6 @@ def main() -> None:
         if args.mode == "process-data":
             process_data(config, args)
 
-        elif args.mode == "train-generator":
-            train_generator(config, args)
-
         elif args.mode == "train-rl":
             train_rl(config, args)
 
@@ -677,8 +546,6 @@ def main() -> None:
         elif args.mode == "train-all":
             # Full pipeline
             if not process_data(config, args):
-                return
-            if not train_generator(config, args):
                 return
             if not train_rl(config, args):
                 return

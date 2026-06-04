@@ -43,7 +43,6 @@ from typing import Any, Optional, Union
 
 import gymnasium as gym
 import numpy as np
-import torch
 from gymnasium import spaces
 
 from src.generator.markov_attacker import MarkovAttacker
@@ -368,20 +367,7 @@ class AdversarialIoTEnv(gym.Env):
 
         self._config = config or AdversarialEnvConfig()
         self._render_mode = render_mode
-        requested_device = torch.device(device)
-
-        # NOTE: AttackSequenceGenerator relies on nn.Embedding, which can raise
-        # intermittent runtime errors on some PyTorch + Apple MPS combinations
-        # during inference. Keep environment-side generator inference on CPU for
-        # robustness while allowing RL policy training to proceed.
-        if requested_device.type == "mps":
-            logger.warning(
-                "MPS requested for environment generator inference; "
-                "falling back to CPU for AttackSequenceGenerator stability."
-            )
-            self._device = torch.device("cpu")
-        else:
-            self._device = requested_device
+        self._device = device
 
         # Attacker dynamics: first-order Markov chain over kill-chain stages.
         # generator_path is retained for backward compatibility but ignored.
@@ -468,8 +454,6 @@ class AdversarialIoTEnv(gym.Env):
             self._rng = np.random.default_rng(seed)
             # Also seed the realization engine
             self._realization_engine._rng = np.random.default_rng(seed)
-            # And set torch seed for generator
-            torch.manual_seed(seed)
             np.random.seed(seed)
         else:
             self._rng = np.random.default_rng()
