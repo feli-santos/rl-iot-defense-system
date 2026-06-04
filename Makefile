@@ -101,12 +101,15 @@ BLUE_TEAM_SEEDS         ?= 0 1 2 3 4 5 6 7 8 9
 BLUE_TEAM_ALGOS         ?= dqn ppo a2c
 BLUE_TEAM_PARALLEL      ?= 1
 BLUE_TEAM_IMPACT_TERM   ?= true   # Phase 4 primary contract: override to 'false'
+# JSON forwarded to train_agent --reward-overrides, e.g. {"attacker_budget":40}
+BLUE_TEAM_REWARD_OVERRIDES ?=
 
 .PHONY: blue-team-smoke
 blue-team-smoke:  ## Blue-team smoke: PPO seed 0 only, 5K timesteps (~20 s).
 	$(PYTHON) -m scripts.blue_team.train_agent \
 	    --algo ppo --seed 0 --smoke \
 	    --impact-is-terminal $(BLUE_TEAM_IMPACT_TERM) \
+	    $(if $(BLUE_TEAM_REWARD_OVERRIDES),--reward-overrides '$(BLUE_TEAM_REWARD_OVERRIDES)',) \
 	    --out-dir runs/smoke/ppo_seed_0
 
 .PHONY: blue-team-sweep
@@ -117,6 +120,7 @@ blue-team-sweep:  ## Blue-team: train DQN/PPO/A2C × 10 seeds (~3-7 h CPU).
 	    --out-root $(BLUE_TEAM_RUNS_ROOT) \
 	    --parallel $(BLUE_TEAM_PARALLEL) \
 	    --impact-is-terminal $(BLUE_TEAM_IMPACT_TERM) \
+	    $(if $(BLUE_TEAM_REWARD_OVERRIDES),--reward-overrides '$(BLUE_TEAM_REWARD_OVERRIDES)',) \
 	    --continue-on-failure
 
 .PHONY: blue-team-figures
@@ -147,7 +151,10 @@ BENCHMARK_RUNS_ROOT      ?= runs/benchmark
 BENCHMARK_OUT_DIR        ?= docs/results/benchmark
 BENCHMARK_N_EPISODES     ?= 30
 BENCHMARK_N_DET_EPISODES ?= 300
-BENCHMARK_RF_PATH        ?= artifacts/detector/random_forest.joblib
+BENCHMARK_RF_PATH ?= artifacts/detector/random_forest.joblib
+# Finite attacker budget for the benchmark eval env (must match training, e.g. 40);
+# empty = unbounded (recovers the compromise_rate=1.0 control cell).
+BENCHMARK_ATTACKER_BUDGET ?=
 
 .PHONY: benchmark-smoke
 benchmark-smoke:  ## Benchmark smoke: 1 algo × 1 seed × 2 ep + 2 ep / baseline (~20 s CPU).
@@ -162,7 +169,8 @@ benchmark-eval:  ## Benchmark: roll blue-team checkpoints + 5 baselines on test_
 	    --n-deterministic-episodes $(BENCHMARK_N_DET_EPISODES) \
 	    --phase5-runs-root $(BLUE_TEAM_RUNS_ROOT) \
 	    --out-root $(BENCHMARK_RUNS_ROOT) \
-	    --rf-path $(BENCHMARK_RF_PATH)
+	    --rf-path $(BENCHMARK_RF_PATH) \
+	    $(if $(BENCHMARK_ATTACKER_BUDGET),--attacker-budget $(BENCHMARK_ATTACKER_BUDGET),)
 
 .PHONY: benchmark-figures
 benchmark-figures:  ## Benchmark: render F5, F6, F7, F8 from runs/benchmark/.

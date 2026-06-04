@@ -138,7 +138,7 @@ def _load_sb3_model(algo: str, model_path: Path, env: Any) -> Any:
     raise ValueError(f"unknown algo {algo!r}; expected dqn / ppo / a2c")
 
 
-def _eval_env_spec() -> EnvConfigSerializable:
+def _eval_env_spec(attacker_budget: int | None = None) -> EnvConfigSerializable:
     """benchmark eval env spec: held-out test_balanced split (D6.2).
 
     Reward-shaping fields stay at the environment-design frozen defaults; only the
@@ -149,18 +149,24 @@ def _eval_env_spec() -> EnvConfigSerializable:
     reward contract), so the eval env must terminate IMPACT the same way.
     Without this the eval env would default to ``True`` and silently evaluate
     under a different terminal contract than training.
+
+    ``attacker_budget`` (default ``None`` = unbounded) makes the benchmark eval
+    contract match the training contract under the finite-budget MDP. It must be
+    set to the same value the agents were trained with (e.g. 40); ``None``
+    recovers the unbounded ``compromise_rate``=1.0 control cell.
     """
     return EnvConfigSerializable(
         split="test_balanced",
         exclude_ood=True,
         impact_is_terminal=False,
+        attacker_budget=attacker_budget,
     )
 
 
 def _build_eval_env(args: argparse.Namespace, seed: int | None = None) -> Any:
     """Build a fresh eval env on test_balanced for one rollout."""
     return make_eval_env(
-        spec=_eval_env_spec(),
+        spec=_eval_env_spec(getattr(args, "attacker_budget", None)),
         generator_path=args.generator_path,
         dataset_path=args.dataset_path,
         splits_manifest=args.splits_manifest,
@@ -196,6 +202,16 @@ def _build_argparser() -> argparse.ArgumentParser:
         help="Where the trained blue-team model.zip files live.",
     )
     p.add_argument("--out-root", default="runs/benchmark")
+    p.add_argument(
+        "--attacker-budget",
+        type=int,
+        default=None,
+        help=(
+            "Finite attacker budget for the eval env (must match the value the "
+            "agents were trained with, e.g. 40). Default None = unbounded "
+            "(recovers the compromise_rate=1.0 control)."
+        ),
+    )
     p.add_argument(
         "--generator-path",
         default="artifacts/generator/red_team",
@@ -402,7 +418,7 @@ def _roll_deterministic(
                 "rf_sha256": None,
             }
         # Default env spec: window=5, F=29, deltas=True (environment-design frozen).
-        spec = _eval_env_spec()
+        spec = _eval_env_spec(getattr(args, "attacker_budget", None))
         # F is whatever the env reports at construction; use a probe
         # rollout instead of hard-coding 29 to stay robust to a
         # smaller-feature-matrix split.
