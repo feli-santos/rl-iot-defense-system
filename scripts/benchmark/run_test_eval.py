@@ -47,6 +47,7 @@ the wiring without burning CPU.
 from __future__ import annotations
 
 import argparse
+import dataclasses
 import hashlib
 import json
 import logging
@@ -561,15 +562,14 @@ def main(argv: list[str] | None = None) -> int:
             "scaler": _sha256(scaler_path),
             "rf_model": _sha256(rf_path),
         },
-        "eval_env": {
-            "split": _eval_env_spec().split,
-            "exclude_ood": _eval_env_spec().exclude_ood,
-            "window_size": _eval_env_spec().window_size,
-            "include_deltas": _eval_env_spec().include_deltas,
-            "max_steps": _eval_env_spec().max_steps,
-            "min_episode_length": _eval_env_spec().min_episode_length,
-            "p_defender_deescalation": _eval_env_spec().p_defender_deescalation,
-        },
+        # C10 fix: serialise the *actual* eval spec used (built with the
+        # --attacker-budget that was passed), via asdict() so every
+        # EnvConfigSerializable field — attacker_budget, evasion_prob,
+        # impact_is_terminal, … — is faithfully recorded. Previously this block
+        # was hand-rolled from bare _eval_env_spec() (no budget arg) and listed
+        # only 7 fields, so attacker_budget/evasion_prob/impact_is_terminal read
+        # back as absent/None even when a finite budget was applied.
+        "eval_env": dataclasses.asdict(_eval_env_spec(getattr(args, "attacker_budget", None))),
         "runs": results,
         "n_ok": sum(1 for r in results if r.get("ok")),
         "n_failed": sum(1 for r in results if not r.get("ok")),
