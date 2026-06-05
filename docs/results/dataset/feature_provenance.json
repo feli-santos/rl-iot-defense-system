@@ -1,0 +1,135 @@
+{
+  "schema_version": "1.0",
+  "title": "CICIoT2023 feature-selection provenance (29-column observation basis)",
+  "_note": "Machine-readable, citable record of which 29 numeric features the AdversarialIoTEnv observation is built from, and why. Resolves review item C6. The canonical source of truth is the gitignored data/processed/ciciot2023/metadata.json (feature_columns + feature_selection_info); this artifact mirrors it and pins its SHA-256 so the thesis can cite the column basis without shipping the raw CIC data.",
+  "generated_from": {
+    "path": "data/processed/ciciot2023/metadata.json",
+    "sha256": "a9e68b68d82902ac293258444a0acbcdf819393fcc2973b68ab4df664924a99c",
+    "gitignored": true,
+    "reason_gitignored": "Derived from raw CICIoT2023 CSVs, which are not redistributable under the CIC license."
+  },
+  "selection": {
+    "enabled": true,
+    "original_feature_count": 46,
+    "final_feature_count": 29,
+    "fit_on": "train_split_only",
+    "leakage_safe": true,
+    "variance_threshold": 0.01,
+    "correlation_threshold": 0.95,
+    "feature_keep_keywords": [
+      "rate",
+      "per_second",
+      "pps",
+      "packets_per_second",
+      "bytes_per_second",
+      "frequency"
+    ],
+    "pipeline": [
+      {
+        "stage": 1,
+        "name": "zero_variance_removal",
+        "rule": "sklearn VarianceThreshold(threshold=0): drop features with literally zero variance on the train split"
+      },
+      {
+        "stage": 2,
+        "name": "low_variance_removal",
+        "rule": "keep features with train-split var >= variance_threshold (0.01); only applied if > 10 features survive stage 1; keyword-protected features are exempt"
+      },
+      {
+        "stage": 3,
+        "name": "high_correlation_removal",
+        "rule": "for each pair with |Pearson corr| > correlation_threshold (0.95) on the train split, drop the lower-variance member; keyword-protected features preferentially kept"
+      }
+    ]
+  },
+  "feature_columns": [
+    "flow_duration",
+    "Header_Length",
+    "Protocol Type",
+    "Duration",
+    "Rate",
+    "Drate",
+    "fin_flag_number",
+    "syn_flag_number",
+    "rst_flag_number",
+    "psh_flag_number",
+    "ack_flag_number",
+    "ack_count",
+    "syn_count",
+    "fin_count",
+    "urg_count",
+    "rst_count",
+    "HTTP",
+    "HTTPS",
+    "TCP",
+    "UDP",
+    "ICMP",
+    "Tot sum",
+    "Min",
+    "Max",
+    "AVG",
+    "Tot size",
+    "IAT",
+    "Covariance",
+    "Variance"
+  ],
+  "thematic_groups": {
+    "flow_timing": ["flow_duration", "Duration", "Rate", "Drate", "IAT"],
+    "header_and_size": ["Header_Length", "Tot sum", "Min", "Max", "AVG", "Tot size"],
+    "tcp_flags": [
+      "fin_flag_number",
+      "syn_flag_number",
+      "rst_flag_number",
+      "psh_flag_number",
+      "ack_flag_number",
+      "ack_count",
+      "syn_count",
+      "fin_count",
+      "urg_count",
+      "rst_count"
+    ],
+    "protocol_indicators": ["Protocol Type", "HTTP", "HTTPS", "TCP", "UDP", "ICMP"],
+    "distribution_moments": ["Covariance", "Variance"]
+  },
+  "dropped": {
+    "zero_variance": ["DHCP", "IRC", "SMTP", "Telnet"],
+    "low_variance": ["ARP", "DNS", "IPv", "LLC", "SSH", "cwr_flag_number", "ece_flag_number"],
+    "high_correlation": ["Magnitue", "Number", "Radius", "Srate", "Std", "Weight"],
+    "total": [
+      "ARP",
+      "DHCP",
+      "DNS",
+      "IPv",
+      "IRC",
+      "LLC",
+      "Magnitue",
+      "Number",
+      "Radius",
+      "SMTP",
+      "SSH",
+      "Srate",
+      "Std",
+      "Telnet",
+      "Weight",
+      "cwr_flag_number",
+      "ece_flag_number"
+    ]
+  },
+  "scaling": {
+    "method": "StandardScaler",
+    "fit_on": "train_split_only",
+    "persisted_to": "data/processed/ciciot2023/scaler.joblib",
+    "unscaled_copy": "data/processed/ciciot2023/features_raw.npy"
+  },
+  "observation_note": "The 29 features are never hard-coded in the environment; AdversarialIoTEnv derives num_features from features.npy at load time (29). The production observation stacks window_size=5 frames with first-order deltas: obs_dim = 5 * 29 * 2 = 290.",
+  "source_refs": {
+    "selection_code": "src/utils/dataset_processor.py:281-342",
+    "correlation_filter": "src/utils/dataset_processor.py:344-418",
+    "keyword_protection": "src/utils/dataset_processor.py:420-445",
+    "metadata_writer": "src/utils/dataset_processor.py:1004-1023",
+    "config_keys": "config.yml:25-34",
+    "obs_construction": "src/environment/adversarial_env.py:414,421-433",
+    "prose_table": "docs/dataset_card.md:91-125",
+    "review_item": "docs/review/CONTEXT_LEDGER.md (C6)"
+  }
+}
