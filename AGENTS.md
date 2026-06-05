@@ -76,7 +76,7 @@ Podman is auto-detected and preferred; Docker is the fallback. Main file is `tex
 for build history.
 
 **Numbers in the thesis are macro-driven, never hand-typed.** Canonical experiment JSONs
-live under `docs/results/<area>/` (e.g. `benchmark/main_results.json`). `make render-tables`
+live under `docs/results/<area>/` (e.g. `benchmark/F5_summary.json`). `make render-tables`
 (`scripts/thesis/render_tables.py`) regenerates `tex/generated/{numbers,tables}.tex` from them;
 `tex/generated/` is **gitignored** (rebuild before any thesis edit/build). `tex/preambulo.tex`
 must `\input{generated/numbers}` and `\input{generated/tables}` for the macros to resolve in
@@ -110,12 +110,14 @@ These are fixed contracts; do not silently change them.
 - **10 seeds `{0..9}`** for DRL; baselines/oracle run 1 seed. **n=300 episodes for ALL
   policies** (`BENCHMARK_N_DET_EPISODES=300`, `ABLATION_OOD_N_DET_EPISODES=300`).
   `p_de_esc=0.6` default. `make reproduce-thesis` overrides `BLUE_TEAM_IMPACT_TERM=false`.
-- **Canonical headline numbers** (from `benchmark/main_results.json`): best deployable RL =
-  **A2C +1336.6**; oracle ceiling +1684.8 (79.3% capture); RF-Acting +1516.0 @ 13.83 ms p50
-  (~146× slower than A2C); benign FPR DQN 6.1% / PPO 10.2% / A2C 11.5%; `compromise_rate=1.0`
-  for every policy (reactive mitigation only). The reward ablation's mit-rate 0.840 is a
-  PPO-only n=30 *probe* — it does NOT replicate at benchmark scale (A2C mit-rate 0.317).
-  Test suite: **459 passed**, 2 warnings (pre-revision baseline was 445).
+- **Canonical headline numbers** (budget=40, from `benchmark/F5_summary.json`): best deployable
+  RL = **PPO +1034.7** (CI [+998.1, +1069.8]; DQN +1028.9, A2C +973.1); oracle ceiling
+  `recommended_action` **+1393.8** (CI [+1366.9, +1420.6], 74.2% capture); RF-Acting +1323.0 @
+  13.692 ms p50 (latency-ratio ~142.8× vs best-agent 0.096 ms); benign FPR DQN 7.5% / PPO 8.7% /
+  A2C 7.7%. With the finite attacker budget, `compromise_rate` now varies by policy (PPO 0.68 /
+  always_block 0.36 / oracle 0.47) instead of the pre-budget 1.0-for-everything. The reward
+  ablation's structural mit-rate 0.867 is an F9 *strand* result, separate from the F5 benchmark.
+  Test suite: **432 passed**, 1 warning.
 
 **Status:** thesis revision complete — prose rewritten, builds clean (86 pages, 0 LaTeX
 errors). `make lint` exits non-zero on ~21 pre-existing UP031/F401 findings; that is the

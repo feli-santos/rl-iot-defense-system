@@ -22,16 +22,16 @@ The thesis chapter rests on **three primary claims** plus one
 pre-registered finding, all backed by gate-passing artefacts under
 [`docs/results/`](docs/results/):
 
-1. **(G6.2 — primary contract `impact_is_terminal=False`, 10 seeds × 300 episodes)** On `test_balanced`
-   (CICIoT2023, 5-stage kill chain), trained RL defenders earn
-   **A2C +1336.6 (CI [+1286.0, +1376.9]) / PPO +1320.2 / DQN +1313.0 mean reward** vs. an
-   oracle recommended-action ceiling of **+1684.8** (CI [+1645.6, +1723.6]) that has free access
-   to the hidden `attack_stage` — i.e., the best deployable RL agent (A2C) captures **79.3 %** of
-   the oracle ceiling. Among deployable policies, any trained RL algo achieves **~146× faster
-   inference** than RF-Acting (0.095 ms vs 13.83 ms p50). Benign FPR: DQN 6.1 %, PPO 10.2 %,
-   A2C 11.5 %. Non-RL trivial baselines (random, always-OBSERVE, always-BLOCK) never come within
+1. **(G6.2 — primary contract `impact_is_terminal=False`, finite `attacker_budget=40`, 10 seeds × 300 episodes)**
+   On `test_balanced` (CICIoT2023, 5-stage kill chain), trained RL defenders earn
+   **PPO +1034.7 (CI [+998.1, +1069.8]) / DQN +1028.9 / A2C +973.1 mean reward** vs. an
+   oracle recommended-action ceiling of **+1393.8** (CI [+1366.9, +1420.6]) that has free access
+   to the hidden `attack_stage` — i.e., the best deployable RL agent (PPO) captures **74.2 %** of
+   the oracle ceiling. Among deployable policies, any trained RL algo achieves **~142.8× faster
+   inference** than RF-Acting (0.096 ms vs 13.692 ms p50). Benign FPR: DQN 7.5 %, PPO 8.7 %,
+   A2C 7.7 %. Non-RL trivial baselines (random, always-OBSERVE, always-BLOCK) never come within
    1 σ. *See [`docs/results/benchmark/RESULTS.md`](docs/results/benchmark/RESULTS.md) and
-   `docs/results/benchmark/main_results.json`.*
+   `docs/results/benchmark/F5_summary.json`.*
 
 2. **(Phase 7, G7.3)** With the Phase-3 reward function held fixed, PPO
    mean reward grows **monotonically** with the
@@ -121,8 +121,8 @@ tag) is documentation-only.
 | **3** | Environment v2 | `AdversarialIoTEnv` (Gymnasium); 29-feature obs; 5 actions; kill-chain reward | G3.1–G3.6 PASS (env contracts + reward shape) |
 | **4** | Stage detector | F11 per-stage recall (Random Forest + 1D-CNN); RF-acting baseline export | G4 PASS — but `VulnerabilityScan` recall = 0.001 (audit-AF1 surface) |
 | **5** | RL Blue Team | F3 (reward curves DQN/PPO/A2C × 10 seeds) · F4 (action distribution evolution) · T1 (hyperparams) | G5 PASS — all three algorithms converge above random |
-| **6** | RL benchmark | F5 (security metrics) · F6 (stage × action confusion) · F7 (latency CDF + train time) · F8 (RL vs non-RL baselines) | G6 PASS — A2C best deployable RL (+1336.6); oracle ceiling +1684.8 (reframed D6.2.1, audit-AF2) |
-| **7** | Ablations + OOD | F9 (reward sweep) · F10 (aggressiveness) · F12 (Pareto) · F15 (held-out OOD class) | **7 PASS / 2 FAIL-WITH-FINDING** — both FAIL gates pre-registered (R7.3, D7.9.1) |
+| **6** | RL benchmark | F5 (security metrics) · F6 (stage × action confusion) · F7 (latency CDF + train time) · F8 (RL vs non-RL baselines) | G6 PASS — PPO best deployable RL (+1034.7 @ budget=40); oracle ceiling +1393.8 (reframed D6.2.1, audit-AF2) |
+| **7** | Ablations + OOD | F9 (reward sweep) · F10 (aggressiveness) · F12 (Pareto) · F15 (held-out OOD class) · F16 (budget sweep) · F17 (evasion sweep) | **8 PASS / 2 FAIL-WITH-FINDING** across G7.1–G7.10 — both FAIL gates pre-registered (D7.1.1, D7.9.1) |
 
 ### Phase reproduction recipes
 
