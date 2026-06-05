@@ -193,6 +193,7 @@ benchmark: benchmark-eval benchmark-figures  ## Benchmark: full eval sweep + F5/
 
 ##@ Ablation — reward-component sweep + OOD-class robustness (PLAN: docs/results/ablation/PLAN.md)
 ABLATION_OUT_DIR         ?= docs/results/ablation
+ABLATION_PARALLEL        ?= 1
 ABLATION_OOD_RUNS_ROOT   ?= runs/ablation/ood
 ABLATION_OOD_CLASSES     ?= DDoS-HTTP_Flood Mirai-udpplain VulnerabilityScan XSS
 ABLATION_OOD_POLICIES    ?= recommended_action rf_acting dqn ppo a2c random always_observe always_block
@@ -245,6 +246,7 @@ ablation-reward-sweep:  ## Ablation F9: PPO × 10 seeds × 12 cells (~6 h CPU).
 	    --seeds $(BLUE_TEAM_SEEDS) \
 	    --total-timesteps $(ABLATION_REWARD_TIMESTEPS) \
 	    --out-root $(ABLATION_REWARD_RUNS_ROOT) \
+	    --parallel $(ABLATION_PARALLEL) \
 	    --continue-on-failure
 
 .PHONY: ablation-reward-figure
@@ -270,6 +272,7 @@ ablation-aggressiveness-sweep:  ## Ablation F10: PPO × 6 p values × 10 seeds +
 	    --seeds $(BLUE_TEAM_SEEDS) \
 	    --total-timesteps $(ABLATION_REWARD_TIMESTEPS) \
 	    --out-root $(ABLATION_AGGR_RUNS_ROOT) \
+	    --parallel $(ABLATION_PARALLEL) \
 	    --continue-on-failure
 
 .PHONY: ablation-aggressiveness-figure
