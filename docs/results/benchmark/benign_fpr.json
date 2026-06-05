@@ -6,8 +6,8 @@
   "any_policy_exceeds_threshold": true,
   "policies": {
     "dqn": {
-      "benign_fpr": 0.060579064587973276,
-      "benign_fpr_pct": 6.057906458797327,
+      "benign_fpr": 0.07523992322456814,
+      "benign_fpr_pct": 7.523992322456814,
       "exceeds_threshold": true,
       "aggressive_actions": [
         3,
@@ -15,8 +15,8 @@
       ]
     },
     "ppo": {
-      "benign_fpr": 0.10199745006374841,
-      "benign_fpr_pct": 10.199745006374842,
+      "benign_fpr": 0.087390263367917,
+      "benign_fpr_pct": 8.7390263367917,
       "exceeds_threshold": true,
       "aggressive_actions": [
         3,
@@ -24,8 +24,8 @@
       ]
     },
     "a2c": {
-      "benign_fpr": 0.114726741760534,
-      "benign_fpr_pct": 11.4726741760534,
+      "benign_fpr": 0.07701761573125768,
+      "benign_fpr_pct": 7.701761573125768,
       "exceeds_threshold": true,
       "aggressive_actions": [
         3,
@@ -33,8 +33,8 @@
       ]
     },
     "random": {
-      "benign_fpr": 0.4043613707165109,
-      "benign_fpr_pct": 40.43613707165109,
+      "benign_fpr": 0.4021485287248949,
+      "benign_fpr_pct": 40.214852872489494,
       "exceeds_threshold": true,
       "aggressive_actions": [
         3,
