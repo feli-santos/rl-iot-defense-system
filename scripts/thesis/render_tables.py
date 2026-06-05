@@ -19,9 +19,9 @@ from pathlib import Path
 # Paths (canonical data)
 # ---------------------------------------------------------------------------
 
-F5 = Path("docs/results/benchmark/main_results.json")
-F7 = Path("docs/results/benchmark/latency_profile.json")
-F9 = Path("docs/results/ablation/reward_ablation.json")
+F5 = Path("docs/results/benchmark/F5_summary.json")
+F7 = Path("docs/results/benchmark/F7_summary.json")
+F9 = Path("docs/results/ablation/F9_summary.json")
 G6 = Path("docs/results/benchmark/benchmark_acceptance.json")
 BENIGN_FPR = Path("docs/results/benchmark/benign_fpr.json")
 
@@ -95,9 +95,9 @@ def _render_numbers() -> str:
     _test_count_file = Path("docs/results/test_count.json")
     if _test_count_file.exists():
         _tc = json.loads(_test_count_file.read_text())
-        _num_tests = _tc.get("num_tests", 459)
+        _num_tests = _tc.get("num_tests", 432)
     else:
-        _num_tests = 459  # canonical value; update when pytest count changes
+        _num_tests = 432  # canonical value; update when pytest count changes
     lines.append(r"\newcommand{\NumTests}{%d}" % _num_tests)
 
     # FPR numbers

@@ -58,15 +58,15 @@ def _mtime_str(p: Path) -> str:
 
 
 def _section_benchmark() -> str:
-    f5 = _load(RESULTS_DIR / "benchmark/main_results.json")
+    f5 = _load(RESULTS_DIR / "benchmark/F5_summary.json")
     fpr = _load(RESULTS_DIR / "benchmark/benign_fpr.json")
-    man = _load(RESULTS_DIR / "benchmark/main_results_manifest.json")
+    man = _load(RESULTS_DIR / "benchmark/F5_manifest.json")
 
     lines = ["## 06 Held-Out Benchmark\n"]
     lines.append(
-        f"**Source:** `docs/results/benchmark/main_results.json`  \n"
+        f"**Source:** `docs/results/benchmark/F5_summary.json`  \n"
         f"**git SHA:** {_git_sha(man)}  \n"
-        f"**File mtime:** {_mtime_str(RESULTS_DIR / 'benchmark/main_results.json')}  \n"
+        f"**File mtime:** {_mtime_str(RESULTS_DIR / 'benchmark/F5_summary.json')}  \n"
     )
 
     if f5:
@@ -93,19 +93,19 @@ def _section_benchmark() -> str:
 
 
 def _section_ablation() -> str:
-    f9 = _load(RESULTS_DIR / "ablation/reward_ablation.json")
-    f15 = _load(RESULTS_DIR / "ablation/ood_robustness.json")
-    man9 = _load(RESULTS_DIR / "ablation/reward_ablation_manifest.json")
-    man15 = _load(RESULTS_DIR / "ablation/ood_robustness_manifest.json")
+    f9 = _load(RESULTS_DIR / "ablation/F9_summary.json")
+    f15 = _load(RESULTS_DIR / "ablation/F15_summary.json")
+    man9 = _load(RESULTS_DIR / "ablation/F9_manifest.json")
+    man15 = _load(RESULTS_DIR / "ablation/F15_manifest.json")
 
     lines = ["## 07 Ablation & OOD Robustness\n"]
     lines.append(
-        f"**F9 source:** `docs/results/ablation/reward_ablation.json`  \n"
+        f"**F9 source:** `docs/results/ablation/F9_summary.json`  \n"
         f"**F9 git SHA:** {_git_sha(man9)}  \n"
-        f"**F9 mtime:** {_mtime_str(RESULTS_DIR / 'ablation/reward_ablation.json')}  \n\n"
-        f"**F15 source:** `docs/results/ablation/ood_robustness.json`  \n"
+        f"**F9 mtime:** {_mtime_str(RESULTS_DIR / 'ablation/F9_summary.json')}  \n\n"
+        f"**F15 source:** `docs/results/ablation/F15_summary.json`  \n"
         f"**F15 git SHA:** {_git_sha(man15)}  \n"
-        f"**F15 mtime:** {_mtime_str(RESULTS_DIR / 'ablation/ood_robustness.json')}  \n"
+        f"**F15 mtime:** {_mtime_str(RESULTS_DIR / 'ablation/F15_summary.json')}  \n"
     )
 
     if f9:

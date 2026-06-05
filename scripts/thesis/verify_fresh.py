@@ -28,35 +28,24 @@ DERIVED = [
     (
         REPO_ROOT / "tex/generated/numbers.tex",
         [
-            REPO_ROOT / "docs/results/benchmark/main_results.json",
+            REPO_ROOT / "docs/results/benchmark/F5_summary.json",
             REPO_ROOT / "docs/results/benchmark/benign_fpr.json",
-            REPO_ROOT / "docs/results/ablation/reward_ablation.json",
+            REPO_ROOT / "docs/results/ablation/F9_summary.json",
         ],
     ),
     (
         REPO_ROOT / "tex/generated/tables.tex",
         [
-            REPO_ROOT / "docs/results/benchmark/main_results.json",
-            REPO_ROOT / "docs/results/benchmark/latency_profile.json",
-        ],
-    ),
-    (
-        REPO_ROOT / "docs/results/benchmark/benchmark_acceptance.json",
-        [REPO_ROOT / "docs/results/benchmark/main_results.json"],
-    ),
-    (
-        REPO_ROOT / "docs/results/ablation/ablation_acceptance.json",
-        [
-            REPO_ROOT / "docs/results/ablation/reward_ablation.json",
-            REPO_ROOT / "docs/results/ablation/ood_robustness.json",
+            REPO_ROOT / "docs/results/benchmark/F5_summary.json",
+            REPO_ROOT / "docs/results/benchmark/F7_summary.json",
         ],
     ),
     (
         REPO_ROOT / "docs/RESULTS_INDEX.md",
         [
-            REPO_ROOT / "docs/results/benchmark/main_results.json",
-            REPO_ROOT / "docs/results/ablation/reward_ablation.json",
-            REPO_ROOT / "docs/results/ablation/ood_robustness.json",
+            REPO_ROOT / "docs/results/benchmark/F5_summary.json",
+            REPO_ROOT / "docs/results/ablation/F9_summary.json",
+            REPO_ROOT / "docs/results/ablation/F15_summary.json",
             REPO_ROOT / "docs/results/benchmark/benign_fpr.json",
         ],
     ),

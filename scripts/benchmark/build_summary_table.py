@@ -4,12 +4,12 @@ Reads ``runs/benchmark/<policy>/seed_<k>/eval_test.jsonl`` (and the matching
 ``latency.jsonl`` sidecars) for every policy, aggregates per-policy
 metrics across seeds, and writes:
 
-- ``docs/results/benchmark/main_results.json`` — machine-readable.
-- ``docs/results/benchmark/main_results.md``   — Markdown table for
+- ``docs/results/benchmark/F5_summary.json`` — machine-readable.
+- ``docs/results/benchmark/F5_summary.md``   — Markdown table for
   the thesis chapter.
-- ``docs/results/benchmark/main_results.csv``  — same data, flat.
+- ``docs/results/benchmark/F5_summary.csv``  — same data, flat.
 - ``docs/results/benchmark/F5_table.png``    — rendered table figure.
-- ``docs/results/benchmark/main_results_manifest.json`` — SHA-256 hash chain
+- ``docs/results/benchmark/F5_manifest.json`` — SHA-256 hash chain
   over every input JSONL + the upstream benchmark eval manifest + the
   git SHA at production time (G6.7 / D6.9).
 

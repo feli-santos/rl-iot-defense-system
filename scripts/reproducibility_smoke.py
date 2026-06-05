@@ -91,25 +91,22 @@ _TARGETS: list[tuple[str, Path, bool]] = [
     ("dataset", _ROOT / "docs/results/dataset/manifest.json", True),
     ("red_team", _ROOT / "docs/results/red-team-model/manifest.json", True),
     ("detector", _ROOT / "docs/results/stage-detector/manifest.json", True),
-    ("benchmark/F5", _ROOT / "docs/results/benchmark/main_results_manifest.json", True),
-    (
-        "benchmark/F6",
-        _ROOT / "docs/results/benchmark/stage_action_proportionality_manifest.json",
-        True,
-    ),
-    ("benchmark/F7", _ROOT / "docs/results/benchmark/latency_profile_manifest.json", True),
-    ("benchmark/F8", _ROOT / "docs/results/benchmark/reward_ranking_manifest.json", True),
-    ("ablation/F9", _ROOT / "docs/results/ablation/reward_ablation_manifest.json", True),
-    ("ablation/F10", _ROOT / "docs/results/ablation/aggressiveness_sweep_manifest.json", True),
-    ("ablation/F12", _ROOT / "docs/results/ablation/pareto_frontier_manifest.json", True),
-    ("ablation/F15", _ROOT / "docs/results/ablation/ood_robustness_manifest.json", True),
+    ("benchmark/F5", _ROOT / "docs/results/benchmark/F5_manifest.json", True),
+    ("benchmark/F6", _ROOT / "docs/results/benchmark/F6_manifest.json", True),
+    ("benchmark/F7", _ROOT / "docs/results/benchmark/F7_manifest.json", True),
+    ("benchmark/F8", _ROOT / "docs/results/benchmark/F8_manifest.json", True),
+    ("ablation/F9", _ROOT / "docs/results/ablation/F9_manifest.json", True),
+    ("ablation/F10", _ROOT / "docs/results/ablation/F10_manifest.json", True),
+    ("ablation/F12", _ROOT / "docs/results/ablation/F12_manifest.json", True),
+    ("ablation/F15", _ROOT / "docs/results/ablation/F15_manifest.json", True),
 ]
 
 _SCOREBOARDS: list[tuple[str, Path]] = [
     ("G4", _ROOT / "docs/results/stage-detector/detector_acceptance.json"),
     ("G5", _ROOT / "docs/results/blue-team-training/blue_team_acceptance.json"),
-    ("G6", _ROOT / "docs/results/benchmark/benchmark_acceptance.json"),
-    ("G7", _ROOT / "docs/results/ablation/ablation_acceptance.json"),
+    # G6 (benchmark) has no standalone scoreboard JSON — its acceptance is
+    # captured by the F5/F6/F7/F8 manifest hash-chains above.
+    ("G7", _ROOT / "docs/results/ablation/G7_scoreboard.json"),
 ]
 
 
@@ -175,11 +172,14 @@ _KNOWN_DIVERGENCES: dict[str, dict[str, str]] = {
         "data/processed/ciciot2023/splits/manifest.json",
         "82aa12149d2e0ee5a2424a7da44719df885ac18495590344e6d393e22d72b5c5",
     ): {
-        "actual_sha": "1e99d596826d054e337a8a84e060b1e9d7c15b44a1cbbda425b6bbdd311e0e0d",
+        "actual_sha": "b0661c6b225874e03e14954e09e90b84a3b3b7b0dd51a42a74129ea6050f464f",
         "finding_id": "Step-1 F4 / Step-2 F1",
         "note": (
             "pre-3cd2fb9 (leaky) splits manifest SHA recorded; on-disk is "
-            "post-3cd2fb9 (leakage-fixed) splits manifest. Documented in "
+            "post-3cd2fb9 (leakage-fixed) splits manifest. The splits manifest "
+            "is gitignored machine-local data (raw CICIoT2023 not in repo per "
+            "CIC license), so the on-disk SHA is regenerated per machine; on a "
+            "fresh clone this input is absent and the check SKIPs. Documented in "
             "docs/results/red-team-model/RESULTS.md S5.3."
         ),
     },
@@ -188,7 +188,7 @@ _KNOWN_DIVERGENCES: dict[str, dict[str, str]] = {
         "data/processed/ciciot2023/splits/manifest.json",
         "82aa12149d2e0ee5a2424a7da44719df885ac18495590344e6d393e22d72b5c5",
     ): {
-        "actual_sha": "1e99d596826d054e337a8a84e060b1e9d7c15b44a1cbbda425b6bbdd311e0e0d",
+        "actual_sha": "b0661c6b225874e03e14954e09e90b84a3b3b7b0dd51a42a74129ea6050f464f",
         "finding_id": "Step-2 F1",
         "note": (
             "Red-team LSTM consumes only stage tokens (not per-flow features); "

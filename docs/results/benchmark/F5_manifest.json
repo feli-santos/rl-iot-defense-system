@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0",
   "figure": "F5",
-  "git_sha": "55d55981d48c3cb9c953d5958c48ff49a21dd9e9",
+  "git_sha": "ed7549cc1fbec8bec8a7061f1c963b93c110f639",
   "outputs": {
     "json": "docs/results/benchmark/F5_summary.json",
     "md": "docs/results/benchmark/F5_summary.md",

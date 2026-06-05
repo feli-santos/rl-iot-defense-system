@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0",
   "figure": "F10",
-  "git_sha": "5000b75c061d49556a0b4c178e9fc94ecd2a1198",
+  "git_sha": "ed7549cc1fbec8bec8a7061f1c963b93c110f639",
   "outputs": {
     "png": "docs/results/ablation/F10_aggressiveness.png",
     "json": "docs/results/ablation/F10_summary.json"

@@ -213,7 +213,7 @@ def _build_argparser() -> argparse.ArgumentParser:
     p.add_argument("--out-dir", default="docs/results/benchmark")
     p.add_argument(
         "--f5-summary",
-        default="docs/results/benchmark/main_results.json",
+        default="docs/results/benchmark/F5_summary.json",
         help="Path to F5_summary.json (the source of per-policy means + CIs).",
     )
     return p
