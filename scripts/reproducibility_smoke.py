@@ -92,7 +92,11 @@ _TARGETS: list[tuple[str, Path, bool]] = [
     ("red_team", _ROOT / "docs/results/red-team-model/manifest.json", True),
     ("detector", _ROOT / "docs/results/stage-detector/manifest.json", True),
     ("benchmark/F5", _ROOT / "docs/results/benchmark/main_results_manifest.json", True),
-    ("benchmark/F6", _ROOT / "docs/results/benchmark/stage_action_proportionality_manifest.json", True),
+    (
+        "benchmark/F6",
+        _ROOT / "docs/results/benchmark/stage_action_proportionality_manifest.json",
+        True,
+    ),
     ("benchmark/F7", _ROOT / "docs/results/benchmark/latency_profile_manifest.json", True),
     ("benchmark/F8", _ROOT / "docs/results/benchmark/reward_ranking_manifest.json", True),
     ("ablation/F9", _ROOT / "docs/results/ablation/reward_ablation_manifest.json", True),

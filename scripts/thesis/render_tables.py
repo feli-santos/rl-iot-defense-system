@@ -89,9 +89,7 @@ def _render_numbers() -> str:
     ]
 
     # Seed count (read from n_seeds of the best agent)
-    lines.append(
-        r"\newcommand{\NumSeeds}{%d}" % best.get("n_seeds", 5)
-    )
+    lines.append(r"\newcommand{\NumSeeds}{%d}" % best.get("n_seeds", 5))
 
     # Test count — read from a sidecar JSON if present, else fall back to hardcoded value
     _test_count_file = Path("docs/results/test_count.json")
@@ -110,14 +108,22 @@ def _render_numbers() -> str:
             # Make LaTeX-safe command name: remove hyphens/underscores; replace
             # digits with spelled-out letters (LaTeX control sequences must be
             # all-letter after the backslash — digits terminate the name).
-            _digit_map = {"0": "z", "1": "o", "2": "t", "3": "r", "4": "f",
-                          "5": "v", "6": "s", "7": "e", "8": "g", "9": "n"}
+            _digit_map = {
+                "0": "z",
+                "1": "o",
+                "2": "t",
+                "3": "r",
+                "4": "f",
+                "5": "v",
+                "6": "s",
+                "7": "e",
+                "8": "g",
+                "9": "n",
+            }
             safe = policy.replace("-", "").replace("_", "")
             safe = "".join(_digit_map[c] if c in _digit_map else c for c in safe)
             val = data["benign_fpr"] if isinstance(data, dict) else data
-            lines.append(
-                r"\newcommand{\FPR" + safe + "}{%0.3f}" % val
-            )
+            lines.append(r"\newcommand{\FPR" + safe + "}{%0.3f}" % val)
 
     # F9 structural fix — F9_summary.json uses key "rows" (list of cell dicts)
     if F9.exists():
@@ -135,11 +141,10 @@ def _render_numbers() -> str:
                     structural = cell
                     break
         if structural:
+            lines.append(r"\newcommand{\FnineStructuralReward}{%+0.1f}" % structural["mean_reward"])
             lines.append(
-                r"\newcommand{\FnineStructuralReward}{%+0.1f}" % structural["mean_reward"]
-            )
-            lines.append(
-                r"\newcommand{\FnineStructuralMitRate}{%0.3f}" % structural.get("mitigated_impact_rate", 0.0)
+                r"\newcommand{\FnineStructuralMitRate}{%0.3f}"
+                % structural.get("mitigated_impact_rate", 0.0)
             )
 
     return "\n".join(lines) + "\n"

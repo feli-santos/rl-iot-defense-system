@@ -116,7 +116,5 @@ class MarkovAttacker:
         """
         stage = int(current_stage)
         if not 0 <= stage < self.num_stages:
-            raise ValueError(
-                f"current_stage must be in [0, {self.num_stages}), got {stage}"
-            )
+            raise ValueError(f"current_stage must be in [0, {self.num_stages}), got {stage}")
         return int(rng.choice(self.num_stages, p=self._transition_matrix[stage]))

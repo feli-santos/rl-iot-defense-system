@@ -59,9 +59,7 @@ def _make_policies(seed: int) -> dict[str, Callable[[np.ndarray, dict], int]]:
     }
 
 
-def _roll_episode(
-    env, policy: Callable[[np.ndarray, dict], int], seed: int
-) -> dict:
+def _roll_episode(env, policy: Callable[[np.ndarray, dict], int], seed: int) -> dict:
     """Roll a single seeded episode and return its terminal telemetry."""
     obs, info = env.reset(seed=seed)
     terminated = truncated = False
@@ -187,9 +185,7 @@ def main() -> None:
     print("budget  " + "  ".join(f"{p:>19}" for p in pnames))
     for budget in BUDGET_GRID:
         bkey = "None" if budget is None else str(budget)
-        cells = "  ".join(
-            f"{results[bkey][p]['compromise_rate']:>19.3f}" for p in pnames
-        )
+        cells = "  ".join(f"{results[bkey][p]['compromise_rate']:>19.3f}" for p in pnames)
         print(f"{bkey:>6}  {cells}")
 
     if not args.smoke:

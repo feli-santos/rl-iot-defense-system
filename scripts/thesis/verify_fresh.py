@@ -83,10 +83,7 @@ def check() -> list[str]:
             if not src.exists():
                 continue  # source not present on this checkout (data-gitignored)
             if src.stat().st_mtime > d_mtime:
-                stale.append(
-                    f"STALE    {_rel(derived)}\n"
-                    f"         source newer: {_rel(src)}"
-                )
+                stale.append(f"STALE    {_rel(derived)}\n" f"         source newer: {_rel(src)}")
                 break  # one stale source is enough to flag the derived artifact
     return stale
 

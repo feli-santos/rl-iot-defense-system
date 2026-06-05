@@ -107,8 +107,7 @@ def _load_stage_detector(path: Path) -> Any:
         clf = joblib.load(path)
         return _DetectorWrapper(clf.predict)
     raise ValueError(
-        f"Unsupported stage-detector checkpoint format: {path} "
-        f"(expected .pt or .joblib)"
+        f"Unsupported stage-detector checkpoint format: {path} " f"(expected .pt or .joblib)"
     )
 
 
@@ -417,18 +416,14 @@ class AdversarialIoTEnv(gym.Env):
         # Load optional frozen stage detector for stage-prediction ablation
         self._stage_detector: Any = None
         if self._config.stage_detector_path is not None:
-            self._stage_detector = _load_stage_detector(
-                Path(self._config.stage_detector_path)
-            )
+            self._stage_detector = _load_stage_detector(Path(self._config.stage_detector_path))
 
         # Define observation space: flattened window of features (optionally with deltas)
         obs_multiplier = 2 if self._config.include_deltas else 1
         obs_dim = self._config.window_size * self._num_features * obs_multiplier
         if self._config.include_stage_pred:
             if self._stage_detector is None:
-                raise ValueError(
-                    "include_stage_pred=True requires stage_detector_path to be set"
-                )
+                raise ValueError("include_stage_pred=True requires stage_detector_path to be set")
             obs_dim += self._config.num_actions  # one-hot appended stage
         self.observation_space = spaces.Box(
             low=-np.inf,
@@ -778,9 +773,7 @@ class AdversarialIoTEnv(gym.Env):
         """Advance attack sequence using the Markov attacker."""
         # Sample the next attack stage from the first-order Markov chain.
         if len(self._attack_history) >= 1:
-            next_stage = self._attacker.sample_next(
-                self._current_attack_stage, self._rng
-            )
+            next_stage = self._attacker.sample_next(self._current_attack_stage, self._rng)
             current_stage = self._current_attack_stage
             # Evasion-before-commit: if the defender just applied force and the
             # attacker is still at a pre-trigger stage (RECON/ACCESS), it stalls
@@ -789,8 +782,7 @@ class AdversarialIoTEnv(gym.Env):
             if (
                 self._config.evasion_prob > 0.0
                 and self._recent_block
-                and current_stage
-                in (KillChainStage.RECON.value, KillChainStage.ACCESS.value)
+                and current_stage in (KillChainStage.RECON.value, KillChainStage.ACCESS.value)
                 and self._rng is not None
                 and self._rng.random() < self._config.evasion_prob
             ):

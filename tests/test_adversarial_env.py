@@ -167,6 +167,7 @@ class TestAdversarialEnvReset:
         from sklearn.preprocessing import StandardScaler
 
         from src.environment.adversarial_env import AdversarialIoTEnv
+
         # Ignored generator-path dir (attacker is now a first-order Markov chain)
         generator_path = tmp_path / "generator"
         generator_path.mkdir(parents=True)
@@ -244,6 +245,7 @@ class TestAdversarialEnvStep:
         from sklearn.preprocessing import StandardScaler
 
         from src.environment.adversarial_env import AdversarialIoTEnv
+
         # Ignored generator-path dir (attacker is now a first-order Markov chain)
         generator_path = tmp_path / "generator"
         generator_path.mkdir(parents=True)
@@ -347,6 +349,7 @@ class TestAdversarialEnvHiddenState:
         from sklearn.preprocessing import StandardScaler
 
         from src.environment.adversarial_env import AdversarialIoTEnv
+
         # Ignored generator-path dir (attacker is now a first-order Markov chain)
         generator_path = tmp_path / "generator"
         generator_path.mkdir(parents=True)
@@ -408,6 +411,7 @@ class TestAdversarialEnvTermination:
             AdversarialEnvConfig,
             AdversarialIoTEnv,
         )
+
         # Ignored generator-path dir (attacker is now a first-order Markov chain)
         generator_path = tmp_path / "generator"
         generator_path.mkdir(parents=True)
@@ -499,6 +503,7 @@ class TestEnvironmentIntegration:
         from sklearn.preprocessing import StandardScaler
 
         from src.environment.adversarial_env import AdversarialIoTEnv
+
         # Ignored generator-path dir (attacker is now a first-order Markov chain)
         generator_path = tmp_path / "generator"
         generator_path.mkdir(parents=True)
@@ -636,14 +641,14 @@ class TestStagePredictionAblation:
 
     def test_obs_shape_includes_stage_pred(self, mock_generator, mock_dataset, tmp_path):
         """When include_stage_pred=True, obs space grows by num_actions."""
+        # Save a mock RF detector that always predicts stage 2
+        import joblib
+        from sklearn.ensemble import RandomForestClassifier
+
         from src.environment.adversarial_env import (
             AdversarialEnvConfig,
             AdversarialIoTEnv,
         )
-
-        # Save a mock RF detector that always predicts stage 2
-        import joblib
-        from sklearn.ensemble import RandomForestClassifier
 
         dummy_clf = RandomForestClassifier(n_estimators=1, random_state=0)
         dummy_clf.fit(np.zeros((10, 46)), np.full(10, 2))
@@ -665,13 +670,13 @@ class TestStagePredictionAblation:
 
     def test_stage_pred_one_hot_in_observation(self, mock_generator, mock_dataset, tmp_path):
         """The predicted stage is appended as a one-hot vector at the tail."""
+        import joblib
+        from sklearn.ensemble import RandomForestClassifier
+
         from src.environment.adversarial_env import (
             AdversarialEnvConfig,
             AdversarialIoTEnv,
         )
-
-        import joblib
-        from sklearn.ensemble import RandomForestClassifier
 
         dummy_clf = RandomForestClassifier(n_estimators=1, random_state=0)
         dummy_clf.fit(np.zeros((10, 46)), np.full(10, 2))
@@ -959,9 +964,7 @@ class TestAttackerBudget:
         assert env._attacker_budget_remaining == 40
         assert env._attacker_exhausted is False
 
-    def test_step_cost_drains_on_active_progression(
-        self, generator_path, mock_dataset
-    ):
+    def test_step_cost_drains_on_active_progression(self, generator_path, mock_dataset):
         """An advancing attacker at stage >= RECON pays budget_step_cost."""
         from src.utils.label_mapper import KillChainStage
 
@@ -982,9 +985,7 @@ class TestAttackerBudget:
         assert env._current_attack_stage >= KillChainStage.RECON.value
         assert env._attacker_budget_remaining == before - 3
 
-    def test_step_cost_does_not_drain_during_benign(
-        self, generator_path, mock_dataset
-    ):
+    def test_step_cost_does_not_drain_during_benign(self, generator_path, mock_dataset):
         """If the attacker stays BENIGN, no step cost is charged."""
         from src.utils.label_mapper import KillChainStage
 
@@ -1129,9 +1130,7 @@ class TestAttackerBudget:
         assert info["attacker_budget_remaining"] == 40
         assert info["attacker_exhausted"] is False
 
-    def test_degeneracy_floor_prevents_everything(
-        self, generator_path, mock_dataset
-    ):
+    def test_degeneracy_floor_prevents_everything(self, generator_path, mock_dataset):
         """A budget below the grace floor prevents (almost) every episode."""
         compromises = 0
         n_episodes = 20
@@ -1149,9 +1148,7 @@ class TestAttackerBudget:
                 compromises += 1
         assert compromises == 0
 
-    def test_compromise_rate_below_one_with_finite_budget(
-        self, generator_path, mock_dataset
-    ):
+    def test_compromise_rate_below_one_with_finite_budget(self, generator_path, mock_dataset):
         """A finite budget lets a blocking policy drive compromise_rate < 1.0,
         whereas the unbounded contract always compromises."""
         # Unbounded: every episode compromises.
@@ -1273,9 +1270,7 @@ class TestEvasion:
         env._advance_attack()
         assert env._current_attack_stage == KillChainStage.RECON.value + 1
 
-    def test_evasion_stalls_when_recently_blocked(
-        self, generator_path, mock_dataset
-    ):
+    def test_evasion_stalls_when_recently_blocked(self, generator_path, mock_dataset):
         """evasion_prob=1.0 + recent block + pre-trigger stage -> stall."""
         from src.utils.label_mapper import KillChainStage
 
@@ -1311,9 +1306,7 @@ class TestEvasion:
         # Advanced normally — proves the stall is coupled to the defender action.
         assert env._current_attack_stage == KillChainStage.RECON.value + 1
 
-    def test_evasion_only_at_pretrigger_stages(
-        self, generator_path, mock_dataset
-    ):
+    def test_evasion_only_at_pretrigger_stages(self, generator_path, mock_dataset):
         """Evasion does not fire once the attacker is past the pre-trigger band."""
         from src.utils.label_mapper import KillChainStage
 
@@ -1407,9 +1400,7 @@ class TestRewardMode:
         env.reset(seed=42)
         return env
 
-    def test_proportional_default_penalises_disproportionate(
-        self, generator_path, mock_dataset
-    ):
+    def test_proportional_default_penalises_disproportionate(self, generator_path, mock_dataset):
         from src.utils.label_mapper import KillChainStage
 
         env = self._build_env(generator_path, mock_dataset)
@@ -1421,9 +1412,7 @@ class TestRewardMode:
     def test_outcome_only_strips_shaping(self, generator_path, mock_dataset):
         from src.utils.label_mapper import KillChainStage
 
-        env = self._build_env(
-            generator_path, mock_dataset, reward_mode="outcome_only"
-        )
+        env = self._build_env(generator_path, mock_dataset, reward_mode="outcome_only")
         # Same BENIGN+ISOLATE step: only the action cost remains (ISOLATE=0.8).
         reward = env._calculate_reward(4, KillChainStage.BENIGN.value)
         assert reward == pytest.approx(-0.8)
@@ -1431,9 +1420,7 @@ class TestRewardMode:
     def test_outcome_only_observe_is_free(self, generator_path, mock_dataset):
         from src.utils.label_mapper import KillChainStage
 
-        env = self._build_env(
-            generator_path, mock_dataset, reward_mode="outcome_only"
-        )
+        env = self._build_env(generator_path, mock_dataset, reward_mode="outcome_only")
         # OBSERVE costs 0.0 and outcome-only adds no shaping, so reward is 0.
         reward = env._calculate_reward(0, KillChainStage.RECON.value)
         assert reward == pytest.approx(0.0)

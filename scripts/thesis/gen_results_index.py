@@ -49,9 +49,7 @@ def _git_sha(manifest: dict | None) -> str:
 def _mtime_str(p: Path) -> str:
     if not p.exists():
         return "—"
-    return datetime.fromtimestamp(p.stat().st_mtime, tz=timezone.utc).strftime(
-        "%Y-%m-%dT%H:%M:%SZ"
-    )
+    return datetime.fromtimestamp(p.stat().st_mtime, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 # ---------------------------------------------------------------------------
