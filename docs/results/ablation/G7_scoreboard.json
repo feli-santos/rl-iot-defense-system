@@ -1,0 +1,89 @@
+{
+  "schema_version": "2.0",
+  "phase": 7,
+  "git_sha": "5000b75c061d49556a0b4c178e9fc94ecd2a1198",
+  "completed_at": "2026-06-05T10:56:11Z",
+  "summary": {
+    "total_gates": 9,
+    "pass": 7,
+    "pass_with_finding": 0,
+    "pass_without_stretch": 0,
+    "fail_with_finding": 2,
+    "fail": 0,
+    "skip": 0
+  },
+  "gates": [
+    {
+      "id": "G7.1",
+      "threshold": "pytest -q \u2265 430 passed; zero new skips",
+      "value": "======================= 432 passed, 1 warning in 14.85s ========================",
+      "status": "PASS",
+      "kind": "tests"
+    },
+    {
+      "id": "G7.2",
+      "threshold": "F9 best reward-comparable cell mean test reward > Phase-6 DQN +1336 by \u22651\u03c3 (apples-to-apples; reward-coefficient cells fall back to security-KPI strand per D7.1.1)",
+      "value": "reward-comparable best=impact_is_terminal_false (+1125.7); security-KPI best=impact_is_terminal_false (mit=0.867); meets_oracle_stretch=False",
+      "status": "FAIL-WITH-FINDING",
+      "finding_id": "D7.1.1",
+      "kind": "f9",
+      "interpretation": "FAIL-WITH-FINDING (D7.1.1, activated 2026-05-01): no reward-comparable cell (environment-design reward fn preserved) beats DQN +1336 on raw reward by \u2265 1\u03c3. BUT: the security-KPI strand passes \u2014 cell `impact_is_terminal_false` improves mitigated_impact_rate to 0.867 (vs DQN baseline 0.153, \u2265 1.5\u00d7 threshold 0.229). The one-at-a-time linear sweep characterised the limit of environment-design-style reward shaping at the apples-to-apples reward level, but env-semantics + coefficient scaling do move the real-security needle. Closing the +288 reward gap under fixed reward semantics requires a different mechanism (curriculum, reward modelling, or attack-aware exploration), deferred to future work.",
+      "security_kpi_strand_passes": true
+    },
+    {
+      "id": "G7.3",
+      "threshold": "PPO p=0.0 < p=0.6 by \u22651\u03c3 AND rule monotone",
+      "value": "p=0.0 CI=(127.9, 138.6); p=0.6 CI=(856.9, 923.9)",
+      "status": "PASS",
+      "kind": "f10",
+      "interpretation": "PASS: PPO benefits from a more lenient defender (p\u2191 \u21d2 reward\u2191) by \u2265 1\u03c3 between p=0.0 and p=0.6, and the rule curve is monotone non-decreasing in p \u2014 replicates the IoTWarden Fig. 6 qualitative shape on CICIoT2023."
+    },
+    {
+      "id": "G7.4",
+      "threshold": "Pareto frontier \u2265 3 distinct dominant points",
+      "value": "n_distinct=4/32",
+      "status": "PASS",
+      "kind": "f12",
+      "interpretation": "PASS: Pareto frontier has 4 distinct dominant points \u2014 non-trivial trade-off surface; operating-point choice is a real defender contribution."
+    },
+    {
+      "id": "G7.5",
+      "threshold": "Environment-design frozen tests pass with impact_is_terminal=True",
+      "value": "G7.1 carries this through (full pytest green \u21d2 environment-design contract preserved)",
+      "status": "PASS",
+      "kind": "regression"
+    },
+    {
+      "id": "G7.6",
+      "threshold": "No regression on environment-design/detector/blue-team/benchmark frozen tests overall",
+      "value": "G7.1 carries this through",
+      "status": "PASS",
+      "kind": "regression"
+    },
+    {
+      "id": "G7.7",
+      "threshold": "F9/F10/F12/F15 manifest.json all present + SHA-pinned",
+      "value": "all 4 manifests present",
+      "status": "PASS",
+      "kind": "manifests"
+    },
+    {
+      "id": "G7.8",
+      "threshold": "F15 4-class \u00d7 8-policy matrix complete, no NaN means",
+      "value": "32/32 cells; n_missing=0; n_nan=0",
+      "status": "PASS",
+      "kind": "f15",
+      "audit_finding": "AF1"
+    },
+    {
+      "id": "G7.9",
+      "threshold": "On VulnerabilityScan, best trained RL CI_low > RF-Acting CI_high (\u22651\u03c3 separation, RL > RF)",
+      "value": "best_rl=ppo (+1109.5), RF=(+1443.4), \u0394=-333.9",
+      "status": "FAIL-WITH-FINDING",
+      "finding_id": "D7.9.1",
+      "kind": "f15",
+      "audit_finding": "AF1 (HEADLINE)",
+      "interpretation": "FAIL-WITH-FINDING: trained RL does NOT beat RF-Acting on VulnerabilityScan; the thesis claim narrows from 'RL closes the OOD gap' to 'RL is robust to (not better at) the OOD class'. See PLAN \u00a78 D7.9.1."
+    }
+  ]
+}

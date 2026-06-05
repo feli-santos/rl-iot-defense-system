@@ -1,0 +1,15 @@
+{
+  "schema_version": "1.0",
+  "figure": "F16",
+  "git_sha": "eeaac2b57f7d6491d08b9224163185c1b15d05f8",
+  "outputs": {
+    "png": "docs/results/ablation/F16_budget_sweep.png",
+    "json": "docs/results/ablation/F16_summary.json"
+  },
+  "inputs": {
+    "budget_sweep_json": {
+      "path": "docs/results/ablation/budget_sweep.json",
+      "sha256": "a3c9930b1d3a7f53f19e8ff1760bda7be03661809c75c23d476b59b3045ed9b1"
+    }
+  }
+}

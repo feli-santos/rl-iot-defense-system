@@ -1,0 +1,201 @@
+{
+  "budget_grid": [
+    20,
+    30,
+    40,
+    50,
+    60,
+    80,
+    null
+  ],
+  "min_episode_length": 20,
+  "n_episodes": 300,
+  "base_seed": 0,
+  "dataset_path": "data/processed/ciciot2023",
+  "split": "test_balanced",
+  "elapsed_seconds": 26.2,
+  "results": {
+    "20": {
+      "random": {
+        "compromise_rate": 0.023333333333333334,
+        "prevention_rate": 0.9766666666666667,
+        "prevention_post_grace": 0.01,
+        "n_episodes": 300
+      },
+      "always_observe": {
+        "compromise_rate": 0.7033333333333334,
+        "prevention_rate": 0.2966666666666667,
+        "prevention_post_grace": 0.2966666666666667,
+        "n_episodes": 300
+      },
+      "always_block": {
+        "compromise_rate": 0.0033333333333333335,
+        "prevention_rate": 0.9966666666666667,
+        "prevention_post_grace": 0.0033333333333333335,
+        "n_episodes": 300
+      },
+      "recommended_action": {
+        "compromise_rate": 0.0033333333333333335,
+        "prevention_rate": 0.9966666666666667,
+        "prevention_post_grace": 0.006666666666666667,
+        "n_episodes": 300
+      }
+    },
+    "30": {
+      "random": {
+        "compromise_rate": 0.37666666666666665,
+        "prevention_rate": 0.6233333333333333,
+        "prevention_post_grace": 0.23333333333333334,
+        "n_episodes": 300
+      },
+      "always_observe": {
+        "compromise_rate": 1.0,
+        "prevention_rate": 0.0,
+        "prevention_post_grace": 0.0,
+        "n_episodes": 300
+      },
+      "always_block": {
+        "compromise_rate": 0.04,
+        "prevention_rate": 0.96,
+        "prevention_post_grace": 0.11,
+        "n_episodes": 300
+      },
+      "recommended_action": {
+        "compromise_rate": 0.06666666666666667,
+        "prevention_rate": 0.9333333333333333,
+        "prevention_post_grace": 0.19,
+        "n_episodes": 300
+      }
+    },
+    "40": {
+      "random": {
+        "compromise_rate": 0.83,
+        "prevention_rate": 0.17,
+        "prevention_post_grace": 0.16,
+        "n_episodes": 300
+      },
+      "always_observe": {
+        "compromise_rate": 1.0,
+        "prevention_rate": 0.0,
+        "prevention_post_grace": 0.0,
+        "n_episodes": 300
+      },
+      "always_block": {
+        "compromise_rate": 0.29,
+        "prevention_rate": 0.71,
+        "prevention_post_grace": 0.4866666666666667,
+        "n_episodes": 300
+      },
+      "recommended_action": {
+        "compromise_rate": 0.5133333333333333,
+        "prevention_rate": 0.4866666666666667,
+        "prevention_post_grace": 0.41,
+        "n_episodes": 300
+      }
+    },
+    "50": {
+      "random": {
+        "compromise_rate": 0.97,
+        "prevention_rate": 0.03,
+        "prevention_post_grace": 0.03,
+        "n_episodes": 300
+      },
+      "always_observe": {
+        "compromise_rate": 1.0,
+        "prevention_rate": 0.0,
+        "prevention_post_grace": 0.0,
+        "n_episodes": 300
+      },
+      "always_block": {
+        "compromise_rate": 0.7266666666666667,
+        "prevention_rate": 0.2733333333333333,
+        "prevention_post_grace": 0.2733333333333333,
+        "n_episodes": 300
+      },
+      "recommended_action": {
+        "compromise_rate": 0.81,
+        "prevention_rate": 0.19,
+        "prevention_post_grace": 0.19,
+        "n_episodes": 300
+      }
+    },
+    "60": {
+      "random": {
+        "compromise_rate": 0.9966666666666667,
+        "prevention_rate": 0.0033333333333333335,
+        "prevention_post_grace": 0.0033333333333333335,
+        "n_episodes": 300
+      },
+      "always_observe": {
+        "compromise_rate": 1.0,
+        "prevention_rate": 0.0,
+        "prevention_post_grace": 0.0,
+        "n_episodes": 300
+      },
+      "always_block": {
+        "compromise_rate": 0.8533333333333334,
+        "prevention_rate": 0.14666666666666667,
+        "prevention_post_grace": 0.14666666666666667,
+        "n_episodes": 300
+      },
+      "recommended_action": {
+        "compromise_rate": 0.9266666666666666,
+        "prevention_rate": 0.07333333333333333,
+        "prevention_post_grace": 0.07333333333333333,
+        "n_episodes": 300
+      }
+    },
+    "80": {
+      "random": {
+        "compromise_rate": 1.0,
+        "prevention_rate": 0.0,
+        "prevention_post_grace": 0.0,
+        "n_episodes": 300
+      },
+      "always_observe": {
+        "compromise_rate": 1.0,
+        "prevention_rate": 0.0,
+        "prevention_post_grace": 0.0,
+        "n_episodes": 300
+      },
+      "always_block": {
+        "compromise_rate": 0.97,
+        "prevention_rate": 0.03,
+        "prevention_post_grace": 0.03,
+        "n_episodes": 300
+      },
+      "recommended_action": {
+        "compromise_rate": 0.9933333333333333,
+        "prevention_rate": 0.006666666666666667,
+        "prevention_post_grace": 0.006666666666666667,
+        "n_episodes": 300
+      }
+    },
+    "None": {
+      "random": {
+        "compromise_rate": 1.0,
+        "prevention_rate": 0.0,
+        "prevention_post_grace": 0.0,
+        "n_episodes": 300
+      },
+      "always_observe": {
+        "compromise_rate": 1.0,
+        "prevention_rate": 0.0,
+        "prevention_post_grace": 0.0,
+        "n_episodes": 300
+      },
+      "always_block": {
+        "compromise_rate": 1.0,
+        "prevention_rate": 0.0,
+        "prevention_post_grace": 0.0,
+        "n_episodes": 300
+      },
+      "recommended_action": {
+        "compromise_rate": 1.0,
+        "prevention_rate": 0.0,
+        "prevention_post_grace": 0.0,
+        "n_episodes": 300
+      }
+    }
+  }
+}

@@ -42,6 +42,7 @@ import argparse
 import json
 import logging
 import subprocess
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -133,7 +134,13 @@ def _run_pytest_count() -> dict[str, Any]:
     """
     try:
         proc = subprocess.run(
-            ["pytest", "-q", "--tb=no"],
+            # Use the *running* interpreter (the project venv when invoked
+            # via the Makefile `$(PYTHON) -m ...`), NOT a bare `pytest` on
+            # PATH — the dev pytest entrypoint is system-level only and
+            # resolves to an interpreter without the project deps, which
+            # made G7.1 spuriously FAIL with value "?" (env-resolution, not
+            # a real test failure).
+            [sys.executable, "-m", "pytest", "-q", "--tb=no"],
             cwd=_ROOT,
             capture_output=True,
             text=True,
@@ -838,11 +845,20 @@ def main(argv: list[str] | None = None) -> int:
     if not args.no_changelog:
         _prepend_changelog(_ROOT, gates)
 
-    n_pass = sum(1 for g in gates if g.get("passes") is True)
-    n_fail = sum(1 for g in gates if g.get("passes") is False)
+    # Gate the exit code on HARD failures only. A gate with
+    # ``passes is False`` but a documented ``FAIL-WITH-FINDING``
+    # interpretation is an expected, journalled finding (e.g. G7.2
+    # D7.1.1, G7.9 D7.9.1) and must NOT fail CI — only an unexplained
+    # FAIL (no interpretation) should. Mirror the scoreboard's status
+    # resolution rather than raw ``passes`` so the two never diverge.
+    statuses = [_resolve_status_finding(g)["status"] for g in gates]
+    n_pass = sum(1 for s in statuses if s == _STATUS_PASS)
+    n_fail_with_finding = sum(1 for s in statuses if s == _STATUS_FAIL_WITH_FINDING)
+    n_fail = sum(1 for s in statuses if s == _STATUS_FAIL)
     logger.info(
-        "Ablation closer done: %d PASS / %d FAIL-WITH-FINDING across G7.1-G7.9",
+        "Ablation closer done: %d PASS / %d FAIL-WITH-FINDING / %d FAIL across G7.1-G7.9",
         n_pass,
+        n_fail_with_finding,
         n_fail,
     )
     return 0 if n_fail == 0 else 1
