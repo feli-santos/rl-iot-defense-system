@@ -344,8 +344,12 @@ thesis-rebuild:  ## Force-rebuild container image, then compile thesis.
 	bash tex/build.sh --rebuild
 
 ##@ Figure / Table Synchronisation (anti-drift)
+.PHONY: export-figure-pdfs
+export-figure-pdfs:  ## Wrap docs/results/**/F*.png into same-named F*.pdf (raster-in-PDF).
+	$(PYTHON) scripts/thesis/export_pdfs.py
+
 .PHONY: sync-figures
-sync-figures:  ## Copy regenerated PDFs from docs/results/ → tex/figs/
+sync-figures: export-figure-pdfs  ## Export PDFs then copy them from docs/results/ → tex/figs/
 	@echo "Syncing figures ..."
 	@cp docs/results/blue-team-training/F3_*.pdf tex/figs/ 2>/dev/null || true
 	@cp docs/results/blue-team-training/F4_*.pdf tex/figs/ 2>/dev/null || true
@@ -357,6 +361,8 @@ sync-figures:  ## Copy regenerated PDFs from docs/results/ → tex/figs/
 	@cp docs/results/ablation/F10_*.pdf tex/figs/ 2>/dev/null || true
 	@cp docs/results/ablation/F12_*.pdf tex/figs/ 2>/dev/null || true
 	@cp docs/results/ablation/F15_*.pdf tex/figs/ 2>/dev/null || true
+	@cp docs/results/ablation/F16_*.pdf tex/figs/ 2>/dev/null || true
+	@cp docs/results/ablation/F17_*.pdf tex/figs/ 2>/dev/null || true
 	@echo "Done."
 
 .PHONY: stale-check

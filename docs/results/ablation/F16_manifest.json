@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0",
   "figure": "F16",
-  "git_sha": "eeaac2b57f7d6491d08b9224163185c1b15d05f8",
+  "git_sha": "a8b2dca6609fc4c138fb842b897a272f6c5e055b",
   "outputs": {
     "png": "docs/results/ablation/F16_budget_sweep.png",
     "json": "docs/results/ablation/F16_summary.json"
