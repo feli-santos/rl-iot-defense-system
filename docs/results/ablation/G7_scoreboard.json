@@ -1,11 +1,11 @@
 {
   "schema_version": "2.0",
   "phase": 7,
-  "git_sha": "5000b75c061d49556a0b4c178e9fc94ecd2a1198",
-  "completed_at": "2026-06-05T10:56:11Z",
+  "git_sha": "a808514e930e5467d9ff80c72ac99e9a18b4348a",
+  "completed_at": "2026-06-05T21:58:35Z",
   "summary": {
-    "total_gates": 9,
-    "pass": 7,
+    "total_gates": 10,
+    "pass": 8,
     "pass_with_finding": 0,
     "pass_without_stretch": 0,
     "fail_with_finding": 2,
@@ -16,7 +16,7 @@
     {
       "id": "G7.1",
       "threshold": "pytest -q \u2265 430 passed; zero new skips",
-      "value": "======================= 432 passed, 1 warning in 14.85s ========================",
+      "value": "======================= 432 passed, 1 warning in 16.12s ========================",
       "status": "PASS",
       "kind": "tests"
     },
@@ -62,8 +62,8 @@
     },
     {
       "id": "G7.7",
-      "threshold": "F9/F10/F12/F15 manifest.json all present + SHA-pinned",
-      "value": "all 4 manifests present",
+      "threshold": "F9/F10/F12/F15/F17 manifest.json all present + SHA-pinned",
+      "value": "all 5 manifests present",
       "status": "PASS",
       "kind": "manifests"
     },
@@ -84,6 +84,14 @@
       "kind": "f15",
       "audit_finding": "AF1 (HEADLINE)",
       "interpretation": "FAIL-WITH-FINDING: trained RL does NOT beat RF-Acting on VulnerabilityScan; the thesis claim narrows from 'RL closes the OOD gap' to 'RL is robust to (not better at) the OOD class'. See PLAN \u00a78 D7.9.1."
+    },
+    {
+      "id": "G7.10",
+      "threshold": "F17 max-evasion (0.75) mean test reward within robust_tol=0.25 of evasion=0 reference (graceful degradation, no collapse)",
+      "value": "ref(e=0)=+1018.4, max(e=0.75)=+982.0, ci_low_degradation=51.9 (tol_abs=254.6)",
+      "status": "PASS",
+      "kind": "f17",
+      "interpretation": "PASS: the PPO defender stays robust to an evasive attacker \u2014 mean test reward at evasion=0.75 (982.0) is within 25% of the evasion=0 reference (1018.4); the evasion-before-commit coupling does not collapse the learned defense."
     }
   ]
 }

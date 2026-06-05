@@ -178,7 +178,7 @@ def _evaluate_gates(
     *,
     run_pytest: bool = True,
 ) -> list[dict[str, Any]]:
-    """Materialise the G7.1–G7.9 scoreboard rows."""
+    """Materialise the G7.1–G7.10 scoreboard rows."""
     gates: list[dict[str, Any]] = []
 
     # G7.1 — pytest green.
@@ -330,14 +330,19 @@ def _evaluate_gates(
         out_dir / "F10_manifest.json",
         out_dir / "F12_manifest.json",
         out_dir / "F15_manifest.json",
+        out_dir / "F17_manifest.json",
     ]
     missing = [str(p.relative_to(_ROOT)) for p in manifest_paths if not p.exists()]
     gates.append(
         {
             "id": "G7.7",
-            "threshold": "F9/F10/F12/F15 manifest.json all present + SHA-pinned",
+            "threshold": "F9/F10/F12/F15/F17 manifest.json all present + SHA-pinned",
             "passes": not missing,
-            "value": ("all 4 manifests present" if not missing else f"missing: {missing}"),
+            "value": (
+                f"all {len(manifest_paths)} manifests present"
+                if not missing
+                else f"missing: {missing}"
+            ),
             "kind": "manifests",
         }
     )
@@ -402,6 +407,40 @@ def _evaluate_gates(
                 "threshold": "On VulnerabilityScan: trained RL > RF-Acting by ≥1σ",
                 "passes": False,
                 "value": "F15_summary.json missing",
+            }
+        )
+
+    # G7.10 — F17 evasion robustness.
+    f17 = _read_summary(out_dir / "F17_summary.json")
+    if f17 is not None:
+        g710 = f17.get("gates", {}).get("G7.10", {})
+        gates.append(
+            {
+                "id": "G7.10",
+                "threshold": (
+                    "F17 max-evasion (0.75) mean test reward within "
+                    "robust_tol=0.25 of evasion=0 reference "
+                    "(graceful degradation, no collapse)"
+                ),
+                "value": (
+                    f"ref(e=0)={g710.get('reference_mean_reward', float('nan')):+.1f}, "
+                    f"max(e=0.75)={g710.get('max_evasion_mean_reward', float('nan')):+.1f}, "
+                    f"ci_low_degradation={g710.get('ci_low_degradation', float('nan')):.1f} "
+                    f"(tol_abs={g710.get('tolerance_abs', float('nan')):.1f})"
+                ),
+                "passes": bool(g710.get("passes")),
+                "kind": "f17",
+                "interpretation": g710.get("interpretation"),
+            }
+        )
+    else:
+        gates.append(
+            {
+                "id": "G7.10",
+                "kind": "f17",
+                "threshold": ("F17 max-evasion reward within robust_tol of evasion=0 reference"),
+                "passes": False,
+                "value": "F17_summary.json missing",
             }
         )
 
@@ -775,7 +814,7 @@ def _prepend_changelog(
 
     block = f"""## [Unreleased] — Ablation closeout ({today})
 
-Tally: **{n_pass} PASS / {n_fail} FAIL-WITH-FINDING** across G7.1–G7.9.
+Tally: **{n_pass} PASS / {n_fail} FAIL-WITH-FINDING** across G7.1–G7.10.
 
 ### Gate scoreboard
 
@@ -856,7 +895,7 @@ def main(argv: list[str] | None = None) -> int:
     n_fail_with_finding = sum(1 for s in statuses if s == _STATUS_FAIL_WITH_FINDING)
     n_fail = sum(1 for s in statuses if s == _STATUS_FAIL)
     logger.info(
-        "Ablation closer done: %d PASS / %d FAIL-WITH-FINDING / %d FAIL across G7.1-G7.9",
+        "Ablation closer done: %d PASS / %d FAIL-WITH-FINDING / %d FAIL across G7.1-G7.10",
         n_pass,
         n_fail_with_finding,
         n_fail,

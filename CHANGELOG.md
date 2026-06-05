@@ -1,5 +1,45 @@
 ## [Unreleased] — Ablation closeout (2026-06-05)
 
+Tally: **8 PASS / 2 FAIL-WITH-FINDING** across G7.1–G7.10.
+
+### Gate scoreboard
+
+| Gate | Threshold | Status | Value / Notes |
+|---|---|:---:|---|
+| **G7.1** | pytest -q ≥ 430 passed; zero new skips | **PASS** | ======================= 432 passed, 1 warning in 16.12s ======================== |
+| **G7.2** | F9 best reward-comparable cell mean test reward > Phase-6 DQN +1336 by ≥1σ (apples-to-apples; reward-coefficient cells fall back to security-KPI strand per D7.1.1) | FAIL-WITH-FINDING | reward-comparable best=impact_is_terminal_false (+1125.7); security-KPI best=impact_is_terminal_false (mit=0.867); meets_oracle_stretch=False |
+| **G7.3** | PPO p=0.0 < p=0.6 by ≥1σ AND rule monotone | **PASS** | p=0.0 CI=(127.9, 138.6); p=0.6 CI=(856.9, 923.9) |
+| **G7.4** | Pareto frontier ≥ 3 distinct dominant points | **PASS** | n_distinct=4/32 |
+| **G7.5** | Environment-design frozen tests pass with impact_is_terminal=True | **PASS** | G7.1 carries this through (full pytest green ⇒ environment-design contract preserved) |
+| **G7.6** | No regression on environment-design/detector/blue-team/benchmark frozen tests overall | **PASS** | G7.1 carries this through |
+| **G7.7** | F9/F10/F12/F15/F17 manifest.json all present + SHA-pinned | **PASS** | all 5 manifests present |
+| **G7.8** | F15 4-class × 8-policy matrix complete, no NaN means | **PASS** | 32/32 cells; n_missing=0; n_nan=0 |
+| **G7.9** | On VulnerabilityScan, best trained RL CI_low > RF-Acting CI_high (≥1σ separation, RL > RF) | FAIL-WITH-FINDING | best_rl=ppo (+1109.5), RF=(+1443.4), Δ=-333.9 |
+| **G7.10** | F17 max-evasion (0.75) mean test reward within robust_tol=0.25 of evasion=0 reference (graceful degradation, no collapse) | **PASS** | ref(e=0)=+1018.4, max(e=0.75)=+982.0, ci_low_degradation=51.9 (tol_abs=254.6) |
+
+### Headline findings (see `docs/results/ablation/RESULTS.md` for full text)
+
+- **G7.2 (F9 reward-component sweep)**: see RESULTS §6.1 — either the
+  +288 deployable gap was closed at one or more cells, or the
+  characterisation activates D7.1.1 (limit of one-at-a-time
+  environment-design-style reward shaping).
+- **G7.9 (F15 audit-AF1 HEADLINE)**: see RESULTS §6.2 — either
+  trained RL beats RF-Acting on `VulnerabilityScan` by ≥1σ
+  (the "RL closes the OOD gap" claim), or D7.9.1 narrows the claim
+  to "RL is robust to (not better at) the OOD class".
+
+### What ships
+
+- F9 / F10 / F12 / F15 figures + summaries + manifests under
+  `docs/results/ablation/`.
+- `G7_scoreboard.json` per-gate JSON record.
+- `runs/ablation/{ood,reward_sweep,aggressiveness}/` raw eval JSONLs
+  (gitignored; ~7.5 h CPU walk-away to regenerate via `make ablation`).
+- 22 new synthetic-only tests (ablation §3.3): test count 420 → 442.
+
+
+## [Unreleased] — Ablation closeout (2026-06-05)
+
 Tally: **7 PASS / 2 FAIL-WITH-FINDING** across G7.1–G7.9.
 
 ### Gate scoreboard
