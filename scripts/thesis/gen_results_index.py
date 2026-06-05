@@ -156,18 +156,6 @@ def _section_detector() -> str:
     return "".join(lines)
 
 
-def _section_red_team() -> str:
-    man = _load(RESULTS_DIR / "red-team-model/manifest.json")
-
-    lines = ["## 02 Red-Team LSTM\n"]
-    lines.append(
-        f"**Source:** `docs/results/red-team-model/red_team_gates.json`  \n"
-        f"**git SHA:** {_git_sha(man)}  \n"
-        f"**mtime:** {_mtime_str(RESULTS_DIR / 'red-team-model/red_team_gates.json')}  \n"
-    )
-    return "".join(lines)
-
-
 def _section_derived() -> str:
     lines = ["## Derived Artifacts (tex/generated/)\n\n"]
     lines.append(
@@ -198,8 +186,6 @@ def main() -> int:
         _section_ablation(),
         "\n---\n\n",
         _section_detector(),
-        "\n---\n\n",
-        _section_red_team(),
         "\n---\n\n",
         _section_derived(),
     ]

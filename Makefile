@@ -82,11 +82,6 @@ derive-stages:  ## Detector prep: build stages.npy + manifest from state_indices
 .PHONY: dataset
 dataset: build-split-indices plot-dataset  ## Run all dataset-preparation deliverables.
 
-.PHONY: red-team
-red-team:  ## Red-team: train LSTM episode generator and emit F1+F2 (~80 s on CPU).
-	$(PYTHON) -m scripts.red_team.train_lstm \
-	    --processed-dir $(DATA) --seed $(SEED)
-
 .PHONY: detector
 detector: derive-stages  ## Detector: train MLP + RF + CNN1D, emit F11 (~3-5 min).
 	$(PYTHON) -m scripts.detector.train_detector \

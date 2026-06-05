@@ -98,7 +98,7 @@ stage by the RealizationEngine (this is the dataset's load-bearing role).
 | Stage detector (MLP/RF/CNN1D) | **KEEP (reframe)** | Baseline apparatus (RF-Acting hero comparator + optional `include_stage_pred` obs-aug), NOT a contribution (C8). |
 | Multi-baseline suite (random / always-observe / always-block / recommended_action oracle / RF-Acting) | **KEEP** | Genuine strength; RF-Acting is the hero comparator, oracle is the ceiling. |
 | Reproducibility (SHA-256 manifest hash-chain) | **DEMOTE** | 2026 table-stakes/hygiene, not a primary contribution. Move from contribution #5 → appendix/subsection. |
-| Red-Team LSTM-imitation gates (G1–G5) | **CUT** | Measure imitation fidelity of a module we are deleting. |
+| Red-Team LSTM-imitation gates (G1–G5) | **CUT (done)** | Measure imitation fidelity of a module we are deleting. Artifacts removed: `docs/results/red-team-model/` (red_team_gates.json with G1 CE-gap≤0.25 / G2 token-acc≥0.55 / G3 KL≤0.05 / G4 cosine≥0.90, manifest.json, F1 learning_curves + F2 transition_matrix_comparison PNGs+captions, RESULTS.md, PLAN.md). Tooling delinked: dead `make red-team` target, the `red_team` reproducibility-smoke `_TARGETS` entry + its `_KNOWN_DIVERGENCES`, and the `gen_results_index` red-team section. The 5×5 Markov matrix it imitated survives as the attacker (row above). |
 | Unbounded-MDP `compromise_rate=1.0` result | **KEEP as single contrast** | One figure/subsection: "why naive absorbing-IMPACT modeling makes prevention impossible" = control proving prevention comes from the agent, not env rigging. User may veto retention at Phase F. |
 | Falsified OOD mechanism prose (`results.tex:287,290`) | **CUT (delete sentences)** | Factually false (see §5/D-OOD). Replace with honest bounded-generalization finding. |
 | Finite attacker budget | **ADD** | New headline mechanic (see §7). |
@@ -295,3 +295,14 @@ stage by the RealizationEngine (this is the dataset's load-bearing role).
   caveat C2 — must be documented in prose). Fine oracle-vs-block ordering is within noise / not
   load-bearing. **Drift D8/D9/D10 resolved (C6); D1 resolved.** Phase C + calibration gate DONE; next is
   the ~17–21 h Phase-D clean-slate re-run on the Markov+budget=40 MDP.
+- `202859c` — Phase E (C6 resolved): added committed, hash-pinned
+  `docs/results/dataset/feature_provenance.json` enumerating the 29 selected feature columns
+  (46→29 via variance 0.01 + correlation 0.95, train-only fit), the 17 dropped, and the obs-dim
+  note (5×29×2=290); validated byte-for-byte against gitignored `metadata.json`.
+- Phase E (G1–G5 LSTM-imitation gates CUT done): `git rm` the entire `docs/results/red-team-model/`
+  artifact set (red_team_gates.json, manifest.json, F1/F2 PNGs+captions, RESULTS.md, PLAN.md) and
+  delinked the dangling tooling — dead `make red-team` target, the `red_team` reproducibility-smoke
+  `_TARGETS` entry + its 2 `_KNOWN_DIVERGENCES`, and `gen_results_index._section_red_team`.
+  `reproducibility_smoke` VERDICT PASS (812 OK / 0 FAIL); `verify-fresh` GREEN. The surviving 5×5
+  Markov attacker is untouched. Remaining LSTM references live only in `tex/` prose + the stale
+  `tex/figs/{red_team_learning_curves,transition_matrix_comparison}.pdf` → DEFERRED to Phase F.
