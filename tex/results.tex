@@ -148,20 +148,13 @@ The trained DRL checkpoints were evaluated on the held-out \texttt{test\_balance
 
 \begin{table}[!htbp]
 \centering
-\caption{Held-out benchmark final ranking by mean episodic reward on \texttt{test\_balanced} ($n = 300$ episodes; 10 seeds for DRL agents; 1 seed for baselines and oracle). The oracle rule (marker \textbf{(o)}) reads \texttt{info["attack\_stage"]} from the simulator and is reported as a measurement instrument, not a deployable competitor.}
+\caption{Held-out benchmark final ranking by mean episodic reward on \texttt{test\_balanced} ($n = 300$ episodes per policy; \NumSeeds{} seeds for DRL agents; 1 seed for baselines and oracle). \texttt{Cmp.} is the compromise rate (fraction of episodes reaching \textsc{impact}). The oracle Recommended-Action rule reads \texttt{info["attack\_stage"]} from the simulator and is reported as a measurement instrument, not a deployable competitor. Numbers in this table are generated from \texttt{F5\_summary.json}.}
 \label{tab:benchmark_ranking}
-\begin{tabular}{llrlcc}
+\begin{tabular}{lrrrr}
 \toprule
-\# & Policy & Mean reward & 95\,\% CI & Seeds & Stage knowledge \\
+Policy & Mean reward & 95\,\% CI & $n$ & Cmp. \\
 \midrule
-\textbf{(o)} & Recommended-Action (oracle) & $+\OracleCeiling$ & $[\OracleCILow, \OracleCIHigh]$ & 1 & true stage \\
---- & RF-Acting \textbf{(best deployable overall)} & $+\RFReward$ & $[1476.6, 1555.8]$ & 1 & RF-predicted stage \\
-1 & A2C \textbf{(best deployable RL)} & $+\BestAgentReward$ & $[\BestAgentCILow, \BestAgentCIHigh]$ & 10 & none \\
-2 & PPO & $+1320.2$ & $[1286.9, 1352.7]$ & 10 & none \\
-3 & DQN & $+1313.0$ & $[1208.3, 1397.6]$ & 10 & none \\
-4 & Always-\textsc{block} & $+502.9$ & $[469.6, 534.0]$ & 1 & none \\
-5 & Random & $+390.5$ & $[355.3, 431.3]$ & 10 & none \\
-6 & Always-\textsc{observe} & $-418.1$ & $[-420.9, -415.2]$ & 1 & none \\
+\BenchmarkTableBody
 \bottomrule
 \end{tabular}
 \end{table}
@@ -194,18 +187,13 @@ The three DRL algorithms are \emph{not} statistically distinguishable from one a
 
 \begin{table}[!htbp]
 \centering
-\caption{Deployable policy latency--reward trade-off on \texttt{test\_balanced}. Latency figures are p50 (median) inference time per decision. RF-Acting's size reflects its 100-tree RandomForest; trained RL models have $\sim$4K parameters. Benign FPR = fraction of truly benign steps on which the policy selects \textsc{block} or \textsc{isolate}.}
+\caption{Deployable policy latency--reward trade-off on \texttt{test\_balanced}. Latency figures are p50 (median) and p95 inference time per decision (ms). RF-Acting pays \RFLatency\,ms per decision (\LatencyRatio$\times$ slower than the best deployable RL agent's \BestAgentLatency\,ms) for its $+\RFReward$ reward; trained RL models are sub-millisecond. Numbers in this table are generated from \texttt{F7\_summary.json}.}
 \label{tab:latency_tradeoff}
-\begin{tabular}{lrrrrrr}
+\begin{tabular}{lrrr}
 \toprule
-Policy & Mean reward & p50 lat.\ (ms) & Speed vs.\ \BestAgentName & Model size & Mit.\ rate & Benign FPR \\
+Policy & Mean reward & p50 lat.\ (ms) & p95 lat.\ (ms) \\
 \midrule
-Oracle (ref.) & $+\OracleCeiling$ & $<0.001$ & n/a & n/a & 0.233 & n/a \\
-RF-Acting     & $+\RFReward$ & \RFLatency & \LatencyRatio$\times$ slower & $\sim$22\,MB & 0.223 & n/a \\
-A2C \textbf{(best RL)} & $+\BestAgentReward$ & \BestAgentLatency & $1\times$ (ref.)  & $\sim$20\,KB & 0.317 & \FPRatc \\
-PPO           & $+1320.2$ & 0.095  & $1.0\times$ & $\sim$20\,KB & 0.260 & \FPRppo \\
-DQN           & $+1313.0$ & 0.063  & $1.5\times$ faster & $\sim$20\,KB & 0.260 & \FPRdqn \\
-Always-\textsc{block} & $+502.9$ & $<0.001$ & n/a & n/a & 1.000 & 100\,\% \\
+\LatencyTableBody
 \bottomrule
 \end{tabular}
 \end{table}
