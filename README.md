@@ -2,17 +2,18 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
-[![Tests: 459 passed](https://img.shields.io/badge/tests-459%20passed-brightgreen.svg)](#)
+[![Tests: 432 passed](https://img.shields.io/badge/tests-432%20passed-brightgreen.svg)](#)
 [![Phases: 0–7 closed](https://img.shields.io/badge/phases-0--7%20closed-brightgreen.svg)](#phases-as-chapters)
 [![Release: v0.2.0](https://img.shields.io/badge/release-v0.2.0-blue.svg)](#)
 
 > **TL;DR.** A reproducible MSc-thesis codebase: an adversarial
 > reinforcement-learning framework for kill-chain-aware defense on
 > real IoT traffic (CICIoT2023). We train DQN / PPO / A2C defenders
-> against an LSTM red-team that produces realistic attack kill-chain
-> sequences, and ship the empirical machinery — manifest hash-chains,
-> audit-first PLANs, exit-gate scoreboards — that lets every figure in
-> the thesis be regenerated from raw data with the named Makefile targets (`make dataset`, `make red-team`, …, `make ablation`).
+> against a fixed 5×5 first-order Markov attacker that walks the
+> kill chain under a finite intrusion budget, and ship the empirical
+> machinery — manifest hash-chains, audit-first PLANs, exit-gate
+> scoreboards — that lets every figure in the thesis be regenerated
+> from raw data with the named Makefile targets (`make dataset`, …, `make ablation`).
 
 ---
 
@@ -73,24 +74,24 @@ rl-iot-defense-system/
 │   ├── blue_team/            # Phase-5 env factory, callbacks, run config
 │   ├── detector/             # Phase-4 supervised stage detector (RF + 1D-CNN)
 │   ├── environment/          # Phase-3 AdversarialIoTEnv (Gymnasium-compatible)
-│   ├── generator/            # Phase-2 LSTM Red Team (next-token predictor)
-│   ├── training/             # Generic training-manager + generator trainer
+│   ├── generator/            # Phase-2 Markov attacker (5×5 kill-chain process)
+│   ├── training/             # Generic training-manager
 │   └── utils/                # Dataset processor + realisation engine + I/O
 ├── scripts/                  # Phase-pinned runners, plotters, gate evaluators
 │   ├── data/  red_team/  detector/  blue_team/  benchmark/  ablation/
 │   └── (each subdir is owned by exactly one phase; see Makefile)
-├── tests/                    # 459 unit + integration tests (pytest)
+├── tests/                    # 432 unit + integration tests (pytest)
 ├── docs/results/             # Canonical thesis figures + RESULTS chapters
-│   ├── 00_phase0_diagnosis.md
-│   ├── dataset/   red-team-model/   environment/   stage-detector/
+│   ├── dataset/   environment/   stage-detector/
 │   ├── blue-team-training/ benchmark/  ablation/
-│   └── (each chapter has PLAN.md + RESULTS.md + <area>_acceptance.json
-│        + manifests + figures)
-├── docs/                     # Method/architecture/decisions docs
-│   ├── archive/HANDOFF.md    # Historical Phase-7→10 handoff (archived)
-│   ├── thesis_results_map.md # F0..F15 + T1 → phase mapping
-│   ├── reproducibility.md    # Manifest hash chain protocol
-│   └── …
+│   └── (each chapter has PLAN.md + RESULTS.md + manifests + figures)
+├── docs/                     # Consolidated knowledge base
+│   ├── ARCHITECTURE.md       # Module map + adversarial loop + config flow
+│   ├── ENVIRONMENT.md        # Obs/actions/reward/budget mechanics
+│   ├── RESULTS.md            # budget=40 headline + gate scoreboard
+│   ├── STATUS.md             # Live status, locked decisions, journal
+│   ├── dataset_card.md  kill-chain-mapping.md
+│   └── RESULTS_INDEX.md      # Auto-generated figure index
 ├── data/img/                 # Static dataset diagrams (CICIoT2023 topology)
 ├── notebooks/                # Exploratory only; not on the thesis path
 ├── config.yml                # Single source of hyperparameters
@@ -115,9 +116,8 @@ tag) is documentation-only.
 
 | # | Phase | What it produces | Headline gate |
 |---|---|---|---|
-| **0** | Diagnosis | `docs/results/00_phase0_diagnosis.md` — pre-restart audit | n/a |
 | **1** | Dataset & splits | F0 dataset overview · `data/processed/ciciot2023/` · immutable train/val/test/OOD index manifests | Hashes pin every downstream split |
-| **2** | LSTM Red Team | F1 (training curves) · F2 (5×5 transition matrix vs ground-truth) | G2: token-acc ≥ chance + transition L1 ≤ τ |
+| **2** | Markov attacker | Fixed 5×5 first-order kill-chain transition matrix (`MarkovAttacker`); upper-triangular, absorbing IMPACT | Stage dynamics drive the adversarial environment |
 | **3** | Environment v2 | `AdversarialIoTEnv` (Gymnasium); 29-feature obs; 5 actions; kill-chain reward | G3.1–G3.6 PASS (env contracts + reward shape) |
 | **4** | Stage detector | F11 per-stage recall (Random Forest + 1D-CNN); RF-acting baseline export | G4 PASS — but `VulnerabilityScan` recall = 0.001 (audit-AF1 surface) |
 | **5** | RL Blue Team | F3 (reward curves DQN/PPO/A2C × 10 seeds) · F4 (action distribution evolution) · T1 (hyperparams) | G5 PASS — all three algorithms converge above random |
@@ -132,7 +132,6 @@ laptop or comparable.
 
 ```bash
 make dataset                 # Phase 1: Dataset splits + F0 (~1 min)
-make red-team                # Phase 2: LSTM Red Team training + F1/F2 (~80 s)
 make detector                # Phase 4: Stage detector (RF + 1D-CNN) + F11 (~3-5 min)
 make blue-team-smoke         # Phase 5 smoke: PPO seed 0, 5K steps (~20 s)
 make blue-team               # Phase 5: Full sweep DQN/PPO/A2C × 10 seeds + F3/F4/T1 (~3-7 h CPU)
@@ -148,7 +147,7 @@ make ablation                # Phase 7: Full F9/F10/F12/F15 + closeout (~7.5 h C
 
 | Gate | Threshold | Status | Headline value |
 |---|---|:---:|---|
-| **G7.1** | `pytest -q` ≥ 430 passed; zero new skips | **PASS** | 459 passed |
+| **G7.1** | `pytest -q` ≥ 430 passed; zero new skips | **PASS** | 432 passed |
 | **G7.2** | F9 best reward-comparable mean test reward > Phase-6 deployable best by ≥ 1 σ | **PASS-WITHOUT-STRETCH** | ablation probe best = `impact_is_terminal_false` PPO +1544.4; benchmark-scale mit-rate = 0.26–0.32 |
 | **G7.3** | PPO p = 0.0 < p = 0.6 by ≥ 1 σ AND rule monotone | **PASS** | p = 0.0 CI (134, 141); p = 0.6 CI (1280, 1359) |
 | **G7.4** | Pareto frontier ≥ 3 distinct dominant points | **FAIL-WITH-FINDING (R7.3)** | n_distinct = 1 / 32 — trade-off surface is ~linear |
@@ -173,10 +172,10 @@ Both FAIL gates were **pre-registered** in `docs/results/ablation/PLAN.md` §6/�
 │   │   RED TEAM          │         │   BLUE TEAM (Phase 5/6/7)      │ │
 │   │   (Phase 2)         │         ├────────────────────────────────┤ │
 │   ├─────────────────────┤  next   │                                │ │
-│   │  LSTM next-token    │  stage  │   DQN / PPO / A2C  (SB3)       │ │
-│   │  predictor; trained │ ──────► │                                │ │
-│   │  on synthetic kill- │         │   29-feature observation       │ │
-│   │  chain episodes     │         │   (window=5, deltas on)        │ │
+│   │  5x5 Markov attacker│  stage  │   DQN / PPO / A2C  (SB3)       │ │
+│   │  (first-order kill- │ ──────► │                                │ │
+│   │  chain process;     │         │   29-feature observation       │ │
+│   │  finite budget)     │         │   (window=5, deltas on)        │ │
 │   └─────────────────────┘         │                                │ │
 │            │                      │   5 actions (force continuum): │ │
 │            │ stage label          │     OBSERVE / LOG /            │ │
@@ -199,11 +198,11 @@ Both FAIL gates were **pre-registered** in `docs/results/ablation/PLAN.md` §6/�
 ```
 
 Detailed designs:
-- **Environment contract:** [`docs/environment.md`](docs/environment.md)
-- **Reward function:** [`docs/reward-shaping.md`](docs/reward-shaping.md)
+- **Environment contract (obs/actions/reward/budget):** [`docs/ENVIRONMENT.md`](docs/ENVIRONMENT.md)
+- **Architecture (module map + adversarial loop + config flow):** [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
 - **Kill-chain mapping (CICIoT2023 → 5 stages):** [`docs/kill-chain-mapping.md`](docs/kill-chain-mapping.md)
-- **Architecture overview:** [`docs/architecture.md`](docs/architecture.md)
-- **Phase decisions ledger:** [`docs/decisions.md`](docs/decisions.md)
+- **Results (budget=40 headline + gate scoreboard):** [`docs/RESULTS.md`](docs/RESULTS.md)
+- **Status, locked decisions & journal:** [`docs/STATUS.md`](docs/STATUS.md)
 
 ---
 
@@ -224,7 +223,7 @@ cd rl-iot-defense-system
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
-make test                    # 459 passed in ~60-90 s on CPU
+make test                    # 432 passed in ~60-90 s on CPU
 ```
 
 ### Dataset
@@ -241,8 +240,7 @@ make build-split-indices     # immutable train/val/test/OOD splits + hash manife
 ```
 
 Phase-1 manifests pin every downstream split with a SHA-256 — see
-[`docs/dataset_card.md`](docs/dataset_card.md) and
-[`docs/data-pipeline.md`](docs/data-pipeline.md).
+[`docs/dataset_card.md`](docs/dataset_card.md).
 
 ### Run a smoke check
 
@@ -285,9 +283,8 @@ python -m scripts.reproducibility_smoke --strict  # exit 1 on any hash miss
 
 A figure that doesn't have a manifest (or whose hashes don't reconcile)
 is **not** considered defense-ready. See
-[`docs/reproducibility.md`](docs/reproducibility.md) for the full
-protocol and [`docs/results/README.md`](docs/results/README.md) for the
-authoring conventions.
+[`docs/STATUS.md`](docs/STATUS.md) for the reproducibility protocol and
+the per-area `docs/results/<area>/RESULTS.md` for authoring conventions.
 
 ### What's deterministic vs. seeded
 
@@ -320,9 +317,11 @@ Notable differences from IoTWarden's setup:
   CICIoT2023-derived observation vector with realistic per-stage
   feature distributions (`RealizationEngine`, Phase 3).
 - **Red team.** IoTWarden samples attack triggers from a fixed
-  schedule. We train an LSTM next-token predictor on synthetic
-  kill-chain episodes (Phase 2) and use its sampled stage trajectory
-  to drive the realisation engine.
+  schedule. We use a fixed 5x5 first-order Markov attacker
+  (`MarkovAttacker`, Phase 2) — an upper-triangular kill-chain
+  transition process with an absorbing IMPACT state, operating under a
+  finite intrusion budget — whose sampled stage trajectory drives the
+  realisation engine.
 - **Action space.** IoTWarden uses a binary block-or-not action. We
   use a 5-level graduated **force continuum** (OBSERVE → LOG →
   THROTTLE → BLOCK → ISOLATE), which lets the policy under- and
@@ -367,7 +366,7 @@ handoff record.
 ## Tests
 
 ```bash
-make test                    # 459 passed in ~60-90 s on CPU
+make test                    # 432 passed in ~60-90 s on CPU
 make test-cov                # with coverage
 ```
 
@@ -386,7 +385,7 @@ parsers):
 
 Real-data smoke tests are guarded with
 `pytest.skipif(not Path('data/processed/...').exists(), ...)`; the
-459 reported above is the synthetic-only count.
+432 reported above is the synthetic-only count.
 
 ---
 

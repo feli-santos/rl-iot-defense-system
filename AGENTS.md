@@ -25,8 +25,9 @@ system-level only. Run `make install-dev` to install them into the dev environme
 
 ## Architecture (phase = chapter)
 
-Adversarial loop: an LSTM **Red Team** (`src/generator/`) emits kill-chain stage
-sequences -> `RealisationEngine` (`src/utils/`) samples a real CICIoT2023 feature
+Adversarial loop: a fixed 5x5 first-order **Markov attacker** (`MarkovAttacker`,
+`src/generator/`) walks the kill chain under a finite intrusion budget -> emits a
+stage -> `RealisationEngine` (`src/utils/`) samples a real CICIoT2023 feature
 row for that stage -> `AdversarialIoTEnv` (`src/environment/`, Gymnasium API, 29-feat
 obs, 5 actions OBSERVE/LOG/THROTTLE/BLOCK/ISOLATE) -> **Blue Team** SB3 agent
 (DQN/PPO/A2C via `src/algorithms/`) acts -> kill-chain reward.
@@ -87,14 +88,17 @@ Use spelled-out forms (`\FPRatc` not `\FPRa2c`, `\FnineStructuralReward` not `\F
 `render_tables.py` already maps digits to letters when emitting macro names; keep it that way.
 
 **Thesis prose rule:** NEVER write "Phase N" in `tex/` prose — use semantic stage names
-(Red-Team LSTM / Adversarial Environment / Stage Detector / Blue-Team Training /
+(Markov Attacker / Adversarial Environment / Stage Detector / Blue-Team Training /
 Held-Out Benchmark / Ablation & Robustness). "Phase N" is fine in dev docs and `docs/results/`.
 
 ## More context
 
-`docs/architecture.md`, `docs/environment.md`, `docs/reward-shaping.md`,
-`docs/reproducibility.md`, `docs/decisions.md`; per-area `docs/results/<area>/PLAN.md`
-+ `RESULTS.md`. Full thesis-revision plan: `docs/review/REVISION_PLAN.md`.
+`docs/ARCHITECTURE.md` (module map + adversarial loop + config flow),
+`docs/ENVIRONMENT.md` (obs/actions/reward/budget mechanics), `docs/RESULTS.md`
+(budget=40 headline + gate scoreboard), `docs/STATUS.md` (live status, locked
+decisions, caveat dispositions, commit journal); per-area
+`docs/results/<area>/PLAN.md` + `RESULTS.md`. Dataset provenance:
+`docs/dataset_card.md`, `docs/kill-chain-mapping.md`.
 
 ## Locked experiment decisions
 
