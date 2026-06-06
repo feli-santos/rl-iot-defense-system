@@ -83,14 +83,14 @@ The three DRL algorithms (DQN, PPO, A2C) were trained over ten seeds for $250{,}
 
 \begin{figure}[!htbp]
     \centering
-    \includegraphics[width=0.85\textwidth]{figs/training_curves.pdf}
+    \includegraphics[width=0.85\textwidth]{figs/F3_learning_curves.pdf}
     \caption{Blue-team learning curves: episodic reward over training for DQN, PPO, A2C across ten seeds each. Shaded bands are 95\,\% bootstrap confidence intervals over seeds.}
     \label{fig:f3}
 \end{figure}
 
 \begin{figure}[!htbp]
     \centering
-    \includegraphics[width=0.85\textwidth]{figs/action_distribution.pdf}
+    \includegraphics[width=0.85\textwidth]{figs/F4_action_distribution.pdf}
     \caption{Per-stage action-distribution evolution across training for PPO. The argmax action matches the recommended action exactly on \textsc{recon} (\textsc{log}) and \textsc{maneuver} (\textsc{block}); other stages spread probability mass within the proportionality $\pm 1$ band.}
     \label{fig:f4}
 \end{figure}
@@ -118,28 +118,28 @@ The trained DRL checkpoints were evaluated on the held-out \texttt{test\_balance
 
 \begin{figure}[!htbp]
     \centering
-    \includegraphics[width=0.85\textwidth]{figs/baselines.pdf}
+    \includegraphics[width=0.85\textwidth]{figs/F8_baselines.pdf}
     \caption{Mean episodic reward with 95\,\% bootstrap confidence intervals on the held-out \texttt{test\_balanced} split. The oracle Recommended-Action rule (marker \textbf{(o)}) reads the true attack stage from the simulator and is a measurement instrument, not a competing baseline. Among deployable policies the ranking is RF-Acting $>$ trained DRL $>$ Always-\textsc{block} $>$ Random $>$ Always-\textsc{observe}.}
     \label{fig:f8}
 \end{figure}
 
 \begin{figure}[!htbp]
     \centering
-    \includegraphics[width=0.95\textwidth]{figs/stage_action_cm.pdf}
+    \includegraphics[width=0.95\textwidth]{figs/F6_stage_action_cm.pdf}
     \caption{Per-policy stage$\times$action confusion matrices for DQN, PPO, A2C, RF-Acting, oracle Recommended-Action rule, and Random. Each panel reports the per-stage proportionality-band score (gate G6.3) overlaid. The IMPACT row reflects actions taken \emph{when the stage detector observes} \textsc{impact} (not a prediction of the next stage).}
     \label{fig:f6}
 \end{figure}
 
 \begin{figure}[!htbp]
     \centering
-    \includegraphics[width=0.85\textwidth]{figs/overhead.pdf}
+    \includegraphics[width=0.85\textwidth]{figs/F7_overhead.pdf}
     \caption{Inference-latency CDFs (log-scale x-axis) for all policies. Trained RL inference is sub-millisecond (p50); RF-Acting is \RFLatency\,ms (sklearn per-call overhead on a 100-tree forest); the oracle rule is sub-microsecond. Training wallclock (right panel) is summed over \NumSeeds{} seeds.}
     \label{fig:f7}
 \end{figure}
 
 \begin{figure}[!htbp]
     \centering
-    \includegraphics[width=0.95\textwidth]{figs/main_results_table.pdf}
+    \includegraphics[width=0.95\textwidth]{figs/F5_table.pdf}
     \caption{Final security-metrics table on \texttt{test\_balanced}: mean reward, 95\,\% bootstrap CI, mitigated-impact rate, mean MTTC, benign false-positive rate, and inference latency for every policy ($n = 300$ episodes; 10 seeds for DRL agents; 1 seed for baselines and oracle).}
     \label{fig:f5}
 \end{figure}
@@ -213,14 +213,14 @@ The ablation and OOD-robustness evaluations characterise the trained policy's se
 
 \begin{figure}[!htbp]
     \centering
-    \includegraphics[width=0.95\textwidth]{figs/reward_ablation.pdf}
+    \includegraphics[width=0.95\textwidth]{figs/F9_reward_ablation.pdf}
     \caption{F9 reward-component ablation: PPO mean test reward across the 12-cell sweep over five reward coefficients $\times$ $\{0.5\times, 1\times, 2\times\}$ plus the binary \texttt{impact\_is\_terminal} flag. The benchmark oracle ceiling ($+\OracleCeiling$) and the benchmark \BestAgentName{} mean ($+\BestAgentReward$) are overlaid as horizontal reference lines. The \texttt{impact\_is\_terminal}$=\mathit{False}$ structural-fix cell wins at $+\FnineStructuralReward$ (ablation strand, security-KPI mitigated-impact rate $\FnineStructuralMitRate$), demonstrating the direction of improvement.}
     \label{fig:f9}
 \end{figure}
 
 \begin{figure}[!htbp]
     \centering
-    \includegraphics[width=0.85\textwidth]{figs/aggressiveness.pdf}
+    \includegraphics[width=0.85\textwidth]{figs/F10_aggressiveness.pdf}
     \caption{F10 aggressiveness sweep: PPO mean test reward and oracle recommended-action rule reference as a function of the defender de-escalation probability $p_{\mathrm{de{-}esc}} \in \{0.0, 0.2, 0.4, 0.6, 0.8, 1.0\}$. PPO grows monotonically from near-floor at $p = 0.0$ to within 200 reward of the oracle at $p = 0.6$.}
     \label{fig:f10}
 \end{figure}
@@ -231,6 +231,15 @@ The mechanism is interpretable: under the naive contract \texttt{impact\_is\_ter
 
 \paragraph{F9 caveat: the reward ablation isolates mitigation, the budget enables prevention.} The F9 reward-component ablation runs on the unbounded attacker (no intrusion budget), so every F9 cell reports \texttt{compromise\_rate} $= 1.0$ by construction. Within that unbounded strand the F9 win must be read as ``post-\textsc{impact} mitigation'' --- the agent lets one \textsc{impact} row happen, then defends it during the now-non-terminal step --- and the elevated mitigated-impact rate ($\FnineStructuralMitRate$) is the meaningful security KPI. The complementary axis is the \emph{finite intrusion budget} of the primary benchmark (Section~\ref{ssec:intrusion_budget}), under which \texttt{compromise\_rate} drops below $1.0$ and pre-\textsc{impact} prevention becomes measurable. The two are deliberately disjoint: F9 isolates the reward-shaping effect with the budget held off; the headline benchmark isolates the prevention effect with the budget on.
 
+\begin{figure}[!htbp]
+    \centering
+    \includegraphics[width=0.85\textwidth]{figs/F16_budget_sweep.pdf}
+    \caption{F16 prevention-vs-budget sweep (G7.4 PASS): defender-attributable prevention rate (post-grace) on \texttt{test\_balanced} for fixed baseline policies as a function of the finite attacker budget ($\infty$ denotes the unbounded control). Each policy's prevention rate peaks at a finite, non-extreme budget and then collapses toward zero as the budget grows unbounded --- the \emph{prevention pivot}. Stronger policies (always-\textsc{block}, oracle recommended-action) peak at the locked operating point $B = 40$ (prevention $0.487$ and $0.41$ respectively); weaker policies peak earlier. This is the figure that justifies treating prevention as a first-class, budget-contingent outcome rather than an artefact.}
+    \label{fig:f16}
+\end{figure}
+
+\paragraph{F16 --- prevention is real but budget-contingent (G7.4 PASS).} Figure~\ref{fig:f16} sweeps the finite attacker budget and reports the defender-attributable prevention rate for each fixed baseline policy. Every policy exhibits an interior peak: prevention rises as the budget tightens, reaches a maximum at a finite non-extreme budget, and then decays toward zero as the budget grows unbounded (the unbounded control reproduces the reactive-only regime in which no policy prevents). The two strongest policies --- always-\textsc{block} and the oracle recommended-action rule --- peak at the locked operating point $B = 40$, confirming that the headline budget is not a cherry-picked sweet spot for a single policy but a regime in which prevention is broadly achievable. This is the empirical backbone of the prevention spine: with a finite intrusion budget the defender can \emph{exhaust} the attacker before \textsc{impact}, and the prevention rate is a meaningful, monotone-then-saturating function of how much intrusion effort the environment permits.
+
 \paragraph{F10 --- monotone response to attacker aggressiveness (G7.3 PASS).} PPO mean reward grows monotonically with the defender de-escalation probability $p_{\mathrm{de{-}esc}}$, from near-floor at $p = 0.0$ (CI $[134, 141]$, where the environment never de-escalates) to $p = 0.6$ (CI $[1280, 1359]$). The oracle rule curve is also monotone non-decreasing. This is the cleanest behavioural sanity-check in the ablation stage: on real CICIoT2023 traffic with a 29-feature state and a kill-chain-derived reward, the trained policy responds in the expected direction to attacker aggressiveness.\footnote{The high-$p$ cells of F10 operate in a strictly easier MDP than the primary benchmark contract. At $p = 1.0$ PPO reaches $+2047$, exceeding the primary benchmark oracle ceiling of $+\OracleCeiling$; this is not a comparison, because that ceiling is computed at the environment-design default $p_{\mathrm{de{-}esc}} = 0.6$. The qualitative claim of F10 is monotonicity in $p$, not absolute level.}
 
 % --- Subsection 4.7 ---
@@ -240,7 +249,7 @@ The four held-out OOD attack classes were evaluated against every benchmark-stag
 
 \begin{figure}[!htbp]
     \centering
-    \includegraphics[width=0.95\textwidth]{figs/ood_robustness.pdf}
+    \includegraphics[width=0.95\textwidth]{figs/F15_ood_robustness.pdf}
     \caption{F15 single-stage OOD-feature injection evaluation: mean episodic reward with 95\,\% bootstrap CIs on each of the four held-out OOD attack classes (\texttt{DDoS-HTTP\_Flood}, \texttt{Mirai-udpplain}, \texttt{XSS}, \texttt{VulnerabilityScan}) for each of the eight benchmark policies ($n = 300$ episodes). The headline observation is on \texttt{VulnerabilityScan}: trained PPO ($+1109.5$) is within seed-noise of its in-distribution mean ($+\BestAgentReward$), but does not beat RF-Acting ($+1443.4$), a $\Delta = -333.9$ gap.}
     \label{fig:f15}
 \end{figure}
