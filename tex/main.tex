@@ -95,7 +95,7 @@ contrato primário. O melhor agente implantável (\BestAgentName, $+\BestAgentRe
 captura \OracleCapturePct\,\% do teto do oráculo ($+\OracleCeiling$) com uma
 vantagem de latência de \LatencyRatio$\times$ sobre a \emph{baseline}
 supervisionada mais forte (RF-Acting, \RFLatency\,ms), ao custo de uma taxa de
-falsos positivos benignos de 8.7\,\% --- um compromisso que motiva pesquisa
+falsos positivos benignos de \FPRppoPct\,\% --- um compromisso que motiva pesquisa
 futura em penalidades de FPR via programação lagrangeana. Todos os resultados são
 reprodutíveis por uma cadeia de \emph{hashes} SHA-256 verificada de ponta a ponta.
 
@@ -133,7 +133,7 @@ the primary training and evaluation contract. The best deployable trained agent
 (\BestAgentName, $+\BestAgentReward$) captures \OracleCapturePct\,\% of the oracle
 ceiling ($+\OracleCeiling$) at a \LatencyRatio$\times$ latency advantage over the
 strongest deployable baseline (RF-Acting, \RFLatency\,ms p50), at the cost of an
-8.7\,\% benign false-positive rate --- a trade-off that motivates future work on
+\FPRppoPct\,\% benign false-positive rate --- a trade-off that motivates future work on
 Lagrangian FPR-constrained policies. All results are reproducible via a
 SHA-256-verified artifact chain.
 

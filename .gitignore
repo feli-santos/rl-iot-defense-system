@@ -129,8 +129,9 @@ build/
 dist/
 *.egg-info/
 
-# LaTeX build artefacts (tex/ compile output; principal.pdf / tese.pdf are the
-# committed final outputs and remain tracked separately).
+# LaTeX build artefacts (tex/ compile output). The compiled thesis tex/main.pdf
+# is a build product and is not tracked; rebuild it with `make thesis`.
+tex/main.pdf
 tex/*.aux
 tex/*.log
 tex/*.bbl

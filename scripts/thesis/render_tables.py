@@ -124,6 +124,8 @@ def _render_numbers() -> str:
             safe = "".join(_digit_map[c] if c in _digit_map else c for c in safe)
             val = data["benign_fpr"] if isinstance(data, dict) else data
             lines.append(r"\newcommand{\FPR" + safe + "}{%0.3f}" % val)
+            # Percentage variant for prose (e.g. \FPRppoPct -> "8.7").
+            lines.append(r"\newcommand{\FPR" + safe + "Pct}{%0.1f}" % (val * 100))
 
     # F9 structural fix — F9_summary.json uses key "rows" (list of cell dicts)
     if F9.exists():
