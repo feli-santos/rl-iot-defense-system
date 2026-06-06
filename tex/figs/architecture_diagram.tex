@@ -62,16 +62,16 @@
   test / ood
 };
 
-% --- Lane 2: Red-Team LSTM ---
+% --- Lane 2: Markov Attacker ---
 \node[stageBox, fill=colOffline, right=of dataset] (redteam) {
-  \textbf{Red-Team LSTM}\\[3pt]
-  Next-stage token model\\
-  over kill-chain\\
-  sequences\\[3pt]
-  Upper-triangular\\
-  monotonic mask\\[3pt]
-  Trained on\\
-  stage tokens (train)
+  \textbf{Markov Attacker}\\[3pt]
+  Fixed $5\times5$ first-order\\
+  kill-chain transition\\
+  matrix\\[3pt]
+  Upper-triangular;\\
+  absorbing \textsc{impact}\\[3pt]
+  Finite intrusion\\
+  budget ($B=40$)
 };
 
 % --- Lane 3: Stage Detector ---
@@ -167,7 +167,7 @@
 % Stage I → Stage II (dataset to realizer)
 \draw[arr] (dataset.south) -- ++(0,-0.45) -| (realizer.north);
 
-% Stage I → Stage II (LSTM to env)
+% Stage I → Stage II (Markov attacker to env)
 \draw[arr] (redteam.south) -- (env.north);
 
 % Stage I → Stage II (detector to reward, dashed = eval-time only)

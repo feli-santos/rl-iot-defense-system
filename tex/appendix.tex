@@ -22,7 +22,7 @@ Every development stage of the framework emits one or more \texttt{manifest.json
 Stage & Path & Key artefacts \\
 \hline
 1 (Dataset prep.) & \texttt{01\_dataset/} & \texttt{F0\_class\_distribution.png}, \texttt{F0\_stage\_distribution.png}, \texttt{F0\_summary.json}, \texttt{manifest.json} \\
-2 (Red-team LSTM) & \texttt{02\_red\_team/} & \texttt{F1\_learning\_curves.png}, \texttt{F2\_transition\_matrix\_comparison.png}, \texttt{F1/F2\_summary.json}, \texttt{manifest.json}, \texttt{RESULTS.md} \\
+2 (Markov attacker) & --- & Closed-form $5\times5$ transition matrix (\texttt{MarkovAttacker}); no trained artefacts (requires no training) \\
 3 (Env. design) & \texttt{03\_env/} & \texttt{PLAN.md}, \texttt{RESULTS.md} (no figures; environment is infrastructure) \\
 4 (Stage detector) & \texttt{04\_detector/} & \texttt{F11\_per\_stage\_recall.png}, \texttt{F11\_summary.json}, \texttt{G4\_scoreboard.json}, \texttt{manifest.json}, \texttt{RESULTS.md} \\
 5 (Blue-team DRL) & \texttt{05\_blue\_team/} & \texttt{F3/F4\_*.png}, \texttt{F3/F4\_summary.json}, \texttt{F3/F4\_manifest.json}, \texttt{T1\_hparams.\{json,md\}}, \texttt{G5\_scoreboard.json}, \texttt{RESULTS.md} \\
@@ -57,7 +57,7 @@ The harness \texttt{scripts/reproducibility\_smoke.py} is the canonical end-to-e
 \begin{description}
     \item[\textsc{ok}] The recorded input SHA matches the on-disk SHA. The expected case for every input.
     \item[\textsc{fail}] The recorded input SHA does \emph{not} match the on-disk SHA, and the divergence is not on the harness's pre-registered known-divergences list. This indicates that an input artefact has changed since the producing manifest was emitted, and the figure or scoreboard pinned by that manifest is no longer reproducible-by-hash from the inputs on disk. \textsc{fail} verdicts must be triaged.
-    \item[\textsc{known-divergence}] The recorded SHA does not match on-disk \emph{and} the divergence is documented and audited. The harness ships with a \texttt{\_KNOWN\_DIVERGENCES} table that explicitly enumerates every such case with its finding-id and explanatory note. The two pre-registered divergences in this dissertation are the dataset-preparation and red-team-training stage manifests' recorded splits-manifest SHA (\texttt{82aa1214\ldots}, the pre-leakage-fix manifest) versus the on-disk post-fix SHA (\texttt{1e99d596\ldots}); both are documented in \texttt{docs/results/02\_red\_team/RESULTS.md} \S5.3.
+    \item[\textsc{known-divergence}] The recorded SHA does not match on-disk \emph{and} the divergence is documented and audited. The harness ships with a \texttt{\_KNOWN\_DIVERGENCES} table that explicitly enumerates every such case with its finding-id and explanatory note. The pre-registered divergence in this dissertation is the dataset-preparation stage manifest's recorded splits-manifest SHA (\texttt{82aa1214\ldots}, the pre-leakage-fix manifest) versus the on-disk post-fix SHA; the splits manifest is gitignored machine-local data, regenerated per machine, and the input is absent (\textsc{skip}) on a fresh clone.
     \item[\textsc{skip}] An input declared by the manifest is gitignored and not on disk on this checkout. Typical case: large feature arrays (\texttt{features.npy}, \texttt{stages.npy}) and split index files that are derived from the raw CICIoT2023 dataset and therefore not committed.
 \end{description}
 
@@ -76,19 +76,14 @@ python -m scripts.reproducibility_smoke         # expect: VERDICT PASS
                                                  #         0 FAIL / 2 KNOWN-DIVERGENCE
 \end{verbatim}
 
-The dissertation PDF is compiled via Docker (no host-side \LaTeX{} installation required):
+The dissertation PDF is compiled via a local container image (Podman, with Docker as a fallback; no host-side \LaTeX{} installation required):
 
 \begin{verbatim}
-# First-time image build (one-off, ~3-4 min; requires Docker):
-make thesis-image
-
-# Compile tex/main.pdf (auto-builds image if absent):
+# Compile tex/main.pdf (auto-builds the image if absent):
 make thesis
 
-# Force-rebuild image and recompile:
-make thesis-rebuild
-
-# Alternatively, use the standalone script from the repo root:
+# Alternatively, use the standalone script from the repo root
+# (auto-detects and prefers Podman):
 bash tex/build.sh
 \end{verbatim}
 
@@ -97,7 +92,6 @@ A full re-train of every stage from scratch (preserving the audited reproducibil
 \begin{verbatim}
 make dataset                              # CICIoT2023 splits + F0a/F0b
                                           # (requires raw dataset on disk)
-make red-team                             # LSTM red team + F1/F2
 make detector                             # supervised stage detector + F11
 make blue-team-sweep BLUE_TEAM_TIMESTEPS=250000   # ~108 min CPU
 make benchmark                            # held-out benchmark + F5/F6/F7/F8
@@ -108,7 +102,7 @@ make ablation-close                       # G7 scoreboard + RESULTS.md
 After a full re-train the per-stage \texttt{manifest.json} files are re-emitted with new input SHAs corresponding to the freshly trained checkpoints; the harness will then verify the new chain end-to-end.
 
 \section{Hardware and Environment}\label{app:hardware}
-All experiments reported in this dissertation were run on a single CPU core. No GPU is required for any development stage (the LSTM red team, the MLP stage detector, and the three DRL agents all train within minutes-to-hours on commodity CPU). Software environment: Python 3.10--3.11 (CI-verified), PyTorch (CPU build), scikit-learn, Stable~Baselines3, Gymnasium. Total wallclock for the full audited evaluation chain (development stages 1--7) is approximately 8.5~h on a single CPU core, dominated by the ablation sweeps; the held-out benchmark and the smoke-reproducibility harness together take less than 11~minutes.
+All experiments reported in this dissertation were run on a single CPU core. No GPU is required for any development stage (the MLP stage detector and the three DRL agents all train within minutes-to-hours on commodity CPU; the $5\times5$ Markov attacker is closed-form and requires no training). Software environment: Python 3.10--3.11 (CI-verified), PyTorch (CPU build), scikit-learn, Stable~Baselines3, Gymnasium. Total wallclock for the full audited evaluation chain (development stages 1--7) is approximately 8.5~h on a single CPU core, dominated by the ablation sweeps; the held-out benchmark and the smoke-reproducibility harness together take less than 11~minutes.
 
 % ====================================================================
 \chapter{CICIoT2023 Label to Kill Chain Stage Mapping}\label{app:kc_mapping}

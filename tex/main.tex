@@ -77,29 +77,32 @@ continua a crescer. As restrições computacionais de muitos dispositivos IoT
 tornam ineficazes as soluções de segurança tradicionais e motivam mecanismos de
 defesa adaptativos capazes de operar autonomamente. Esta dissertação propõe e
 avalia rigorosamente um arcabouço de defesa adaptativo ciente da cadeia de
-eliminação cibernética (\emph{kill-chain-aware}) para redes IoT, combinando
-modelagem de estágios de ataque via LSTM com Aprendizado por Reforço Profundo
-(DRL). O sistema é avaliado no \emph{dataset} CICIoT2023, projetado sobre uma
-Cyber Kill Chain de cinco estágios, com um gerador de episódios LSTM, um
-detector de estágio supervisionado e um ambiente Gymnasium customizado expondo
-um agente defensor com cinco ações. Três algoritmos DRL (DQN, PPO, A2C) são
-treinados em dez sementes e comparados a quatro políticas de referência e a um
-oráculo. Uma análise de especificação incorreta de recompensa (\emph{reward
-mis-specification}) identifica que o contrato ingênuo ($\texttt{impact\_is\_terminal}
-=\mathit{True}$) induz uma estratégia subótima; o contrato corrigido
-($=\mathit{False}$) é adotado como contrato primário. O melhor agente implantável
-(A2C, $+\BestAgentReward$) captura \OracleCapturePct\,\% do teto do oráculo
-($+\OracleCeiling$) com uma vantagem de latência de \LatencyRatio$\times$ sobre
-a \emph{baseline} supervisionada mais forte (RF-Acting, \RFLatency\,ms), ao custo
-de uma taxa de falsos positivos benignos de 11.5\,\% --- um compromisso que
-motiva pesquisa futura em penalidades de FPR via programação lagrangeana. Todos
-os resultados são reprodutíveis por uma cadeia de \emph{hashes} SHA-256
-verificada de ponta a ponta.
+eliminação cibernética (\emph{kill-chain-aware}) para redes IoT, baseado em
+Aprendizado por Reforço Profundo (DRL). O sistema é avaliado no \emph{dataset}
+CICIoT2023, projetado sobre uma Cyber Kill Chain de cinco estágios. O atacante é
+um processo de Markov de primeira ordem $5\times5$ que percorre a cadeia de
+eliminação sob um orçamento de intrusão finito (\emph{intrusion budget}); cada
+estágio é realizado por uma linha de características real do CICIoT2023, expondo
+um agente defensor com cinco ações em um ambiente compatível com Gymnasium. Sob
+o orçamento finito, a defesa pode \emph{prevenir} o comprometimento exaurindo o
+atacante antes do estágio de impacto, e não apenas mitigá-lo reativamente. Três
+algoritmos DRL (DQN, PPO, A2C) são treinados em \NumSeeds{} sementes e comparados
+a quatro políticas de referência e a um oráculo. Uma análise de especificação
+incorreta de recompensa (\emph{reward mis-specification}) identifica que o
+contrato ingênuo ($\texttt{impact\_is\_terminal}=\mathit{True}$) induz uma
+estratégia subótima; o contrato corrigido ($=\mathit{False}$) é adotado como
+contrato primário. O melhor agente implantável (\BestAgentName, $+\BestAgentReward$)
+captura \OracleCapturePct\,\% do teto do oráculo ($+\OracleCeiling$) com uma
+vantagem de latência de \LatencyRatio$\times$ sobre a \emph{baseline}
+supervisionada mais forte (RF-Acting, \RFLatency\,ms), ao custo de uma taxa de
+falsos positivos benignos de 8.7\,\% --- um compromisso que motiva pesquisa
+futura em penalidades de FPR via programação lagrangeana. Todos os resultados são
+reprodutíveis por uma cadeia de \emph{hashes} SHA-256 verificada de ponta a ponta.
 
     \vspace{\onelineskip}
 
     \noindent\textbf{Palavras-chaves}: Segurança IoT; Aprendizado por Reforço Profundo;
-    Cyber Kill Chain; Modelagem de Estágio de Ataque; LSTM; CICIoT2023;
+    Cyber Kill Chain; Atacante de Markov; Orçamento de Intrusão; CICIoT2023;
     Especificação de Recompensa; Reprodutibilidade.
 
     \vspace{\onelineskip}
@@ -114,28 +117,31 @@ to grow. The computational constraints of many IoT devices render traditional
 security solutions ineffective and motivate intelligent, adaptive defence
 mechanisms capable of operating autonomously. This dissertation designs,
 implements, and rigorously evaluates a kill-chain-aware adaptive defence
-framework for IoT networks, combining LSTM-based attack-stage modelling with
-Deep Reinforcement Learning (DRL). The framework is evaluated end-to-end on the
-CICIoT2023 dataset, projected onto a five-stage Cyber Kill Chain, with an LSTM
-red-team episode generator, a supervised stage detector, and a custom
-Gymnasium-compatible environment exposing a five-action defender. Three DRL
-algorithms (DQN, PPO, A2C) are trained over \NumSeeds{} seeds and benchmarked
-against four reference policies and an oracle. A reward mis-specification
-analysis identifies that the naive reward contract ($\texttt{impact\_is\_terminal}
-=\mathit{True}$) induces a cocked-trigger strategy; the corrected contract
-($=\mathit{False}$) is adopted as the primary training and evaluation contract.
-The best deployable trained agent (A2C, $+\BestAgentReward$) captures
-\OracleCapturePct\,\% of the oracle ceiling ($+\OracleCeiling$) at a
-\LatencyRatio$\times$ latency advantage over the strongest deployable baseline
-(RF-Acting, \RFLatency\,ms p50), at the cost of an 11.5\,\% benign false-positive
-rate --- a trade-off that motivates future work on Lagrangian FPR-constrained
-policies. All results are reproducible via a SHA-256-verified artifact chain.
+framework for IoT networks, built on Deep Reinforcement Learning (DRL). The
+framework is evaluated end-to-end on the CICIoT2023 dataset, projected onto a
+five-stage Cyber Kill Chain. The attacker is a $5\times5$ first-order Markov
+process that walks the kill chain under a finite intrusion budget; each stage is
+realised by a real CICIoT2023 feature row, exposing a five-action defender in a
+custom Gymnasium-compatible environment. Under the finite budget, the defence can
+\emph{prevent} compromise by exhausting the attacker before the impact stage,
+rather than only mitigating it reactively. Three DRL algorithms (DQN, PPO, A2C)
+are trained over \NumSeeds{} seeds and benchmarked against four reference
+policies and an oracle. A reward mis-specification analysis identifies that the
+naive reward contract ($\texttt{impact\_is\_terminal}=\mathit{True}$) induces a
+cocked-trigger strategy; the corrected contract ($=\mathit{False}$) is adopted as
+the primary training and evaluation contract. The best deployable trained agent
+(\BestAgentName, $+\BestAgentReward$) captures \OracleCapturePct\,\% of the oracle
+ceiling ($+\OracleCeiling$) at a \LatencyRatio$\times$ latency advantage over the
+strongest deployable baseline (RF-Acting, \RFLatency\,ms p50), at the cost of an
+8.7\,\% benign false-positive rate --- a trade-off that motivates future work on
+Lagrangian FPR-constrained policies. All results are reproducible via a
+SHA-256-verified artifact chain.
 
     \vspace{\onelineskip}
 
     \noindent\textbf{Keywords}: IoT security; Deep Reinforcement Learning; Cyber
-    Kill Chain; Attack Stage Modelling; LSTM; CICIoT2023; Reward Mis-specification;
-    Reproducibility.
+    Kill Chain; Markov Attacker; Intrusion Budget; CICIoT2023; Reward
+    Mis-specification; Reproducibility.
 
     \end{otherlanguage*}
 \end{resumo}
