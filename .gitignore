@@ -155,8 +155,7 @@ tex/*.run.xml
 tex/*.synctex.gz
 tex/missfont.log
 tex/texput.log
-# Working directories used by the overleaf sync workflow
-tex/_overleaf_pull/
+# Working directory for build artifacts moved aside by tex/build.sh
 tex/_legacy/
 
 # Auto-generated LaTeX fragments from canonical JSONs (re-runnable)

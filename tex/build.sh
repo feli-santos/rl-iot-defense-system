@@ -2,8 +2,8 @@
 # tex/build.sh — Compile the dissertation PDF using the FEEC CCPG 001-2015
 # (abnTeX2-based) template via a local container image (Docker or Podman).
 #
-# Main TeX file: tex/principal.tex
-# Output PDF:    tex/principal.pdf  (also copied to tex/tese.pdf for convenience)
+# Main TeX file: tex/main.tex
+# Output PDF:    tex/main.pdf
 #
 # Usage (from anywhere in the repo):
 #   bash tex/build.sh                 # default: build image (first time) + full compile
@@ -40,7 +40,7 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 TEX_DIR="$REPO_ROOT/tex"
 IMAGE_NAME="rl-iot-thesis"
 DOCKERFILE="$TEX_DIR/Dockerfile"
-MAIN_TEX="principal"      # without .tex extension
+MAIN_TEX="main"      # without .tex extension
 
 # ── Defaults ──────────────────────────────────────────────────────────────────
 REBUILD=0
@@ -132,7 +132,7 @@ purge_aux () {
       "${MAIN_TEX}.tex.bak" "${MAIN_TEX}.brf" \
       missfont.log texput.log
     # Per-chapter aux files left behind by \include
-    find . -maxdepth 2 -name "*.aux" -not -path "./_legacy/*" -not -path "./_overleaf_pull/*" -delete 2>/dev/null || true
+    find . -maxdepth 2 -name "*.aux" -not -path "./_legacy/*" -delete 2>/dev/null || true
   )
 }
 
@@ -216,9 +216,6 @@ echo ""
 if [ -f "$TEX_DIR/${MAIN_TEX}.pdf" ]; then
   echo "==> ✅ Done!  Output:"
   ls -lh "$TEX_DIR/${MAIN_TEX}.pdf"
-  # Convenience alias for downstream tools that expect tese.pdf:
-  cp "$TEX_DIR/${MAIN_TEX}.pdf" "$TEX_DIR/tese.pdf"
-  echo "==> Also copied to tex/tese.pdf"
 else
   echo "==> ❌ ${MAIN_TEX}.pdf was NOT produced. Check tex/${MAIN_TEX}.log."
   tail_log_on_failure

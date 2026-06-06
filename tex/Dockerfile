@@ -1,7 +1,7 @@
 # Minimal TeX Live image for compiling the FEEC/UNICAMP dissertation
 # (template: FEEC modelo tese CCPG 001-2015, based on abnTeX2).
 #
-# Packages selected to exactly satisfy tex/principal.tex + tex/preambulo.tex +
+# Packages selected to exactly satisfy tex/main.tex + tex/preamble.tex +
 # tex/unicamp.sty:
 #   - texlive-latex-base       core LaTeX
 #   - texlive-latex-recommended article, geometry, fancyhdr, setspace, ...

@@ -327,7 +327,7 @@ thesis-image:  ## Build the minimal container image for thesis compilation (one-
 	bash tex/build.sh --rebuild --draft
 
 .PHONY: thesis
-thesis:  ## Compile tex/principal.pdf (full: pdflatex × 3 + bibtex) via container engine.
+thesis:  ## Compile tex/main.pdf (full: pdflatex × 3 + bibtex) via container engine.
 	bash tex/build.sh
 
 .PHONY: thesis-draft
