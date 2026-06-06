@@ -69,16 +69,14 @@ Kill-chain stages (5): `0 BENIGN, 1 RECON, 2 ACCESS, 3 MANEUVER, 4 IMPACT`
 
 ## Thesis (separate toolchain)
 
-LaTeX under `tex/` builds via Podman or Docker: `make thesis` (wraps `bash tex/build.sh`).
-Podman is auto-detected and preferred; Docker is the fallback. Main file is `tex/principal.tex`
-(abnTeX2/FEEC template), **NOT** `thesis.tex`. Output is `tex/principal.pdf` (committed);
-`tex/tese.pdf` is a stray untracked duplicate — ignore it. See `memory-bank/activeContext.md`
-for build history.
+LaTeX under `tex/` builds with **Podman** (Docker is a fallback): `make thesis` (wraps
+`bash tex/build.sh`, which auto-detects and prefers Podman). Main file is `tex/main.tex`
+(abnTeX2/FEEC template), **NOT** `thesis.tex`. Output is `tex/main.pdf`.
 
 **Numbers in the thesis are macro-driven, never hand-typed.** Canonical experiment JSONs
 live under `docs/results/<area>/` (e.g. `benchmark/F5_summary.json`). `make render-tables`
 (`scripts/thesis/render_tables.py`) regenerates `tex/generated/{numbers,tables}.tex` from them;
-`tex/generated/` is **gitignored** (rebuild before any thesis edit/build). `tex/preambulo.tex`
+`tex/generated/` is **gitignored** (rebuild before any thesis edit/build). `tex/preamble.tex`
 must `\input{generated/numbers}` and `\input{generated/tables}` for the macros to resolve in
 the abstract/resumo — without it you get "Undefined control sequence". `docs/results/test_count.json`
 feeds the `\NumTests` macro; bump it when the suite count changes. `make verify-fresh` (a CI gate)

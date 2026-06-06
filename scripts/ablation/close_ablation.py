@@ -1,4 +1,4 @@
-"""Ablation closer (C9): assemble G7_scoreboard.json + RESULTS.md skeleton + CHANGELOG entry.
+"""Ablation closer (C9): assemble G7_scoreboard.json + RESULTS.md skeleton.
 
 Run once all four figures (F9/F10/F12/F15) and their *_summary.json
 files exist under ``docs/results/ablation/``. This script does
@@ -18,8 +18,9 @@ Outputs:
 - ``RESULTS.md``           — Phase-7 results doc with §1–§9 sections
   populated from the live numbers (placeholder narrative for the
   agent or user to flesh out before locking).
-- ``CHANGELOG.md`` (root) gets a Phase-7 ``[Unreleased]`` block
-  prepended with the gate scoreboard + headline.
+- ``CHANGELOG.md`` (root), *if present*, gets a Phase-7 ``[Unreleased]``
+  block prepended with the gate scoreboard + headline. The project no
+  longer keeps a CHANGELOG, so this step is skipped when the file is absent.
 
 Gates evaluated:
 

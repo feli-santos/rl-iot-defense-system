@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # tex/build.sh — Compile the dissertation PDF using the FEEC CCPG 001-2015
-# (abnTeX2-based) template via a local container image (Docker or Podman).
+# (abnTeX2-based) template via a local container image (Podman; Docker fallback).
 #
 # Main TeX file: tex/main.tex
 # Output PDF:    tex/main.pdf

@@ -319,7 +319,7 @@ train-all-rl:  ## Train DQN, PPO, A2C sequentially (single seed).
 	    --timesteps $(TIMESTEPS) \
 	    --generator-path $(GEN_DIR) --data-path $(DATA)
 
-##@ Thesis (Podman/Docker — FEEC CCPG 001-2015 / abnTeX2 template)
+##@ Thesis (Podman, Docker fallback — FEEC CCPG 001-2015 / abnTeX2 template)
 THESIS_IMAGE ?= rl-iot-thesis
 
 .PHONY: thesis-image
