@@ -1,14 +1,14 @@
-"""Ablation closer (C9): assemble G7_scoreboard.json + RESULTS.md skeleton + CHANGELOG entry.
+"""Ablation closer (C9): assemble G7_scoreboard.json + RESULTS.md skeleton.
 
 Run once all four figures (F9/F10/F12/F15) and their *_summary.json
-files exist under ``docs/results/07_ablation/``. This script does
+files exist under ``docs/results/ablation/``. This script does
 NOT run any new computation — it simply aggregates the gate
 verdicts that the four plotters already wrote into their
 ``F<N>_summary.json#gates`` blocks.
 
 Usage::
 
-    python -m scripts.ablation.close_ablation [--out-dir docs/results/07_ablation]
+    python -m scripts.ablation.close_ablation [--out-dir docs/results/ablation]
 
 Outputs:
 
@@ -18,8 +18,9 @@ Outputs:
 - ``RESULTS.md``           — Phase-7 results doc with §1–§9 sections
   populated from the live numbers (placeholder narrative for the
   agent or user to flesh out before locking).
-- ``CHANGELOG.md`` (root) gets a Phase-7 ``[Unreleased]`` block
-  prepended with the gate scoreboard + headline.
+- ``CHANGELOG.md`` (root), *if present*, gets a Phase-7 ``[Unreleased]``
+  block prepended with the gate scoreboard + headline. The project no
+  longer keeps a CHANGELOG, so this step is skipped when the file is absent.
 
 Gates evaluated:
 
@@ -42,6 +43,7 @@ import argparse
 import json
 import logging
 import subprocess
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -133,7 +135,13 @@ def _run_pytest_count() -> dict[str, Any]:
     """
     try:
         proc = subprocess.run(
-            ["pytest", "-q", "--tb=no"],
+            # Use the *running* interpreter (the project venv when invoked
+            # via the Makefile `$(PYTHON) -m ...`), NOT a bare `pytest` on
+            # PATH — the dev pytest entrypoint is system-level only and
+            # resolves to an interpreter without the project deps, which
+            # made G7.1 spuriously FAIL with value "?" (env-resolution, not
+            # a real test failure).
+            [sys.executable, "-m", "pytest", "-q", "--tb=no"],
             cwd=_ROOT,
             capture_output=True,
             text=True,
@@ -171,7 +179,7 @@ def _evaluate_gates(
     *,
     run_pytest: bool = True,
 ) -> list[dict[str, Any]]:
-    """Materialise the G7.1–G7.9 scoreboard rows."""
+    """Materialise the G7.1–G7.10 scoreboard rows."""
     gates: list[dict[str, Any]] = []
 
     # G7.1 — pytest green.
@@ -323,14 +331,19 @@ def _evaluate_gates(
         out_dir / "F10_manifest.json",
         out_dir / "F12_manifest.json",
         out_dir / "F15_manifest.json",
+        out_dir / "F17_manifest.json",
     ]
     missing = [str(p.relative_to(_ROOT)) for p in manifest_paths if not p.exists()]
     gates.append(
         {
             "id": "G7.7",
-            "threshold": "F9/F10/F12/F15 manifest.json all present + SHA-pinned",
+            "threshold": "F9/F10/F12/F15/F17 manifest.json all present + SHA-pinned",
             "passes": not missing,
-            "value": ("all 4 manifests present" if not missing else f"missing: {missing}"),
+            "value": (
+                f"all {len(manifest_paths)} manifests present"
+                if not missing
+                else f"missing: {missing}"
+            ),
             "kind": "manifests",
         }
     )
@@ -398,6 +411,40 @@ def _evaluate_gates(
             }
         )
 
+    # G7.10 — F17 evasion robustness.
+    f17 = _read_summary(out_dir / "F17_summary.json")
+    if f17 is not None:
+        g710 = f17.get("gates", {}).get("G7.10", {})
+        gates.append(
+            {
+                "id": "G7.10",
+                "threshold": (
+                    "F17 max-evasion (0.75) mean test reward within "
+                    "robust_tol=0.25 of evasion=0 reference "
+                    "(graceful degradation, no collapse)"
+                ),
+                "value": (
+                    f"ref(e=0)={g710.get('reference_mean_reward', float('nan')):+.1f}, "
+                    f"max(e=0.75)={g710.get('max_evasion_mean_reward', float('nan')):+.1f}, "
+                    f"ci_low_degradation={g710.get('ci_low_degradation', float('nan')):.1f} "
+                    f"(tol_abs={g710.get('tolerance_abs', float('nan')):.1f})"
+                ),
+                "passes": bool(g710.get("passes")),
+                "kind": "f17",
+                "interpretation": g710.get("interpretation"),
+            }
+        )
+    else:
+        gates.append(
+            {
+                "id": "G7.10",
+                "kind": "f17",
+                "threshold": ("F17 max-evasion reward within robust_tol of evasion=0 reference"),
+                "passes": False,
+                "value": "F17_summary.json missing",
+            }
+        )
+
     return gates
 
 
@@ -415,7 +462,7 @@ _STATUS_SKIP = "SKIP"
 # Per-gate (gate_id → finding_id) override table for G7.x. Keeps the
 # free-text `interpretation` field readable while ensuring the
 # scoreboard exposes the same finding_id Phase-6 ships natively
-# (see docs/results/06_benchmark/G6_scoreboard.json::gates.G6.2).
+# (see docs/results/benchmark/benchmark_acceptance.json::gates.G6.2).
 # Step-8 task #2 (07_HANDOFF.md §5 F3) acceptance: jq '.gates[].status'
 # returns enum members and finding_id is present where status is
 # {PASS-WITH-FINDING, PASS-WITHOUT-STRETCH, FAIL-WITH-FINDING}.
@@ -768,13 +815,13 @@ def _prepend_changelog(
 
     block = f"""## [Unreleased] — Ablation closeout ({today})
 
-Tally: **{n_pass} PASS / {n_fail} FAIL-WITH-FINDING** across G7.1–G7.9.
+Tally: **{n_pass} PASS / {n_fail} FAIL-WITH-FINDING** across G7.1–G7.10.
 
 ### Gate scoreboard
 
 {_summary_table(gates)}
 
-### Headline findings (see `docs/results/07_ablation/RESULTS.md` for full text)
+### Headline findings (see `docs/results/ablation/RESULTS.md` for full text)
 
 - **G7.2 (F9 reward-component sweep)**: see RESULTS §6.1 — either the
   +288 deployable gap was closed at one or more cells, or the
@@ -788,7 +835,7 @@ Tally: **{n_pass} PASS / {n_fail} FAIL-WITH-FINDING** across G7.1–G7.9.
 ### What ships
 
 - F9 / F10 / F12 / F15 figures + summaries + manifests under
-  `docs/results/07_ablation/`.
+  `docs/results/ablation/`.
 - `G7_scoreboard.json` per-gate JSON record.
 - `runs/ablation/{{ood,reward_sweep,aggressiveness}}/` raw eval JSONLs
   (gitignored; ~7.5 h CPU walk-away to regenerate via `make ablation`).
@@ -809,7 +856,7 @@ def _build_argparser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         description="Ablation closer: assemble G7_scoreboard + RESULTS + CHANGELOG.",
     )
-    p.add_argument("--out-dir", default="docs/results/07_ablation")
+    p.add_argument("--out-dir", default="docs/results/ablation")
     p.add_argument(
         "--no-pytest",
         action="store_true",
@@ -838,11 +885,20 @@ def main(argv: list[str] | None = None) -> int:
     if not args.no_changelog:
         _prepend_changelog(_ROOT, gates)
 
-    n_pass = sum(1 for g in gates if g.get("passes") is True)
-    n_fail = sum(1 for g in gates if g.get("passes") is False)
+    # Gate the exit code on HARD failures only. A gate with
+    # ``passes is False`` but a documented ``FAIL-WITH-FINDING``
+    # interpretation is an expected, journalled finding (e.g. G7.2
+    # D7.1.1, G7.9 D7.9.1) and must NOT fail CI — only an unexplained
+    # FAIL (no interpretation) should. Mirror the scoreboard's status
+    # resolution rather than raw ``passes`` so the two never diverge.
+    statuses = [_resolve_status_finding(g)["status"] for g in gates]
+    n_pass = sum(1 for s in statuses if s == _STATUS_PASS)
+    n_fail_with_finding = sum(1 for s in statuses if s == _STATUS_FAIL_WITH_FINDING)
+    n_fail = sum(1 for s in statuses if s == _STATUS_FAIL)
     logger.info(
-        "Ablation closer done: %d PASS / %d FAIL-WITH-FINDING across G7.1-G7.9",
+        "Ablation closer done: %d PASS / %d FAIL-WITH-FINDING / %d FAIL across G7.1-G7.10",
         n_pass,
+        n_fail_with_finding,
         n_fail,
     )
     return 0 if n_fail == 0 else 1

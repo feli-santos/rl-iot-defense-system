@@ -239,12 +239,6 @@ class ConfigLoader:
 
         logger.info("All required directories created/verified")
 
-    def get_lstm_config(self) -> dict[str, Any]:
-        """Get LSTM-specific configuration"""
-        if self.config is None:
-            raise ValueError("Configuration not loaded")
-        return self.config["lstm"]
-
     def get_rl_config(self) -> dict[str, Any]:
         """Get RL-specific configuration"""
         if self.config is None:

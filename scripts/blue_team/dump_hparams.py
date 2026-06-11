@@ -8,7 +8,7 @@ Usage::
 
     python -m scripts.blue_team.dump_hparams \\
         --runs-root runs/blue_team \\
-        --out-dir docs/results/05_blue_team
+        --out-dir docs/results/blue-team-training
 """
 
 from __future__ import annotations
@@ -110,7 +110,7 @@ def render(runs_root: Path, out_dir: Path) -> dict[str, Any]:
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(description="Render T1 hyperparameters table.")
     p.add_argument("--runs-root", required=True)
-    p.add_argument("--out-dir", default="docs/results/05_blue_team")
+    p.add_argument("--out-dir", default="docs/results/blue-team-training")
     args = p.parse_args(argv)
     logging.basicConfig(
         level=logging.INFO,

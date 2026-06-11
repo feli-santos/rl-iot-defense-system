@@ -396,7 +396,7 @@ def _build_argparser() -> argparse.ArgumentParser:
     p.add_argument("--phase6-runs", default="runs/benchmark")
     p.add_argument("--phase7-f9-runs", default="runs/ablation/reward_sweep")
     p.add_argument("--phase7-f10-runs", default="runs/ablation/aggressiveness")
-    p.add_argument("--out-dir", default="docs/results/07_ablation")
+    p.add_argument("--out-dir", default="docs/results/ablation")
     # Step-8 F2 (07_HANDOFF.md §5): explicit upstream-manifest SHA pins.
     p.add_argument(
         "--phase5-sweep-manifest",
@@ -405,7 +405,7 @@ def _build_argparser() -> argparse.ArgumentParser:
     )
     p.add_argument(
         "--phase1-splits-manifest",
-        default="docs/results/01_dataset/manifest.json",
+        default="docs/results/dataset/manifest.json",
         help="dataset-prep splits manifest.json (post-3cd2fb9; SHA 1e99d596...).",
     )
     return p

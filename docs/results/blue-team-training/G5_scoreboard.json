@@ -1,0 +1,424 @@
+{
+  "schema_version": "2.0",
+  "phase": 5,
+  "runs_root": "runs/blue_team",
+  "fraction": 0.1,
+  "best_algo": "dqn",
+  "per_algo_summary": {
+    "a2c": {
+      "mean_reward": 990.5945447794595,
+      "mean_mttc": 20.056634453000186,
+      "compromise_rate": 0.6700000000000002,
+      "mitigated_impact_rate": 0.38555555555555554,
+      "mitigated_among_compromised": 0.57531855044862,
+      "n_seeds": 10,
+      "per_seed": [
+        {
+          "mean_reward": 966.6633155345917,
+          "mean_mttc": 20.328125,
+          "compromise_rate": 0.7111111111111111,
+          "mitigated_impact_rate": 0.4111111111111111,
+          "mitigated_among_compromised": 0.578125,
+          "n_episodes": 90,
+          "last_window_start": 225000,
+          "seed": 0
+        },
+        {
+          "mean_reward": 975.6499798986647,
+          "mean_mttc": 20.310344827586206,
+          "compromise_rate": 0.6444444444444445,
+          "mitigated_impact_rate": 0.3333333333333333,
+          "mitigated_among_compromised": 0.5172413793103449,
+          "n_episodes": 90,
+          "last_window_start": 225000,
+          "seed": 1
+        },
+        {
+          "mean_reward": 951.9244398170048,
+          "mean_mttc": 20.876923076923077,
+          "compromise_rate": 0.7222222222222222,
+          "mitigated_impact_rate": 0.35555555555555557,
+          "mitigated_among_compromised": 0.49230769230769234,
+          "n_episodes": 90,
+          "last_window_start": 225000,
+          "seed": 2
+        },
+        {
+          "mean_reward": 1026.794426838557,
+          "mean_mttc": 20.21311475409836,
+          "compromise_rate": 0.6777777777777778,
+          "mitigated_impact_rate": 0.4111111111111111,
+          "mitigated_among_compromised": 0.6065573770491803,
+          "n_episodes": 90,
+          "last_window_start": 225000,
+          "seed": 3
+        },
+        {
+          "mean_reward": 969.3566488371955,
+          "mean_mttc": 19.578125,
+          "compromise_rate": 0.7111111111111111,
+          "mitigated_impact_rate": 0.45555555555555555,
+          "mitigated_among_compromised": 0.640625,
+          "n_episodes": 90,
+          "last_window_start": 225000,
+          "seed": 4
+        },
+        {
+          "mean_reward": 1057.387776348326,
+          "mean_mttc": 19.901960784313726,
+          "compromise_rate": 0.5666666666666667,
+          "mitigated_impact_rate": 0.34444444444444444,
+          "mitigated_among_compromised": 0.6078431372549019,
+          "n_episodes": 90,
+          "last_window_start": 225000,
+          "seed": 5
+        },
+        {
+          "mean_reward": 1019.4611065917545,
+          "mean_mttc": 19.52542372881356,
+          "compromise_rate": 0.6555555555555556,
+          "mitigated_impact_rate": 0.3333333333333333,
+          "mitigated_among_compromised": 0.5084745762711864,
+          "n_episodes": 90,
+          "last_window_start": 225000,
+          "seed": 6
+        },
+        {
+          "mean_reward": 1022.9588702890608,
+          "mean_mttc": 19.983606557377048,
+          "compromise_rate": 0.6777777777777778,
+          "mitigated_impact_rate": 0.4444444444444444,
+          "mitigated_among_compromised": 0.6557377049180327,
+          "n_episodes": 90,
+          "last_window_start": 225000,
+          "seed": 7
+        },
+        {
+          "mean_reward": 969.7955510563321,
+          "mean_mttc": 20.155172413793103,
+          "compromise_rate": 0.6444444444444445,
+          "mitigated_impact_rate": 0.3333333333333333,
+          "mitigated_among_compromised": 0.5172413793103449,
+          "n_episodes": 90,
+          "last_window_start": 225000,
+          "seed": 8
+        },
+        {
+          "mean_reward": 945.9533325831095,
+          "mean_mttc": 19.693548387096776,
+          "compromise_rate": 0.6888888888888889,
+          "mitigated_impact_rate": 0.43333333333333335,
+          "mitigated_among_compromised": 0.6290322580645161,
+          "n_episodes": 90,
+          "last_window_start": 225000,
+          "seed": 9
+        }
+      ]
+    },
+    "dqn": {
+      "mean_reward": 1069.7245448981394,
+      "mean_mttc": 20.267303535688384,
+      "compromise_rate": 0.5955555555555556,
+      "mitigated_impact_rate": 0.3166666666666667,
+      "mitigated_among_compromised": 0.5318635206137342,
+      "n_seeds": 10,
+      "per_seed": [
+        {
+          "mean_reward": 1111.8144356939529,
+          "mean_mttc": 20.5,
+          "compromise_rate": 0.5555555555555556,
+          "mitigated_impact_rate": 0.2777777777777778,
+          "mitigated_among_compromised": 0.5,
+          "n_episodes": 90,
+          "last_window_start": 225000,
+          "seed": 0
+        },
+        {
+          "mean_reward": 1094.337769566642,
+          "mean_mttc": 19.444444444444443,
+          "compromise_rate": 0.5,
+          "mitigated_impact_rate": 0.2111111111111111,
+          "mitigated_among_compromised": 0.4222222222222222,
+          "n_episodes": 90,
+          "last_window_start": 225000,
+          "seed": 1
+        },
+        {
+          "mean_reward": 1100.5799851258596,
+          "mean_mttc": 20.15686274509804,
+          "compromise_rate": 0.5666666666666667,
+          "mitigated_impact_rate": 0.34444444444444444,
+          "mitigated_among_compromised": 0.6078431372549019,
+          "n_episodes": 90,
+          "last_window_start": 225000,
+          "seed": 2
+        },
+        {
+          "mean_reward": 1108.712204641766,
+          "mean_mttc": 20.056603773584907,
+          "compromise_rate": 0.5888888888888889,
+          "mitigated_impact_rate": 0.3111111111111111,
+          "mitigated_among_compromised": 0.5283018867924528,
+          "n_episodes": 90,
+          "last_window_start": 225000,
+          "seed": 3
+        },
+        {
+          "mean_reward": 953.0044381830428,
+          "mean_mttc": 20.333333333333332,
+          "compromise_rate": 0.6333333333333333,
+          "mitigated_impact_rate": 0.28888888888888886,
+          "mitigated_among_compromised": 0.45614035087719296,
+          "n_episodes": 90,
+          "last_window_start": 225000,
+          "seed": 4
+        },
+        {
+          "mean_reward": 1068.5766489664713,
+          "mean_mttc": 20.387755102040817,
+          "compromise_rate": 0.5444444444444444,
+          "mitigated_impact_rate": 0.36666666666666664,
+          "mitigated_among_compromised": 0.673469387755102,
+          "n_episodes": 90,
+          "last_window_start": 225000,
+          "seed": 5
+        },
+        {
+          "mean_reward": 1049.7544331020779,
+          "mean_mttc": 20.306451612903224,
+          "compromise_rate": 0.6888888888888889,
+          "mitigated_impact_rate": 0.4666666666666667,
+          "mitigated_among_compromised": 0.6774193548387096,
+          "n_episodes": 90,
+          "last_window_start": 225000,
+          "seed": 6
+        },
+        {
+          "mean_reward": 1049.8033288372887,
+          "mean_mttc": 20.883333333333333,
+          "compromise_rate": 0.6666666666666666,
+          "mitigated_impact_rate": 0.23333333333333334,
+          "mitigated_among_compromised": 0.35,
+          "n_episodes": 90,
+          "last_window_start": 225000,
+          "seed": 7
+        },
+        {
+          "mean_reward": 1131.2466587702434,
+          "mean_mttc": 20.28846153846154,
+          "compromise_rate": 0.5777777777777777,
+          "mitigated_impact_rate": 0.3333333333333333,
+          "mitigated_among_compromised": 0.5769230769230769,
+          "n_episodes": 90,
+          "last_window_start": 225000,
+          "seed": 8
+        },
+        {
+          "mean_reward": 1029.4155460940467,
+          "mean_mttc": 20.31578947368421,
+          "compromise_rate": 0.6333333333333333,
+          "mitigated_impact_rate": 0.3333333333333333,
+          "mitigated_among_compromised": 0.5263157894736842,
+          "n_episodes": 90,
+          "last_window_start": 225000,
+          "seed": 9
+        }
+      ]
+    },
+    "ppo": {
+      "mean_reward": 1050.746159079075,
+      "mean_mttc": 20.34236693417983,
+      "compromise_rate": 0.6383333333333334,
+      "mitigated_impact_rate": 0.5533333333333333,
+      "mitigated_among_compromised": 0.8693404753759753,
+      "n_seeds": 10,
+      "per_seed": [
+        {
+          "mean_reward": 1044.074987602234,
+          "mean_mttc": 21.048780487804876,
+          "compromise_rate": 0.6833333333333333,
+          "mitigated_impact_rate": 0.5666666666666667,
+          "mitigated_among_compromised": 0.8292682926829268,
+          "n_episodes": 60,
+          "last_window_start": 226713,
+          "seed": 0
+        },
+        {
+          "mean_reward": 1098.066651169459,
+          "mean_mttc": 20.28125,
+          "compromise_rate": 0.5333333333333333,
+          "mitigated_impact_rate": 0.5166666666666667,
+          "mitigated_among_compromised": 0.96875,
+          "n_episodes": 60,
+          "last_window_start": 226713,
+          "seed": 1
+        },
+        {
+          "mean_reward": 1068.7733154296875,
+          "mean_mttc": 20.294117647058822,
+          "compromise_rate": 0.5666666666666667,
+          "mitigated_impact_rate": 0.4666666666666667,
+          "mitigated_among_compromised": 0.8235294117647058,
+          "n_episodes": 60,
+          "last_window_start": 226713,
+          "seed": 2
+        },
+        {
+          "mean_reward": 1072.3616599957147,
+          "mean_mttc": 20.65,
+          "compromise_rate": 0.6666666666666666,
+          "mitigated_impact_rate": 0.5833333333333334,
+          "mitigated_among_compromised": 0.875,
+          "n_episodes": 60,
+          "last_window_start": 226713,
+          "seed": 3
+        },
+        {
+          "mean_reward": 913.5383297125499,
+          "mean_mttc": 20.5,
+          "compromise_rate": 0.8,
+          "mitigated_impact_rate": 0.6833333333333333,
+          "mitigated_among_compromised": 0.8541666666666666,
+          "n_episodes": 60,
+          "last_window_start": 226713,
+          "seed": 4
+        },
+        {
+          "mean_reward": 1033.4783313353857,
+          "mean_mttc": 19.55263157894737,
+          "compromise_rate": 0.6333333333333333,
+          "mitigated_impact_rate": 0.5333333333333333,
+          "mitigated_among_compromised": 0.8421052631578947,
+          "n_episodes": 60,
+          "last_window_start": 226713,
+          "seed": 5
+        },
+        {
+          "mean_reward": 1080.7849945863088,
+          "mean_mttc": 20.12121212121212,
+          "compromise_rate": 0.55,
+          "mitigated_impact_rate": 0.4666666666666667,
+          "mitigated_among_compromised": 0.8484848484848485,
+          "n_episodes": 60,
+          "last_window_start": 226713,
+          "seed": 6
+        },
+        {
+          "mean_reward": 1071.6583290259043,
+          "mean_mttc": 20.195121951219512,
+          "compromise_rate": 0.6833333333333333,
+          "mitigated_impact_rate": 0.55,
+          "mitigated_among_compromised": 0.8048780487804879,
+          "n_episodes": 60,
+          "last_window_start": 226713,
+          "seed": 7
+        },
+        {
+          "mean_reward": 1098.2549950997034,
+          "mean_mttc": 20.555555555555557,
+          "compromise_rate": 0.6,
+          "mitigated_impact_rate": 0.5833333333333334,
+          "mitigated_among_compromised": 0.9722222222222222,
+          "n_episodes": 60,
+          "last_window_start": 226713,
+          "seed": 8
+        },
+        {
+          "mean_reward": 1026.4699968338014,
+          "mean_mttc": 20.225,
+          "compromise_rate": 0.6666666666666666,
+          "mitigated_impact_rate": 0.5833333333333334,
+          "mitigated_among_compromised": 0.875,
+          "n_episodes": 60,
+          "last_window_start": 226713,
+          "seed": 9
+        }
+      ]
+    }
+  },
+  "gates": {
+    "G5.1": {
+      "description": "full pytest suite green",
+      "status": "SKIP",
+      "evaluated": false,
+      "note": "evaluated separately by `pytest -q`"
+    },
+    "G5.2": {
+      "description": "at least one algo eval reward > 0 over last 10% \u00d7 5 seeds",
+      "threshold": 0.0,
+      "observed": 1069.7245448981394,
+      "status": "PASS"
+    },
+    "G5.3": {
+      "description": "best algo mean MTTC >= 19 (D5.4.1)",
+      "threshold": 19,
+      "observed": 20.267303535688384,
+      "best_algo": "dqn",
+      "status": "PASS"
+    },
+    "G5.4": {
+      "description": "best algo mitigated-impact rate >= 0.5 (D5.4.1)",
+      "threshold": 0.5,
+      "observed": 0.3166666666666667,
+      "best_algo": "dqn",
+      "status": "FAIL-WITH-FINDING",
+      "finding_id": "D5.4.1"
+    },
+    "G5.5": {
+      "description": "no per-stage action share > 70% at late checkpoint",
+      "threshold": 0.7,
+      "status": "PASS",
+      "per_stage": {
+        "BENIGN": {
+          "max_share": 0.4421548258886229,
+          "argmax_action": 1,
+          "argmax_action_name": "LOG",
+          "status": "PASS"
+        },
+        "RECON": {
+          "max_share": 0.34250292646589336,
+          "argmax_action": 1,
+          "argmax_action_name": "LOG",
+          "status": "PASS"
+        },
+        "ACCESS": {
+          "max_share": 0.2685388766739956,
+          "argmax_action": 1,
+          "argmax_action_name": "LOG",
+          "status": "PASS"
+        },
+        "MANEUVER": {
+          "max_share": 0.354794551289244,
+          "argmax_action": 4,
+          "argmax_action_name": "ISOLATE",
+          "status": "PASS"
+        },
+        "IMPACT": {
+          "max_share": 0.30930087390761546,
+          "argmax_action": 3,
+          "argmax_action_name": "BLOCK",
+          "status": "PASS"
+        }
+      }
+    },
+    "G5.6": {
+      "description": "no regression on environment-design frozen tests",
+      "status": "SKIP",
+      "evaluated": false,
+      "note": "evaluated separately by `pytest -q tests/test_phase3_env_gates.py tests/test_adversarial_env.py`"
+    },
+    "G5.7": {
+      "description": "F3/F4/T1 manifests exist & hash-pin inputs",
+      "status": "PASS"
+    }
+  },
+  "summary": {
+    "total_gates": 7,
+    "pass": 4,
+    "pass_with_finding": 0,
+    "pass_without_stretch": 0,
+    "fail_with_finding": 1,
+    "fail": 0,
+    "skip": 2
+  }
+}

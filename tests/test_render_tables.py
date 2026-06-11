@@ -1,8 +1,7 @@
 """Tests for the JSON→LaTeX render_tables generator."""
 
-from pathlib import Path
-
 from scripts.thesis.render_tables import (
+    F5,
     _best_deployable_rl,
     _find_row,
     _load,
@@ -13,16 +12,16 @@ from scripts.thesis.render_tables import (
 
 class TestRenderTables:
     def test_load_existing_json(self):
-        f5 = _load(Path("docs/results/06_benchmark/F5_summary.json"))
+        f5 = _load(F5)
         assert "rows" in f5
 
     def test_find_row(self):
-        f5 = _load(Path("docs/results/06_benchmark/F5_summary.json"))
+        f5 = _load(F5)
         row = _find_row(f5["rows"], "ppo")
         assert row["policy"] == "ppo"
 
     def test_best_deployable_rl(self):
-        f5 = _load(Path("docs/results/06_benchmark/F5_summary.json"))
+        f5 = _load(F5)
         best = _best_deployable_rl(f5["rows"])
         assert best["policy"] in {"dqn", "ppo", "a2c"}
 

@@ -28,36 +28,25 @@ DERIVED = [
     (
         REPO_ROOT / "tex/generated/numbers.tex",
         [
-            REPO_ROOT / "docs/results/06_benchmark/F5_summary.json",
-            REPO_ROOT / "docs/results/06_benchmark/benign_fpr.json",
-            REPO_ROOT / "docs/results/07_ablation/F9_summary.json",
+            REPO_ROOT / "docs/results/benchmark/F5_summary.json",
+            REPO_ROOT / "docs/results/benchmark/benign_fpr.json",
+            REPO_ROOT / "docs/results/ablation/F9_summary.json",
         ],
     ),
     (
         REPO_ROOT / "tex/generated/tables.tex",
         [
-            REPO_ROOT / "docs/results/06_benchmark/F5_summary.json",
-            REPO_ROOT / "docs/results/06_benchmark/F7_summary.json",
-        ],
-    ),
-    (
-        REPO_ROOT / "docs/results/06_benchmark/G6_scoreboard.json",
-        [REPO_ROOT / "docs/results/06_benchmark/F5_summary.json"],
-    ),
-    (
-        REPO_ROOT / "docs/results/07_ablation/G7_scoreboard.json",
-        [
-            REPO_ROOT / "docs/results/07_ablation/F9_summary.json",
-            REPO_ROOT / "docs/results/07_ablation/F15_summary.json",
+            REPO_ROOT / "docs/results/benchmark/F5_summary.json",
+            REPO_ROOT / "docs/results/benchmark/F7_summary.json",
         ],
     ),
     (
         REPO_ROOT / "docs/RESULTS_INDEX.md",
         [
-            REPO_ROOT / "docs/results/06_benchmark/F5_summary.json",
-            REPO_ROOT / "docs/results/07_ablation/F9_summary.json",
-            REPO_ROOT / "docs/results/07_ablation/F15_summary.json",
-            REPO_ROOT / "docs/results/06_benchmark/benign_fpr.json",
+            REPO_ROOT / "docs/results/benchmark/F5_summary.json",
+            REPO_ROOT / "docs/results/ablation/F9_summary.json",
+            REPO_ROOT / "docs/results/ablation/F15_summary.json",
+            REPO_ROOT / "docs/results/benchmark/benign_fpr.json",
         ],
     ),
 ]
@@ -83,10 +72,7 @@ def check() -> list[str]:
             if not src.exists():
                 continue  # source not present on this checkout (data-gitignored)
             if src.stat().st_mtime > d_mtime:
-                stale.append(
-                    f"STALE    {_rel(derived)}\n"
-                    f"         source newer: {_rel(src)}"
-                )
+                stale.append(f"STALE    {_rel(derived)}\n" f"         source newer: {_rel(src)}")
                 break  # one stale source is enough to flag the derived artifact
     return stale
 

@@ -1,0 +1,74 @@
+{
+  "schema_version": "1.0",
+  "phase": 7,
+  "figure": "F17",
+  "attacker_budget": 40,
+  "evasion_values": [
+    0.0,
+    0.25,
+    0.5,
+    0.75
+  ],
+  "rows": [
+    {
+      "evasion_prob": 0.0,
+      "n_seeds": 5,
+      "n_episodes": 1500,
+      "mean_reward": 1018.3623333333334,
+      "ci_low": 1009.2066000000001,
+      "ci_high": 1028.8358,
+      "compromise_rate": 0.6633333333333333
+    },
+    {
+      "evasion_prob": 0.25,
+      "n_seeds": 5,
+      "n_episodes": 1500,
+      "mean_reward": 1015.8326,
+      "ci_low": 1004.9875999999998,
+      "ci_high": 1027.534133333333,
+      "compromise_rate": 0.6486666666666666
+    },
+    {
+      "evasion_prob": 0.5,
+      "n_seeds": 5,
+      "n_episodes": 1500,
+      "mean_reward": 1002.8763333333334,
+      "ci_low": 987.6936,
+      "ci_high": 1019.3517999999998,
+      "compromise_rate": 0.6526666666666666
+    },
+    {
+      "evasion_prob": 0.75,
+      "n_seeds": 5,
+      "n_episodes": 1500,
+      "mean_reward": 982.0062,
+      "ci_low": 957.2776000000001,
+      "ci_high": 1005.0934666666666,
+      "compromise_rate": 0.688
+    }
+  ],
+  "gates": {
+    "G7.10": {
+      "passes": true,
+      "reference_evasion": 0.0,
+      "max_evasion": 0.75,
+      "reference_mean_reward": 1018.3623333333334,
+      "reference_ci": [
+        1009.2066000000001,
+        1028.8358
+      ],
+      "max_evasion_mean_reward": 982.0062,
+      "max_evasion_ci": [
+        957.2776000000001,
+        1005.0934666666666
+      ],
+      "robust_tol": 0.25,
+      "tolerance_abs": 254.59058333333334,
+      "ci_low_degradation": 51.928999999999974,
+      "reference_compromise_rate": 0.6633333333333333,
+      "max_evasion_compromise_rate": 0.688,
+      "interpretation": "PASS: the PPO defender stays robust to an evasive attacker \u2014 mean test reward at evasion=0.75 (982.0) is within 25% of the evasion=0 reference (1018.4); the evasion-before-commit coupling does not collapse the learned defense."
+    }
+  },
+  "headline": "PASS: the PPO defender stays robust to an evasive attacker \u2014 mean test reward at evasion=0.75 (982.0) is within 25% of the evasion=0 reference (1018.4); the evasion-before-commit coupling does not collapse the learned defense."
+}

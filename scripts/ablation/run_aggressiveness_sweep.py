@@ -209,6 +209,7 @@ def _eval_ppo_on_test(
             split="test_balanced",
             exclude_ood=True,
             p_defender_deescalation=p,
+            impact_is_terminal=False,  # match the primary training contract
         )
     env = make_eval_env(
         spec=spec,
@@ -271,12 +272,14 @@ def _roll_rule_baseline(
             window_size=4,
             max_steps=20,
             min_episode_length=5,
+            impact_is_terminal=False,  # match the primary training contract
         )
     else:
         spec = EnvConfigSerializable(
             split="test_balanced",
             exclude_ood=True,
             p_defender_deescalation=p,
+            impact_is_terminal=False,  # match the primary training contract
         )
     env = make_eval_env(
         spec=spec,

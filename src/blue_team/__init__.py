@@ -14,7 +14,7 @@ Public API:
 - :mod:`src.blue_team.aggregation` — reading + smoothing + bootstrap-CI
   helpers consumed by ``scripts/blue_team/plot_*.py``.
 
-See ``docs/results/05_blue_team/PLAN.md`` §3.1 for the contract.
+See ``docs/results/blue-team-training/PLAN.md`` §3.1 for the contract.
 """
 
 from src.blue_team.callbacks import (

@@ -17,7 +17,7 @@ The engine supports an optional ``allowed_indices`` argument and a
 :meth:`RealizationEngine.from_split_manifest` factory. When restricted to
 the *train* split (and excluding OOD attack classes), the engine guarantees
 that no row used during RL training is ever evaluated in ablation. See
-``docs/results/03_env/PLAN.md`` §B4 for the rationale.
+``docs/results/environment/PLAN.md`` §B4 for the rationale.
 """
 
 import json

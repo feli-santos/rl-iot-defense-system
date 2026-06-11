@@ -327,7 +327,7 @@ def _benign_fpr(
 def _build_argparser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(description="benchmark F6 — stage × action CMs.")
     p.add_argument("--runs-root", default="runs/benchmark")
-    p.add_argument("--out-dir", default="docs/results/06_benchmark")
+    p.add_argument("--out-dir", default="docs/results/benchmark")
     p.add_argument("--policies", nargs="+", default=_PANEL_ORDER)
     return p
 

@@ -31,42 +31,6 @@ logger = logging.getLogger(__name__)
 # -----------------------------------------------------------------------------
 
 
-def episodes_to_training_sequences(
-    episodes: list[list[int]], sequence_length: int
-) -> tuple[list[list[int]], list[int]]:
-    """Sliding-window decomposition of episodes into (input, next-token) pairs.
-
-    Stateless utility — does not require an :class:`EpisodeGenerator`
-    instance. Episodes shorter than or equal to ``sequence_length`` are
-    skipped silently.
-    """
-    sequences: list[list[int]] = []
-    targets: list[int] = []
-    for episode in episodes:
-        if len(episode) <= sequence_length:
-            continue
-        for i in range(len(episode) - sequence_length):
-            sequences.append(episode[i : i + sequence_length])
-            targets.append(episode[i + sequence_length])
-    return sequences, targets
-
-
-def episodes_to_numpy(
-    episodes: list[list[int]], sequence_length: int
-) -> tuple[np.ndarray, np.ndarray]:
-    """Same as :func:`episodes_to_training_sequences` but returns numpy arrays."""
-    sequences, targets = episodes_to_training_sequences(episodes, sequence_length)
-    if not sequences:
-        return (
-            np.zeros((0, sequence_length), dtype=np.int64),
-            np.zeros((0,), dtype=np.int64),
-        )
-    return (
-        np.asarray(sequences, dtype=np.int64),
-        np.asarray(targets, dtype=np.int64),
-    )
-
-
 def stage_distribution_from_split_manifest(
     splits_manifest_path: Path, split_name: str = "train"
 ) -> dict[int, int]:

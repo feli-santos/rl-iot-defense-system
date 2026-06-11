@@ -1,0 +1,65 @@
+{
+  "schema_version": "1.0",
+  "figure": "F7",
+  "git_sha": "ed7549cc1fbec8bec8a7061f1c963b93c110f639",
+  "outputs": {
+    "png": "docs/results/benchmark/F7_overhead.png",
+    "json": "docs/results/benchmark/F7_summary.json"
+  },
+  "inputs": {
+    "benchmark_eval_manifest": {
+      "path": "runs/benchmark/eval_manifest.json",
+      "sha256": "08d4044a6cfdc902677f5e71ace87e34245a5d45d204d22a4cc7e14177ca5358"
+    },
+    "blue_team_sweep_manifest": {
+      "path": "runs/blue_team/sweep_manifest.json",
+      "sha256": "b6e07ce0df3c8aef21e6f23e9fdadcafbd53ee845d2f1e4fc08cbd8cda42ce20"
+    },
+    "latency_jsonl_sha256": {
+      "runs/benchmark/always_observe/seed_0/latency.jsonl": "b5a1ccbbaa97c942622d8287cfca0ae63fd717b6813823e62e38416c6a8f5fd9",
+      "runs/benchmark/always_block/seed_0/latency.jsonl": "cdb43ca0755dc320b2ec9393043569dffd7d6edd04a98724b94907c1057af7fb",
+      "runs/benchmark/recommended_action/seed_0/latency.jsonl": "e10b475e14d84ba622513642410c311ab749e7725e61f24df33c92947371e724",
+      "runs/benchmark/random/seed_0/latency.jsonl": "27722452d428451a69f36e91259134098413644cd6862a6c6c7ea20965af125d",
+      "runs/benchmark/random/seed_1/latency.jsonl": "3cc1e21367dc5ef89c55db0b7864751429db37083d719206c660d692e892ec50",
+      "runs/benchmark/random/seed_2/latency.jsonl": "e157f4feb8959505ff3d2c857b0f36da899b0d754ed615eeefba14c02fc6470f",
+      "runs/benchmark/random/seed_3/latency.jsonl": "46f8e77bd727162cb4943e573eaf28c8a725e559a8876d710a965752b93b059f",
+      "runs/benchmark/random/seed_4/latency.jsonl": "bf079e66ada31acfbf81b85834056af2f103e240c0d1f54d1d77d30a289e7071",
+      "runs/benchmark/random/seed_5/latency.jsonl": "d3260b360f5a38b85108db027915310e98a46c9db1ce2be4cb2bfe53172ca56a",
+      "runs/benchmark/random/seed_6/latency.jsonl": "6535f309d9e21c8a5d63aeb04274db8b01793ab648f567b24ed4f7eb7b51d5b4",
+      "runs/benchmark/random/seed_7/latency.jsonl": "0c51b7f65a669158ece6b1ace2e25795b1e6e84b2c5013b58a2734ddacff5bc0",
+      "runs/benchmark/random/seed_8/latency.jsonl": "7b43b9d834bfc28be0807fe66b5aedabc59898cac12f23acb8323ce48871907b",
+      "runs/benchmark/random/seed_9/latency.jsonl": "22d439467102db58084363ecacb6e64ff5a5597a2a84a8c5149081d4cd8527a0",
+      "runs/benchmark/dqn/seed_0/latency.jsonl": "15fc7c4c6cde10fe2d5828d814984ac2f7a0b705aedb079257c785694f8bede0",
+      "runs/benchmark/dqn/seed_1/latency.jsonl": "2cc3b209a6b35599cf589b156d1d36fa74268db12a32fd890302f13f92184a16",
+      "runs/benchmark/dqn/seed_2/latency.jsonl": "9ebcce650c233c077553f435f1270db9e17891eb2c4cb0828722a7d6e3d5d209",
+      "runs/benchmark/dqn/seed_3/latency.jsonl": "d8f6685af2f4bbafdcd6c161133693e2d8be175eb6507164fd2792aabd5bcbc8",
+      "runs/benchmark/dqn/seed_4/latency.jsonl": "c323cbd7b4cac323d6d5cf32ce010276d2e4b5eb102a180d7dff4814366861bf",
+      "runs/benchmark/dqn/seed_5/latency.jsonl": "7592136df6048d98dff85bd41e58d0d8e83c8a44c8accddf0894f48844531c91",
+      "runs/benchmark/dqn/seed_6/latency.jsonl": "670baaa38a4b72b0f04b126b07840872f4e4e347a01ce01e5d7395afd66bf54e",
+      "runs/benchmark/dqn/seed_7/latency.jsonl": "cf3b390ba503a085ce472c6c77463b2b465ac0d506d14263f0ce3619e2569509",
+      "runs/benchmark/dqn/seed_8/latency.jsonl": "e190b56e5518472abe7c9a0b34747469edb810c844c2014c71ab5e1f67bf1608",
+      "runs/benchmark/dqn/seed_9/latency.jsonl": "8bf5903639c9e8a6ad0a1a139bc9063eac70aa40ef8f9a13048908f0bd93520e",
+      "runs/benchmark/a2c/seed_0/latency.jsonl": "8f7c662cb1330314b640b0e91dbee0579fd7b465e1015b7d47db7dd6ebba0910",
+      "runs/benchmark/a2c/seed_1/latency.jsonl": "bacb52ba8d0a2ed163a91126b4dda2a6d6a096ff15644df6105c878a96155af7",
+      "runs/benchmark/a2c/seed_2/latency.jsonl": "cb6e2190d78741ac52daf6c943ed7697052a0a11b7ef127c00709f4757b3567e",
+      "runs/benchmark/a2c/seed_3/latency.jsonl": "525e1704e1919a8d9d20d76b38fc5089e7f4a752563e125088e862fe571d6bcb",
+      "runs/benchmark/a2c/seed_4/latency.jsonl": "84165ebff782d02a16a660ea77076890f5b0092544d06d94850cf07063882872",
+      "runs/benchmark/a2c/seed_5/latency.jsonl": "446cd39cfd262542aec1df0eee3dcd31746fa6502f482b37a87830f3e466c559",
+      "runs/benchmark/a2c/seed_6/latency.jsonl": "c1824772f0622c5c00709b0103f69805f1b131dfea47b5394bfa3fa081a4476a",
+      "runs/benchmark/a2c/seed_7/latency.jsonl": "11045c8c124e763bed898e7de7fa1ad97905efe46ce4c384b1feae68d3c938c6",
+      "runs/benchmark/a2c/seed_8/latency.jsonl": "fb99ca735d756b04aa35fea153fe5ab54b6f8bb70fca07ca44a95ad0958c0e1d",
+      "runs/benchmark/a2c/seed_9/latency.jsonl": "385db48c00b2f23f3d59dd3ef01f77c803eab117097abac962ba59d9b72d5616",
+      "runs/benchmark/ppo/seed_0/latency.jsonl": "6e2324c2d8bd93ff403287a0d58fcf2b0fbedc3c7cdece42647bfe7afa20cebd",
+      "runs/benchmark/ppo/seed_1/latency.jsonl": "a623699560f6e741417aff9c64c7c0f42b46086a458497ae2d307fa3bc8d6c79",
+      "runs/benchmark/ppo/seed_2/latency.jsonl": "97426c6a9f81d2997b79a5b70a844445a5382efb119983ad4c233aa1fb55b042",
+      "runs/benchmark/ppo/seed_3/latency.jsonl": "776ce84c1b3d4d0de6da3aed6ded0f4bde36ab56ecef847544b2e047a987de75",
+      "runs/benchmark/ppo/seed_4/latency.jsonl": "f01bcd672df704fb6471512b9f90565fe9541e6ff808588aa7128a241802a243",
+      "runs/benchmark/ppo/seed_5/latency.jsonl": "5fc8db0e1c343776d6791b3e9f8fdd4b883a0e92480ba09db0b1d2a609108a93",
+      "runs/benchmark/ppo/seed_6/latency.jsonl": "ef7a7f77e83d9b0976647a08552c4b342a7ba99c5eaec5f35c1ffc46a973ba9c",
+      "runs/benchmark/ppo/seed_7/latency.jsonl": "712b2a3ecc655462059d0fd13b74a3feb208705dc7c8ac25b804781b8361ef23",
+      "runs/benchmark/ppo/seed_8/latency.jsonl": "4d8f7c443f6bd4908dcce6446963eceb124f3d945846e1875bfbf3c29a3f6f1a",
+      "runs/benchmark/ppo/seed_9/latency.jsonl": "9d7b26ccc7e2a496b97ead5c8d54009b186b32fc798fd5a86f59367b919f139e",
+      "runs/benchmark/rf_acting/seed_0/latency.jsonl": "a9336867745582b094e9165cbac8b14190471ea726e8078d1df06d94c816d786"
+    }
+  }
+}

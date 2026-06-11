@@ -1,7 +1,7 @@
 """Environment-design exit-gate regression suite (G3.1-G3.7).
 
 Runs ~6-8 s on a laptop. Every gate corresponds to a numbered line in
-``docs/results/03_env/PLAN.md`` §3.2; if a gate fails here, the
+``docs/results/environment/PLAN.md`` §3.2; if a gate fails here, the
 environment-design rewrite in commit 2a526af must be revisited before
 the detector training step is allowed to consume the new env.
 
@@ -27,10 +27,6 @@ from src.environment.adversarial_env import (
     AdversarialIoTEnv,
     _recommended_action,
 )
-from src.generator.attack_sequence_generator import (
-    AttackSequenceGenerator,
-    AttackSequenceGeneratorConfig,
-)
 from src.utils.label_mapper import KillChainStage
 
 # ---------------------------------------------------------------------------
@@ -39,22 +35,15 @@ from src.utils.label_mapper import KillChainStage
 
 
 def _build_env(tmp_path: Path, *, config_overrides: Iterable[tuple] = ()) -> AdversarialIoTEnv:
-    """Build an AdversarialIoTEnv backed by an untrained LSTM + 100-row dataset.
+    """Build an AdversarialIoTEnv backed by a 100-row dataset.
 
-    The LSTM is randomly initialised, which means transitions are essentially
-    uniform across the 5 stages. That is *good* for the gates: it stresses the
-    env's lifecycle (the agent must survive frequent BENIGN <-> RECON jitter
-    and occasional fast escalations).
+    The attacker is a first-order Markov chain over the 5 kill-chain stages.
+    That stresses the env's lifecycle (the agent must survive frequent
+    BENIGN <-> RECON jitter and occasional fast escalations).
     """
-    # Generator
+    # Ignored generator-path dir (attacker is now a first-order Markov chain)
     generator_path = tmp_path / "gen"
     generator_path.mkdir(parents=True, exist_ok=True)
-    cfg = AttackSequenceGeneratorConfig(
-        num_stages=5, embedding_dim=16, hidden_size=32, num_layers=1
-    )
-    AttackSequenceGenerator(config=cfg).save(
-        generator_path / "attack_sequence_generator.pth", save_config=True
-    )
 
     # Dataset (100 rows × 8 features, 20 rows per stage)
     dataset_path = tmp_path / "ds"

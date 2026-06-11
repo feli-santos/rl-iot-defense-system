@@ -1,0 +1,37 @@
+{
+  "schema_version": "1.0",
+  "figure": "F17",
+  "git_sha": "7e70d7b45339e362c0bc43e21d981c35de95ea0c",
+  "outputs": {
+    "png": "docs/results/ablation/F17_evasion_sweep.png",
+    "json": "docs/results/ablation/F17_summary.json"
+  },
+  "inputs": {
+    "ablation_evasion_sweep_manifest": {
+      "path": "runs/ablation/evasion/sweep_manifest.json",
+      "sha256": "2cb49800c77c9acd0f2aab5b9d81669ec82d8f33dad3f44057599edfaac3e93a"
+    },
+    "eval_jsonls_sha256": {
+      "runs/ablation/evasion/ppo_e0p00/seed_0/eval_test.jsonl": "ee741b5943fb20e90c5615691f47509593da42c21ab6ec78fb0b79a4f5a88b33",
+      "runs/ablation/evasion/ppo_e0p00/seed_1/eval_test.jsonl": "4e801cc8842bf465f3929db0c62f23ddf586fb37eef37bf617dd458e86b178e9",
+      "runs/ablation/evasion/ppo_e0p00/seed_2/eval_test.jsonl": "44ecf64d990353a3c3fee3d76e7a512973585f2a2dc190fe3f64898f4cfbf639",
+      "runs/ablation/evasion/ppo_e0p00/seed_3/eval_test.jsonl": "768a0efd1c5ed32dfffad493bdd9a1182265a3ffd5c3dda5aa4f8fdf3f69a6fb",
+      "runs/ablation/evasion/ppo_e0p00/seed_4/eval_test.jsonl": "e507fde9a10d4279bc42529cc0b216931cc4c561c891ccf56795bc44d7e71a9b",
+      "runs/ablation/evasion/ppo_e0p25/seed_0/eval_test.jsonl": "15bbddafdda398150c1570a822ff76e1ebe39dd2e1e9a1d6d5e6ac08e45b9e5a",
+      "runs/ablation/evasion/ppo_e0p25/seed_1/eval_test.jsonl": "0421e66a9c9bfb9c8b16583eddfb0cf6ff342b63334432c744ae2b173b7bef90",
+      "runs/ablation/evasion/ppo_e0p25/seed_2/eval_test.jsonl": "133b96b817973e0218519423d52c4dc298f4c3e0133348e9e5667ca6540e4941",
+      "runs/ablation/evasion/ppo_e0p25/seed_3/eval_test.jsonl": "e7f229671d4f096e73349beb8e69a28ea10027d0e83b35a58cd7d8057f971d68",
+      "runs/ablation/evasion/ppo_e0p25/seed_4/eval_test.jsonl": "cbbf93d70695d1f2fdaa8354c7cad6d69f8be495acb0859cfcce4eeccef6d03a",
+      "runs/ablation/evasion/ppo_e0p50/seed_0/eval_test.jsonl": "f7674d876ce95469cc022d6e432a418d15cac5676ff888a21816fd36d17eac14",
+      "runs/ablation/evasion/ppo_e0p50/seed_1/eval_test.jsonl": "c9413965e91a796ff45c8b8ff43382c99472204dfa2a8c9f4753752b5edc270d",
+      "runs/ablation/evasion/ppo_e0p50/seed_2/eval_test.jsonl": "f9c6ca21e5c2d8cc21eb2e64b5bd908834a940980740c9e10acc72539607fcef",
+      "runs/ablation/evasion/ppo_e0p50/seed_3/eval_test.jsonl": "f0c17546c605ca04259ad817cc95ad99fe51fe0d9dcd7646dba6293cbaee2f9d",
+      "runs/ablation/evasion/ppo_e0p50/seed_4/eval_test.jsonl": "4ce99a6928c9038c9581f47a88148eabc2c9e77f87d83f756105f634b959d695",
+      "runs/ablation/evasion/ppo_e0p75/seed_0/eval_test.jsonl": "fe881d77ca1a116c9c937b74ea836cd2f977e25c2335e80a6d4d95e94dd9d9af",
+      "runs/ablation/evasion/ppo_e0p75/seed_1/eval_test.jsonl": "8f4967d1ae594fd773addc00b27ed5cb7ec2afd437b54bb77bfad710f5099603",
+      "runs/ablation/evasion/ppo_e0p75/seed_2/eval_test.jsonl": "bc7697f3cc24b49d9646e9e203a6cbf7e30d64d67b2443bb2eda66f216270713",
+      "runs/ablation/evasion/ppo_e0p75/seed_3/eval_test.jsonl": "3869cddca16edba6a8969120bf287ce25895102fb5095460e242aaac72bd980d",
+      "runs/ablation/evasion/ppo_e0p75/seed_4/eval_test.jsonl": "c762cc959a5e46caa297687f8a04762d6ff563d1ab870651119c1b54c91eb99e"
+    }
+  }
+}

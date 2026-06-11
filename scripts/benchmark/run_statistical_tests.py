@@ -13,14 +13,14 @@ Key comparisons (per consolidated review C4):
   d) impact_is_terminal=True vs False (reads F9 ablation data if present)
 
 Outputs:
-  - ``results/06_benchmark/statistical_tests.json``
+  - ``results/benchmark/statistical_tests.json``
   - Console summary table
 
 Usage::
 
     python -m scripts.benchmark.run_statistical_tests \\
         [--phase6-root runs/benchmark] \\
-        [--out-path results/06_benchmark/statistical_tests.json] \\
+        [--out-path results/benchmark/statistical_tests.json] \\
         [--alpha 0.05]
 """
 
@@ -363,7 +363,7 @@ def _build_parser() -> argparse.ArgumentParser:
     p.add_argument("--alpha", type=float, default=0.05)
     p.add_argument(
         "--out-path",
-        default="results/06_benchmark/statistical_tests.json",
+        default="results/benchmark/statistical_tests.json",
     )
     p.add_argument(
         "--ablation-path",

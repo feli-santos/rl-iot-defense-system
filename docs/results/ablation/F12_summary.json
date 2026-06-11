@@ -1,0 +1,339 @@
+{
+  "schema_version": "1.0",
+  "phase": 7,
+  "figure": "F12",
+  "n_points_total": 32,
+  "n_frontier_points": 4,
+  "points": [
+    {
+      "source": "phase6",
+      "policy": "a2c",
+      "label": "a2c",
+      "security_gain": 0.31000000000000005,
+      "availability_cost": 0.3717986030267753,
+      "n_episodes": 300
+    },
+    {
+      "source": "phase6",
+      "policy": "always_block",
+      "label": "always_block",
+      "security_gain": 0.6433333333333333,
+      "availability_cost": 1.0,
+      "n_episodes": 300
+    },
+    {
+      "source": "phase6",
+      "policy": "always_observe",
+      "label": "always_observe",
+      "security_gain": 0.0,
+      "availability_cost": 0.0,
+      "n_episodes": 300
+    },
+    {
+      "source": "phase6",
+      "policy": "dqn",
+      "label": "dqn",
+      "security_gain": 0.3633333333333333,
+      "availability_cost": 0.3938811705586757,
+      "n_episodes": 300
+    },
+    {
+      "source": "phase6",
+      "policy": "ppo",
+      "label": "ppo",
+      "security_gain": 0.32333333333333336,
+      "availability_cost": 0.40067587422862183,
+      "n_episodes": 300
+    },
+    {
+      "source": "phase6",
+      "policy": "random",
+      "label": "random",
+      "security_gain": 0.16000000000000003,
+      "availability_cost": 0.40695475047286483,
+      "n_episodes": 300
+    },
+    {
+      "source": "phase6",
+      "policy": "recommended_action",
+      "label": "recommended_action",
+      "security_gain": 0.5266666666666666,
+      "availability_cost": 0.36789834964217905,
+      "n_episodes": 300
+    },
+    {
+      "source": "phase6",
+      "policy": "rf_acting",
+      "label": "rf_acting",
+      "security_gain": 0.3933333333333333,
+      "availability_cost": 0.35915697674418606,
+      "n_episodes": 300
+    },
+    {
+      "source": "f9_reward_sweep",
+      "cell_id": "baseline_defaults",
+      "axis": "baseline",
+      "component": null,
+      "multiplier": 1.0,
+      "label": "f9:baseline_defaults",
+      "security_gain": 0.0,
+      "availability_cost": 0.3979296066252588,
+      "n_episodes": 300
+    },
+    {
+      "source": "f9_reward_sweep",
+      "cell_id": "defense_success_bonus_x0p5",
+      "axis": "reward",
+      "component": "defense_success_bonus",
+      "multiplier": 0.5,
+      "label": "f9:defense_success_bonus_x0p5",
+      "security_gain": 0.0,
+      "availability_cost": 0.3294019703066463,
+      "n_episodes": 300
+    },
+    {
+      "source": "f9_reward_sweep",
+      "cell_id": "defense_success_bonus_x2p0",
+      "axis": "reward",
+      "component": "defense_success_bonus",
+      "multiplier": 2.0,
+      "label": "f9:defense_success_bonus_x2p0",
+      "security_gain": 0.0,
+      "availability_cost": 0.530154091392136,
+      "n_episodes": 300
+    },
+    {
+      "source": "f9_reward_sweep",
+      "cell_id": "impact_is_terminal_false",
+      "axis": "impact_terminal",
+      "component": "impact_is_terminal",
+      "multiplier": null,
+      "label": "f9:impact_is_terminal_false",
+      "security_gain": 0.0,
+      "availability_cost": 0.42366462060859345,
+      "n_episodes": 300
+    },
+    {
+      "source": "f9_reward_sweep",
+      "cell_id": "penalty_disproportionate_x0p5",
+      "axis": "reward",
+      "component": "penalty_disproportionate",
+      "multiplier": 0.5,
+      "label": "f9:penalty_disproportionate_x0p5",
+      "security_gain": 0.0,
+      "availability_cost": 0.38870807980755623,
+      "n_episodes": 300
+    },
+    {
+      "source": "f9_reward_sweep",
+      "cell_id": "penalty_disproportionate_x2p0",
+      "axis": "reward",
+      "component": "penalty_disproportionate",
+      "multiplier": 2.0,
+      "label": "f9:penalty_disproportionate_x2p0",
+      "security_gain": 0.0,
+      "availability_cost": 0.3884568153909128,
+      "n_episodes": 300
+    },
+    {
+      "source": "f9_reward_sweep",
+      "cell_id": "penalty_missed_impact_x0p5",
+      "axis": "reward",
+      "component": "penalty_missed_impact",
+      "multiplier": 0.5,
+      "label": "f9:penalty_missed_impact_x0p5",
+      "security_gain": 0.0,
+      "availability_cost": 0.39241561327962216,
+      "n_episodes": 300
+    },
+    {
+      "source": "f9_reward_sweep",
+      "cell_id": "penalty_missed_impact_x2p0",
+      "axis": "reward",
+      "component": "penalty_missed_impact",
+      "multiplier": 2.0,
+      "label": "f9:penalty_missed_impact_x2p0",
+      "security_gain": 0.0,
+      "availability_cost": 0.4012379642365887,
+      "n_episodes": 300
+    },
+    {
+      "source": "f9_reward_sweep",
+      "cell_id": "reward_benign_passive_x0p5",
+      "axis": "reward",
+      "component": "reward_benign_passive",
+      "multiplier": 0.5,
+      "label": "f9:reward_benign_passive_x0p5",
+      "security_gain": 0.0,
+      "availability_cost": 0.3899405831145502,
+      "n_episodes": 300
+    },
+    {
+      "source": "f9_reward_sweep",
+      "cell_id": "reward_benign_passive_x2p0",
+      "axis": "reward",
+      "component": "reward_benign_passive",
+      "multiplier": 2.0,
+      "label": "f9:reward_benign_passive_x2p0",
+      "security_gain": 0.0,
+      "availability_cost": 0.39585039585039583,
+      "n_episodes": 300
+    },
+    {
+      "source": "f9_reward_sweep",
+      "cell_id": "reward_proportional_x0p5",
+      "axis": "reward",
+      "component": "reward_proportional",
+      "multiplier": 0.5,
+      "label": "f9:reward_proportional_x0p5",
+      "security_gain": 0.0,
+      "availability_cost": 0.38916928113490656,
+      "n_episodes": 300
+    },
+    {
+      "source": "f9_reward_sweep",
+      "cell_id": "reward_proportional_x2p0",
+      "axis": "reward",
+      "component": "reward_proportional",
+      "multiplier": 2.0,
+      "label": "f9:reward_proportional_x2p0",
+      "security_gain": 0.0,
+      "availability_cost": 0.3920210555478598,
+      "n_episodes": 300
+    },
+    {
+      "source": "f10_aggressiveness",
+      "kind": "ppo",
+      "p_defender_deescalation": 0.0,
+      "label": "f10:ppo_p0.0",
+      "security_gain": 0.0,
+      "availability_cost": 0.8010335917312662,
+      "n_episodes": 300
+    },
+    {
+      "source": "f10_aggressiveness",
+      "kind": "ppo",
+      "p_defender_deescalation": 0.2,
+      "label": "f10:ppo_p0.2",
+      "security_gain": 0.0,
+      "availability_cost": 0.5249809014514897,
+      "n_episodes": 300
+    },
+    {
+      "source": "f10_aggressiveness",
+      "kind": "ppo",
+      "p_defender_deescalation": 0.4,
+      "label": "f10:ppo_p0.4",
+      "security_gain": 0.0,
+      "availability_cost": 0.4299438368312149,
+      "n_episodes": 300
+    },
+    {
+      "source": "f10_aggressiveness",
+      "kind": "ppo",
+      "p_defender_deescalation": 0.6,
+      "label": "f10:ppo_p0.6",
+      "security_gain": 0.0,
+      "availability_cost": 0.39289118888737573,
+      "n_episodes": 300
+    },
+    {
+      "source": "f10_aggressiveness",
+      "kind": "ppo",
+      "p_defender_deescalation": 0.8,
+      "label": "f10:ppo_p0.8",
+      "security_gain": 0.0,
+      "availability_cost": 0.3721809412071438,
+      "n_episodes": 300
+    },
+    {
+      "source": "f10_aggressiveness",
+      "kind": "ppo",
+      "p_defender_deescalation": 1.0,
+      "label": "f10:ppo_p1.0",
+      "security_gain": 0.0,
+      "availability_cost": 0.3488031265266243,
+      "n_episodes": 300
+    },
+    {
+      "source": "f10_aggressiveness",
+      "kind": "rule",
+      "p_defender_deescalation": 0.0,
+      "label": "f10:rule_p0.0",
+      "security_gain": 0.0,
+      "availability_cost": 0.8840713407134071,
+      "n_episodes": 150
+    },
+    {
+      "source": "f10_aggressiveness",
+      "kind": "rule",
+      "p_defender_deescalation": 0.2,
+      "label": "f10:rule_p0.2",
+      "security_gain": 0.0,
+      "availability_cost": 0.5923207227555054,
+      "n_episodes": 150
+    },
+    {
+      "source": "f10_aggressiveness",
+      "kind": "rule",
+      "p_defender_deescalation": 0.4,
+      "label": "f10:rule_p0.4",
+      "security_gain": 0.0,
+      "availability_cost": 0.45989010989010987,
+      "n_episodes": 150
+    },
+    {
+      "source": "f10_aggressiveness",
+      "kind": "rule",
+      "p_defender_deescalation": 0.6,
+      "label": "f10:rule_p0.6",
+      "security_gain": 0.0,
+      "availability_cost": 0.3657854600915099,
+      "n_episodes": 150
+    },
+    {
+      "source": "f10_aggressiveness",
+      "kind": "rule",
+      "p_defender_deescalation": 0.8,
+      "label": "f10:rule_p0.8",
+      "security_gain": 0.0,
+      "availability_cost": 0.31565480344266106,
+      "n_episodes": 150
+    },
+    {
+      "source": "f10_aggressiveness",
+      "kind": "rule",
+      "p_defender_deescalation": 1.0,
+      "label": "f10:rule_p1.0",
+      "security_gain": 0.0,
+      "availability_cost": 0.27622134753415145,
+      "n_episodes": 150
+    }
+  ],
+  "frontier_indices": [
+    1,
+    2,
+    6,
+    7
+  ],
+  "gates": {
+    "G7.4": {
+      "passes": true,
+      "n_distinct_frontier_points": 4,
+      "frontier_indices": [
+        1,
+        2,
+        6,
+        7
+      ],
+      "frontier_distinct_indices": [
+        1,
+        2,
+        6,
+        7
+      ],
+      "interpretation": "PASS: Pareto frontier has 4 distinct dominant points \u2014 non-trivial trade-off surface; operating-point choice is a real defender contribution."
+    }
+  },
+  "headline": "PASS: Pareto frontier has 4 distinct dominant points \u2014 non-trivial trade-off surface; operating-point choice is a real defender contribution."
+}

@@ -47,6 +47,7 @@ the wiring without burning CPU.
 from __future__ import annotations
 
 import argparse
+import dataclasses
 import hashlib
 import json
 import logging
@@ -138,19 +139,35 @@ def _load_sb3_model(algo: str, model_path: Path, env: Any) -> Any:
     raise ValueError(f"unknown algo {algo!r}; expected dqn / ppo / a2c")
 
 
-def _eval_env_spec() -> EnvConfigSerializable:
+def _eval_env_spec(attacker_budget: int | None = None) -> EnvConfigSerializable:
     """benchmark eval env spec: held-out test_balanced split (D6.2).
 
     Reward-shaping fields stay at the environment-design frozen defaults; only the
     split changes vs. blue-team's ``val_balanced`` eval.
+
+    ``impact_is_terminal=False`` is set explicitly to match the training
+    contract: agents are trained with ``impact_is_terminal=False`` (the primary
+    reward contract), so the eval env must terminate IMPACT the same way.
+    Without this the eval env would default to ``True`` and silently evaluate
+    under a different terminal contract than training.
+
+    ``attacker_budget`` (default ``None`` = unbounded) makes the benchmark eval
+    contract match the training contract under the finite-budget MDP. It must be
+    set to the same value the agents were trained with (e.g. 40); ``None``
+    recovers the unbounded ``compromise_rate``=1.0 control cell.
     """
-    return EnvConfigSerializable(split="test_balanced", exclude_ood=True)
+    return EnvConfigSerializable(
+        split="test_balanced",
+        exclude_ood=True,
+        impact_is_terminal=False,
+        attacker_budget=attacker_budget,
+    )
 
 
 def _build_eval_env(args: argparse.Namespace, seed: int | None = None) -> Any:
     """Build a fresh eval env on test_balanced for one rollout."""
     return make_eval_env(
-        spec=_eval_env_spec(),
+        spec=_eval_env_spec(getattr(args, "attacker_budget", None)),
         generator_path=args.generator_path,
         dataset_path=args.dataset_path,
         splits_manifest=args.splits_manifest,
@@ -186,6 +203,16 @@ def _build_argparser() -> argparse.ArgumentParser:
         help="Where the trained blue-team model.zip files live.",
     )
     p.add_argument("--out-root", default="runs/benchmark")
+    p.add_argument(
+        "--attacker-budget",
+        type=int,
+        default=None,
+        help=(
+            "Finite attacker budget for the eval env (must match the value the "
+            "agents were trained with, e.g. 40). Default None = unbounded "
+            "(recovers the compromise_rate=1.0 control)."
+        ),
+    )
     p.add_argument(
         "--generator-path",
         default="artifacts/generator/red_team",
@@ -392,7 +419,7 @@ def _roll_deterministic(
                 "rf_sha256": None,
             }
         # Default env spec: window=5, F=29, deltas=True (environment-design frozen).
-        spec = _eval_env_spec()
+        spec = _eval_env_spec(getattr(args, "attacker_budget", None))
         # F is whatever the env reports at construction; use a probe
         # rollout instead of hard-coding 29 to stay robust to a
         # smaller-feature-matrix split.
@@ -518,11 +545,6 @@ def main(argv: list[str] | None = None) -> int:
     splits_manifest = Path(args.splits_manifest)
     scaler_path = Path(args.dataset_path) / "scaler.joblib"
     rf_path = Path(args.rf_path)
-    # Step-6 F3 + Step-8 task #3 (07_HANDOFF.md §5): pin the red-team
-    # LSTM checkpoint that drives the env's attack-sequence generator.
-    # Path is `<generator_path>/attack_sequence_generator.pth` per the
-    # default `--generator-path artifacts/generator/red_team`.
-    lstm_pth = Path(args.generator_path) / "attack_sequence_generator.pth"
 
     eval_manifest = {
         "schema_version": "1.1",
@@ -539,21 +561,15 @@ def main(argv: list[str] | None = None) -> int:
             "splits_manifest": _sha256(splits_manifest),
             "scaler": _sha256(scaler_path),
             "rf_model": _sha256(rf_path),
-            # Step-6 F3 fix: pin the red-team LSTM checkpoint so the
-            # benchmark hash chain explicitly chains back to the
-            # red-team artefact (was implicit pre-Step-8).
-            "phase2_lstm": _sha256(lstm_pth) if lstm_pth.exists() else None,
-            "phase2_lstm_path": str(lstm_pth),
         },
-        "eval_env": {
-            "split": _eval_env_spec().split,
-            "exclude_ood": _eval_env_spec().exclude_ood,
-            "window_size": _eval_env_spec().window_size,
-            "include_deltas": _eval_env_spec().include_deltas,
-            "max_steps": _eval_env_spec().max_steps,
-            "min_episode_length": _eval_env_spec().min_episode_length,
-            "p_defender_deescalation": _eval_env_spec().p_defender_deescalation,
-        },
+        # C10 fix: serialise the *actual* eval spec used (built with the
+        # --attacker-budget that was passed), via asdict() so every
+        # EnvConfigSerializable field — attacker_budget, evasion_prob,
+        # impact_is_terminal, … — is faithfully recorded. Previously this block
+        # was hand-rolled from bare _eval_env_spec() (no budget arg) and listed
+        # only 7 fields, so attacker_budget/evasion_prob/impact_is_terminal read
+        # back as absent/None even when a finite budget was applied.
+        "eval_env": dataclasses.asdict(_eval_env_spec(getattr(args, "attacker_budget", None))),
         "runs": results,
         "n_ok": sum(1 for r in results if r.get("ok")),
         "n_failed": sum(1 for r in results if not r.get("ok")),

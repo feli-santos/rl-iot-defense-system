@@ -19,11 +19,11 @@ from pathlib import Path
 # Paths (canonical data)
 # ---------------------------------------------------------------------------
 
-F5 = Path("docs/results/06_benchmark/F5_summary.json")
-F7 = Path("docs/results/06_benchmark/F7_summary.json")
-F9 = Path("docs/results/07_ablation/F9_summary.json")
-G6 = Path("docs/results/06_benchmark/G6_scoreboard.json")
-BENIGN_FPR = Path("docs/results/06_benchmark/benign_fpr.json")
+F5 = Path("docs/results/benchmark/F5_summary.json")
+F7 = Path("docs/results/benchmark/F7_summary.json")
+F9 = Path("docs/results/ablation/F9_summary.json")
+G6 = Path("docs/results/benchmark/benchmark_acceptance.json")
+BENIGN_FPR = Path("docs/results/benchmark/benign_fpr.json")
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -89,17 +89,15 @@ def _render_numbers() -> str:
     ]
 
     # Seed count (read from n_seeds of the best agent)
-    lines.append(
-        r"\newcommand{\NumSeeds}{%d}" % best.get("n_seeds", 5)
-    )
+    lines.append(r"\newcommand{\NumSeeds}{%d}" % best.get("n_seeds", 5))
 
     # Test count — read from a sidecar JSON if present, else fall back to hardcoded value
     _test_count_file = Path("docs/results/test_count.json")
     if _test_count_file.exists():
         _tc = json.loads(_test_count_file.read_text())
-        _num_tests = _tc.get("num_tests", 459)
+        _num_tests = _tc.get("num_tests", 432)
     else:
-        _num_tests = 459  # canonical value; update when pytest count changes
+        _num_tests = 432  # canonical value; update when pytest count changes
     lines.append(r"\newcommand{\NumTests}{%d}" % _num_tests)
 
     # FPR numbers
@@ -110,14 +108,24 @@ def _render_numbers() -> str:
             # Make LaTeX-safe command name: remove hyphens/underscores; replace
             # digits with spelled-out letters (LaTeX control sequences must be
             # all-letter after the backslash — digits terminate the name).
-            _digit_map = {"0": "z", "1": "o", "2": "t", "3": "r", "4": "f",
-                          "5": "v", "6": "s", "7": "e", "8": "g", "9": "n"}
+            _digit_map = {
+                "0": "z",
+                "1": "o",
+                "2": "t",
+                "3": "r",
+                "4": "f",
+                "5": "v",
+                "6": "s",
+                "7": "e",
+                "8": "g",
+                "9": "n",
+            }
             safe = policy.replace("-", "").replace("_", "")
             safe = "".join(_digit_map[c] if c in _digit_map else c for c in safe)
             val = data["benign_fpr"] if isinstance(data, dict) else data
-            lines.append(
-                r"\newcommand{\FPR" + safe + "}{%0.3f}" % val
-            )
+            lines.append(r"\newcommand{\FPR" + safe + "}{%0.3f}" % val)
+            # Percentage variant for prose (e.g. \FPRppoPct -> "8.7").
+            lines.append(r"\newcommand{\FPR" + safe + "Pct}{%0.1f}" % (val * 100))
 
     # F9 structural fix — F9_summary.json uses key "rows" (list of cell dicts)
     if F9.exists():
@@ -135,11 +143,10 @@ def _render_numbers() -> str:
                     structural = cell
                     break
         if structural:
+            lines.append(r"\newcommand{\FnineStructuralReward}{%+0.1f}" % structural["mean_reward"])
             lines.append(
-                r"\newcommand{\FnineStructuralReward}{%+0.1f}" % structural["mean_reward"]
-            )
-            lines.append(
-                r"\newcommand{\FnineStructuralMitRate}{%0.3f}" % structural.get("mitigated_impact_rate", 0.0)
+                r"\newcommand{\FnineStructuralMitRate}{%0.3f}"
+                % structural.get("mitigated_impact_rate", 0.0)
             )
 
     return "\n".join(lines) + "\n"

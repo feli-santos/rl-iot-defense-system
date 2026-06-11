@@ -20,11 +20,14 @@ pytest tests/test_adversarial_env.py::TestX::test_y   # single test
 Order that matters for commits/CI: **format -> lint -> test**. CI (`.github/workflows/ci.yml`)
 runs `ruff check`, `black --check`, then `pytest -q --cov` on Python 3.10 and 3.11.
 Pre-commit hooks (ruff, ruff-format, black, isort) run on commit; `make install-dev` installs them.
+The dev lint/format tools (ruff, black, pre-commit) are **not** in the project `.venv` — they are
+system-level only. Run `make install-dev` to install them into the dev environment.
 
 ## Architecture (phase = chapter)
 
-Adversarial loop: an LSTM **Red Team** (`src/generator/`) emits kill-chain stage
-sequences -> `RealisationEngine` (`src/utils/`) samples a real CICIoT2023 feature
+Adversarial loop: a fixed 5x5 first-order **Markov attacker** (`MarkovAttacker`,
+`src/generator/`) walks the kill chain under a finite intrusion budget -> emits a
+stage -> `RealisationEngine` (`src/utils/`) samples a real CICIoT2023 feature
 row for that stage -> `AdversarialIoTEnv` (`src/environment/`, Gymnasium API, 29-feat
 obs, 5 actions OBSERVE/LOG/THROTTLE/BLOCK/ISOLATE) -> **Blue Team** SB3 agent
 (DQN/PPO/A2C via `src/algorithms/`) acts -> kill-chain reward.
@@ -41,11 +44,11 @@ Kill-chain stages (5): `0 BENIGN, 1 RECON, 2 ACCESS, 3 MANEUVER, 4 IMPACT`
 - **`config.yml` is the single source of hyperparameters.** `main.py` reads it and
   passes values into dataclass configs; there are many `.get(key, default)` fallbacks,
   so a missing key silently uses the code default — grep both places when changing a param.
-- **Reproducibility = hash chains.** Every thesis figure under `docs/results/<NN>_*/`
+- **Reproducibility = hash chains.** Every thesis figure under `docs/results/<area>/`
   ships a sibling `manifest.json` (git SHA + input/output SHA-256). A figure without a
-  reconciling manifest is not "defense-ready". Verify with
-  `python -m scripts.benchmark.run_test_eval --verify-manifests` and
-  `python -m scripts.ablation.close_phase7 --verify-manifests`.
+  reconciling manifest is not "defense-ready". Verify the chain end-to-end via the
+  reproducibility-smoke harness: `python -m scripts.reproducibility_smoke`
+  (`--strict` to exit 1 on any hash miss).
 - **Gitignored / machine-local:** `data/`, `runs/`, `artifacts/`, `mlruns/`, `results/`.
   Raw CICIoT2023 CSVs are NOT in the repo (CIC license); they go in `data/raw/ciciot2023/`.
 - **Generator path auto-detection:** `main.py:get_generator_path` finds the latest
@@ -67,16 +70,14 @@ Kill-chain stages (5): `0 BENIGN, 1 RECON, 2 ACCESS, 3 MANEUVER, 4 IMPACT`
 
 ## Thesis (separate toolchain)
 
-LaTeX under `tex/` builds via Podman or Docker: `make thesis` (wraps `bash tex/build.sh`).
-Podman is auto-detected and preferred; Docker is the fallback. Main file is `tex/principal.tex`
-(abnTeX2/FEEC template), **NOT** `thesis.tex`. Output is `tex/principal.pdf` (committed);
-`tex/tese.pdf` is a stray untracked duplicate — ignore it. See `memory-bank/activeContext.md`
-for build history.
+LaTeX under `tex/` builds with **Podman** (Docker is a fallback): `make thesis` (wraps
+`bash tex/build.sh`, which auto-detects and prefers Podman). Main file is `tex/main.tex`
+(abnTeX2/FEEC template), **NOT** `thesis.tex`. Output is `tex/main.pdf`.
 
 **Numbers in the thesis are macro-driven, never hand-typed.** Canonical experiment JSONs
-live under `docs/results/<NN>_*/` (e.g. `06_benchmark/F5_summary.json`). `make render-tables`
+live under `docs/results/<area>/` (e.g. `benchmark/F5_summary.json`). `make render-tables`
 (`scripts/thesis/render_tables.py`) regenerates `tex/generated/{numbers,tables}.tex` from them;
-`tex/generated/` is **gitignored** (rebuild before any thesis edit/build). `tex/preambulo.tex`
+`tex/generated/` is **gitignored** (rebuild before any thesis edit/build). `tex/preamble.tex`
 must `\input{generated/numbers}` and `\input{generated/tables}` for the macros to resolve in
 the abstract/resumo — without it you get "Undefined control sequence". `docs/results/test_count.json`
 feeds the `\NumTests` macro; bump it when the suite count changes. `make verify-fresh` (a CI gate)
@@ -87,14 +88,17 @@ Use spelled-out forms (`\FPRatc` not `\FPRa2c`, `\FnineStructuralReward` not `\F
 `render_tables.py` already maps digits to letters when emitting macro names; keep it that way.
 
 **Thesis prose rule:** NEVER write "Phase N" in `tex/` prose — use semantic stage names
-(Red-Team LSTM / Adversarial Environment / Stage Detector / Blue-Team Training /
+(Markov Attacker / Adversarial Environment / Stage Detector / Blue-Team Training /
 Held-Out Benchmark / Ablation & Robustness). "Phase N" is fine in dev docs and `docs/results/`.
 
 ## More context
 
-`docs/architecture.md`, `docs/environment.md`, `docs/reward-shaping.md`,
-`docs/reproducibility.md`, `docs/decisions.md`; per-phase `docs/results/<NN>_*/PLAN.md`
-+ `RESULTS.md`. Full thesis-revision plan: `docs/review/REVISION_PLAN.md`.
+`docs/ARCHITECTURE.md` (module map + adversarial loop + config flow),
+`docs/ENVIRONMENT.md` (obs/actions/reward/budget mechanics), `docs/RESULTS.md`
+(budget=40 headline + gate scoreboard), `docs/STATUS.md` (live status, locked
+decisions, caveat dispositions, commit journal); per-area
+`docs/results/<area>/PLAN.md` + `RESULTS.md`. Dataset provenance:
+`docs/dataset_card.md`, `docs/kill-chain-mapping.md`.
 
 ## Locked experiment decisions
 
@@ -108,12 +112,14 @@ These are fixed contracts; do not silently change them.
 - **10 seeds `{0..9}`** for DRL; baselines/oracle run 1 seed. **n=300 episodes for ALL
   policies** (`BENCHMARK_N_DET_EPISODES=300`, `ABLATION_OOD_N_DET_EPISODES=300`).
   `p_de_esc=0.6` default. `make reproduce-thesis` overrides `BLUE_TEAM_IMPACT_TERM=false`.
-- **Canonical headline numbers** (from `06_benchmark/F5_summary.json`): best deployable RL =
-  **A2C +1336.6**; oracle ceiling +1684.8 (79.3% capture); RF-Acting +1516.0 @ 13.83 ms p50
-  (~146× slower than A2C); benign FPR DQN 6.1% / PPO 10.2% / A2C 11.5%; `compromise_rate=1.0`
-  for every policy (reactive mitigation only). The reward ablation's mit-rate 0.840 is a
-  PPO-only n=30 *probe* — it does NOT replicate at benchmark scale (A2C mit-rate 0.317).
-  Test suite: **459 passed**, 2 warnings (pre-revision baseline was 445).
+- **Canonical headline numbers** (budget=40, from `benchmark/F5_summary.json`): best deployable
+  RL = **PPO +1034.7** (CI [+998.1, +1069.8]; DQN +1028.9, A2C +973.1); oracle ceiling
+  `recommended_action` **+1393.8** (CI [+1366.9, +1420.6], 74.2% capture); RF-Acting +1323.0 @
+  13.692 ms p50 (latency-ratio ~142.8× vs best-agent 0.096 ms); benign FPR DQN 7.5% / PPO 8.7% /
+  A2C 7.7%. With the finite attacker budget, `compromise_rate` now varies by policy (PPO 0.68 /
+  always_block 0.36 / oracle 0.47) instead of the pre-budget 1.0-for-everything. The reward
+  ablation's structural mit-rate 0.867 is an F9 *strand* result, separate from the F5 benchmark.
+  Test suite: **432 passed**, 1 warning.
 
 **Status:** thesis revision complete — prose rewritten, builds clean (86 pages, 0 LaTeX
 errors). `make lint` exits non-zero on ~21 pre-existing UP031/F401 findings; that is the

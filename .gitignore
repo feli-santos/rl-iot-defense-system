@@ -129,8 +129,9 @@ build/
 dist/
 *.egg-info/
 
-# LaTeX build artefacts (tex/ compile output; principal.pdf / tese.pdf are the
-# committed final outputs and remain tracked separately).
+# LaTeX build artefacts (tex/ compile output). The compiled thesis tex/main.pdf
+# is a build product and is not tracked; rebuild it with `make thesis`.
+tex/main.pdf
 tex/*.aux
 tex/*.log
 tex/*.bbl
@@ -155,8 +156,7 @@ tex/*.run.xml
 tex/*.synctex.gz
 tex/missfont.log
 tex/texput.log
-# Working directories used by the overleaf sync workflow
-tex/_overleaf_pull/
+# Working directory for build artifacts moved aside by tex/build.sh
 tex/_legacy/
 
 # Auto-generated LaTeX fragments from canonical JSONs (re-runnable)

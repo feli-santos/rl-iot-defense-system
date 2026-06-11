@@ -25,10 +25,6 @@ from src.environment.adversarial_env import (
     AdversarialEnvConfig,
     AdversarialIoTEnv,
 )
-from src.generator.attack_sequence_generator import (
-    AttackSequenceGenerator,
-    AttackSequenceGeneratorConfig,
-)
 from src.utils.label_mapper import KillChainStage
 
 # ---------------------------------------------------------------------------
@@ -41,14 +37,9 @@ def _build_env(
     *,
     config_overrides: Iterable[tuple] = (),
 ) -> AdversarialIoTEnv:
+    # Ignored generator-path dir (attacker is now a first-order Markov chain)
     generator_path = tmp_path / "gen"
     generator_path.mkdir(parents=True, exist_ok=True)
-    cfg = AttackSequenceGeneratorConfig(
-        num_stages=5, embedding_dim=16, hidden_size=32, num_layers=1
-    )
-    AttackSequenceGenerator(config=cfg).save(
-        generator_path / "attack_sequence_generator.pth", save_config=True
-    )
 
     dataset_path = tmp_path / "ds"
     dataset_path.mkdir(parents=True, exist_ok=True)

@@ -3,7 +3,7 @@
 This module addresses thesis review issue C13: the IoT-resource motivation
 requires reporting model efficiency metrics (FLOPs/MACs, memory footprint)
 alongside inference latency. It is wired into Phase-6 evaluation to emit
-``results/06_benchmark/model_stats.json``.
+``results/benchmark/model_stats.json``.
 
 Usage::
 

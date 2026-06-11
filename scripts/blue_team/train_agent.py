@@ -43,8 +43,7 @@ from typing import Any
 import numpy as np
 
 # Ensure the project root is on sys.path when invoked as a script (not
-# `python -m`). This lets the red-team scripts/red_team/train_lstm.py
-# pattern continue to work.
+# `python -m`), so direct-script invocation resolves project imports.
 _ROOT = Path(__file__).resolve().parents[2]
 if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))

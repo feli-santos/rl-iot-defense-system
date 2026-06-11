@@ -73,7 +73,7 @@ build-split-indices:  ## Dataset prep: build immutable train/val/test/OOD indice
 .PHONY: plot-dataset
 plot-dataset:  ## Dataset prep: regenerate dataset overview figures (F0).
 	$(PYTHON) -m scripts.data.plot_dataset_overview \
-	    --processed-dir $(DATA) --out-dir docs/results/01_dataset
+	    --processed-dir $(DATA) --out-dir docs/results/dataset
 
 .PHONY: derive-stages
 derive-stages:  ## Detector prep: build stages.npy + manifest from state_indices.json.
@@ -81,11 +81,6 @@ derive-stages:  ## Detector prep: build stages.npy + manifest from state_indices
 
 .PHONY: dataset
 dataset: build-split-indices plot-dataset  ## Run all dataset-preparation deliverables.
-
-.PHONY: red-team
-red-team:  ## Red-team: train LSTM episode generator and emit F1+F2 (~80 s on CPU).
-	$(PYTHON) -m scripts.red_team.train_lstm \
-	    --processed-dir $(DATA) --seed $(SEED)
 
 .PHONY: detector
 detector: derive-stages  ## Detector: train MLP + RF + CNN1D, emit F11 (~3-5 min).
@@ -101,12 +96,15 @@ BLUE_TEAM_SEEDS         ?= 0 1 2 3 4 5 6 7 8 9
 BLUE_TEAM_ALGOS         ?= dqn ppo a2c
 BLUE_TEAM_PARALLEL      ?= 1
 BLUE_TEAM_IMPACT_TERM   ?= true   # Phase 4 primary contract: override to 'false'
+# JSON forwarded to train_agent --reward-overrides, e.g. {"attacker_budget":40}
+BLUE_TEAM_REWARD_OVERRIDES ?=
 
 .PHONY: blue-team-smoke
 blue-team-smoke:  ## Blue-team smoke: PPO seed 0 only, 5K timesteps (~20 s).
 	$(PYTHON) -m scripts.blue_team.train_agent \
 	    --algo ppo --seed 0 --smoke \
 	    --impact-is-terminal $(BLUE_TEAM_IMPACT_TERM) \
+	    $(if $(BLUE_TEAM_REWARD_OVERRIDES),--reward-overrides '$(BLUE_TEAM_REWARD_OVERRIDES)',) \
 	    --out-dir runs/smoke/ppo_seed_0
 
 .PHONY: blue-team-sweep
@@ -117,25 +115,26 @@ blue-team-sweep:  ## Blue-team: train DQN/PPO/A2C × 10 seeds (~3-7 h CPU).
 	    --out-root $(BLUE_TEAM_RUNS_ROOT) \
 	    --parallel $(BLUE_TEAM_PARALLEL) \
 	    --impact-is-terminal $(BLUE_TEAM_IMPACT_TERM) \
+	    $(if $(BLUE_TEAM_REWARD_OVERRIDES),--reward-overrides '$(BLUE_TEAM_REWARD_OVERRIDES)',) \
 	    --continue-on-failure
 
 .PHONY: blue-team-figures
 blue-team-figures:  ## Blue-team: render F3, F4, T1 from runs/blue_team/.
 	$(PYTHON) -m scripts.blue_team.plot_learning_curves \
 	    --runs-root $(BLUE_TEAM_RUNS_ROOT) \
-	    --out-dir docs/results/05_blue_team
+	    --out-dir docs/results/blue-team-training
 	$(PYTHON) -m scripts.blue_team.plot_action_dist \
 	    --runs-root $(BLUE_TEAM_RUNS_ROOT) \
-	    --out-dir docs/results/05_blue_team
+	    --out-dir docs/results/blue-team-training
 	$(PYTHON) -m scripts.blue_team.dump_hparams \
 	    --runs-root $(BLUE_TEAM_RUNS_ROOT) \
-	    --out-dir docs/results/05_blue_team
+	    --out-dir docs/results/blue-team-training
 
 .PHONY: blue-team-gates
 blue-team-gates:  ## Blue-team: evaluate G5.2-G5.7 against runs/blue_team/.
 	$(PYTHON) -m scripts.blue_team.evaluate_gates \
 	    --runs-root $(BLUE_TEAM_RUNS_ROOT) \
-	    --out-dir docs/results/05_blue_team
+	    --out-dir docs/results/blue-team-training
 
 .PHONY: blue-team
 blue-team: blue-team-sweep blue-team-figures blue-team-gates  ## Blue-team: full sweep + figures + gate scoreboard.
@@ -144,10 +143,13 @@ blue-team: blue-team-sweep blue-team-figures blue-team-gates  ## Blue-team: full
 # Benchmark — F5 + F6 + F7 + F8 from frozen blue-team checkpoints
 # -----------------------------------------------------------------------------
 BENCHMARK_RUNS_ROOT      ?= runs/benchmark
-BENCHMARK_OUT_DIR        ?= docs/results/06_benchmark
+BENCHMARK_OUT_DIR        ?= docs/results/benchmark
 BENCHMARK_N_EPISODES     ?= 30
 BENCHMARK_N_DET_EPISODES ?= 300
-BENCHMARK_RF_PATH        ?= artifacts/detector/random_forest.joblib
+BENCHMARK_RF_PATH ?= artifacts/detector/random_forest.joblib
+# Finite attacker budget for the benchmark eval env (must match training, e.g. 40);
+# empty = unbounded (recovers the compromise_rate=1.0 control cell).
+BENCHMARK_ATTACKER_BUDGET ?=
 
 .PHONY: benchmark-smoke
 benchmark-smoke:  ## Benchmark smoke: 1 algo × 1 seed × 2 ep + 2 ep / baseline (~20 s CPU).
@@ -162,7 +164,8 @@ benchmark-eval:  ## Benchmark: roll blue-team checkpoints + 5 baselines on test_
 	    --n-deterministic-episodes $(BENCHMARK_N_DET_EPISODES) \
 	    --phase5-runs-root $(BLUE_TEAM_RUNS_ROOT) \
 	    --out-root $(BENCHMARK_RUNS_ROOT) \
-	    --rf-path $(BENCHMARK_RF_PATH)
+	    --rf-path $(BENCHMARK_RF_PATH) \
+	    $(if $(BENCHMARK_ATTACKER_BUDGET),--attacker-budget $(BENCHMARK_ATTACKER_BUDGET),)
 
 .PHONY: benchmark-figures
 benchmark-figures:  ## Benchmark: render F5, F6, F7, F8 from runs/benchmark/.
@@ -183,8 +186,9 @@ benchmark-figures:  ## Benchmark: render F5, F6, F7, F8 from runs/benchmark/.
 .PHONY: benchmark
 benchmark: benchmark-eval benchmark-figures  ## Benchmark: full eval sweep + F5/F6/F7/F8 figures.
 
-##@ Ablation — reward-component sweep + OOD-class robustness (PLAN: docs/results/07_ablation/PLAN.md)
-ABLATION_OUT_DIR         ?= docs/results/07_ablation
+##@ Ablation — reward-component sweep + OOD-class robustness (PLAN: docs/results/ablation/PLAN.md)
+ABLATION_OUT_DIR         ?= docs/results/ablation
+ABLATION_PARALLEL        ?= 1
 ABLATION_OOD_RUNS_ROOT   ?= runs/ablation/ood
 ABLATION_OOD_CLASSES     ?= DDoS-HTTP_Flood Mirai-udpplain VulnerabilityScan XSS
 ABLATION_OOD_POLICIES    ?= recommended_action rf_acting dqn ppo a2c random always_observe always_block
@@ -237,6 +241,7 @@ ablation-reward-sweep:  ## Ablation F9: PPO × 10 seeds × 12 cells (~6 h CPU).
 	    --seeds $(BLUE_TEAM_SEEDS) \
 	    --total-timesteps $(ABLATION_REWARD_TIMESTEPS) \
 	    --out-root $(ABLATION_REWARD_RUNS_ROOT) \
+	    --parallel $(ABLATION_PARALLEL) \
 	    --continue-on-failure
 
 .PHONY: ablation-reward-figure
@@ -262,6 +267,7 @@ ablation-aggressiveness-sweep:  ## Ablation F10: PPO × 6 p values × 10 seeds +
 	    --seeds $(BLUE_TEAM_SEEDS) \
 	    --total-timesteps $(ABLATION_REWARD_TIMESTEPS) \
 	    --out-root $(ABLATION_AGGR_RUNS_ROOT) \
+	    --parallel $(ABLATION_PARALLEL) \
 	    --continue-on-failure
 
 .PHONY: ablation-aggressiveness-figure
@@ -313,7 +319,7 @@ train-all-rl:  ## Train DQN, PPO, A2C sequentially (single seed).
 	    --timesteps $(TIMESTEPS) \
 	    --generator-path $(GEN_DIR) --data-path $(DATA)
 
-##@ Thesis (Podman/Docker — FEEC CCPG 001-2015 / abnTeX2 template)
+##@ Thesis (Podman, Docker fallback — FEEC CCPG 001-2015 / abnTeX2 template)
 THESIS_IMAGE ?= rl-iot-thesis
 
 .PHONY: thesis-image
@@ -321,7 +327,7 @@ thesis-image:  ## Build the minimal container image for thesis compilation (one-
 	bash tex/build.sh --rebuild --draft
 
 .PHONY: thesis
-thesis:  ## Compile tex/principal.pdf (full: pdflatex × 3 + bibtex) via container engine.
+thesis:  ## Compile tex/main.pdf (full: pdflatex × 3 + bibtex) via container engine.
 	bash tex/build.sh
 
 .PHONY: thesis-draft
@@ -333,19 +339,25 @@ thesis-rebuild:  ## Force-rebuild container image, then compile thesis.
 	bash tex/build.sh --rebuild
 
 ##@ Figure / Table Synchronisation (anti-drift)
+.PHONY: export-figure-pdfs
+export-figure-pdfs:  ## Wrap docs/results/**/F*.png into same-named F*.pdf (raster-in-PDF).
+	$(PYTHON) scripts/thesis/export_pdfs.py
+
 .PHONY: sync-figures
-sync-figures:  ## Copy regenerated PDFs from docs/results/ → tex/figs/
+sync-figures: export-figure-pdfs  ## Export PDFs then copy them from docs/results/ → tex/figs/
 	@echo "Syncing figures ..."
-	@cp docs/results/05_blue_team/F3_*.pdf tex/figs/ 2>/dev/null || true
-	@cp docs/results/05_blue_team/F4_*.pdf tex/figs/ 2>/dev/null || true
-	@cp docs/results/06_benchmark/F5_table.pdf tex/figs/ 2>/dev/null || true
-	@cp docs/results/06_benchmark/F6_*.pdf tex/figs/ 2>/dev/null || true
-	@cp docs/results/06_benchmark/F7_*.pdf tex/figs/ 2>/dev/null || true
-	@cp docs/results/06_benchmark/F8_*.pdf tex/figs/ 2>/dev/null || true
-	@cp docs/results/07_ablation/F9_*.pdf tex/figs/ 2>/dev/null || true
-	@cp docs/results/07_ablation/F10_*.pdf tex/figs/ 2>/dev/null || true
-	@cp docs/results/07_ablation/F12_*.pdf tex/figs/ 2>/dev/null || true
-	@cp docs/results/07_ablation/F15_*.pdf tex/figs/ 2>/dev/null || true
+	@cp docs/results/blue-team-training/F3_*.pdf tex/figs/ 2>/dev/null || true
+	@cp docs/results/blue-team-training/F4_*.pdf tex/figs/ 2>/dev/null || true
+	@cp docs/results/benchmark/F5_table.pdf tex/figs/ 2>/dev/null || true
+	@cp docs/results/benchmark/F6_*.pdf tex/figs/ 2>/dev/null || true
+	@cp docs/results/benchmark/F7_*.pdf tex/figs/ 2>/dev/null || true
+	@cp docs/results/benchmark/F8_*.pdf tex/figs/ 2>/dev/null || true
+	@cp docs/results/ablation/F9_*.pdf tex/figs/ 2>/dev/null || true
+	@cp docs/results/ablation/F10_*.pdf tex/figs/ 2>/dev/null || true
+	@cp docs/results/ablation/F12_*.pdf tex/figs/ 2>/dev/null || true
+	@cp docs/results/ablation/F15_*.pdf tex/figs/ 2>/dev/null || true
+	@cp docs/results/ablation/F16_*.pdf tex/figs/ 2>/dev/null || true
+	@cp docs/results/ablation/F17_*.pdf tex/figs/ 2>/dev/null || true
 	@echo "Done."
 
 .PHONY: stale-check

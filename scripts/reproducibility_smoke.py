@@ -17,21 +17,16 @@ Usage::
 
 What it checks (per step, in order):
 
-- Dataset prep: ``docs/results/01_dataset/manifest.json`` ↔ on-disk
+- Dataset prep: ``docs/results/dataset/manifest.json`` ↔ on-disk
   ``F0_*.png`` / ``F0_summary.json`` outputs.
-- Red-team: ``docs/results/02_red_team/manifest.json`` ↔ on-disk
-  ``F1_*.png`` / ``F1_summary.json`` / ``F2_*.png`` outputs.
-  *Note*: the red-team manifest's recorded splits-manifest input SHA
-  is the pre-`3cd2fb9` `82aa1214...` — see RESULTS.md §5.3 for why
-  this divergence is documented as a non-correctness drift.
-- Detector: ``docs/results/04_detector/manifest.json`` ↔ on-disk
+- Detector: ``docs/results/stage-detector/manifest.json`` ↔ on-disk
   outputs. Inputs (features.npy etc.) are gitignored; if missing,
   the harness skips them with a warning rather than failing.
-- Benchmark: ``docs/results/06_benchmark/F[5-8]_manifest.json`` —
+- Benchmark: ``docs/results/benchmark/F[5-8]_manifest.json`` —
   per-figure manifest each pins ``runs/benchmark/eval_manifest.json``
   by SHA. The run-side artefact is gitignored; if missing, the
   harness skips the upstream-pin check with a warning.
-- Ablation: ``docs/results/07_ablation/F[9,10,12,15]_manifest.json``
+- Ablation: ``docs/results/ablation/F[9,10,12,15]_manifest.json``
   ↔ on-disk outputs (PNG + summary JSON). Upstream pins
   (``blue_team_sweep_manifest`` / ``benchmark_eval_manifest`` /
   ``dataset_splits_manifest``) checked against on-disk if present;
@@ -88,24 +83,24 @@ def _sha256(path: Path) -> str | None:
 # missing input is FAIL (committed → must exist) or SKIP (gitignored →
 # best-effort).
 _TARGETS: list[tuple[str, Path, bool]] = [
-    ("dataset", _ROOT / "docs/results/01_dataset/manifest.json", True),
-    ("red_team", _ROOT / "docs/results/02_red_team/manifest.json", True),
-    ("detector", _ROOT / "docs/results/04_detector/manifest.json", True),
-    ("benchmark/F5", _ROOT / "docs/results/06_benchmark/F5_manifest.json", True),
-    ("benchmark/F6", _ROOT / "docs/results/06_benchmark/F6_manifest.json", True),
-    ("benchmark/F7", _ROOT / "docs/results/06_benchmark/F7_manifest.json", True),
-    ("benchmark/F8", _ROOT / "docs/results/06_benchmark/F8_manifest.json", True),
-    ("ablation/F9", _ROOT / "docs/results/07_ablation/F9_manifest.json", True),
-    ("ablation/F10", _ROOT / "docs/results/07_ablation/F10_manifest.json", True),
-    ("ablation/F12", _ROOT / "docs/results/07_ablation/F12_manifest.json", True),
-    ("ablation/F15", _ROOT / "docs/results/07_ablation/F15_manifest.json", True),
+    ("dataset", _ROOT / "docs/results/dataset/manifest.json", True),
+    ("detector", _ROOT / "docs/results/stage-detector/manifest.json", True),
+    ("benchmark/F5", _ROOT / "docs/results/benchmark/F5_manifest.json", True),
+    ("benchmark/F6", _ROOT / "docs/results/benchmark/F6_manifest.json", True),
+    ("benchmark/F7", _ROOT / "docs/results/benchmark/F7_manifest.json", True),
+    ("benchmark/F8", _ROOT / "docs/results/benchmark/F8_manifest.json", True),
+    ("ablation/F9", _ROOT / "docs/results/ablation/F9_manifest.json", True),
+    ("ablation/F10", _ROOT / "docs/results/ablation/F10_manifest.json", True),
+    ("ablation/F12", _ROOT / "docs/results/ablation/F12_manifest.json", True),
+    ("ablation/F15", _ROOT / "docs/results/ablation/F15_manifest.json", True),
 ]
 
 _SCOREBOARDS: list[tuple[str, Path]] = [
-    ("G4", _ROOT / "docs/results/04_detector/G4_scoreboard.json"),
-    ("G5", _ROOT / "docs/results/05_blue_team/G5_scoreboard.json"),
-    ("G6", _ROOT / "docs/results/06_benchmark/G6_scoreboard.json"),
-    ("G7", _ROOT / "docs/results/07_ablation/G7_scoreboard.json"),
+    ("G4", _ROOT / "docs/results/stage-detector/detector_acceptance.json"),
+    ("G5", _ROOT / "docs/results/blue-team-training/blue_team_acceptance.json"),
+    # G6 (benchmark) has no standalone scoreboard JSON — its acceptance is
+    # captured by the F5/F6/F7/F8 manifest hash-chains above.
+    ("G7", _ROOT / "docs/results/ablation/G7_scoreboard.json"),
 ]
 
 
@@ -171,27 +166,14 @@ _KNOWN_DIVERGENCES: dict[str, dict[str, str]] = {
         "data/processed/ciciot2023/splits/manifest.json",
         "82aa12149d2e0ee5a2424a7da44719df885ac18495590344e6d393e22d72b5c5",
     ): {
-        "actual_sha": "1e99d596826d054e337a8a84e060b1e9d7c15b44a1cbbda425b6bbdd311e0e0d",
+        "actual_sha": "b0661c6b225874e03e14954e09e90b84a3b3b7b0dd51a42a74129ea6050f464f",
         "finding_id": "Step-1 F4 / Step-2 F1",
         "note": (
             "pre-3cd2fb9 (leaky) splits manifest SHA recorded; on-disk is "
-            "post-3cd2fb9 (leakage-fixed) splits manifest. Documented in "
-            "docs/results/02_red_team/RESULTS.md S5.3."
-        ),
-    },
-    (
-        "red_team",
-        "data/processed/ciciot2023/splits/manifest.json",
-        "82aa12149d2e0ee5a2424a7da44719df885ac18495590344e6d393e22d72b5c5",
-    ): {
-        "actual_sha": "1e99d596826d054e337a8a84e060b1e9d7c15b44a1cbbda425b6bbdd311e0e0d",
-        "finding_id": "Step-2 F1",
-        "note": (
-            "Red-team LSTM consumes only stage tokens (not per-flow features); "
-            "the leakage-fix is orthogonal to its input space. G4 cosine "
-            "0.99999 saturation empirically confirms the divergence is "
-            "documentation drift, not correctness divergence. See "
-            "docs/results/02_red_team/RESULTS.md S5.3."
+            "post-3cd2fb9 (leakage-fixed) splits manifest. The splits manifest "
+            "is gitignored machine-local data (raw CICIoT2023 not in repo per "
+            "CIC license), so the on-disk SHA is regenerated per machine; on a "
+            "fresh clone this input is absent and the check SKIPs."
         ),
     },
 }
