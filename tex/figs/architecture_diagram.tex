@@ -62,13 +62,14 @@
   test / ood
 };
 
-% --- Lane 2: Markov Attacker ---
+% --- Lane 2: Tug-of-War Attacker ---
 \node[stageBox, fill=colOffline, right=of dataset] (redteam) {
-  \textbf{Markov Attacker}\\[3pt]
-  Fixed $5\times5$ first-order\\
-  kill-chain transition\\
-  matrix\\[3pt]
-  Upper-triangular;\\
+  \textbf{Tug-of-War Attacker}\\[3pt]
+  Reactive $5\times5$\\
+  kill-chain process\\[3pt]
+  Strictly sequential;\\
+  defender-driven\\
+  de-escalation;\\
   absorbing \textsc{impact}\\[3pt]
   Finite intrusion\\
   budget ($B=40$)
@@ -78,8 +79,7 @@
 \node[stageBox, fill=colOffline, right=of redteam] (detector) {
   \textbf{Stage Detector}\\[3pt]
   MLP (production)\\
-  RandomForest\\
-  1D-CNN\\[3pt]
+  RandomForest\\[3pt]
   Input: 29-dim\\
   per-flow features\\[3pt]
   Output: $\hat{s} \in$\\
@@ -156,7 +156,7 @@
   Trained DRL (DQN / PPO / A2C) \quad vs.\quad
   Random \;|\; Always-Observe \;|\; Always-Block \;|\; RF-Acting \;|\; Oracle\\[2pt]
   Reward-component ablation (F9) \;|\;
-  Aggressiveness sweep (F10) \;|\;
+  Environment-difficulty sweep (F10) \;|\;
   OOD injection evaluation (F15)
 };
 
