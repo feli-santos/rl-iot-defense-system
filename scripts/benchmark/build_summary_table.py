@@ -193,6 +193,8 @@ def _summarise_policy(
             "mean_reward_ci_high": math.nan,
             "mean_mttc": math.nan,
             "compromise_rate": math.nan,
+            "prevention_rate": math.nan,
+            "mitigated_among_compromised": math.nan,
             "mitigated_impact_rate": math.nan,
             "mean_episode_length": math.nan,
             "mean_inference_latency_ms": math.nan,
@@ -204,7 +206,21 @@ def _summarise_policy(
     rewards = [r["episode_reward"] for r in all_records]
     mttc_vals = [r["mttc_steps"] for r in all_records if r.get("mttc_steps") is not None]
     compromised = [1.0 if r.get("compromised") else 0.0 for r in all_records]
+    prevented = [1.0 if r.get("end_outcome") == "prevented" else 0.0 for r in all_records]
     mitigated = [1.0 if r.get("end_outcome") == "impact_mitigated" else 0.0 for r in all_records]
+    n_compromised = int(sum(compromised))
+    mit_among_comp = (
+        float(
+            sum(
+                1.0
+                for r in all_records
+                if r.get("compromised") and r.get("end_outcome") == "impact_mitigated"
+            )
+            / n_compromised
+        )
+        if n_compromised > 0
+        else math.nan
+    )
     lengths = [r["episode_length"] for r in all_records]
 
     # Bootstrap CI: choose granularity to keep the math meaningful.
@@ -242,6 +258,8 @@ def _summarise_policy(
         "mean_reward_ci_high": float(ci_high),
         "mean_mttc": float(np.mean(mttc_vals)) if mttc_vals else math.nan,
         "compromise_rate": float(np.mean(compromised)),
+        "prevention_rate": float(np.mean(prevented)),
+        "mitigated_among_compromised": mit_among_comp,
         "mitigated_impact_rate": float(np.mean(mitigated)),
         "mean_episode_length": float(np.mean(lengths)),
         "mean_inference_latency_ms": mean_lat,

@@ -4,8 +4,10 @@ Reads ``runs/ablation/reward_sweep/<cell_id>/seed_<k>/eval_test.jsonl``
 files (produced by :mod:`scripts.ablation.run_reward_sweep`),
 aggregates per cell with the same bootstrap-CI protocol as benchmark
 F5, and renders a multi-panel "what does each reward component
-do?" figure with the **benchmark oracle ceiling +1624** and **benchmark
-deployable best DQN +1336** as horizontal reference lines.
+do?" figure with the **benchmark oracle ceiling** and **benchmark
+deployable best** as horizontal reference lines. Both values are read
+at runtime from ``docs/results/benchmark/F5_summary.json`` (see
+``_load_benchmark_refs``) so they track the benchmark automatically.
 
 Outputs:
 
@@ -23,8 +25,8 @@ Outputs:
 Gate evaluation:
 
 - **G7.2** — pass iff at least one cell's mean test reward exceeds
-  the benchmark deployable best (DQN +1336) by ≥ 1σ of its bootstrap
-  CI. Stretch goal: meet the benchmark oracle ceiling (+1624). The
+  the benchmark deployable best by ≥ 1σ of its bootstrap
+  CI. Stretch goal: meet the benchmark oracle ceiling. The
   acceptable failure mode is ``D7.1.1`` — the sweep characterises
   the limit of one-at-a-time environment-design-style reward shaping; turning
   the gate verdict into a finding rather than a closure (see PLAN
@@ -51,11 +53,20 @@ logger = logging.getLogger("scripts.ablation.plot_reward_ablation")
 _ROOT = Path(__file__).resolve().parents[2]
 
 
-# Reference lines from benchmark (audit-AF2 framing).
-_PHASE6_ORACLE_CEILING_REWARD = 1624.4
-_PHASE6_DEPLOYABLE_BEST_REWARD = 1336.3  # DQN best mean on test_balanced
-_DEPLOYABLE_BEST_LABEL = "DQN +1336 (benchmark deployable best)"
-_ORACLE_CEILING_LABEL = "Rec-Action +1624 (oracle ceiling, AF2)"
+# Reference lines from the benchmark (audit-AF2 framing).
+#
+# These are FALLBACK defaults only. The canonical values are loaded at
+# runtime from the benchmark F5_summary.json via _load_benchmark_refs()
+# so the F9 reference lines self-update when the benchmark is re-run.
+# (Prior to the tug-of-war redesign these were hardcoded at +1624/+1336;
+# that drift is exactly what _load_benchmark_refs() now prevents.)
+_PHASE6_ORACLE_CEILING_REWARD = 543.1  # recommended_action mean (fallback)
+_PHASE6_DEPLOYABLE_BEST_REWARD = 278.5  # best trained-RL mean on test_balanced (fallback)
+_DEPLOYABLE_BEST_LABEL = "best RL (benchmark deployable best)"
+_ORACLE_CEILING_LABEL = "Rec-Action (oracle ceiling, AF2)"
+
+_DEPLOYABLE_POLICIES = ("dqn", "ppo", "a2c")
+_ORACLE_POLICY = "recommended_action"
 
 _COMPONENT_DISPLAY: dict[str, str] = {
     "defense_success_bonus": "defense_success_bonus  (250)",
@@ -90,6 +101,49 @@ def _git_sha() -> str:
         )
     except Exception:  # noqa: BLE001
         return "unknown"
+
+
+def _load_benchmark_refs(summary_path: Path) -> dict[str, Any]:
+    """Read the canonical benchmark reference lines from F5_summary.json.
+
+    Returns a dict with oracle_ceiling (recommended_action mean reward),
+    deployable_best (max mean reward over the trained-RL policies) and
+    deployable_best_mitigated (that same policy's mitigated_impact_rate).
+    Falls back to the module-level constants if the file is missing or
+    malformed, so the figure still renders on a fresh checkout. This is
+    the single source that keeps the F9 reference lines in lock-step with
+    the benchmark instead of drifting against hardcoded numbers.
+    """
+    refs: dict[str, Any] = {
+        "oracle_ceiling": _PHASE6_ORACLE_CEILING_REWARD,
+        "deployable_best": _PHASE6_DEPLOYABLE_BEST_REWARD,
+        "deployable_best_mitigated": _PHASE6_DEPLOYABLE_BEST_MITIGATED,
+        "deployable_best_policy": None,
+        "source": "fallback-defaults",
+    }
+    p = Path(summary_path)
+    if not p.exists():
+        logger.warning("benchmark summary %s not found; using fallback refs", p)
+        return refs
+    try:
+        data = json.loads(p.read_text())
+        rows = data if isinstance(data, list) else data.get("rows", data.get("policies", []))
+        by_policy = {r["policy"]: r for r in rows if isinstance(r, dict) and "policy" in r}
+        oracle = by_policy.get(_ORACLE_POLICY)
+        if oracle is not None:
+            refs["oracle_ceiling"] = float(oracle["mean_reward"])
+        deployable = [by_policy[k] for k in _DEPLOYABLE_POLICIES if k in by_policy]
+        if deployable:
+            best = max(deployable, key=lambda r: r["mean_reward"])
+            refs["deployable_best"] = float(best["mean_reward"])
+            refs["deployable_best_policy"] = best["policy"]
+            mit = best.get("mitigated_impact_rate")
+            if mit is not None and math.isfinite(float(mit)):
+                refs["deployable_best_mitigated"] = float(mit)
+        refs["source"] = str(p)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("failed to parse benchmark refs from %s (%s); using fallback", p, exc)
+    return refs
 
 
 # --------------------------------------------------------------- aggregation
@@ -179,7 +233,9 @@ def _summarise_cell(
 # baseline_defaults centre cell). Reward-coefficient cells use
 # a DIFFERENT reward function and are NOT directly comparable on raw
 # reward — they are evaluated on the security KPI only.
-_PHASE6_DEPLOYABLE_BEST_MITIGATED = 0.153  # DQN mitigated_impact_rate on test_balanced
+_PHASE6_DEPLOYABLE_BEST_MITIGATED = (
+    0.127  # best-RL mitigated_impact_rate on test_balanced (fallback)
+)
 
 
 def _evaluate_g72(
@@ -203,10 +259,10 @@ def _evaluate_g72(
 
     1. **Reward-comparable strand** (raw-reward gate): for cells
        under the unchanged environment-design reward fn, does any cell's
-       CI_low exceed benchmark DQN +1336?
+       CI_low exceed the benchmark deployable best?
     2. **Security-KPI strand** (mitigated_impact_rate gate): for
        *all* cells (incl. coefficient-scaled), does any cell beat
-       benchmark DQN's mitigated_impact_rate (0.153) by ≥ 1.5×? This
+       the benchmark deployable best's mitigated_impact_rate by ≥ 1.5×? This
        is the metric that survives reward-function changes.
 
     G7.2 PASSES iff strand-1 holds (the original-shape gate). If
@@ -245,6 +301,10 @@ def _evaluate_g72(
     sec_threshold = deployable_best_mitigated * 1.5
     passes_strand2 = bool(best_sec and best_sec["mitigated_impact_rate"] >= sec_threshold)
 
+    # The reward gap the ablation is trying to close is oracle - deployable-best,
+    # computed live from the benchmark refs (not a hardcoded literal).
+    gap = oracle_ceiling - deployable_best
+
     # The *raw-reward winner* (any axis) is reported for transparency
     # but is NOT the headline in the corrected logic — the
     # 2026-05-01 audit (Finding #1) showed that the +2926 cell is a
@@ -256,32 +316,33 @@ def _evaluate_g72(
         interp = (
             f"PASS: at least one reward-comparable cell "
             f"(`{best_rc['cell_id']}`) beats the benchmark deployable "
-            f"best DQN +{deployable_best:.0f} by ≥ 1σ on RAW REWARD "
+            f"best (+{deployable_best:.0f}) by ≥ 1σ on RAW REWARD "
             f"(commensurable to benchmark). STRETCH MET: cell also "
             f"exceeds the oracle ceiling +{oracle_ceiling:.0f} — "
-            f"the deployable +288 gap is closed."
+            f"the deployable +{gap:.0f} gap is closed."
         )
     elif passes_strand1:
         interp = (
             f"PASS-WITHOUT-STRETCH: reward-comparable cell "
-            f"(`{best_rc['cell_id']}`) beats DQN +{deployable_best:.0f} "
-            f"on RAW REWARD but does not reach the oracle ceiling "
-            f"+{oracle_ceiling:.0f}; the +288 gap is partially closed."
+            f"(`{best_rc['cell_id']}`) beats the deployable best "
+            f"(+{deployable_best:.0f}) on RAW REWARD but does not reach "
+            f"the oracle ceiling +{oracle_ceiling:.0f}; the +{gap:.0f} gap "
+            f"is partially closed."
         )
     elif passes_strand2:
         interp = (
             f"FAIL-WITH-FINDING (D7.1.1, activated 2026-05-01): no "
             f"reward-comparable cell (environment-design reward fn preserved) "
-            f"beats DQN +{deployable_best:.0f} on raw reward by ≥ 1σ. "
-            f"BUT: the security-KPI strand passes — cell "
+            f"beats the deployable best (+{deployable_best:.0f}) on raw "
+            f"reward by ≥ 1σ. BUT: the security-KPI strand passes — cell "
             f"`{best_sec['cell_id']}` improves mitigated_impact_rate "
             f"to {best_sec['mitigated_impact_rate']:.3f} "
-            f"(vs DQN baseline {deployable_best_mitigated:.3f}, "
+            f"(vs deployable-best baseline {deployable_best_mitigated:.3f}, "
             f"≥ 1.5× threshold {sec_threshold:.3f}). The "
             f"one-at-a-time linear sweep characterised the limit of "
             f"environment-design-style reward shaping at the apples-to-apples "
             f"reward level, but env-semantics + coefficient scaling "
-            f"do move the real-security needle. Closing the +288 "
+            f"do move the real-security needle. Closing the +{gap:.0f} "
             f"reward gap under fixed reward semantics requires a "
             f"different mechanism (curriculum, reward modelling, or "
             f"attack-aware exploration), deferred to future work."
@@ -496,7 +557,8 @@ def _render(
     fig.text(
         0.5,
         -0.01,
-        "PLAN §3.1.4 / D7.1; targets the +288 deployable gap (D6.2.1, audit AF2)",
+        f"PLAN §3.1.4 / D7.1; targets the +{oracle_ceiling - deployable_best:.0f} "
+        f"deployable gap (D6.2.1, audit AF2)",
         ha="center",
         fontsize=8,
         style="italic",
@@ -518,6 +580,15 @@ def _build_argparser() -> argparse.ArgumentParser:
     p.add_argument(
         "--phase6-eval-manifest",
         default="runs/benchmark/eval_manifest.json",
+    )
+    p.add_argument(
+        "--benchmark-summary",
+        default="docs/results/benchmark/F5_summary.json",
+        help=(
+            "Canonical benchmark F5_summary.json. The F9 oracle-ceiling and "
+            "deployable-best reference lines are read from here so they stay "
+            "in lock-step with the benchmark instead of drifting."
+        ),
     )
     # Step-8 F2 (07_HANDOFF.md §5): explicit upstream-manifest SHA pins.
     p.add_argument(
@@ -575,12 +646,33 @@ def main(argv: list[str] | None = None) -> int:
             row["n_episodes"],
         )
 
+    refs = _load_benchmark_refs(Path(args.benchmark_summary))
+    logger.info(
+        "F9 benchmark refs: oracle_ceiling=%.1f deployable_best=%.1f (%s) "
+        "deployable_best_mitigated=%.3f source=%s",
+        refs["oracle_ceiling"],
+        refs["deployable_best"],
+        refs["deployable_best_policy"],
+        refs["deployable_best_mitigated"],
+        refs["source"],
+    )
+
     out_dir = Path(args.out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     png_path = out_dir / "F9_reward_ablation.png"
-    _render(rows, png_path)
+    _render(
+        rows,
+        png_path,
+        deployable_best=refs["deployable_best"],
+        oracle_ceiling=refs["oracle_ceiling"],
+    )
 
-    g72 = _evaluate_g72(rows)
+    g72 = _evaluate_g72(
+        rows,
+        deployable_best=refs["deployable_best"],
+        oracle_ceiling=refs["oracle_ceiling"],
+        deployable_best_mitigated=refs["deployable_best_mitigated"],
+    )
     summary = {
         "schema_version": "1.0",
         "phase": 7,
@@ -592,8 +684,11 @@ def main(argv: list[str] | None = None) -> int:
             "penalty_disproportionate": 5.0,
             "reward_benign_passive": 10.0,
         },
-        "phase6_oracle_ceiling": _PHASE6_ORACLE_CEILING_REWARD,
-        "phase6_deployable_best": _PHASE6_DEPLOYABLE_BEST_REWARD,
+        "phase6_oracle_ceiling": refs["oracle_ceiling"],
+        "phase6_deployable_best": refs["deployable_best"],
+        "phase6_deployable_best_policy": refs["deployable_best_policy"],
+        "phase6_deployable_best_mitigated": refs["deployable_best_mitigated"],
+        "phase6_refs_source": refs["source"],
         "rows": rows,
         "gates": {"G7.2": g72},
         "headline": g72.get("interpretation", "?"),
@@ -633,21 +728,23 @@ def main(argv: list[str] | None = None) -> int:
     (out_dir / "F9_manifest.json").write_text(json.dumps(manifest, indent=2))
 
     caption_path = out_dir / "F9_caption.md"
-    if not caption_path.exists():
-        caption_path.write_text(
-            "**F9 — Reward-component ablation.** Mean episodic reward on "
-            "`test_balanced` for PPO trained 250K timesteps × 5 seeds at "
-            "{0.5×, 1×, 2×} of each environment-design reward coefficient (one-at-a-"
-            "time sparse grid; D7.1). Reference lines: blue dotted = "
-            "benchmark deployable best (DQN +1336); red dashed = benchmark "
-            "oracle ceiling (recommended-action rule, +1624 — *upper bound "
-            "on the value of perfect stage detection*, audit AF2). The "
-            "rightmost panel sweeps the binary `impact_is_terminal` axis "
-            "(D7.3). Error bars are 95 % bootstrap CIs. (PLAN §3.1.4.)\n"
-        )
+    _best_label = refs["deployable_best_policy"] or "best RL"
+    caption_path.write_text(
+        "**F9 — Reward-component ablation.** Mean episodic reward on "
+        "`test_balanced` for PPO trained 250K timesteps × 5 seeds at "
+        "{0.5×, 1×, 2×} of each environment-design reward coefficient (one-at-a-"
+        "time sparse grid; D7.1). Reference lines: blue dotted = "
+        f"benchmark deployable best ({_best_label} +{refs['deployable_best']:.0f}); "
+        "red dashed = benchmark oracle ceiling (recommended-action rule, "
+        f"+{refs['oracle_ceiling']:.0f} — *upper bound on the value of perfect "
+        "stage detection*, audit AF2). The rightmost panel sweeps the binary "
+        "`impact_is_terminal` axis (D7.3). Error bars are 95 % bootstrap CIs. "
+        "(PLAN §3.1.4.)\n"
+    )
 
     logger.info(
-        "F9 written to %s — G7.2 passes=%s (best=%s, mean=%.1f, Δ_to_dqn=%+.1f, Δ_to_oracle=%+.1f)",
+        "F9 written to %s — G7.2 passes=%s (best=%s, mean=%.1f, "
+        "Δ_to_deployable=%+.1f, Δ_to_oracle=%+.1f)",
         out_dir,
         g72.get("passes"),
         g72.get("best_cell"),

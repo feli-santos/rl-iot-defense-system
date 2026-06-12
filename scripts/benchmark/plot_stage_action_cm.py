@@ -52,7 +52,7 @@ _ROOT = Path(__file__).resolve().parents[2]
 _REC: dict[int, int] = {0: 0, 1: 1, 2: 2, 3: 3, 4: 4}
 
 _STAGE_LABELS = ["BENIGN", "RECON", "ACCESS", "MANEUVER", "IMPACT"]
-_ACTION_LABELS = ["OBSERVE", "LOG", "THROTTLE", "BLOCK", "ISOLATE"]
+_ACTION_LABELS = ["OBSERVE", "LOG", "RESTRICT", "BLOCK", "ISOLATE"]
 
 
 # Default panel ordering (left → right, top → bottom for the 2×3 grid).
@@ -283,7 +283,7 @@ def _benign_fpr(
         cm: 5×5 row-normalised confusion matrix (rows=stages, cols=actions).
             Rows should sum to 1.0; NaN rows indicate no data for that stage.
         aggressive_actions: Action indices considered false positives on BENIGN.
-            Default: (3=BLOCK, 4=ISOLATE). LOG and THROTTLE on BENIGN may
+            Default: (3=BLOCK, 4=ISOLATE). LOG and RESTRICT on BENIGN may
             be debatable but are not counted here.
         warn_threshold: Emit a warning if FPR exceeds this value (default 1%).
         policy_name: For logging only.

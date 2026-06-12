@@ -1,12 +1,15 @@
-"""ablation F10 — Attack-aggressiveness sensitivity plot (PLAN §3.1.5).
+"""ablation F10 — Environment-difficulty sensitivity plot (PLAN §3.1.5).
 
 Reads ``runs/ablation/aggressiveness/{ppo,rule}_p<p>/seed_<k>/eval_test.jsonl``
-and renders the two-line sensitivity curve aligned with IoTWarden
-Fig. 6 (Bhattacharjee et al., 2023):
+and renders the two-line sensitivity curve over the live tug-of-war
+de-escalation success probability ``p_down`` (conceptually aligned
+with IoTWarden Fig. 6, Bhattacharjee et al., 2023):
 
-  x-axis:  p_defender_deescalation ∈ {0.0, 0.2, 0.4, 0.6, 0.8, 1.0}
+  x-axis:  p_down ∈ {0.0, 0.2, 0.4, 0.6, 0.8, 1.0}
+           (lower = harsher environment: a correct defender action is
+            less likely to push the attacker back down the kill chain)
   y-axis:  mean episodic reward on test_balanced
-  curves:  trained PPO (across 5 seeds) + recommended-action oracle rule
+  curves:  trained PPO (across seeds) + recommended-action oracle rule
 
 Outputs:
 - ``F10_aggressiveness.png``
@@ -189,13 +192,14 @@ def _evaluate_g73(
         "ppo_reason": ppo_reason,
         "rule_monotone_non_decreasing": rule_monotone,
         "interpretation": (
-            "PASS: PPO benefits from a more lenient defender (p↑ ⇒ reward↑) "
-            "by ≥ 1σ between p=0.0 and p=0.6, and the rule curve is "
-            "monotone non-decreasing in p — replicates the IoTWarden Fig. 6 "
-            "qualitative shape on CICIoT2023."
+            "PASS: PPO benefits from a more lenient environment "
+            "(higher p_down ⇒ higher reward) by ≥ 1σ between p_down=0.0 and "
+            "p_down=0.6, and the rule curve is monotone non-decreasing in "
+            "p_down — the value function shifts with environment difficulty "
+            "as expected (conceptually aligned with IoTWarden Fig. 6)."
             if passes
             else "FAIL-WITH-FINDING: see ppo_reason / rule_monotone fields. "
-            "The expected qualitative shape (more lenient defender ⇒ "
+            "The expected qualitative shape (more lenient environment ⇒ "
             "higher RL reward) was NOT replicated; PLAN §6 R7.3 covers "
             "the reframe."
         ),
@@ -230,10 +234,14 @@ def _render(
     if rule_rows:
         _plot(rule_rows, "#dc2626", "Recommended-Action oracle rule (1 seed × 150 ep)")
 
-    ax.set_xlabel("p_defender_deescalation (defender's de-escalation success rate)", fontsize=10)
+    ax.set_xlabel(
+        "p_down (tug-of-war de-escalation success rate ⇒ environment leniency)",
+        fontsize=10,
+    )
     ax.set_ylabel("Mean episodic reward on test_balanced (95 % bootstrap CI)", fontsize=10)
     ax.set_title(
-        "F10 — Sensitivity to attack aggressiveness (IoTWarden Fig. 6 re-implementation)",
+        "F10 — Sensitivity to environment difficulty (p_down sweep; "
+        "conceptually aligned with IoTWarden Fig. 6)",
         fontsize=11,
     )
     ax.grid(True, linestyle=":", alpha=0.4)
@@ -345,15 +353,16 @@ def main(argv: list[str] | None = None) -> int:
     (out_dir / "F10_manifest.json").write_text(json.dumps(manifest, indent=2))
 
     caption_path = out_dir / "F10_caption.md"
-    if not caption_path.exists():
-        caption_path.write_text(
-            "**F10 — Sensitivity to attack aggressiveness.** Mean episodic "
-            "reward on `test_balanced` for trained PPO (blue, 5 seeds × 250K "
-            "timesteps) and the recommended-action oracle rule (red, 1 "
-            "seed × 150 episodes) as a function of "
-            "`p_defender_deescalation`. Shaded bands: 95 % bootstrap CIs. "
-            "Aligned with IoTWarden Fig. 6. (PLAN §3.1.5; D7.2.)\n"
-        )
+    caption_path.write_text(
+        "**F10 — Sensitivity to environment difficulty.** Mean episodic "
+        "reward on `test_balanced` for trained PPO (blue, seeds × 250K "
+        "timesteps) and the recommended-action oracle rule (red, 1 "
+        "seed × 150 episodes) as a function of the tug-of-war de-escalation "
+        "success probability `p_down` (lower = harsher environment, where a "
+        "correct defender action is less likely to push the attacker back "
+        "down the kill chain). Shaded bands: 95 % bootstrap CIs. "
+        "Conceptually aligned with IoTWarden Fig. 6. (PLAN §3.1.5; D7.2.)\n"
+    )
 
     logger.info(
         "F10 written to %s — G7.3 passes=%s",

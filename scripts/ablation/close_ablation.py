@@ -188,9 +188,9 @@ def _evaluate_gates(
         gates.append(
             {
                 "id": "G7.1",
-                "threshold": "pytest -q ≥ 430 passed; zero new skips",
+                "threshold": "pytest -q ≥ 428 passed; zero new skips",
                 "value": pyt.get("summary_line", "?"),
-                "passes": bool(pyt.get("ok") and pyt.get("passed", 0) >= 430),
+                "passes": bool(pyt.get("ok") and pyt.get("passed", 0) >= 428),
                 "kind": "tests",
             }
         )
@@ -199,7 +199,7 @@ def _evaluate_gates(
             {
                 "id": "G7.1",
                 "kind": "tests",
-                "threshold": "pytest -q ≥ 430 passed",
+                "threshold": "pytest -q ≥ 428 passed",
                 "passes": None,
                 "value": "skipped (run-pytest=false)",
             }

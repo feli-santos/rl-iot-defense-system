@@ -1,20 +1,30 @@
-"""ablation F10 — Attack-aggressiveness sweep driver (PLAN §3.1.5).
+"""ablation F10 — Environment-difficulty sweep driver (PLAN §3.1.5).
 
-Sweeps ``p_defender_deescalation ∈ {0.0, 0.2, 0.4, 0.6 (default), 0.8,
-1.0}`` × PPO only (D7.2) × 5 seeds × 250K timesteps (D7.8). Total:
-6 × 5 = **30 runs ≈ 1.5 h CPU walk-away**.
+Sweeps the tug-of-war de-escalation success probability
+``p_down ∈ {0.0, 0.2, 0.4, 0.6, 0.8, 0.9 (default), 1.0}`` × PPO only
+(D7.2) × seeds × 250K timesteps (D7.8).
 
-Aligned with IoTWarden Fig. 6 (Bhattacharjee et al., 2023): how does
-the defender's value function shift as the attacker's aggressiveness
-varies? p=0.0 means the defender NEVER wins a de-escalation roll
-(harshest attacker); p=1.0 means the defender ALWAYS wins (easiest
-attacker).
+``p_down`` is the live tug-of-war knob that governs how *forgiving the
+environment is to a correct defender*: when the defender plays the
+proportional (recommended) action, the attacker is pushed one stage
+back down the kill chain with probability ``p_down`` (and holds
+otherwise). This replaces the legacy ``p_defender_deescalation``
+parameter, which is INERT under the headline ``tug_of_war=True``
+dynamics (it only affects the deprecated ``tug_of_war=False`` path).
 
-Each cell trains PPO with ``--p-defender-deescalation P`` and
+Conceptually aligned with IoTWarden Fig. 6 (Bhattacharjee et al.,
+2023): how does the defender's value function shift as the
+environment difficulty varies? ``p_down=0.0`` means a correct
+defender action NEVER pushes the attacker back (harshest environment —
+the attacker can only be held, never reversed); ``p_down=1.0`` means a
+correct action ALWAYS reverses one stage (easiest environment). We
+expect achievable RL reward to rise monotonically with ``p_down``.
+
+Each cell trains PPO with ``--reward-overrides '{"p_down": P}'`` and
 evaluates on test_balanced AT THE SAME P. The recommended-action
 oracle baseline is rolled separately under each p as a reference
-curve (its mean reward shifts with p because the realiser's attack
-success rate shifts even though the rule's behaviour does not).
+curve (its mean reward shifts with p because the de-escalation success
+rate shifts even though the rule's behaviour does not).
 
 Output layout::
 
@@ -100,7 +110,7 @@ def _train_ppo(
     p: float,
     seed: int,
 ) -> dict[str, Any]:
-    """Train PPO at p_defender_deescalation=p for one seed."""
+    """Train PPO at p_down=p (tug-of-war de-escalation success) for one seed."""
     out_dir = Path(args.out_root) / f"ppo_p{_p_slug(p)}" / f"seed_{seed}"
     out_dir.mkdir(parents=True, exist_ok=True)
     log_path = out_dir / "train.log"
@@ -127,8 +137,8 @@ def _train_ppo(
         args.dataset_path,
         "--splits-manifest",
         args.splits_manifest,
-        "--p-defender-deescalation",
-        str(p),
+        "--reward-overrides",
+        json.dumps({"p_down": p}),
         "--verbose",
         "0",
     ]
@@ -169,7 +179,7 @@ def _train_ppo(
 
     return {
         "kind": "ppo",
-        "p_defender_deescalation": p,
+        "p_down": p,
         "seed": seed,
         "ok_train": ok,
         "ok_test_eval": test_eval_ok,
@@ -203,12 +213,12 @@ def _eval_ppo_on_test(
         manifest = json.loads(run_manifest_path.read_text())
         spec = EnvConfigSerializable(**manifest["eval_env"])
         spec.split = "test_balanced"
-        spec.p_defender_deescalation = p  # F10's eval matches train p
+        spec.p_down = p  # F10's eval matches train p_down
     else:
         spec = EnvConfigSerializable(
             split="test_balanced",
             exclude_ood=True,
-            p_defender_deescalation=p,
+            p_down=p,
             impact_is_terminal=False,  # match the primary training contract
         )
     env = make_eval_env(
@@ -244,12 +254,12 @@ def _roll_rule_baseline(
     args: argparse.Namespace,
     p: float,
 ) -> dict[str, Any]:
-    """Roll the recommended-action oracle baseline at this p (single
+    """Roll the recommended-action oracle baseline at this p_down (single
     seed=0, n=150 ep — same as benchmark D6.3 protocol).
 
-    The rule's behaviour doesn't depend on p — but the realiser's
-    attacker success rate does, so the rule's *mean reward* shifts
-    with p. F10 wants both curves on the same axes.
+    The rule's behaviour doesn't depend on p_down — but the
+    de-escalation success rate does, so the rule's *mean reward* shifts
+    with p_down. F10 wants both curves on the same axes.
 
     Smoke note: the rule baseline doesn't load a trained model, so
     the env shape is decoupled from training; we use environment-design frozen
@@ -268,7 +278,7 @@ def _roll_rule_baseline(
         spec = EnvConfigSerializable(
             split="test_balanced",
             exclude_ood=True,
-            p_defender_deescalation=p,
+            p_down=p,
             window_size=4,
             max_steps=20,
             min_episode_length=5,
@@ -278,7 +288,7 @@ def _roll_rule_baseline(
         spec = EnvConfigSerializable(
             split="test_balanced",
             exclude_ood=True,
-            p_defender_deescalation=p,
+            p_down=p,
             impact_is_terminal=False,  # match the primary training contract
         )
     env = make_eval_env(
@@ -310,7 +320,7 @@ def _roll_rule_baseline(
 
     return {
         "kind": "rule",
-        "p_defender_deescalation": p,
+        "p_down": p,
         "seed": 0,
         "ok": True,
         "wallclock_seconds": wallclock,
@@ -324,15 +334,15 @@ def _roll_rule_baseline(
 
 def _build_argparser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
-        description="ablation F10 — attack-aggressiveness sweep "
-        "(PLAN §3.1.5; PPO + oracle rule × 6 p values × 5 seeds, ~1.5 h CPU).",
+        description="ablation F10 — environment-difficulty (p_down) sweep "
+        "(PLAN §3.1.5; PPO + oracle rule × 6 p_down values × seeds, ~1.5 h CPU).",
     )
     p.add_argument(
         "--p-values",
         nargs="+",
         type=float,
         default=_DEFAULT_P_VALUES,
-        help="p_defender_deescalation values to sweep.",
+        help="p_down (tug-of-war de-escalation success) values to sweep.",
     )
     p.add_argument(
         "--seeds",

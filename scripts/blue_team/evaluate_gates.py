@@ -1,7 +1,7 @@
 """blue-team exit-gate evaluator.
 
 Reads ``runs/blue_team/`` + ``F3_summary.json`` + ``F4_summary.json`` and
-emits a per-gate scoreboard ``docs/results/blue-team-training/blue_team_acceptance.json``
+emits a per-gate scoreboard ``docs/results/blue-team-training/G5_scoreboard.json``
 with PASS/FAIL/PASS-WITH-FINDING + headline numbers.
 
 This is the final step before RESULTS.md / CHANGELOG.
@@ -72,8 +72,9 @@ def _evaluate_g5_2_g5_3_g5_4(
             "mean_reward": _mean("mean_reward"),
             "mean_mttc": _mean("mean_mttc"),
             "compromise_rate": _mean("compromise_rate"),
-            "mitigated_impact_rate": _mean("mitigated_impact_rate"),
+            "prevention_rate": _mean("prevention_rate"),
             "mitigated_among_compromised": _mean("mitigated_among_compromised"),
+            "mitigated_impact_rate": _mean("mitigated_impact_rate"),
             "n_seeds": len(per_seed),
             "per_seed": per_seed,
         }
@@ -128,8 +129,14 @@ def evaluate(runs_root: Path, out_dir: Path, fraction: float = 0.10) -> dict[str
     g5_3_observed = per_algo[best_algo]["mean_mttc"]
     g5_3_passes = not _isnan(g5_3_observed) and g5_3_observed >= (_MIN_EPISODE_LENGTH - 1)
 
-    # G5.4 — best algo's mitigated-impact rate >= 0.5 (D5.4.1).
-    g5_4_observed = per_algo[best_algo]["mitigated_impact_rate"]
+    # G5.4 — best algo's PREVENTION rate >= 0.5 (D5.4.1, revised).
+    # Originally gated ``mitigated_impact_rate``, which is deprecated under the
+    # tug-of-war contract: for policies that always block at terminal IMPACT it
+    # collapses onto ``compromise_rate`` and is uninformative. The gate now
+    # tracks ``prevention_rate`` (attacker budget exhausted before IMPACT), the
+    # primary defender-attributable security outcome. ``mitigated_impact_rate``
+    # is still recorded above for backward compatibility.
+    g5_4_observed = per_algo[best_algo]["prevention_rate"]
     g5_4_passes = not _isnan(g5_4_observed) and g5_4_observed >= 0.5
 
     # G5.5 — pulled from F4_summary.json (per-stage non-degeneracy).
@@ -214,7 +221,7 @@ def evaluate(runs_root: Path, out_dir: Path, fraction: float = 0.10) -> dict[str
                 "status": _status(g5_3_passes),
             },
             "G5.4": {
-                "description": "best algo mitigated-impact rate >= 0.5 (D5.4.1)",
+                "description": "best algo prevention rate >= 0.5 (D5.4.1, revised)",
                 "threshold": 0.5,
                 "observed": g5_4_observed,
                 "best_algo": best_algo,
@@ -282,7 +289,7 @@ def evaluate(runs_root: Path, out_dir: Path, fraction: float = 0.10) -> dict[str
             f"  {algo:4} reward={v['mean_reward']:+8.1f}  "
             f"MTTC={v['mean_mttc']:.2f}  "
             f"comp%={v['compromise_rate']:.2f}  "
-            f"mit_imp={v['mitigated_impact_rate']:.2f}  "
+            f"prev%={v['prevention_rate']:.2f}  "
             f"mit|comp={v['mitigated_among_compromised']:.2f}"
         )
     return scoreboard

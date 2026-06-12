@@ -225,7 +225,7 @@ def _collect_f10_points(
             {
                 "source": "f10_aggressiveness",
                 "kind": kind,
-                "p_defender_deescalation": p_value,
+                "p_down": p_value,
                 "label": f"f10:{kind}_p{p_value:.1f}",
                 "security_gain": sec,
                 "availability_cost": avail,
@@ -296,9 +296,15 @@ def _evaluate_g74(points: list[dict[str, Any]], frontier: list[int]) -> dict[str
             "is a real defender contribution."
             if len(distinct) >= 3
             else f"FAIL-WITH-FINDING (R7.3): only {len(distinct)} distinct "
-            "dominant point(s) on the frontier — the trade-off surface is "
-            "approximately linear under the environment-design reward formulation; "
-            "operating-point choice reduces to a single scalar weighting."
+            "dominant point(s) on the frontier. Under the tug-of-war dynamics the "
+            "stage-aware proportional oracle (recommended_action) attains perfect "
+            "security (security_gain=1.0) at near-zero availability cost, strictly "
+            "dominating always_block (which also prevents 100% but at unit "
+            "availability cost) and every interior learned policy. The "
+            "security-availability trade-off therefore collapses to a single "
+            "dominant operating point *given perfect stage perception*; the "
+            "interior placement of the RL agents quantifies the cost of partial "
+            "observability (POMDP), not a genuine multi-point frontier."
         ),
     }
 
@@ -489,18 +495,17 @@ def main(argv: list[str] | None = None) -> int:
     (out_dir / "F12_manifest.json").write_text(json.dumps(manifest, indent=2))
 
     caption_path = out_dir / "F12_caption.md"
-    if not caption_path.exists():
-        caption_path.write_text(
-            "**F12 — Security vs. availability Pareto.** Each point is one "
-            "(reward_config, p_defender_deescalation) cell from F9 + F10, "
-            "plus the eight benchmark anchor policies, with x = "
-            "availability cost (BLOCK + ISOLATE share of decisions) and "
-            "y = security gain (1 − compromise rate). The dashed red curve "
-            "highlights the Pareto frontier. Squares = benchmark anchors; "
-            "circles = F9 reward-sweep cells; triangles = F10 aggressiveness "
-            "cells. Larger black-edged markers are on the frontier. "
-            "(PLAN §3.1.6 / D7.5; G7.4 evaluator.)\n"
-        )
+    caption_path.write_text(
+        "**F12 — Security vs. availability Pareto.** Each point is one "
+        "(reward_config, p_down) cell from F9 + F10, "
+        "plus the eight benchmark anchor policies, with x = "
+        "availability cost (BLOCK + ISOLATE share of decisions) and "
+        "y = security gain (1 − compromise rate). The dashed red curve "
+        "highlights the Pareto frontier. Squares = benchmark anchors; "
+        "circles = F9 reward-sweep cells; triangles = F10 "
+        "environment-difficulty (p_down) cells. Larger black-edged markers "
+        "are on the frontier. (PLAN §3.1.6 / D7.5; G7.4 evaluator.)\n"
+    )
 
     logger.info(
         "F12 written to %s — G7.4 passes=%s (%d distinct frontier points)",

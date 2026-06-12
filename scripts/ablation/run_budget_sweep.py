@@ -45,7 +45,7 @@ from src.blue_team.run_config import EnvConfigSerializable
 DATASET_PATH = "data/processed/ciciot2023"
 SPLITS_MANIFEST = "data/processed/ciciot2023/splits/manifest.json"
 
-BUDGET_GRID: list[Optional[int]] = [20, 30, 40, 50, 60, 80, None]
+BUDGET_GRID: list[Optional[int]] = [8, 12, 20, 30, 40, 50, 60, 80, None]
 MIN_EPISODE_LENGTH = 20  # grace floor; preventions before this are not attributable
 
 

@@ -55,7 +55,7 @@ _STAGE_NAMES = ["BENIGN", "RECON", "ACCESS", "MANEUVER", "IMPACT"]
 _ACTION_COLORS = {
     0: "#cccccc",  # OBSERVE — neutral grey
     1: "#7fbf7f",  # LOG     — green
-    2: "#ffbf00",  # THROTTLE — amber
+    2: "#ffbf00",  # RESTRICT — amber
     3: "#ff8c00",  # BLOCK    — orange
     4: "#d62728",  # ISOLATE  — red
 }

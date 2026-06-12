@@ -140,14 +140,14 @@ def _section_ablation() -> str:
 
 
 def _section_detector() -> str:
-    f11 = _load(RESULTS_DIR / "stage-detector/detector_summary.json")
+    f11 = _load(RESULTS_DIR / "stage-detector/F11_summary.json")
     man = _load(RESULTS_DIR / "stage-detector/manifest.json")
 
     lines = ["## 04 Stage Detector\n"]
     lines.append(
-        f"**Source:** `docs/results/stage-detector/detector_summary.json`  \n"
+        f"**Source:** `docs/results/stage-detector/F11_summary.json`  \n"
         f"**git SHA:** {_git_sha(man)}  \n"
-        f"**mtime:** {_mtime_str(RESULTS_DIR / 'stage-detector/detector_summary.json')}  \n"
+        f"**mtime:** {_mtime_str(RESULTS_DIR / 'stage-detector/F11_summary.json')}  \n"
     )
     if f11:
         for k in ("macro_f1", "accuracy", "weighted_f1"):
