@@ -2,70 +2,70 @@
   "schema_version": "1.0",
   "phase": 6,
   "figure": "F8",
-  "recommended_action_floor": 1393.7836666666665,
+  "recommended_action_floor": 543.0603333333335,
   "best_policy": "recommended_action",
   "rows_sorted_desc": [
     {
       "policy": "recommended_action",
-      "mean_reward": 1393.7836666666665,
-      "ci_low": 1366.872591666667,
-      "ci_high": 1420.579675,
+      "mean_reward": 543.0603333333335,
+      "ci_low": 536.5695583333334,
+      "ci_high": 549.3705916666667,
       "n_episodes": 300,
       "is_rl": false
     },
     {
       "policy": "rf_acting",
-      "mean_reward": 1323.0436666666667,
-      "ci_low": 1294.9000750000002,
-      "ci_high": 1350.1425499999998,
+      "mean_reward": 448.2296666666667,
+      "ci_low": 438.17106666666666,
+      "ci_high": 458.3372833333334,
       "n_episodes": 300,
       "is_rl": false
     },
     {
+      "policy": "a2c",
+      "mean_reward": 278.47533333333337,
+      "ci_low": 251.06319166666668,
+      "ci_high": 308.7657166666667,
+      "n_episodes": 300,
+      "is_rl": true
+    },
+    {
       "policy": "ppo",
-      "mean_reward": 1034.7473333333332,
-      "ci_low": 998.0978916666664,
-      "ci_high": 1069.8322416666667,
+      "mean_reward": 274.4576666666666,
+      "ci_low": 252.2030666666667,
+      "ci_high": 294.5899,
       "n_episodes": 300,
       "is_rl": true
     },
     {
       "policy": "dqn",
-      "mean_reward": 1028.882,
-      "ci_low": 976.3271583333334,
-      "ci_high": 1079.4944083333332,
+      "mean_reward": 267.779,
+      "ci_low": 215.25481666666667,
+      "ci_high": 321.68460833333324,
       "n_episodes": 300,
       "is_rl": true
     },
     {
-      "policy": "a2c",
-      "mean_reward": 973.1326666666666,
-      "ci_low": 935.6618083333333,
-      "ci_high": 1009.6737333333333,
+      "policy": "always_observe",
+      "mean_reward": -393.15,
+      "ci_low": -397.60041666666666,
+      "ci_high": -388.36583333333334,
       "n_episodes": 300,
-      "is_rl": true
+      "is_rl": false
     },
     {
       "policy": "random",
-      "mean_reward": 211.09033333333335,
-      "ci_low": 172.53717500000002,
-      "ci_high": 245.10961666666665,
+      "mean_reward": -573.9290000000001,
+      "ci_low": -608.1266083333334,
+      "ci_high": -541.670275,
       "n_episodes": 300,
       "is_rl": false
     },
     {
       "policy": "always_block",
-      "mean_reward": -219.41333333333333,
-      "ci_low": -270.246,
-      "ci_high": -170.97683333333333,
-      "n_episodes": 300,
-      "is_rl": false
-    },
-    {
-      "policy": "always_observe",
-      "mean_reward": -416.06666666666666,
-      "ci_low": -418.4,
-      "ci_high": -413.45,
+      "mean_reward": -2005.0633333333333,
+      "ci_low": -2113.1392083333335,
+      "ci_high": -1894.2621250000002,
       "n_episodes": 300,
       "is_rl": false
     }

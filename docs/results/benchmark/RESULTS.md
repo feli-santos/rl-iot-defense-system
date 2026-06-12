@@ -14,7 +14,7 @@
 > stage classification. It is therefore **not a deployable defender**;
 > it is an upper bound on the value of perfect stage detection. The
 > deployable comparison sits between the trained RL trio and RF-Acting;
-> the rule's mean reward (+1684.8) is the *oracle ceiling*, not a
+> the rule's mean reward (+543.1) is the *oracle ceiling*, not a
 > competing baseline.
 
 ## 1 — Headline numbers
@@ -27,14 +27,14 @@ The benchmark evaluated all Phase-5 trained checkpoints (DQN, PPO, A2C ×
 
 | # | Policy | Mean reward | 95 % CI | Benign FPR | Stage knowledge |
 |---|---|---:|---|---:|---|
-| ★ | **Recommended-Action (oracle)** ⓞ | **+1684.8** | (+1645.6, +1723.6) | 0.0 % | true stage (oracle) |
-| RF | **RF-Acting** (supervised+rules) | **+1516.0** | (+1476.6, +1555.8) | — | RF-predicted stage |
-| 1 | **A2C** (best deployable RL) | **+1336.6** | (+1286.0, +1376.9) | **11.5 %** | none |
-| 2 | PPO | +1320.2 | (+1286.9, +1352.7) | 10.2 % | none |
-| 3 | DQN | +1313.0 | (+1208.3, +1397.6) | **6.1 %** | none |
-| 4 | Always-BLOCK | +502.9 | (+469.6, +534.0) | 100.0 % | none |
-| 5 | Random | +390.5 | (+355.3, +431.3) | 40.4 % | none |
-| 6 | Always-OBSERVE | −418.1 | (−420.9, −415.2) | 0.0 % | none |
+| ★ | **Recommended-Action (oracle)** ⓞ | **+543.1** | (+536.6, +549.4) | 0.0 % | true stage (oracle) |
+| RF | **RF-Acting** (supervised+rules) | **+448.2** | — | — | RF-predicted stage |
+| 1 | **A2C** (best deployable RL) | **+278.5** | (+251.1, +308.8) | **0.66 %** | none |
+| 2 | PPO | +274.5 | — | 0.89 % | none |
+| 3 | DQN | +267.8 | — | **0.46 %** | none |
+| 4 | Always-OBSERVE | −393.15 | — | 0.0 % | none |
+| 5 | Random | −573.93 | — | 41.3 % | none |
+| 6 | Always-BLOCK | −2005.06 | — | 100.0 % | none |
 
 ⓞ = **oracle baseline**: receives `info["attack_stage"]` directly from the
 env (free perfect classification); not deployable. Cited as an *upper bound
@@ -42,29 +42,34 @@ on the value of perfect stage detection*.
 
 **Key derived metrics:**
 
-- **Oracle capture (best deployable RL):** A2C +1336.6 / oracle +1684.8 = **79.3 %**
-- **Latency advantage (A2C vs RF-Acting):** 13.83 ms / 0.095 ms ≈ **146×**
-- **Benign FPR — A2C:** 11.5 %; **DQN:** 6.1 %; **PPO:** 10.2 % (see `benign_fpr.json`)
-- **`compromise_rate`:** 1.0 for **every** policy — the episode always reaches
-  IMPACT (LSTM is upper-triangular; de-escalation is the only path back).
-  `compromise_rate` is a degenerate metric for this MDP. Mitigated-impact
-  rate is the operative security KPI.
-- **Mitigated-impact rate:** A2C 0.317, PPO 0.260, DQN 0.260. All trained
-  RL agents successfully defend the IMPACT step ~26–32 % of the time;
-  reward-mis-specification persists at deployable scale (see §6.2).
+- **Oracle capture (best deployable RL):** A2C +278.5 / oracle +543.1 = **51.3 %**
+  (PPO 50.5 %, DQN 49.3 %, RF-Acting 82.5 %).
+- **Latency advantage (RL vs RF-Acting):** 16.505 ms / 0.094 ms ≈ **176×** — RF-Acting
+  FAILS the 3 ms latency budget; RL p50 ≈ 0.094 ms (DQN 0.063 ms).
+- **Benign FPR — A2C:** 0.66 %; **DQN:** 0.46 %; **PPO:** 0.89 % (see `benign_fpr.json`).
+  All three RL agents are now **below the 1 % operational threshold**.
+- **`compromise_rate`:** varies by policy — a2c 0.403, ppo 0.67, dqn 0.463, oracle 0.00,
+  always_block 0.00. The attacker is a reactive tug-of-war process, so compromise is no
+  longer structurally forced; the metric now discriminates between policies.
+- **`prevention_rate` (primary security KPI):** the fraction of episodes where the
+  attacker's intrusion budget is exhausted before IMPACT — oracle 1.00, a2c 0.60,
+  dqn 0.54, ppo 0.33. `mitigated_impact_rate` is **retired** (it collapsed onto
+  `compromise_rate` for always-block policies); see §6.2.
 
 Among deployable policies the trade-off is:
-- RF-Acting: highest reward (+1516), slow inference (13.83 ms p50, ~146× slower than A2C).
-- Trained RL: lower reward at 79.3 % of oracle, fast inference (~0.095 ms p50).
+- RF-Acting: highest deployable reward (+448.2), but slow inference (16.505 ms p50,
+  ~176× slower than RL) — it **FAILS the 3 ms latency gate**.
+- Trained RL: lower reward at 51.3 % of oracle, fast inference (~0.094 ms p50), and all
+  three are statistically tied on reward.
 
 ## 2 — Gate scoreboard
 
 | Gate | Threshold | Status | Value / Notes |
 |---|---|:---:|---|
-| **G6.1** | `pytest -q` ≥ 388 passed | **PASS** | **459** passed, 2 warnings (canonical count at HEAD) |
-| **G6.2** | trained-RL `mean_reward` > recommended-action (D6.2.1 revised) | **FAIL-WITH-FINDING** | oracle +1684.8 > {A2C +1336.6, PPO +1320.2, DQN +1313.0}. **Headline finding** — see §6 |
-| **G6.3** | non-IMPACT proportionality band ≥ 0.70 | **PASS** | DQN 0.785, PPO 0.712, A2C 0.746 |
-| **G6.4** | p50 latency: RL ≤ 5 ms / RF ≤ 3 ms / rule ≤ 1 ms | **PASS-WITH-FINDING** | RL 0.063–0.095 ms (PASS); RF-Acting 13.83 ms (D6.8.1 finding — sklearn dispatch overhead) |
+| **G6.1** | `pytest -q` ≥ 388 passed | **PASS** | **428** passed, 1 warning (canonical count at HEAD) |
+| **G6.2** | trained-RL `mean_reward` > recommended-action (D6.2.1 revised) | **FAIL-WITH-FINDING** | oracle +543.1 > {A2C +278.5, PPO +274.5, DQN +267.8}. **Headline finding** — see §6 |
+| **G6.3** | non-IMPACT proportionality band ≥ 0.70 | **PASS** | DQN 0.867, PPO 0.893, A2C 0.940 |
+| **G6.4** | p50 latency: RL ≤ 5 ms / RF ≤ 3 ms / rule ≤ 1 ms | **FAIL-WITH-FINDING** | RL 0.063–0.094 ms (PASS); RF-Acting 16.505 ms (D6.8.1 finding — sklearn dispatch overhead; FAILS 3 ms budget) |
 | **G6.5** | trained-RL CI ⊥ every non-RL CI | **PASS** | A2C/PPO/DQN show zero CI overlap with any non-RL baseline |
 | **G6.6** | no regression on earlier frozen tests | **PASS** | all frozen tests green |
 | **G6.7** | F5/F6/F7/F8 each ship a `manifest.json` | **PASS** | SHA-256 hash chain on every figure |
@@ -113,85 +118,108 @@ The held-out evaluation revealed that the training-phase headline
 (all three algorithms converge to high reward) does not imply a
 comparably strong *deployable security* result. On `test_balanced`:
 
-- Oracle capture (79.3 %) is high for a reactive, stage-unaware policy.
-- `compromise_rate = 1.0` is structurally forced (upper-triangular LSTM);
-  this metric cannot distinguish policies.
-- Benign FPR 6–11 % is operationally significant and must be disclosed
-  alongside reward numbers.
+- Oracle capture (51.3 %) quantifies the cost of partial observability for a
+  stage-unaware policy.
+- `compromise_rate` now varies by policy (a2c 0.403 / ppo 0.67 / dqn 0.463 /
+  oracle 0.00) because the attacker is a reactive tug-of-war process, not an
+  upper-triangular driver; the metric discriminates between policies.
+- Benign FPR is now **below 1 % for all RL** (DQN 0.46 % / PPO 0.89 % / A2C 0.66 %),
+  so the earlier "elevated FPR disqualifies RL" concern is **resolved**;
+  `prevention_rate` is the primary security KPI alongside reward.
 
 ## 6 — Findings worth defending in the thesis
 
-### 6.1 Trained RL captures 79.3 % of the oracle ceiling without seeing stages (D6.2.1, audit AF2)
+### 6.1 Trained RL captures 51.3 % of the oracle ceiling without seeing stages (D6.2.1, audit AF2)
 
 **Single most important benchmark finding.** On `test_balanced`, the
-recommended-action rule scores **+1684.8** while the best deployable agent
-(**A2C, +1336.6**) scores **79.3 %** of that ceiling. Bootstrap CIs do not
-overlap (A2C max +1376.9 < oracle min +1645.6), so the gap is statistically
-real.
+recommended-action rule scores **+543.1** while the best deployable agent
+(**A2C, +278.5**) scores **51.3 %** of that ceiling. Bootstrap CIs do not
+overlap (A2C max +308.8 < oracle min +536.6), so the gap is statistically
+real. The three RL agents (A2C +278.5, PPO +274.5, DQN +267.8) are themselves
+**statistically tied** on reward (overlapping CIs).
 
 The oracle receives `info["attack_stage"]` directly from the env — it is a
 *measurement instrument* that quantifies the value of perfect stage detection,
 not a competing baseline. The right question is: **"how much of the value of
 perfect stage detection did RL capture without ever seeing a stage?"** —
-and the answer is **79.3 %**.
+and the answer is **51.3 %**.
 
-The remaining **+348.2 reward** (20.7 % gap) is characterized by the
-ablation study (§7 below).
+The remaining **+264.6 reward** (≈48.7 % gap, 543.1 − 278.5) is characterized by the
+ablation study (§7 below) and reflects the cost of partial observability (POMDP).
 
-### 6.2 Reward mis-specification persists at deployable scale (G6.2 finding)
+### 6.2 Prevention rate is the primary security KPI (G6.2 finding)
 
-Mitigated-impact rates at benchmark scale (10 seeds, 300 episodes per policy):
-A2C 31.7 %, PPO 26.0 %, DQN 26.0 %. The agents defend the IMPACT step in
-roughly one quarter to one third of episodes.
+`mitigated_impact_rate` is **retired**: it collapsed onto `compromise_rate` for
+always-block policies and is no longer reported as a benchmark KPI. The primary
+security metric is now **`prevention_rate`** — the fraction of episodes where the
+attacker's intrusion budget is exhausted before reaching IMPACT. At benchmark
+scale (10 seeds, 300 episodes per policy): oracle 1.00, a2c 0.60, dqn 0.54,
+ppo 0.33. The oracle prevents IMPACT in every episode; the best deployable agent
+(A2C) prevents it in 60 % of episodes.
 
-The structural fix (`impact_is_terminal=False`) is explored in the ablation
-study (F9), where a PPO-only probe over 30 episodes achieves mit-rate 0.840.
-However, **this result does not replicate at deployable benchmark scale**: the
-full 10-seed/300-episode benchmark with all three algorithms shows mit-rate
-0.26–0.32. Reward mis-specification is **substantially mitigated but not
-eliminated** by the structural change. The gap between the ablation probe
-(0.840 @ n=30) and the benchmark (0.26–0.32 @ n=300) is itself evidence that
-single-cell ablation numbers overstate deployable security guarantees.
+The structural reward strand is characterized separately in the ablation study
+(F9), where the structural reward variant achieves a mit-rate of **0.850** (reward
++278.5) versus **0.0** for the mis-specified baseline. That F9 figure is a
+distinct strand from this F5 benchmark and is not directly comparable to the
+benchmark `prevention_rate` numbers above; cost-of-partial-observability remains
+the dominant gap to the oracle.
 
 ### 6.3 Trained agents *do* learn proportional behaviour on non-IMPACT stages (G6.3 PASS)
 
-DQN 0.785, PPO 0.712, A2C 0.746 — all clear the 0.70 proportionality
+DQN 0.867, PPO 0.893, A2C 0.940 — all clear the 0.70 proportionality
 threshold on BENIGN/RECON/ACCESS/MANEUVER. The F6 heatmaps show the diagonal
-structure clearly: BENIGN → mostly OBSERVE/LOG; ACCESS → THROTTLE;
-MANEUVER → BLOCK. Training learned a meaningful proportional policy.
+structure clearly: BENIGN → mostly OBSERVE/LOG; ACCESS → RESTRICT;
+MANEUVER → BLOCK. Training learned a meaningful proportional policy. (The
+action ladder is [OBSERVE, LOG, RESTRICT, BLOCK, ISOLATE]; the recommended
+mapping is BENIGN→OBSERVE, RECON→LOG, ACCESS→RESTRICT, MANEUVER→BLOCK,
+IMPACT→ISOLATE.)
 
-### 6.4 RF-Acting is the strongest deployable policy by reward — but at a latency cost
+### 6.4 RF-Acting has the highest deployable reward — but FAILS the latency gate
 
-RF-Acting (+1516.0) beats all trained RL by ~+180 reward and sits ~+169 below
-the oracle ceiling. The trade-off: RF-Acting's p50 inference latency is
-**13.83 ms** vs A2C's **0.095 ms** — a **~146× advantage for trained RL** in
-latency-critical deployments. The higher RF reward comes from its stage-aware
-decisions (RandomForest macro-F1 ≈ 0.91 on in-distribution classes); the
-latency cost is sklearn Python dispatch on a 100-tree forest.
+RF-Acting (+448.2) beats all trained RL by reward and captures 82.5 % of the
+oracle ceiling, but it **FAILS the 3 ms latency budget**: its p50 inference
+latency is **16.505 ms** vs RL's **~0.094 ms** (DQN 0.063 ms) — a **~176×
+latency advantage for trained RL** in latency-critical deployments. The higher
+RF reward comes from its stage-aware decisions (RandomForest macro-F1 ≈ 0.91 on
+in-distribution classes); the latency cost is sklearn Python dispatch on the
+forest. Because RF-Acting violates the 3 ms gate, the trained RL trio remains
+the only deployable option under the latency contract.
 
 **Cross-quadrant summary:**
 
 | Policy class | Mean reward | p50 latency | Deployable? |
 |---|---:|---:|:---:|
-| Recommended-Action ⓞ | **+1684.8** | 0.001 ms | **No** (oracle stage access) |
-| RF-Acting | +1516.0 | **13.83 ms** | Yes |
-| Trained RL (best = A2C) | +1336.6 (79.3 % of oracle) | 0.095 ms | Yes |
-| Always-BLOCK | +502.9 | 0.001 ms | Yes |
-| Random | +390.5 | 0.002 ms | Yes |
+| Recommended-Action ⓞ | **+543.1** | 0.001 ms | **No** (oracle stage access) |
+| RF-Acting | +448.2 (82.5 % of oracle) | **16.505 ms** | **No** (FAILS 3 ms gate) |
+| Trained RL (best = A2C) | +278.5 (51.3 % of oracle) | 0.094 ms | Yes |
+| Always-OBSERVE | −393.15 | 0.001 ms | Yes |
+| Random | −573.93 | 0.002 ms | Yes |
+| Always-BLOCK | −2005.06 | 0.001 ms | Yes (worst policy) |
 
-### 6.5 Benign FPR: a primary operational caveat (G6.4 finding extension)
+### 6.5 Benign FPR: now below the 1 % operational threshold (G6.4 finding extension)
 
 Across trained RL policies, benign false-positive rates (block/isolate on
-BENIGN episodes) range from **6.1 % (DQN)** to **11.5 % (A2C)**. A2C achieves
-the highest reward but also the highest FPR — a latency–reward–FPR frontier
-that production deployments must navigate. FPR is reported as a primary
+BENIGN episodes) are now **below 1 %**: DQN 0.46 %, A2C 0.66 %, PPO 0.89 %. The
+earlier "elevated FPR disqualifies RL" concern is **resolved** — all three RL
+agents satisfy the < 1 % operational threshold. Only the trivial baselines still
+exceed it (random 41.3 %, always_block 100 %). FPR is reported as a primary
 operational metric alongside reward, not a footnote.
 
 ## 7 — Ablation hand-offs
 
 The ablation study (F9 reward sweep, F10 aggressiveness, F12 Pareto, F15 OOD)
-characterises the remaining +348 gap and the OOD robustness of the trained
-policies. See `docs/results/ablation/RESULTS.md` for findings.
+characterises the remaining +264.6 gap (cost of partial observability) and the
+OOD robustness of the trained policies. See `docs/results/ablation/RESULTS.md`
+for findings. Headline ablation outcomes:
+
+- **F12 Pareto (G7.4 FAIL-WITH-FINDING, R7.3):** under perfect perception the
+  oracle dominates at (security_gain = 1.0, availability_cost = 0.0); interior
+  RL placement quantifies the cost of partial observability (POMDP).
+- **F15 OOD (G7.9 PASS) — now an RL WIN:** detector-free PPO **+298.3** vs
+  detector-coupled RF-Acting **−4430.6** on VulnerabilityScan (delta **+4728.9**).
+  RF's detector is blind to VulnerabilityScan (RECON recall 0.000), so it
+  mis-predicts → under-forces → the attacker advances → catastrophic loss. The
+  earlier "robust to but not better at" framing is superseded.
 
 ## 8 — Reproducibility
 
@@ -204,7 +232,7 @@ for the full protocol.
 To regenerate from scratch:
 
 ```bash
-make blue-team          # train DQN/PPO/A2C × 10 seeds (~7.7 h CPU)
+make blue-team          # train DQN/PPO/A2C × 10 seeds (CPU-bound, hours)
 make benchmark          # eval + F5/F6/F7/F8 (~10 min CPU)
 make render-tables      # regenerate tex/generated/*.tex from canonical JSONs
 make verify-fresh       # CI gate: confirm no derived artifact is stale
@@ -212,6 +240,6 @@ make verify-fresh       # CI gate: confirm no derived artifact is stale
 
 ## 9 — Test count history
 
-Canonical current count: **459 passed, 2 warnings** (as of HEAD). All earlier
-counts in this file (411 / 420 / 442 / 454) are superseded. The 459 figure
+Canonical current count: **428 passed, 1 warning** (as of HEAD). All earlier
+counts in this file (411 / 420 / 442 / 454 / 459) are superseded. The 428 figure
 is the baseline against which future additions are tracked.
