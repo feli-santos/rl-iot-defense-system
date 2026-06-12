@@ -1,0 +1,35 @@
+{
+  "figure": "F7b",
+  "generated_by": "scripts/benchmark/run_rf_latency_study.py",
+  "git_sha": "df47695e579739043073a9a4a58c3c94e60e29b9",
+  "python": "3.9.6",
+  "platform": "macOS-26.5-arm64-arm-64bit",
+  "inputs": {
+    "rf_path": {
+      "path": "artifacts/detector/random_forest.joblib",
+      "sha256": "cd56fe46af7e7d3803b14ba1ec138b0b151ec86ac9980266145a524c4f49ae3e"
+    },
+    "features": {
+      "path": "data/processed/ciciot2023/features.npy",
+      "sha256": "5d1ff73d8cc1dc3706db4ca0381e9b88c542ec40a5ae5d6e5fd784e4d166dcc7"
+    },
+    "stages": {
+      "path": "data/processed/ciciot2023/stages.npy",
+      "sha256": "607730a5daeb3a17ad4f3dc105247db5a34ca01f9d11be14d71887b2ec94d046"
+    },
+    "test_balanced_idx": {
+      "path": "data/processed/ciciot2023/splits/test_balanced.idx.npy",
+      "sha256": "2d6b2fadeffe037d8715a1efc5658e92f0c973482d38d4221f1070b6dc6a5a91"
+    },
+    "script": {
+      "path": "scripts/benchmark/run_rf_latency_study.py",
+      "sha256": "a0eb3f84597553d06c1ed6ed04ef2c6269c3a8a1a319e2e6a979b024aef01e93"
+    }
+  },
+  "outputs": {
+    "summary": {
+      "path": "docs/results/benchmark/F7b_rf_latency_study.json",
+      "sha256": "3104a611045ab0ef30892c6aaf05f147c61eb83e4a9adc51e779da4eecb4d1a0"
+    }
+  }
+}

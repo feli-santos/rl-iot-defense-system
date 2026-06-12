@@ -96,7 +96,7 @@ class DetectorEvaluation:
 
     Attributes:
         model_name: Human-readable model id (``"StageDetector"`` /
-            ``"RandomForest"`` / ``"CNN1D"``).
+            ``"RandomForest"``).
         split_name: Split this evaluation was computed on
             (``"test_balanced"`` / ``"test"`` / ``"ood:DDoS-HTTP_Flood"`` …).
         macro_f1: Macro F1 over the ``NUM_STAGES`` classes.

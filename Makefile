@@ -83,7 +83,7 @@ derive-stages:  ## Detector prep: build stages.npy + manifest from state_indices
 dataset: build-split-indices plot-dataset  ## Run all dataset-preparation deliverables.
 
 .PHONY: detector
-detector: derive-stages  ## Detector: train MLP + RF + CNN1D, emit F11 (~3-5 min).
+detector: derive-stages  ## Detector: train MLP + RF, emit F11 (~3-5 min).
 	$(PYTHON) -m scripts.detector.train_detector \
 	    --processed-dir $(DATA) --seed $(SEED)
 

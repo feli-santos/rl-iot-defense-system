@@ -122,7 +122,7 @@ def get_model_stats(
 def get_file_stats(path: Path) -> dict[str, Any]:
     """Return disk size stats for a model saved as a plain file (e.g., joblib).
 
-    Used for the RF / 1D-CNN detectors which are not SB3 models.
+    Used for the RF detector which is not an SB3 model.
     """
     p = Path(path)
     if not p.exists():

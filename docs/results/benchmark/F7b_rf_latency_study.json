@@ -1,0 +1,229 @@
+{
+  "figure": "F7b",
+  "study": "rf_acting_measured_latency",
+  "description": "Measured RF-Acting inference latency and scikit-learn-native optimisation sweep, replacing the line-rate plausibility argument. Answers whether the ~16.5 ms RF-Acting p50 is fundamental or an unoptimised-forest artifact.",
+  "params": {
+    "pool_size": 512,
+    "n_warmup": 200,
+    "n_measure": 2000,
+    "seed": 0,
+    "num_features": 29,
+    "window_size": 5,
+    "include_deltas": true
+  },
+  "production_rf": {
+    "latency": {
+      "p50_ms": 13.943021,
+      "p95_ms": 14.209291700000001,
+      "p99_ms": 14.40242583,
+      "mean_ms": 13.603449582500001,
+      "n_samples": 2000
+    },
+    "macro_f1_test_balanced": 0.9027265833036793,
+    "tree_stats": {
+      "n_trees": 100,
+      "mean_depth": 45.54,
+      "mean_leaves": 17591.02,
+      "total_nodes": 3518104
+    },
+    "config": {
+      "n_estimators": 100,
+      "max_depth": null
+    }
+  },
+  "variants": {
+    "rf_n50": {
+      "latency": {
+        "p50_ms": 13.902875,
+        "p95_ms": 14.20010595,
+        "p99_ms": 14.56528842,
+        "mean_ms": 13.69850288,
+        "n_samples": 2000
+      },
+      "macro_f1_test_balanced": 0.897128356857101,
+      "tree_stats": {
+        "n_trees": 50,
+        "mean_depth": 45.84,
+        "mean_leaves": 17740.06,
+        "total_nodes": 1773956
+      },
+      "speedup_vs_production": 1.002887604182588,
+      "f1_delta_vs_production": -0.005598226446578258,
+      "config": {
+        "n_estimators": 50,
+        "max_depth": null
+      }
+    },
+    "rf_n25": {
+      "latency": {
+        "p50_ms": 13.927896,
+        "p95_ms": 14.4141899,
+        "p99_ms": 14.90611092,
+        "mean_ms": 13.781966289,
+        "n_samples": 2000
+      },
+      "macro_f1_test_balanced": 0.895216875153013,
+      "tree_stats": {
+        "n_trees": 25,
+        "mean_depth": 46.2,
+        "mean_leaves": 17972.76,
+        "total_nodes": 898613
+      },
+      "speedup_vs_production": 1.0010859500961236,
+      "f1_delta_vs_production": -0.007509708150666317,
+      "config": {
+        "n_estimators": 25,
+        "max_depth": null
+      }
+    },
+    "rf_n10": {
+      "latency": {
+        "p50_ms": 13.722375,
+        "p95_ms": 14.037670499999999,
+        "p99_ms": 14.19317559,
+        "mean_ms": 13.4624414045,
+        "n_samples": 2000
+      },
+      "macro_f1_test_balanced": 0.8787193502490516,
+      "tree_stats": {
+        "n_trees": 10,
+        "mean_depth": 46.2,
+        "mean_leaves": 18298.9,
+        "total_nodes": 365968
+      },
+      "speedup_vs_production": 1.0160792865666475,
+      "f1_delta_vs_production": -0.024007233054627708,
+      "config": {
+        "n_estimators": 10,
+        "max_depth": null
+      }
+    },
+    "rf_depth12": {
+      "latency": {
+        "p50_ms": 13.832458500000001,
+        "p95_ms": 14.093172950000001,
+        "p99_ms": 14.35426649,
+        "mean_ms": 13.547510682,
+        "n_samples": 2000
+      },
+      "macro_f1_test_balanced": 0.8631028765242613,
+      "tree_stats": {
+        "n_trees": 100,
+        "mean_depth": 12.0,
+        "mean_leaves": 925.74,
+        "total_nodes": 185048
+      },
+      "speedup_vs_production": 1.007992975362984,
+      "f1_delta_vs_production": -0.039623706779417955,
+      "config": {
+        "n_estimators": 100,
+        "max_depth": 12
+      }
+    },
+    "rf_depth8": {
+      "latency": {
+        "p50_ms": 13.786729000000001,
+        "p95_ms": 13.90229935,
+        "p99_ms": 14.00213675,
+        "mean_ms": 13.4893190945,
+        "n_samples": 2000
+      },
+      "macro_f1_test_balanced": 0.8174575706325298,
+      "tree_stats": {
+        "n_trees": 100,
+        "mean_depth": 8.0,
+        "mean_leaves": 156.08,
+        "total_nodes": 31116
+      },
+      "speedup_vs_production": 1.0113364090931212,
+      "f1_delta_vs_production": -0.0852690126711495,
+      "config": {
+        "n_estimators": 100,
+        "max_depth": 8
+      }
+    },
+    "rf_n25_depth12": {
+      "latency": {
+        "p50_ms": 13.750104,
+        "p95_ms": 13.8857226,
+        "p99_ms": 14.03848092,
+        "mean_ms": 13.519811528999998,
+        "n_samples": 2000
+      },
+      "macro_f1_test_balanced": 0.8533143204282936,
+      "tree_stats": {
+        "n_trees": 25,
+        "mean_depth": 12.0,
+        "mean_leaves": 928.32,
+        "total_nodes": 46391
+      },
+      "speedup_vs_production": 1.0140302211532364,
+      "f1_delta_vs_production": -0.04941226287538569,
+      "config": {
+        "n_estimators": 25,
+        "max_depth": 12
+      }
+    },
+    "decision_tree": {
+      "latency": {
+        "p50_ms": 0.056166,
+        "p95_ms": 0.067959,
+        "p99_ms": 0.06991741000000001,
+        "mean_ms": 0.0589798325,
+        "n_samples": 2000
+      },
+      "macro_f1_test_balanced": 0.8802842370777967,
+      "tree_stats": {
+        "n_trees": 1,
+        "mean_depth": 12.0,
+        "mean_leaves": 423.0,
+        "total_nodes": 845
+      },
+      "speedup_vs_production": 248.24664387707867,
+      "f1_delta_vs_production": -0.022442346225882592,
+      "config": {
+        "model": "DecisionTreeClassifier",
+        "max_depth": 12
+      }
+    }
+  },
+  "batched_amortisation_production_rf": {
+    "1": {
+      "batch_p50_ms": 13.780771000000001,
+      "amortised_per_sample_p50_ms": 13.780771000000001,
+      "n_measure": 500
+    },
+    "32": {
+      "batch_p50_ms": 13.764521,
+      "amortised_per_sample_p50_ms": 0.43014128125,
+      "n_measure": 500
+    },
+    "256": {
+      "batch_p50_ms": 13.9386875,
+      "amortised_per_sample_p50_ms": 0.054447998046875,
+      "n_measure": 500
+    }
+  },
+  "context_f7_p50_ms": {
+    "always_observe": 0.000542,
+    "always_block": 0.0005,
+    "recommended_action": 0.000583,
+    "random": 0.001708,
+    "dqn": 0.062542,
+    "a2c": 0.093667,
+    "ppo": 0.093833,
+    "rf_acting": 16.505417
+  },
+  "rl_best_p50_ms": 0.062542,
+  "rf_latency_budget_ms": 3.0,
+  "interpretation": {
+    "production_p50_ms": 13.943021,
+    "rl_best_p50_ms": 0.062542,
+    "production_vs_rl_ratio": 222.9385213136772,
+    "best_quality_preserving_variant": "rf_n50",
+    "best_quality_preserving_p50_ms": 13.902875,
+    "best_quality_preserving_ratio_vs_rl": 222.29661667359534,
+    "batched_amortised_p50_ms": 0.054447998046875,
+    "quality_floor_f1_delta": -0.02
+  }
+}

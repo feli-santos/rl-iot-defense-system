@@ -1,22 +1,22 @@
-"""detector entrypoint: train StageDetector + RF + CNN1D, render F11.
+"""detector entrypoint: train StageDetector + RF, render F11.
 
 Pipeline (deterministic given --seed):
 
     1. Load features.npy + stages.npy + dataset-prep split indices.
-    2. Train RandomForest (cheap), then StageDetector MLP, then CNN1D.
+    2. Train RandomForest (cheap), then StageDetector MLP.
        Each model selects on val_balanced when applicable.
     3. Evaluate every model on:
        - test_balanced  (D1: F11 panel input, primary)
        - test           (D1: secondary, reported in summary JSON only)
        - splits/ood_attack/<class>.idx.npy  (G4.4)
-    4. Render F11: bar chart per-stage recall × 3 models | StageDetector
+    4. Render F11: bar chart per-stage recall × 2 models | StageDetector
        confusion matrix on test_balanced.
     5. Dump:
-       - docs/results/stage-detector/per_stage_recall.png + caption
-       - docs/results/stage-detector/detector_summary.json
+       - docs/results/stage-detector/F11_per_stage_recall.png + caption
+       - docs/results/stage-detector/F11_summary.json
        - docs/results/stage-detector/manifest.json (hash chain)
-       - artifacts/detector/{stage_detector.pt, random_forest.joblib,
-         cnn1d.pt} (consumed by blue-team+)
+       - artifacts/detector/{stage_detector.pt, random_forest.joblib}
+         (consumed by blue-team+)
 
 Usage
 -----
@@ -46,7 +46,6 @@ from src.detector import (
     RandomForestConfig,
     StageDetector,
     summarize_run,
-    train_cnn1d,
     train_random_forest,
 )
 from src.detector.evaluation import (
@@ -138,13 +137,13 @@ def _render_f11(
     fig, (ax_bar, ax_cm) = plt.subplots(1, 2, figsize=(12, 4.5))
 
     # Left panel: per-stage recall, grouped bars.
-    model_names = ["StageDetector", "RandomForest", "CNN1D"]
-    colours = ["#1f77b4", "#ff7f0e", "#2ca02c"]
-    width = 0.27
+    model_names = ["StageDetector", "RandomForest"]
+    colours = ["#1f77b4", "#ff7f0e"]
+    width = 0.38
     x = np.arange(NUM_STAGES)
     for i, (name, colour) in enumerate(zip(model_names, colours)):
         rec = results_test_balanced[name].per_stage_recall
-        ax_bar.bar(x + (i - 1) * width, rec, width=width, label=name, color=colour)
+        ax_bar.bar(x + (i - 0.5) * width, rec, width=width, label=name, color=colour)
 
     best = max(results_test_balanced.values(), key=lambda e: e.macro_f1)
     ax_bar.axhline(
@@ -201,8 +200,8 @@ def _render_f11(
 _F11_CAPTION = """\
 **F11.** Per-stage detection recall on the balanced test split (1 000
 rows / stage). Left: stage-recall comparison across the production MLP
-detector (blue), RandomForest baseline (orange), and 1-D CNN baseline
-(green); the dashed line marks the best macro-F1 achieved by any model.
+detector (blue) and RandomForest baseline (orange); the dashed line
+marks the best macro-F1 achieved by either model.
 Right: row-normalised confusion matrix of the production detector on
 the same split. The diagonal-heavy structure shows the detector
 correctly identifies most stage transitions, with the bulk of confusion
@@ -275,7 +274,7 @@ def _check_gates(
     # That asymmetry is itself the thesis finding: per-attack-class OOD
     # detection has a structural blind spot, and the RL agent's job in
     # ablation is to act correctly *despite* the detector's failure modes.
-    # Updated gate: PASS-with-finding iff at least one OOD class scores
+    # Updated gate: PASS-WITH-FINDING iff at least one OOD class scores
     # <= 0.30 (proving the detector has a real blind spot to defend
     # against). FAIL only if *every* OOD class is trivially detected
     # (>0.30), which would mean the splits are not really held out.
@@ -288,7 +287,7 @@ def _check_gates(
         gap = max_recall - min_recall
         any_below_target = min_recall <= 0.30
         if any_below_target:
-            status = "PASS-with-finding"
+            status = "PASS-WITH-FINDING"
             note = (
                 f"Asymmetric OOD generalisation observed (max={max_recall:.3f}, "
                 f"min={min_recall:.3f}, gap={gap:.3f}). At least one held-out "
@@ -455,24 +454,11 @@ def main(argv: list[str] | None = None) -> int:
         detector.run_info.best_val_macro_f1,
     )
 
-    # ---- 3. CNN1D baseline.
-    logger.info("Training CNN1D ...")
-    cnn = train_cnn1d(X_train, y_train, X_val, y_val, seed=args.seed, verbose=args.verbose)
-    cnn_path = args.ckpt_dir / "cnn1d.pt"
-    cnn.save(cnn_path)
-    logger.info(
-        "  CNN1D trained in %.1f s, best epoch %d (val macro-F1 %.4f)",
-        cnn.run_info.train_time_seconds,
-        cnn.run_info.best_epoch,
-        cnn.run_info.best_val_macro_f1,
-    )
-
     # ---- 4. Evaluation on test_balanced (D1 primary), test (D1 secondary).
     logger.info("Evaluating on test_balanced and test ...")
     models: dict[str, object] = {
         "StageDetector": detector,
         "RandomForest": rf,
-        "CNN1D": cnn,
     }
     test_balanced_results: dict[str, DetectorEvaluation] = {}
     test_full_results: dict[str, DetectorEvaluation] = {}
@@ -569,19 +555,6 @@ def main(argv: list[str] | None = None) -> int:
                 "test_balanced": test_balanced_results["RandomForest"].to_dict(),
                 "test": test_full_results["RandomForest"].to_dict(),
             },
-            "CNN1D": {
-                "config": cnn.config.__dict__,
-                "run_info": {
-                    "best_epoch": cnn.run_info.best_epoch,
-                    "best_val_macro_f1": cnn.run_info.best_val_macro_f1,
-                    "train_time_seconds": cnn.run_info.train_time_seconds,
-                    "train_loss_history": cnn.run_info.train_loss_history,
-                    "val_loss_history": cnn.run_info.val_loss_history,
-                    "val_macro_f1_history": cnn.run_info.val_macro_f1_history,
-                },
-                "test_balanced": test_balanced_results["CNN1D"].to_dict(),
-                "test": test_full_results["CNN1D"].to_dict(),
-            },
         },
         "ood_evaluation": {k: v.to_dict() for k, v in ood_results.items()},
         "inference_latency_ms_per_sample": round(inference_ms, 4),
@@ -613,7 +586,6 @@ def main(argv: list[str] | None = None) -> int:
             "F11_caption.md": _sha256(args.out_dir / "F11_caption.md"),
             "stage_detector.pt": _sha256(detector_path),
             "random_forest.joblib": _sha256(rf_path),
-            "cnn1d.pt": _sha256(cnn_path),
         },
         "gates_status": {gid: g["status"] for gid, g in gates.items()},
     }

@@ -12,11 +12,8 @@ from pathlib import Path
 
 import numpy as np
 import pytest
-import torch
 
 from src.detector import (
-    CNN1D,
-    CNN1DConfig,
     DetectorEvaluation,
     RandomForestConfig,
     StageDetector,
@@ -26,14 +23,13 @@ from src.detector import (
     per_class_f1,
     per_stage_recall,
     summarize_run,
-    train_cnn1d,
     train_random_forest,
 )
 from src.detector.evaluation import NUM_STAGES, evaluate_ood_class
 
 # ---------------------------------------------------------------------------
 # Shared toy dataset: 29-D Gaussian clusters, one per stage. Linearly
-# separable enough that all three baselines should achieve near-perfect F1.
+# separable enough that both baselines should achieve near-perfect F1.
 # ---------------------------------------------------------------------------
 
 
@@ -267,66 +263,6 @@ class TestRandomForest:
         assert info.n_features == X_tr.shape[1]
         assert info.feature_importances.shape == (29,)
         assert info.train_time_seconds > 0
-
-
-# ---------------------------------------------------------------------------
-# cnn1d.py
-# ---------------------------------------------------------------------------
-
-
-class TestCNN1D:
-    def test_default_config(self) -> None:
-        cfg = CNN1DConfig()
-        assert cfg.num_features == 29
-        assert cfg.num_classes == 5
-
-    def test_forward_shape(self) -> None:
-        cfg = CNN1DConfig()
-        CNN1D(cfg)
-        # Need to fit at least once to construct the inner _ConvNet, but we
-        # can also directly poke forward via the model to test the shape.
-        from src.detector.cnn1d import _ConvNet
-
-        net = _ConvNet(cfg)
-        x = torch.randn(7, 29)
-        out = net(x)
-        assert out.shape == (7, 5)
-        # Also accept (N, 1, F).
-        x2 = torch.randn(7, 1, 29)
-        out2 = net(x2)
-        assert out2.shape == (7, 5)
-
-    def test_fit_reduces_loss_on_toy(self, toy_train_val_test) -> None:
-        X_tr, y_tr, X_val, y_val, X_te, y_te = toy_train_val_test
-        cfg = CNN1DConfig(max_epochs=8, patience=3)
-        cnn = train_cnn1d(X_tr, y_tr, X_val, y_val, seed=0, config=cfg, verbose=False)
-        # First-epoch loss should be greater than last-epoch loss.
-        history = cnn.run_info.train_loss_history
-        assert len(history) >= 2
-        assert (
-            history[0] > history[-1]
-        ), f"loss did not decrease: {history[0]:.4f} -> {history[-1]:.4f}"
-        # And toy macro-F1 should be > 0.85 (CNN is a bit weaker than MLP at
-        # this problem size, hence the slightly lower bar).
-        f1 = macro_f1(y_te, cnn.predict(X_te))
-        assert f1 > 0.85, f"CNN toy macro-F1 = {f1:.3f}, expected > 0.85"
-
-    def test_predict_proba_shape_and_sum(self, toy_train_val_test) -> None:
-        X_tr, y_tr, X_val, y_val, X_te, _ = toy_train_val_test
-        cfg = CNN1DConfig(max_epochs=3, patience=3)
-        cnn = train_cnn1d(X_tr, y_tr, X_val, y_val, seed=0, config=cfg, verbose=False)
-        proba = cnn.predict_proba(X_te)
-        assert proba.shape == (X_te.shape[0], 5)
-        np.testing.assert_allclose(proba.sum(axis=1), 1.0, atol=1e-5)
-
-    def test_save_and_load_round_trip(self, tmp_path: Path, toy_train_val_test) -> None:
-        X_tr, y_tr, X_val, y_val, X_te, _ = toy_train_val_test
-        cfg = CNN1DConfig(max_epochs=3, patience=3)
-        cnn = train_cnn1d(X_tr, y_tr, X_val, y_val, seed=0, config=cfg, verbose=False)
-        ckpt = tmp_path / "cnn1d.pt"
-        cnn.save(ckpt)
-        assert (ckpt.with_suffix(".run_info.json")).exists()
-        loaded = CNN1D.from_checkpoint(ckpt)
 
 
 class TestRandomForestConfig:
