@@ -25,12 +25,19 @@ system-level only. Run `make install-dev` to install them into the dev environme
 
 ## Architecture (phase = chapter)
 
-Adversarial loop: a fixed 5x5 first-order **Markov attacker** (`MarkovAttacker`,
-`src/generator/`) walks the kill chain under a finite intrusion budget -> emits a
-stage -> `RealisationEngine` (`src/utils/`) samples a real CICIoT2023 feature
-row for that stage -> `AdversarialIoTEnv` (`src/environment/`, Gymnasium API, 29-feat
-obs, 5 actions OBSERVE/LOG/THROTTLE/BLOCK/ISOLATE) -> **Blue Team** SB3 agent
-(DQN/PPO/A2C via `src/algorithms/`) acts -> kill-chain reward.
+Adversarial loop: a reactive **tug-of-war attacker** (`MarkovAttacker`,
+`src/generator/`) walks the kill chain under a finite intrusion budget. It reacts to
+the defender's force via a signed proportionality rule on `d = action - recommended(stage)`:
+a proportionate response (`d==0`) de-escalates the attacker one stage (p_down=0.90; ISOLATE
+0.98), an under-forced response (`d<=-1`) lets it advance (p_up=0.90), an over-forced
+response (`d>=1`) holds. BENIGN has an autonomous onset (p_onset=0.35->RECON,
+p_onset_access=0.10->ACCESS, no budget drain); strictly sequential (skip_weight=0 headline;
+the legacy first-order Markov skip-walk survives only on the `tug_of_war=False`/`skip_weight>0`
+ablation path). The attacker emits a stage -> `RealisationEngine` (`src/utils/`) samples a
+real CICIoT2023 feature row for that stage -> `AdversarialIoTEnv` (`src/environment/`,
+Gymnasium API, 29-feat obs, 5 actions OBSERVE/LOG/RESTRICT/BLOCK/ISOLATE) -> **Blue Team**
+SB3 agent (DQN/PPO/A2C via `src/algorithms/`) acts -> kill-chain reward. The defender NEVER
+observes the true stage (POMDP / partial observability = central thesis).
 
 `src/` modules map to phases: `generator/`=Phase2, `environment/`=Phase3,
 `detector/`=Phase4, `blue_team/`=Phase5, `benchmark/`=Phase6, ablations in
@@ -111,15 +118,21 @@ These are fixed contracts; do not silently change them.
   not the manifest.
 - **10 seeds `{0..9}`** for DRL; baselines/oracle run 1 seed. **n=300 episodes for ALL
   policies** (`BENCHMARK_N_DET_EPISODES=300`, `ABLATION_OOD_N_DET_EPISODES=300`).
-  `p_de_esc=0.6` default. `make reproduce-thesis` overrides `BLUE_TEAM_IMPACT_TERM=false`.
-- **Canonical headline numbers** (budget=40, from `benchmark/F5_summary.json`): best deployable
-  RL = **PPO +1034.7** (CI [+998.1, +1069.8]; DQN +1028.9, A2C +973.1); oracle ceiling
-  `recommended_action` **+1393.8** (CI [+1366.9, +1420.6], 74.2% capture); RF-Acting +1323.0 @
-  13.692 ms p50 (latency-ratio ~142.8× vs best-agent 0.096 ms); benign FPR DQN 7.5% / PPO 8.7% /
-  A2C 7.7%. With the finite attacker budget, `compromise_rate` now varies by policy (PPO 0.68 /
-  always_block 0.36 / oracle 0.47) instead of the pre-budget 1.0-for-everything. The reward
-  ablation's structural mit-rate 0.867 is an F9 *strand* result, separate from the F5 benchmark.
-  Test suite: **432 passed**, 1 warning.
+  Tug-of-war probabilities: `p_down=0.90` (ISOLATE 0.98) / `p_up=0.90`; BENIGN onset
+  `p_onset=0.35`, `p_onset_access=0.10`. `make reproduce-thesis` overrides `BLUE_TEAM_IMPACT_TERM=false`.
+- **Canonical headline numbers** (budget=40, from `benchmark/F5_summary.json`): the three deployable
+  RL agents are **statistically tied** on reward — best = **A2C +278.5** (PPO +274.5, DQN +267.8);
+  oracle ceiling `recommended_action` **+543.1** (CI [+536.6, +549.4]); capture A2C 51.3% / PPO 50.5% /
+  DQN 49.3% / RF-Acting 82.5%; RF-Acting +448.2 @ 16.505 ms p50 (FAILS the 3 ms gate; latency-ratio
+  ~176.2× vs best-agent ~0.094 ms). Benign FPR is now **below 1% for all RL** (DQN 0.46% / PPO 0.89% /
+  A2C 0.66%). `compromise_rate` varies by policy (a2c 0.403 / ppo 0.67 / dqn 0.463 / oracle 0.00 /
+  always_block 0.00); `prevention_rate` is the **primary** security KPI (oracle 1.00 / a2c 0.60 /
+  ppo 0.33 / dqn 0.54), and `mitigated_impact_rate` is RETIRED. always_block is the WORST policy
+  (-2005.06, indiscriminate over-force). The F9 reward ablation's structural mit-rate **0.850**
+  (reward +278.5 vs 0.0 mis-specified baseline) is a *strand* result, separate from the F5 benchmark
+  (G7.2 FAIL-WITH-FINDING D7.1.1). The F15 OOD result is now an **RL win**: detector-free PPO +298.3
+  vs detector-coupled RF-Acting -4430.6 on VulnerabilityScan (delta +4728.9, G7.9 PASS). Test suite:
+  **428 passed**, 1 warning.
 
 **Status:** thesis revision complete — prose rewritten, builds clean (86 pages, 0 LaTeX
 errors). `make lint` exits non-zero on ~21 pre-existing UP031/F401 findings; that is the

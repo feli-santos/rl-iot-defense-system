@@ -38,24 +38,30 @@ real CICIoT2023 flow row sampled per stage by the `RealizationEngine`.
   default.
 - Legacy artifacts are removed by **pure git-rm** (history is the only record).
 - Kill-chain stages: `0 BENIGN, 1 RECON, 2 ACCESS, 3 MANEUVER, 4 IMPACT`.
-  Actions: `0 OBSERVE, 1 LOG, 2 THROTTLE, 3 BLOCK, 4 ISOLATE`.
+  Actions: `0 OBSERVE, 1 LOG, 2 RESTRICT, 3 BLOCK, 4 ISOLATE`.
 
 ## 3. Canonical headline (budget=40, from `docs/results/benchmark/F5_summary.json`)
 
 | Policy | Mean reward (95% CI) | p50 latency | benign FPR |
 |---|---|---|---|
-| **PPO** (best deployable RL) | **+1034.7** [+998.1, +1069.8] | 0.096 ms | 8.7% |
-| DQN | +1028.9 | 0.061 ms | 7.5% |
-| A2C | +973.1 | 0.094 ms | 7.7% |
-| `recommended_action` oracle (ceiling) | **+1393.8** [+1366.9, +1420.6] | — | — |
-| RF-Acting (hero comparator) | +1323.0 | 13.692 ms | — |
-| always_block / random / always_observe | −219.4 / +211.1 / −416.1 | — | — |
+| **A2C** (best deployable RL by reward) | **+278.5** [+251.1, +308.8] | 0.094 ms | 0.7% |
+| PPO | +274.5 [+252.2, +294.6] | 0.094 ms | 0.9% |
+| DQN | +267.8 [+215.3, +321.7] | 0.063 ms | 0.5% |
+| `recommended_action` oracle (ceiling) | **+543.1** [+536.6, +549.4] | — | — |
+| RF-Acting (hero comparator) | +448.2 | 16.505 ms | 100% |
+| always_block / random / always_observe | −2005.1 / −573.9 / −393.2 | — | — |
 
-Best deployable RL (PPO) captures **74.2%** of the oracle ceiling at
-**~142.8× lower latency** than RF-Acting. F9 reward-ablation structural strand:
-reward +1125.7, mit-rate 0.867. Under the finite budget, `compromise_rate`
-varies by policy (e.g. PPO ~0.68, always_block ~0.36, oracle ~0.47) instead of
-the pre-budget 1.0-for-everything.
+Best deployable RL (A2C) captures **51.3%** of the oracle ceiling at
+**~176× lower latency** than RF-Acting (whose 16.5 ms p50 fails the 3 ms budget).
+The three DRL agents are statistically indistinguishable on reward (overlapping
+CIs). All RL benign FPR is **below 1%** (DQN 0.5% / PPO 0.9% / A2C 0.7%); only
+random (41%) and always_block (100%) breach the 1% threshold. RF-Acting attains
+higher reward but is detector-coupled and ~176× slower — an honest deployment
+trade-off, not a reward-domination claim. F9 reward-ablation structural strand:
+reward +278.5, mit-rate 0.850 (vs 0.0 for the mis-specified baseline contract).
+Under the tug-of-war + finite budget, `prevention_rate` (primary KPI) varies by
+policy (oracle 1.00, A2C 0.60, PPO 0.33); always_block prevents 100% but only by
+indiscriminate force (100% benign FPR), making it the worst-scoring policy.
 
 ## 4. Gate scoreboard (Ablation & Robustness, `docs/results/ablation/G7_scoreboard.json`)
 
@@ -63,24 +69,34 @@ the pre-budget 1.0-for-everything.
 pre-registered findings, not regressions:
 
 - **G7.2 → D7.1.1**: reward-shaping raw-reward ceiling, but the security-KPI
-  strand passes (structural mit-rate 0.867 vs DQN 0.153).
-- **G7.9 → D7.9.1**: on the VulnerabilityScan OOD class, RL (+1109.5) < RF-Acting
-  (+1443.4) because RF recall there is 0.001 and its cheap-default action mapping
-  wins; the claim narrows to "RL is robust to, not better at" that OOD class.
+  strand passes (structural mit-rate 0.850 vs 0.0 for the mis-specified baseline).
+- **G7.4 → F12 Pareto**: FAIL-WITH-FINDING — under perfect stage perception the
+  security/availability frontier collapses to a single dominant point (the
+  oracle, security_gain=1.0 at near-zero availability cost), strictly dominating
+  always_block and every interior learned policy; the interior placement of the
+  RL agents *visualises the cost of partial observability* (POMDP).
 
-Other gates: G7.3 aggressiveness (IoTWarden-shaped), G7.4 Pareto + budget-hump
-peak @40, G7.5–G7.7 manifests, G7.8 OOD coverage 32/32, G7.10 evasion
-robustness (F17: reward degrades gracefully 1018.4→982.0 across evasion 0→0.75).
+Note: **G7.9 now PASSES** (was D7.9.1 FAIL-WITH-FINDING pre-redesign). On the
+VulnerabilityScan OOD class — where the supervised detector is blind (recall
+0.001) — detector-free RL (PPO +298.3) **beats** detector-coupled RF-Acting
+(−4430.6) by +4728.9: the blind detector mis-predicts → recommends under-forcing →
+the tug-of-war attacker advances unchecked to IMPACT (catastrophic reward), while
+the detector-free policy stays robust. This is the sharpest demonstration of the
+detector-independence dividend.
+
+Other gates: G7.3 environment-difficulty p_down sweep (IoTWarden-shaped),
+G7.4 budget-hump peak @40, G7.5–G7.7 manifests, G7.8 OOD coverage 32/32, G7.10
+evasion robustness (F17: PPO reward degrades gracefully across evasion 0→0.75).
 
 ## 5. Caveat dispositions (implementation hazards)
 
 | ID | Caveat | Status |
 |---|---|---|
-| C1 | Budget step-cost charged inside the progression branch only; de-escalation charges `reset_cost` once (no double-charge). | Implemented (Phase C). |
+| C1 | Budget step-cost charged inside the progression branch only; de-escalation charges `reset_cost` (=2) once (no double-charge). | Implemented. |
 | C2 | Grace clamp downgrades pre-`min_episode_length`(20) IMPACT→MANEUVER; report prevention conditioned on `step≥20`. | Implemented; headline metric `prevent_pg`. |
-| C3 | De-escalation has coupled drain-vs-prolong effects — empirical, not paper-resolvable. | Resolved by budget calibration (`727e21f`). |
+| C3 | De-escalation has coupled drain-vs-prolong effects — empirical, not paper-resolvable. | Resolved by budget calibration (F16 pivot @40). |
 | C6 | Which 29 features & why. | RESOLVED `202859c` — `docs/results/dataset/feature_provenance.json`. |
-| C7 | THROTTLE (action=2) never triggers de-escalation (needs action≥3) → dominated action. | Disclosed in thesis prose (Phase F). |
+| C7 | ~~THROTTLE never triggers de-escalation → dominated action.~~ | OBSOLETE after tug-of-war redesign: action renamed RESTRICT and is now the *proportional recommended action* at ACCESS, de-escalating the attacker w.p. `p_down=0.90` and draining budget; ISOLATE (`p_down_isolate=0.98`) is strictly stronger than BLOCK. The graded RESTRICT<BLOCK<ISOLATE ladder is fully exercised — no dominated action remains. |
 | C9 | Eval-env `impact_is_terminal` defaulted True while training used False. | RESOLVED `c0b39d0`. |
 | C10 | Benchmark `eval_manifest.json` recorded `attacker_budget=None` despite budget=40 applying. | RESOLVED `a809bc1` (manifest now self-contained; regression guard `tests/test_run_test_eval_manifest.py`). |
 

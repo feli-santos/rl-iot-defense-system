@@ -35,7 +35,7 @@ either invisible at the flow-feature level or simply absent from the
 testbed traces. The 5-stage mapping below is the simplest abstraction
 that (i) covers every CICIoT2023 label, (ii) is monotone in attacker
 progress, and (iii) admits a non-trivial recommended-action mapping
-(BENIGN→OBSERVE, RECON→LOG, ACCESS→THROTTLE, MANEUVER→BLOCK,
+(BENIGN→OBSERVE, RECON→LOG, ACCESS→RESTRICT, MANEUVER→BLOCK,
 IMPACT→ISOLATE — see `docs/reward-shaping.md` §Recommended actions).
 
 ## 2 — Stage definitions (operational)
@@ -50,7 +50,7 @@ and confusion-matrix axes).
 |---:|:------|:---------|:-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 |  0 |   B   | BENIGN   | Baseline non-attack traffic. The defender's reference distribution.                                                                                                                                                                                                                                                                                               |
 |  1 |   R   | RECON    | **Pre-access information gathering** that does not yet attempt to exploit a vulnerability or hijack a session. Probes the existence, type, or surface of a target. The defender's correct action is logging, not blocking, because false positives would suppress legitimate management traffic that looks similar in flow features.                            |
-|  2 |   A   | ACCESS   | **Primary entry attempts.** Direct attempts to obtain unauthorized access to an application, service, or account, including injection-class attacks against the application layer and credential-guessing attacks against the authentication layer. The defender's correct action is throttling: the attempt may be malicious, may be misdirected, or may be a noisy legitimate scanner. |
+|  2 |   A   | ACCESS   | **Primary entry attempts.** Direct attempts to obtain unauthorized access to an application, service, or account, including injection-class attacks against the application layer and credential-guessing attacks against the authentication layer. The defender's correct action is restricting (partial, reversible mitigation): the attempt may be malicious, may be misdirected, or may be a noisy legitimate scanner. |
 |  3 |   M   | MANEUVER | **Post-access positioning *or* deployed-payload preparation.** Two distinct phenomena that share the same correct response: (a) lateral movement, persistence, and traffic redirection by a single attacker (MITM, ARP/DNS spoofing); and (b) botnet data-plane preparation by Mirai variants — flooding traffic emitted *prior* to a victim being chosen, used to verify command channels and gather bot health. The defender blocks. |
 |  4 |   I   | IMPACT   | **Service degradation against the victim.** Volumetric or protocol DoS/DDoS that directly degrades availability. The defender isolates.                                                                                                                                                                                                                            |
 
@@ -58,7 +58,7 @@ The progression `BENIGN → RECON → ACCESS → MANEUVER → IMPACT` is
 **monotone in attacker progress** in this thesis: each step represents
 a closer approach to the operational objective (service denial). The
 order also induces a natural ordering on the recommended action
-(OBSERVE < LOG < THROTTLE < BLOCK < ISOLATE) used by the proportional
+(OBSERVE < LOG < RESTRICT < BLOCK < ISOLATE) used by the proportional
 reward shape and tested by Phase-3 gate G3 (`docs/results/environment/RESULTS.md`).
 
 ## 3 — Label → Stage table (canonical)
@@ -177,7 +177,7 @@ its own confusion matrix. We map it to ACCESS because the *intent* is
 to obtain authenticated entry, not merely to determine whether
 authentication is possible: a successful brute-force attempt yields
 working credentials, which is the defining outcome of the ACCESS
-stage. The defender's correct response (throttle, lock the account,
+stage. The defender's correct response (restrict, lock the account,
 rate-limit by source) matches the ACCESS recommended action; pure
 RECON would be unnecessarily permissive (LOG only).
 
@@ -203,7 +203,7 @@ on the IoT device or its gateway: a hijacked browser session yields
 attacker control over an authenticated client, and an upload attack
 exploits a file-upload endpoint to deposit attacker-controlled
 artefacts. Both fit the ACCESS definition (primary entry attempts at
-the application layer) and call for the throttle response.
+the application layer) and call for the restrict response.
 
 ### 4.6 — `XSS`, `SqlInjection`, `CommandInjection` → ACCESS
 

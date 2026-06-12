@@ -24,49 +24,58 @@ lists (`ACTION_NAMES` L61, `ACTION_COSTS` L69).
 |---|---|---|---|
 | 0 | OBSERVE | 0.0 | BENIGN |
 | 1 | LOG | 0.1 | RECON |
-| 2 | THROTTLE | 0.3 | ACCESS |
+| 2 | RESTRICT | 0.3 | ACCESS |
 | 3 | BLOCK | 0.5 | MANEUVER |
 | 4 | ISOLATE | 0.8 | IMPACT |
 
-> **C7 — THROTTLE is a dominated action.** De-escalation only fires for `action >= BLOCK`
-> (L739), so THROTTLE earns the proportionality bonus on ACCESS but can never trigger
-> de-escalation. Disclosed as a limitation in the thesis.
+> **RESTRICT is a first-class proportional action (tug-of-war).** Under the tug-of-war
+> dynamics a *proportionate* action (`|action - recommended| == 0`) de-escalates the
+> attacker one stage w.p. `p_down=0.90`, so RESTRICT at ACCESS is non-dominated. ISOLATE
+> is strictly stronger than BLOCK (`p_down_isolate=0.98` vs `p_down=0.90`), giving a real
+> RESTRICT < BLOCK < ISOLATE force gradient. (The old "THROTTLE dominated action" caveat
+> is obsolete: it described the pre-redesign de-escalation rule that only fired for
+> `action >= BLOCK`.)
 
 ## Kill-chain stages
 
 `KillChainStage(IntEnum)` (`src/utils/label_mapper.py:19`): `BENIGN=0, RECON=1,
 ACCESS=2, MANEUVER=3, IMPACT=4`. `_RECOMMENDED_ACTION_BY_STAGE = [0,1,2,3,4]`.
 
-## Markov attacker
+## Reactive tug-of-war attacker (headline)
 
-Fixed 5x5 first-order transition matrix (`MarkovAttacker._build_transition_matrix` L66):
-- BENIGN (row 0): stay 0.4; uniform onset `0.6 * 0.25` into each attack stage.
-- Attack rows (i>=1): persistence 0.3; one-step progression `trans[i,i+1]=0.5`;
-  longer skips `0.2/distance`; **no regression** (lower triangle 0).
-- IMPACT (row 4) is **absorbing** (`trans[4,4]=1.0`).
-- **Evasion-before-commit** (`_advance_attack` L782): if `evasion_prob>0`, the defender
-  just forced a BLOCK/ISOLATE (`_recent_block`), and stage in {RECON, ACCESS}, the
-  attacker stalls (`next_stage = current`) with prob `evasion_prob` — the one
-  defender-coupled adaptive axis. `retreat_prob` (default 0) is a non-monotonic
-  stress-test override.
+The headline attacker is **reactive and strictly sequential** (`tug_of_war=True`,
+`skip_weight=0`). Two mechanisms (`_advance_tug_of_war`):
+
+- **Autonomous onset from BENIGN** (no defender dependence, no budget drain): single
+  roll — `p_onset=0.35` -> RECON, `p_onset_access=0.10` -> ACCESS (mid-chain start),
+  else dormant. No skip-ahead onset (this is why always-block is a beatable, costly
+  baseline rather than leaky).
+- **Tug-of-war once active** (RECON..MANEUVER), on the signed force gap
+  `d = action - recommended(stage)`:
+  - `d <= -1` (under-force): attacker **escalates** one stage w.p. `p_up=0.90`, else holds.
+  - `d == 0` (proportional): attacker **de-escalates** one stage w.p. `p_down=0.90`
+    (`p_down_isolate=0.98` for ISOLATE), else holds.
+  - `d >= 1` (over-force): attacker **holds** (penalised as disproportionate).
+- IMPACT is **absorbing**; the attacker never regresses autonomously — all de-escalation
+  is defender-driven.
+- The legacy autonomous-Markov path (`_advance_attack`, skip distribution,
+  `_maybe_defender_deescalation`, `evasion_prob`, `retreat_prob`) is retained **only**
+  on the `tug_of_war=False` / `skip_weight>0` ablation path.
 
 ## Step lifecycle (`step` L526)
 
-1. Reward at the decision-time stage: `_calculate_reward(action, prev_stage)` L562.
-2. Record `_recent_block = action >= 3` L567 (for evasion coupling).
-3. **De-escalation** (`_maybe_defender_deescalation` L571): fires if `action >= BLOCK`
-   AND `prev_stage >= ACCESS` AND `rng < p_defender_deescalation` (default 0.6). On
-   success: stage -> BENIGN, `+defense_success_bonus`, drain budget by
-   `budget_reset_cost`.
-4. Else `_advance_attack` L576 + drain `budget_step_cost` if `stage >= RECON` (L582).
-5. **Grace clamp** L596: any IMPACT before `min_episode_length=20` is downgraded to
-   MANEUVER (early "preventions" are not defender-attributable; report prevention-rate
+1. Reward at the decision-time stage: `_calculate_reward(action, prev_stage)`.
+2. Progression: `_advance_tug_of_war(action, prev_stage)` (signed rule above). A
+   proportionate push-back drains `budget_step_cost + budget_reset_cost` and grants a
+   capped `reward_deescalation`; any active step drains `budget_step_cost`.
+3. **Grace clamp**: any IMPACT before `min_episode_length=20` is downgraded to MANEUVER
+   (early "preventions" are not defender-attributable; prevention-rate is reported
    conditioned on `step >= min_episode_length`).
 
 ## Finite attacker budget (prevention model)
 
 - Drains: `budget_step_cost=1` per active progression step (only when `stage >= RECON`);
-  `budget_reset_cost=5` per defender-forced de-escalation.
+  an additional `budget_reset_cost=2` per defender-forced de-escalation.
 - **Exhaustion-before-IMPACT => prevented** (L639): if budget `<= 0` and `stage < IMPACT`,
   the episode terminates with `+prevention_bonus`, outcome `"prevented"` — checked
   **before** the IMPACT branch, fires **regardless of `impact_is_terminal`**.
@@ -96,5 +105,9 @@ Fixed 5x5 first-order transition matrix (`MarkovAttacker._build_transition_matri
 5. Proportionality core (L915): `|action - recommended| <= 1` => `+reward_proportional=5`
    else `-penalty_disproportionate=5`.
 
-Outcome signals applied in `step`/`_step_at_impact`: `defense_success_bonus=250`,
-`impact_penalty=200`, `prevention_bonus=0`, terminal FPR penalty (`fpr_penalty_beta=0`).
+Outcome / tug-of-war signals applied in `step`/`_step_at_impact`:
+`defense_success_bonus=250` (terminal-IMPACT survival only), `impact_penalty=200`,
+`prevention_bonus=50` (budget exhausted before IMPACT), `reward_deescalation=15`
+(per proportionate push-back, capped 150/ep), `proportional_bonus_cap=100/ep`. The
+proportionality and de-escalation caps remove the reward-farming loopholes that the
+redesign fixed.
