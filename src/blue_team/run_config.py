@@ -92,14 +92,38 @@ class EnvConfigSerializable:
     # exhausts its budget before IMPACT is prevented.
     attacker_budget: Optional[int] = None
     budget_step_cost: int = 1
-    budget_reset_cost: int = 5
+    budget_reset_cost: int = 2
     budget_cost_model: str = "hybrid"
-    prevention_bonus: float = 0.0
+    prevention_bonus: float = 50.0
+
+    # Tug-of-war dynamics (headline contract). The defender's signed force
+    # difference d = action - recommended(stage) governs the attacker:
+    # d <= -1 (under-force) escalates w.p. ``p_up``; d == 0 (proportional)
+    # de-escalates w.p. ``p_down`` (``p_down_isolate`` for ISOLATE); d >= 1
+    # (over-force) holds. BENIGN has an autonomous multi-rung onset
+    # (``p_onset`` -> RECON, ``p_onset_access`` -> ACCESS) independent of the
+    # defender. ``tug_of_war=False`` recovers the legacy autonomous-Markov +
+    # ``_maybe_defender_deescalation`` path (retained for the
+    # reward-mis-specification ablation strand). Defaults mirror
+    # :class:`AdversarialEnvConfig`.
+    tug_of_war: bool = True
+    p_onset: float = 0.35
+    p_onset_access: float = 0.10
+    p_down: float = 0.90
+    p_up: float = 0.90
+    p_down_isolate: float = 0.98
 
     # Reward shaping — ablation F9 axes (defaults from environment-design RESULTS §3)
     action_cost_scale: float = 1.0
     reward_proportional: float = 5.0
     penalty_disproportionate: float = 5.0
+    # Per-episode caps that close reward-farming loopholes (None disables a cap,
+    # used as a reward-mis-specification ablation cell). Routine de-escalations
+    # earn ``reward_deescalation`` (small), decoupled from the
+    # ``defense_success_bonus`` reserved for surviving a terminal IMPACT step.
+    proportional_bonus_cap: Optional[float] = 100.0
+    reward_deescalation: float = 15.0
+    deescalation_bonus_cap: Optional[float] = 150.0
     # Reward mode ablation: "proportional" (default) or "outcome_only".
     reward_mode: str = "proportional"
     impact_penalty: float = 200.0

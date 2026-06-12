@@ -28,7 +28,11 @@ import numpy as np
 DEFAULT_NUM_STAGES = 5
 DEFAULT_PERSISTENCE_WEIGHT = 0.3
 DEFAULT_PROGRESSION_WEIGHT = 0.5
-DEFAULT_SKIP_WEIGHT = 0.2
+# Headline kill-chain grammar is strict-sequential: the attacker advances one
+# stage at a time and cannot skip rungs (e.g. RECON -> IMPACT in one step). A
+# skip-capable attacker is retained as a stress-test ablation by passing a
+# positive ``skip_weight`` explicitly. Default 0.0 disables skips.
+DEFAULT_SKIP_WEIGHT = 0.0
 
 
 class MarkovAttacker:
@@ -75,10 +79,16 @@ class MarkovAttacker:
         progress_w = self.progression_weight
         skip_w = self.skip_weight
 
-        # From BENIGN (0): stay benign or begin an attack, weighted by prior.
+        # From BENIGN (0): stay benign or begin an attack.
         trans[0, 0] = 0.4
-        for j in range(1, num_stages):
-            trans[0, j] = 0.6 * self._stage_distribution.get(j, 0.25)
+        if skip_w == 0.0:
+            # Strict-sequential headline: onset can only reach RECON (the chain
+            # cannot be entered above its first rung).
+            trans[0, 1] = 0.6
+        else:
+            # Skip-capable ablation: onset spread over attack stages by prior.
+            for j in range(1, num_stages):
+                trans[0, j] = 0.6 * self._stage_distribution.get(j, 0.25)
         trans[0] /= trans[0].sum()
 
         # From attack stages: persist, progress, or skip (no regression).

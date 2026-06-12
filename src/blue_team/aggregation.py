@@ -342,16 +342,25 @@ def summarise_last_window(
     - ``mean_mttc``: arithmetic mean of ``mttc_steps`` over episodes
       where it is not ``None``. ``NaN`` if every episode is
       uncompromised.
-    - ``compromise_rate``: fraction of episodes with ``compromised=True``.
-    - ``mitigated_impact_rate``: fraction of episodes with
-      ``end_outcome == "impact_mitigated"``. Per PLAN §8 D5.4.1 this
-      is the gated quantity (G5.4); ``compromise_rate`` is reported
-      for completeness but no longer gated.
+    - ``compromise_rate``: fraction of episodes with ``compromised=True``
+      (the attacker reached IMPACT). PRIMARY security KPI.
+    - ``prevention_rate``: fraction of episodes ended as
+      ``end_outcome == "prevented"`` (the attacker's finite budget was
+      exhausted before IMPACT). PRIMARY security KPI under the
+      tug-of-war contract — this is the defender-attributable "win"
+      that ``mitigated_impact_rate`` could not express.
     - ``mitigated_among_compromised``: fraction of *compromised*
-      episodes that ended in ``impact_mitigated``. Useful when
-      compromise rate is near 1 (typical with the upper-triangular
-      LSTM) — answers "given that IMPACT happened, how often did the
-      agent block it?".
+      episodes that ended in ``impact_mitigated`` — i.e. given that
+      IMPACT happened, how often did the agent block it on the terminal
+      step? SECONDARY KPI; well-defined and discriminative across
+      policies (it is NOT definitionally equal to ``compromise_rate``).
+    - ``mitigated_impact_rate``: fraction of *all* episodes with
+      ``end_outcome == "impact_mitigated"``. RETAINED for backward
+      compatibility / ablations only; DEPRECATED as a headline metric
+      because for fixed policies that always block at IMPACT it collapses
+      onto ``compromise_rate`` (every compromise is trivially "mitigated"),
+      making it uninformative. Use ``prevention_rate`` and
+      ``mitigated_among_compromised`` instead.
     - ``n_episodes``, ``last_window_start``: bookkeeping.
 
     Empty if ``records`` is empty.
@@ -361,8 +370,9 @@ def summarise_last_window(
             "mean_reward": math.nan,
             "mean_mttc": math.nan,
             "compromise_rate": math.nan,
-            "mitigated_impact_rate": math.nan,
+            "prevention_rate": math.nan,
             "mitigated_among_compromised": math.nan,
+            "mitigated_impact_rate": math.nan,
             "n_episodes": 0,
             "last_window_start": 0,
         }
@@ -376,14 +386,16 @@ def summarise_last_window(
             "mean_reward": math.nan,
             "mean_mttc": math.nan,
             "compromise_rate": math.nan,
-            "mitigated_impact_rate": math.nan,
+            "prevention_rate": math.nan,
             "mitigated_among_compromised": math.nan,
+            "mitigated_impact_rate": math.nan,
             "n_episodes": 0,
             "last_window_start": cutoff,
         }
     rewards = [r["episode_reward"] for r in sel]
     mttc_vals = [r["mttc_steps"] for r in sel if r.get("mttc_steps") is not None]
     compromised = [1.0 if r.get("compromised") else 0.0 for r in sel]
+    prevented = [1.0 if r.get("end_outcome") == "prevented" else 0.0 for r in sel]
     mitigated = [1.0 if r.get("end_outcome") == "impact_mitigated" else 0.0 for r in sel]
     n_compromised = int(sum(compromised))
     if n_compromised > 0:
@@ -402,8 +414,9 @@ def summarise_last_window(
         "mean_reward": float(np.mean(rewards)),
         "mean_mttc": float(np.mean(mttc_vals)) if mttc_vals else math.nan,
         "compromise_rate": float(np.mean(compromised)),
-        "mitigated_impact_rate": float(np.mean(mitigated)),
+        "prevention_rate": float(np.mean(prevented)),
         "mitigated_among_compromised": mit_among_comp,
+        "mitigated_impact_rate": float(np.mean(mitigated)),
         "n_episodes": len(sel),
         "last_window_start": cutoff,
     }

@@ -72,7 +72,9 @@ class EpisodeGeneratorConfig:
     benign_start_prob: float = 0.8
     progression_weight: float = 0.5
     persistence_weight: float = 0.3
-    skip_weight: float = 0.2
+    # Headline grammar is strict-sequential (no stage skips). A skip-capable
+    # attacker is a stress-test ablation (pass skip_weight > 0 explicitly).
+    skip_weight: float = 0.0
 
     # Imbalance mitigation
     distribution_temperature: float = 1.0  # <1 flattens, >1 sharpens
@@ -200,11 +202,15 @@ class EpisodeGenerator:
         progress_w = self._config.progression_weight
         skip_w = self._config.skip_weight
 
-        # From BENIGN (0): can go to any stage
-        # Weight attack stages by dataset distribution
+        # From BENIGN (0): stay benign or begin an attack.
         trans[0, 0] = 0.4  # Stay benign
-        for j in range(1, num_stages):
-            trans[0, j] = 0.6 * self._stage_distribution.get(j, 0.25)
+        if skip_w == 0.0:
+            # Strict-sequential headline grammar: onset can only reach RECON.
+            trans[0, 1] = 0.6
+        else:
+            # Skip-capable ablation: weight attack stages by dataset distribution.
+            for j in range(1, num_stages):
+                trans[0, j] = 0.6 * self._stage_distribution.get(j, 0.25)
         trans[0] /= trans[0].sum()  # Normalize
 
         # From attack stages: persist, progress, or skip

@@ -11,7 +11,7 @@ Key Design
   receives a sliding window of realized feature vectors (and, optionally,
   their first-order deltas).
 - **Action space**. ``Discrete(5)`` force-continuum:
-  ``OBSERVE=0`` < ``LOG=1`` < ``THROTTLE=2`` < ``BLOCK=3`` < ``ISOLATE=4``.
+  ``OBSERVE=0`` < ``LOG=1`` < ``RESTRICT=2`` < ``BLOCK=3`` < ``ISOLATE=4``.
 - **Reward**. *Stage-action proportionality* relative to the IoTWarden
   recommended-action mapping (see :func:`_recommended_action`):
 
@@ -61,7 +61,7 @@ logger = logging.getLogger(__name__)
 ACTION_NAMES: list[str] = [
     "OBSERVE",  # Level 0: Passive monitoring
     "LOG",  # Level 1: Enhanced logging
-    "THROTTLE",  # Level 2: Rate limiting
+    "RESTRICT",  # Level 2: Partial, reversible mitigation (rate-limit / constrain)
     "BLOCK",  # Level 3: Block connections
     "ISOLATE",  # Level 4: System isolation
 ]
@@ -69,7 +69,7 @@ ACTION_NAMES: list[str] = [
 ACTION_COSTS: list[float] = [
     0.0,  # OBSERVE: No cost
     0.1,  # LOG: Minimal impact
-    0.3,  # THROTTLE: Some disruption
+    0.3,  # RESTRICT: Some disruption
     0.5,  # BLOCK: Significant impact
     0.8,  # ISOLATE: Major disruption
 ]
@@ -140,7 +140,7 @@ def get_action_name(action: int) -> str:
 # stage  -> recommended action
 #  0  BENIGN     -> 0  OBSERVE
 #  1  RECON      -> 1  LOG
-#  2  ACCESS     -> 2  THROTTLE
+#  2  ACCESS     -> 2  RESTRICT
 #  3  MANEUVER   -> 3  BLOCK
 #  4  IMPACT     -> 4  ISOLATE
 #
@@ -230,11 +230,54 @@ class AdversarialEnvConfig:
     # Lifecycle
     max_steps: int = 500
     min_episode_length: int = 20
-    p_defender_deescalation: float = 0.6
     window_size: int = 5
     include_deltas: bool = True
     num_actions: int = 5
     impact_is_terminal: bool = True
+
+    # =====================================================================
+    # Tug-of-war attacker dynamics (environment-design v3, headline)
+    # =====================================================================
+    # The attacker's stage transition is driven by the *proportionality gap*
+    # between the defender's action ``a`` and the stage-recommended action
+    # ``rec = recommended(s)``, with ``gap = |a - rec|``:
+    #
+    #   gap == 0 (correctly calibrated force)  -> attacker DE-ESCALATES
+    #                                             s -> max(0, s-1) w.p. p_down
+    #   gap == 1 (adjacent / tolerable)        -> attacker HOLDS at s
+    #   gap >= 2 (mis-calibrated force)        -> attacker ESCALATES
+    #                                             s -> min(IMPACT, s+1) w.p. p_up
+    #
+    # The residual ``1 - p_*`` mass is a "hold" (nothing happens this step),
+    # which deliberately prevents a degenerate, perfectly deterministic
+    # lookup-table solution and keeps value planning under partial
+    # observability meaningful. This ±1 graded structure mirrors the
+    # proportionality reward exactly, so reward and dynamics are
+    # self-consistent. ISOLATE (a=4) de-escalates *more reliably* than BLOCK
+    # (a=3) — ``p_down_isolate`` >= ``p_down`` — giving the force ladder a
+    # real effect gradient (not just a cost gradient) and removing the
+    # weakly-dominated-action pathology of the v2 environment.
+    #
+    # Set ``tug_of_war=False`` to recover the v2 autonomous-Markov +
+    # probabilistic-de-escalation dynamics (retained for the legacy ablation).
+    tug_of_war: bool = True
+    # Multi-rung autonomous onset from BENIGN (the attacker's own initiative,
+    # independent of the defender). Each step at BENIGN the attacker opens a
+    # campaign at RECON with probability ``p_onset`` or directly at ACCESS with
+    # probability ``p_onset_access`` (a mid-chain campaign start); otherwise it
+    # stays dormant. Multi-rung onset is what forces even a *correct* defender to
+    # exercise ACCESS/MANEUVER-appropriate responses rather than pinning the
+    # attacker at RECON and farming the proportional bonus. Set
+    # ``p_onset_access=0.0`` to recover strict single-rung (RECON-only) onset,
+    # which is retained as the pure-sequential threat-model ablation.
+    p_onset: float = 0.35  # P(BENIGN -> RECON) per step
+    p_onset_access: float = 0.10  # P(BENIGN -> ACCESS) per step (mid-chain start)
+    p_down: float = 0.90  # P(de-escalate | correctly-calibrated force, d==0)
+    p_up: float = 0.90  # P(escalate | under-force, d<=-1)
+    p_down_isolate: float = 0.98  # P(de-escalate) when the force is ISOLATE (a=4)
+
+    # Legacy v2 de-escalation probability (only used when tug_of_war=False).
+    p_defender_deescalation: float = 0.6
 
     # Non-monotonic attacker stress-test (review 2.4.3)
     # After sampling the next stage from the generator, independently
@@ -261,12 +304,23 @@ class AdversarialEnvConfig:
     # disables the mechanic entirely, preserving the unbounded contract.
     attacker_budget: Optional[int] = None
     budget_step_cost: int = 1
-    budget_reset_cost: int = 5
+    # Extra budget drained when the defender pushes the attacker down one rung
+    # (a successful de-escalation). Re-establishing the lost ground is not free,
+    # but a single-rung pushdown is cheaper than the v2 full BENIGN reset (was
+    # 5). Paired with ``prevention_bonus`` so that "act correctly -> drain the
+    # attacker -> prevent early" is genuinely reward-optimal rather than a
+    # proportional-reward-farming trap.
+    budget_reset_cost: int = 2
     budget_cost_model: str = "hybrid"
-    # Explicit, ablatable terminal reward for a prevented attack. Default 0.0
-    # keeps the prevention signal implicit (accumulated de-escalation bonuses
-    # plus the dodged impact penalty) so the cocked-trigger spine stays clean.
-    prevention_bonus: float = 0.0
+    # Explicit terminal reward for a prevented attack (attacker budget exhausted
+    # before IMPACT). Calibrated to +50, mirroring the net reward of a correct
+    # IMPACT mitigation (-impact_penalty + defense_success_bonus = +50), so the
+    # security objective (prevention) and the reward signal are aligned. This
+    # closes the latent farming loophole where, with prevention_bonus=0,
+    # dragging the episode out to accumulate per-step proportional rewards would
+    # be more profitable than ending it early via prevention. The 0-vs-50
+    # contrast is itself a reward-mis-specification ablation cell.
+    prevention_bonus: float = 50.0
 
     # Stage-prediction ablation (review 2.4.1)
     # If non-None, the env loads a frozen stage detector and (optionally)
@@ -278,6 +332,16 @@ class AdversarialEnvConfig:
     action_cost_scale: float = 1.0
     reward_proportional: float = 5.0
     penalty_disproportionate: float = 5.0
+    # Per-episode cap on the *cumulative* proportional bonus. Without a cap, a
+    # fixed low-force policy can pin the attacker in an early stage where its
+    # action is "correct" and farm ``reward_proportional`` every step for the
+    # full horizon, inflating reward to oracle-like levels without ever
+    # mitigating a real threat. The cap (default +5 x min_episode_length = +100)
+    # preserves the early dense learning signal but removes the farming
+    # incentive; once exhausted, correct play earns 0 from this term (penalties
+    # still apply). ``None`` disables the cap (the uncapped case is itself a
+    # reward-mis-specification ablation cell).
+    proportional_bonus_cap: Optional[float] = 100.0
 
     # Reward mode (ablation): ``"proportional"`` is the default kill-chain-aware
     # shaping; ``"outcome_only"`` strips every stage-conditioned shaping term
@@ -294,10 +358,25 @@ class AdversarialEnvConfig:
     # IMPACT response (ISOLATE) net-rewards the agent: -impact_penalty +
     # defense_success_bonus = -200 + 250 = +50. This makes the optimal
     # policy strictly better than the do-nothing baseline and lets the
-    # G3.4 exit gate hold (recommended-action mean reward > 0). The same
-    # bonus is awarded on defender-driven de-escalations during normal
-    # gameplay (with action >= BLOCK at ACCESS+). See PLAN §B6.
+    # G3.4 exit gate hold (recommended-action mean reward > 0). This bonus is
+    # RESERVED for surviving a *terminal* IMPACT step; routine in-game
+    # de-escalations are rewarded by the separate, smaller ``reward_deescalation``
+    # term below (see PLAN §B6 and the de-escalation-farming fix).
     defense_success_bonus: float = 250.0
+    # Per-step reward for a successful in-game de-escalation (pushing the
+    # attacker down one kill-chain rung under a proportional response). This is
+    # deliberately *decoupled* from ``defense_success_bonus`` (+250, reserved for
+    # terminal IMPACT survival): reusing the large terminal bonus for every
+    # routine pushdown over-rewards the raw *count* of de-escalations, making
+    # "more attacks = more reward" and inflating the oracle ceiling. A small
+    # positive value keeps de-escalation worth doing as a dense signal without
+    # turning it into a farm. Its cumulative per-episode contribution is bounded
+    # by ``deescalation_bonus_cap``.
+    reward_deescalation: float = 15.0
+    # Per-episode cap on the *cumulative* de-escalation reward (mirrors
+    # ``proportional_bonus_cap``). ``None`` disables the cap (the uncapped case is
+    # itself a reward-mis-specification ablation cell).
+    deescalation_bonus_cap: Optional[float] = 150.0
 
     # Reward — benign-traffic guardrails
     reward_benign_passive: float = 10.0
@@ -337,7 +416,7 @@ class AdversarialIoTEnv(gym.Env):
         (window_size * num_features * 2,) when delta features are enabled.
 
     Action Space:
-        Discrete(5): OBSERVE, LOG, THROTTLE, BLOCK, ISOLATE
+        Discrete(5): OBSERVE, LOG, RESTRICT, BLOCK, ISOLATE
 
     Example:
         >>> env = AdversarialIoTEnv(generator_path, dataset_path)
@@ -499,6 +578,8 @@ class AdversarialIoTEnv(gym.Env):
         self._first_attack_step = None
         self._compromise_step = None
         self._defender_deescalations = 0
+        self._proportional_bonus_paid = 0.0
+        self._deescalation_bonus_paid = 0.0
         self._benign_steps = 0
         self._benign_blocks = 0
         self._attacker_budget_remaining = self._config.attacker_budget
@@ -566,24 +647,38 @@ class AdversarialIoTEnv(gym.Env):
         # react (evasion-before-commit) when it advances this step.
         self._recent_block = action >= 3  # BLOCK or ISOLATE
 
-        # 3) Advance the attack — possibly overriding with defender-driven
-        # de-escalation if the agent chose a strong action at ACCESS+.
-        agent_forced_deescalation = self._maybe_defender_deescalation(action, previous_attack_stage)
-        if agent_forced_deescalation:
-            reward += self._config.defense_success_bonus
-            outcome = "defended"
+        # 3) Advance the attack.
+        if self._config.tug_of_war:
+            outcome = self._advance_tug_of_war(action, previous_attack_stage)
+            if outcome == "defended":
+                # Routine in-game de-escalation: rewarded by the small, capped
+                # ``reward_deescalation`` term, NOT the large terminal
+                # ``defense_success_bonus`` (which is reserved for surviving a
+                # terminal IMPACT step). This decouples the dense pushdown signal
+                # from terminal-survival accounting and stops de-escalation-count
+                # farming from inflating the reward ceiling.
+                reward += self._capped_deescalation_bonus()
         else:
-            self._advance_attack()
-            outcome = "ongoing"
-            # Drain attacker budget for an active progression step. Only an
-            # attacker that is actually attacking (stage >= RECON) pays the
-            # step cost; a passive defender that leaves the attacker at BENIGN
-            # cannot win by attrition.
-            if (
-                self._attacker_budget_remaining is not None
-                and self._current_attack_stage >= KillChainStage.RECON.value
-            ):
-                self._attacker_budget_remaining -= self._config.budget_step_cost
+            # Legacy v2 dynamics: autonomous Markov advance with a
+            # probabilistic defender-driven de-escalation override.
+            agent_forced_deescalation = self._maybe_defender_deescalation(
+                action, previous_attack_stage
+            )
+            if agent_forced_deescalation:
+                reward += self._config.defense_success_bonus
+                outcome = "defended"
+            else:
+                self._advance_attack()
+                outcome = "ongoing"
+                # Drain attacker budget for an active progression step. Only an
+                # attacker that is actually attacking (stage >= RECON) pays the
+                # step cost; a passive defender that leaves the attacker at
+                # BENIGN cannot win by attrition.
+                if (
+                    self._attacker_budget_remaining is not None
+                    and self._current_attack_stage >= KillChainStage.RECON.value
+                ):
+                    self._attacker_budget_remaining -= self._config.budget_step_cost
 
         # Lifecycle-floor clamp: real-world IMPACT requires time-to-execute.
         # Until the agent has had its grace period, the attacker is not allowed
@@ -728,6 +823,115 @@ class AdversarialIoTEnv(gym.Env):
             if action >= 3:  # BLOCK or ISOLATE
                 self._benign_blocks += 1
 
+    def _advance_tug_of_war(self, action: int, previous_stage: int) -> str:
+        """Advance the attacker under the tug-of-war dynamics (headline, v3).
+
+        The next stage is a function of the proportionality gap between the
+        defender's ``action`` and the stage-recommended action. See the
+        ``tug_of_war`` config block for the full specification.
+
+        Returns the step outcome label: ``"defended"`` (attacker pushed down a
+        rung), ``"ongoing"`` (held or escalated), or ``"benign"`` (attacker
+        dormant at BENIGN and not provoked into onset).
+        """
+        assert self._rng is not None  # invariant after reset
+        stage = int(previous_stage)
+        recommended = _recommended_action(stage)
+        gap = abs(action - recommended)
+
+        # --- BENIGN: the attacker is dormant but has its *own* initiative to
+        # begin the campaign. Onset to RECON happens autonomously with
+        # probability ``p_onset`` regardless of the defender's action — the
+        # attacker is not waiting to be provoked. A defender over-reaction
+        # (gap >= 2, i.e. RESTRICT/BLOCK/ISOLATE on benign traffic) does not
+        # accelerate the kill chain here; it is simply wasteful (and penalised
+        # by the benign guardrails in the reward). No de-escalation is possible
+        # below BENIGN. The onset step itself does not draw down the budget;
+        # the attacker only pays once it is actively climbing (stage >= RECON).
+        if stage == KillChainStage.BENIGN.value:
+            # Multi-rung onset: the attacker may open the campaign at RECON or,
+            # less often, directly at ACCESS (a mid-chain start). A single draw
+            # partitions [0,1): [0, p_onset) -> RECON, [p_onset, p_onset +
+            # p_onset_access) -> ACCESS, remainder -> stay dormant.
+            roll = self._rng.random()
+            if roll < self._config.p_onset:
+                self._current_attack_stage = KillChainStage.RECON.value
+                self._attack_history.append(self._current_attack_stage)
+                return "ongoing"
+            if roll < self._config.p_onset + self._config.p_onset_access:
+                self._current_attack_stage = KillChainStage.ACCESS.value
+                self._attack_history.append(self._current_attack_stage)
+                return "ongoing"
+            # Stay benign.
+            self._attack_history.append(self._current_attack_stage)
+            return "benign"
+
+        # --- Active attack stage (RECON..MANEUVER; IMPACT is handled by
+        # _step_at_impact before we get here). The transition is governed by the
+        # *signed* force difference d = action - recommended(stage):
+        #
+        #   d <= -1 (under-force, defender too weak)  -> ESCALATE   w.p. p_up
+        #   d ==  0 (proportional, exactly right)     -> DE-ESCALATE w.p. p_down
+        #   d >=  1 (over-force, wasteful)            -> HOLD (no climb)
+        #
+        # Under-defending therefore lets the attacker climb (real, autonomous
+        # pressure: a passive defender loses), the exact response pushes it back
+        # down, and over-forcing merely stalls it (and is penalised by the
+        # benign / proportionality guardrails in the reward).
+        d = action - recommended
+
+        if d <= -1:
+            # Under-force: the attacker advances toward IMPACT.
+            if self._rng.random() < self._config.p_up:
+                self._current_attack_stage = min(KillChainStage.IMPACT.value, stage + 1)
+            self._attack_history.append(self._current_attack_stage)
+            self._drain_budget(self._config.budget_step_cost)
+            return "ongoing"
+
+        if d == 0:
+            # Proportional force -> probabilistic de-escalation. ISOLATE
+            # de-escalates more reliably than BLOCK (real force gradient). On a
+            # failed pushdown the attacker simply holds (it never climbs under a
+            # correct response).
+            p_down = self._config.p_down_isolate if action == 4 else self._config.p_down
+            if self._rng.random() < p_down:
+                self._current_attack_stage = max(0, stage - 1)
+                self._attack_history.append(self._current_attack_stage)
+                self._defender_deescalations += 1
+                # Insistence is not free: re-establishing the lost rung drains
+                # extra budget on top of the per-step activity cost.
+                self._drain_budget(self._config.budget_step_cost + self._config.budget_reset_cost)
+                return "defended"
+            self._attack_history.append(self._current_attack_stage)
+            self._drain_budget(self._config.budget_step_cost)
+            return "ongoing"
+
+        # d >= 1: over-force -> the attacker holds (stalled, not advanced).
+        self._attack_history.append(self._current_attack_stage)
+        self._drain_budget(self._config.budget_step_cost)
+        return "ongoing"
+
+    def _drain_budget(self, amount: int) -> None:
+        """Drain ``amount`` units from the finite attacker budget, if enabled."""
+        if self._attacker_budget_remaining is not None:
+            self._attacker_budget_remaining -= amount
+
+    def _capped_deescalation_bonus(self) -> float:
+        """Return the reward for one successful in-game de-escalation.
+
+        Yields ``reward_deescalation`` per pushdown but bounds the cumulative
+        per-episode contribution at ``deescalation_bonus_cap`` (when set), so a
+        policy cannot farm reward simply by racking up a large *count* of routine
+        de-escalations. Once the cap is exhausted, further pushdowns earn 0 from
+        this term (they still drain the attacker's budget toward prevention).
+        """
+        bonus = self._config.reward_deescalation
+        cap = self._config.deescalation_bonus_cap
+        if cap is not None:
+            bonus = min(bonus, max(0.0, cap - self._deescalation_bonus_paid))
+        self._deescalation_bonus_paid += bonus
+        return bonus
+
     def _maybe_defender_deescalation(self, action: int, previous_stage: int) -> bool:
         """Return True iff the agent's action forced a stage reset to BENIGN.
 
@@ -736,7 +940,7 @@ class AdversarialIoTEnv(gym.Env):
         successful override the env replaces the natural attack progression
         for this step.
         """
-        if action < 3:  # OBSERVE / LOG / THROTTLE never trigger
+        if action < 3:  # OBSERVE / LOG / RESTRICT never trigger
             return False
         if previous_stage < KillChainStage.ACCESS.value:
             return False
@@ -916,7 +1120,16 @@ class AdversarialIoTEnv(gym.Env):
         recommended = _recommended_action(decision_stage)
         proportionality_gap = abs(action - recommended)
         if proportionality_gap <= 1:
-            reward += self._config.reward_proportional
+            # Apply the per-episode cap so that a fixed low-force policy cannot
+            # farm this bonus indefinitely by pinning the attacker in an early
+            # stage. Penalties are never capped.
+            cap = self._config.proportional_bonus_cap
+            bonus = self._config.reward_proportional
+            if cap is not None:
+                remaining = cap - self._proportional_bonus_paid
+                bonus = max(0.0, min(bonus, remaining))
+            self._proportional_bonus_paid += bonus
+            reward += bonus
         else:
             reward -= self._config.penalty_disproportionate
 

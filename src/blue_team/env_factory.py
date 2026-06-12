@@ -61,6 +61,13 @@ def _build_env_config(spec: EnvConfigSerializable) -> AdversarialEnvConfig:
         p_defender_deescalation=spec.p_defender_deescalation,
         window_size=spec.window_size,
         include_deltas=spec.include_deltas,
+        # Tug-of-war dynamics (headline contract)
+        tug_of_war=spec.tug_of_war,
+        p_onset=spec.p_onset,
+        p_onset_access=spec.p_onset_access,
+        p_down=spec.p_down,
+        p_up=spec.p_up,
+        p_down_isolate=spec.p_down_isolate,
         # ablation D7.3
         impact_is_terminal=spec.impact_is_terminal,
         # Stage-prediction ablation (review 2.4.1)
@@ -80,6 +87,9 @@ def _build_env_config(spec: EnvConfigSerializable) -> AdversarialEnvConfig:
         action_cost_scale=spec.action_cost_scale,
         reward_proportional=spec.reward_proportional,
         penalty_disproportionate=spec.penalty_disproportionate,
+        proportional_bonus_cap=spec.proportional_bonus_cap,
+        reward_deescalation=spec.reward_deescalation,
+        deescalation_bonus_cap=spec.deescalation_bonus_cap,
         reward_mode=spec.reward_mode,
         impact_penalty=spec.impact_penalty,
         penalty_missed_impact=spec.penalty_missed_impact,

@@ -381,7 +381,7 @@ class MLflowCallback(BaseCallback):
             total_actions = sum(self.action_counts.values())
             if total_actions > 0:
                 # Force continuum actions (5 levels)
-                action_names = ["observe", "log", "throttle", "block", "isolate"]
+                action_names = ["observe", "log", "restrict", "block", "isolate"]
                 for i, action_name in enumerate(action_names):
                     action_prob = self.action_counts[i] / total_actions
                     metrics[f"actions/{action_name}_probability"] = float(action_prob)
@@ -454,7 +454,7 @@ class MLflowCallback(BaseCallback):
             total_actions = sum(self.action_counts.values())
             if total_actions > 0:
                 # Force continuum actions (5 levels)
-                action_names = ["observe", "log", "throttle", "block", "isolate"]
+                action_names = ["observe", "log", "restrict", "block", "isolate"]
                 for i, action_name in enumerate(action_names):
                     final_metrics[f"final/{action_name}_usage"] = float(
                         self.action_counts[i] / total_actions

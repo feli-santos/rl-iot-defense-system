@@ -119,7 +119,7 @@ def recommended_action_policy(
 
     Reads ``info["recommended_action"]`` from the Phase-3 env, which is
     the locked per-stage proportional mapping
-    ``{BENIGN→OBSERVE, RECON→LOG, ACCESS→THROTTLE, MANEUVER→BLOCK,
+    ``{BENIGN→OBSERVE, RECON→LOG, ACCESS→RESTRICT, MANEUVER→BLOCK,
     IMPACT→ISOLATE}``. This is exactly the rule-based comparator that
     Phase-5 G5.2 measured the trained RL trio against (the floor was
     +50; trained agents reach +1300..+1350).
@@ -143,7 +143,7 @@ def recommended_action_policy(
 _RECOMMENDED_BY_STAGE: dict[int, int] = {
     0: 0,  # BENIGN   → OBSERVE
     1: 1,  # RECON    → LOG
-    2: 2,  # ACCESS   → THROTTLE
+    2: 2,  # ACCESS   → RESTRICT
     3: 3,  # MANEUVER → BLOCK
     4: 4,  # IMPACT   → ISOLATE
 }
