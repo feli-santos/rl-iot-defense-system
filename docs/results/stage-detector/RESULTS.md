@@ -8,8 +8,8 @@
 
 | | |
 |---|---|
-| **Goal** | Train a production-realistic stage detector head + two supervised baselines (Random Forest, 1D-CNN); produce thesis figure F11. |
-| **Output** | F11 + checkpoints + 329 passing tests + a critical Phase-1 leakage bug fix discovered along the way. |
+| **Goal** | Train a production-realistic stage detector head + the RandomForest supervised baseline; produce thesis figure F11. |
+| **Output** | F11 + checkpoints + 428 passing tests + a critical Phase-1 leakage bug fix discovered along the way. |
 | **Status** | All four exit gates pass on real data. F11 is thesis-quality. |
 | **Phase-4 commits** | `4fd3460` PLAN — `0a8ef3e` D1/D2/D3 lock-in — `0d154e9` stages.npy — `f3b82c3` src/detector/ — `3cd2fb9` Phase-1 OOD leakage fix — `1357ec6` train_detector entrypoint + F11 |
 
@@ -17,10 +17,10 @@
 
 | Gate | Threshold | Observed | Status |
 |------|----------:|---------:|:------:|
-| G4.1 | full pytest suite green | 329 / 329 | **PASS** |
-| G4.2 | StageDetector macro-F1 on `test_balanced` ≥ 0.75 | **0.7855** | **PASS** |
+| G4.1 | full pytest suite green | 428 / 428 | **PASS** |
+| G4.2 | StageDetector macro-F1 on `test_balanced` ≥ 0.75 | **0.7865** | **PASS** |
 | G4.3 | StageDetector worst per-stage recall ≥ 0.50 (revised D2.1) | **0.539** (RECON) | **PASS** |
-| G4.4 | min(OOD recall) ≤ 0.30 (revised D2) | **0.001** (VulnerabilityScan), gap 0.998 | **PASS-with-finding** |
+| G4.4 | min(OOD recall) ≤ 0.30 (revised D2) | **0.000** (VulnerabilityScan), gap 0.998 | **PASS-with-finding** |
 | G4.5 | StageDetector inference latency ≤ 1 ms / sample | **0.039 ms** | **PASS** |
 
 ## 3 — Headline numbers
@@ -50,9 +50,8 @@ are recall only, mirroring `detector_summary.json::models.<model>.recall_per_sta
 
 | Model | Macro-F1 | BENIGN<br/>recall | RECON<br/>recall | ACCESS<br/>recall | MANEUVER<br/>recall | IMPACT<br/>recall |
 |---|---:|---:|---:|---:|---:|---:|
-| **StageDetector** (production) | **0.7855** | 0.819 | 0.539 | 0.801 | 0.770 | 0.998 |
-| RandomForest baseline | 0.9045 | 0.967 | 0.785 | 0.884 | 0.888 | 0.999 |
-| CNN1D baseline | 0.7232 | 0.697 | 0.497 | 0.710 | 0.708 | 0.993 |
+| **StageDetector** (production) | **0.7865** | 0.819 | 0.539 | 0.801 | 0.770 | 0.998 |
+| RandomForest baseline | 0.9027 | 0.967 | 0.785 | 0.884 | 0.888 | 0.999 |
 
 ### 3.2 Held-out OOD attack classes (StageDetector)
 
@@ -61,7 +60,7 @@ are recall only, mirroring `detector_summary.json::models.<model>.recall_per_sta
 | `DDoS-HTTP_Flood` | IMPACT | 0.999 | traffic signature near-identical to in-distribution DDoS-* classes |
 | `Mirai-udpplain` | IMPACT | 0.786 | partial signature match (Mirai-greeth/greip in train) |
 | `XSS` | ACCESS | 0.920 | ACCESS-stage HTTP semantics overlap with `BrowserHijacking`, `CommandInjection` |
-| **`VulnerabilityScan`** | **RECON** | **0.001** | **structural blind spot — see §4** |
+| **`VulnerabilityScan`** | **RECON** | **0.000** | **structural blind spot — see §4** |
 
 ### 3.3 Inference latency
 
@@ -89,8 +88,8 @@ correctly *given* the detector's outputs over time".
 
 ### Finding 2 — RECON is the universal hard stage
 
-Worst per-stage recall across all three models is RECON:
-StageDetector 0.539, RF 0.785, CNN1D 0.497. The right panel of F11
+Worst per-stage recall across both models is RECON:
+StageDetector 0.539, RF 0.785. The right panel of F11
 (StageDetector confusion matrix) shows where RECON gets misclassified:
 into BENIGN (low-rate scans look like normal traffic) and into ACCESS
 (scan→exploit boundary is fuzzy at the per-flow level).
@@ -99,13 +98,13 @@ into BENIGN (low-rate scans look like normal traffic) and into ACCESS
 training should expect high stage uncertainty around RECON, and the
 proportionality reward in the Phase-3 environment already rewards
 LOG (the recommended action for RECON) within ±1 of OBSERVE or
-THROTTLE — so the agent is not punished for hedging on uncertain
+RESTRICT — so the agent is not punished for hedging on uncertain
 RECON observations.
 
 ### Finding 3 — OOD generalisation is class-asymmetric (the headline finding)
 
 The four OOD classes were *all* held out from training. Yet recall
-ranges from **0.001 to 0.999** — a gap of 0.998. The pattern:
+ranges from **0.000 to 0.999** — a gap of 0.999. The pattern:
 
 - **Easy OOD**: classes whose feature signature heavily overlaps an
   in-distribution class for the same stage. `DDoS-HTTP_Flood` is just
@@ -192,7 +191,6 @@ narrative.
 ---
 
 **Source-of-truth.** All numbers in this doc are reproducible from
-`docs/results/stage-detector/detector_summary.json` (committed in
-`1357ec6`); the SHA-256 hash chain in
+`docs/results/stage-detector/F11_summary.json`; the SHA-256 hash chain in
 `docs/results/stage-detector/manifest.json` pins the figure and JSON to
 the exact input artefacts and git SHA at production time.

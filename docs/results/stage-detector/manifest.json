@@ -1,7 +1,7 @@
 {
   "version": "1.0",
-  "generated_at": "2026-06-03T02:16:36Z",
-  "git_sha": "687a518019ba",
+  "generated_at": "2026-06-09T05:01:48Z",
+  "git_sha": "df47695e5797",
   "inputs": {
     "features.npy": "5d1ff73d8cc1dc3706db4ca0381e9b88c542ec40a5ae5d6e5fd784e4d166dcc7",
     "stages.npy": "607730a5daeb3a17ad4f3dc105247db5a34ca01f9d11be14d71887b2ec94d046",
@@ -11,12 +11,11 @@
     "splits/test.idx.npy": "8d574b875a6d433d129a76d81ea703c9c2911f039ec3fd84d07205deefb7b7f6"
   },
   "outputs": {
-    "per_stage_recall.png": "44897f43fd304658dfb4513bfcd700ffbc6ce0aade043561b2b036125f1215a1",
-    "detector_summary.json": "84ce8736236183c9fe6363024143a4898c23f91d8c15857477ec0b54b8910924",
-    "detector_summary.caption.md": "4250dfb81029c274ff57260de0adc7cc38b0dd8e436eca7d59f928acad19589c",
-    "stage_detector.pt": "cb2920f075d84f708a03f611dd2fd41470d1b6249e29290d7900ec763ec3ef34",
-    "random_forest.joblib": "e2bf7d1910641134cd743b914d8cb02461e859f39b52a2a27181c1aafbf245fc",
-    "cnn1d.pt": "0f00b04fe6c3b4a31f215570735b66cdfbfaa521e345f0959e4706ffb1a19e57"
+    "F11_per_stage_recall.png": "206743ce8f18e77ac096663855eec1aac0ce1bc12ea952a27d28ce1e948ba23a",
+    "F11_summary.json": "7cef17883964680536de2f78ed3834a31f18401d377ce2abd108a5ab73a8edd1",
+    "F11_caption.md": "0ec60863b42ee3c87f4ed5a9eab3551a3d1b19931373803e7088a4a3b39f8330",
+    "stage_detector.pt": "2fbfd7eb8740122239616f619b73018d0366fb85f57c46f921b2e189d12773f6",
+    "random_forest.joblib": "cd56fe46af7e7d3803b14ba1ec138b0b151ec86ac9980266145a524c4f49ae3e"
   },
   "gates_status": {
     "G4.2": "PASS",
