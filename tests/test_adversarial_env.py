@@ -777,13 +777,18 @@ class TestRetreatProb:
             prev_stage = new_stage
 
     def test_retreat_prob_nonzero_can_retreat(self, generator_path, mock_dataset):
-        """retreat_prob>0 should occasionally produce retreats."""
+        """retreat_prob>0 should occasionally produce retreats.
+
+        ``retreat_prob`` is a legacy-attacker (autonomous Markov) mechanic that
+        is bypassed by the default tug-of-war dynamics, so this test pins the
+        legacy path explicitly with ``tug_of_war=False``.
+        """
         from src.environment.adversarial_env import (
             AdversarialEnvConfig,
             AdversarialIoTEnv,
         )
 
-        config = AdversarialEnvConfig(retreat_prob=0.5)
+        config = AdversarialEnvConfig(retreat_prob=0.5, tug_of_war=False)
         env = AdversarialIoTEnv(
             generator_path=generator_path,
             dataset_path=mock_dataset,
@@ -1149,16 +1154,23 @@ class TestAttackerBudget:
         assert compromises == 0
 
     def test_compromise_rate_below_one_with_finite_budget(self, generator_path, mock_dataset):
-        """A finite budget lets a blocking policy drive compromise_rate < 1.0,
-        whereas the unbounded contract always compromises."""
-        # Unbounded: every episode compromises.
+        """A finite budget lets a proportional policy drive compromise_rate < 1.0,
+        whereas an unbounded, under-forcing defender always compromises.
+
+        Under the tug-of-war dynamics a *passive* (under-forcing) defender lets
+        the attacker climb unchecked, so without a budget every episode reaches
+        IMPACT. A finite budget plus a proportional (de-escalating) policy
+        prevents some episodes by exhausting the attacker before IMPACT.
+        """
+        # Unbounded + passive (OBSERVE under-forces at every active stage):
+        # every episode compromises because the attacker climbs unchecked.
         unbounded_compromises = 0
         for seed in range(15):
             env = self._build_env(generator_path, mock_dataset, attacker_budget=None)
             terminated = truncated = False
             info = {}
             while not (terminated or truncated):
-                _, _, terminated, truncated, info = env.step(3)
+                _, _, terminated, truncated, info = env.step(0)  # OBSERVE (passive)
             if info.get("compromised"):
                 unbounded_compromises += 1
         assert unbounded_compromises == 15
@@ -1170,7 +1182,6 @@ class TestAttackerBudget:
                 generator_path,
                 mock_dataset,
                 attacker_budget=40,
-                p_defender_deescalation=1.0,
             )
             terminated = truncated = False
             info = {}

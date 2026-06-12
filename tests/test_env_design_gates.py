@@ -213,9 +213,11 @@ class TestG3_1_RegressionTests:  # noqa: N801
         """B3: at ACCESS+, BLOCK should sometimes reset the stage to BENIGN.
 
         We force the deterministic case by setting the override probability to
-        1.0 and manually placing the env at ACCESS.
+        1.0 and manually placing the env at ACCESS. This pins the *legacy*
+        de-escalation mechanic (``_maybe_defender_deescalation``), which the
+        default tug-of-war dynamics replace, so we set ``tug_of_war=False``.
         """
-        env = env_factory(p_defender_deescalation=1.0)
+        env = env_factory(p_defender_deescalation=1.0, tug_of_war=False)
         env.reset(seed=0)
         env._current_attack_stage = KillChainStage.ACCESS.value
         env._attack_history = [KillChainStage.ACCESS.value]
@@ -224,8 +226,11 @@ class TestG3_1_RegressionTests:  # noqa: N801
         assert info["defender_deescalations"] == 1
 
     def test_defender_deescalation_does_not_fire_below_access(self, env_factory):
-        """B3: BLOCK at RECON must NOT trigger an override (too early)."""
-        env = env_factory(p_defender_deescalation=1.0)
+        """B3: BLOCK at RECON must NOT trigger an override (too early).
+
+        Pins the legacy de-escalation mechanic (``tug_of_war=False``).
+        """
+        env = env_factory(p_defender_deescalation=1.0, tug_of_war=False)
         env.reset(seed=0)
         env._current_attack_stage = KillChainStage.RECON.value
         env._attack_history = [KillChainStage.RECON.value]

@@ -52,7 +52,22 @@ def _build_env(
     (dataset_path / "state_indices.json").write_text(json.dumps(state_indices))
     joblib.dump(StandardScaler().fit(features), dataset_path / "scaler.joblib")
 
-    env_cfg = AdversarialEnvConfig()
+    # These tests pin the ``impact_is_terminal`` contract by monkey-patching
+    # ``_advance_attack`` (the legacy autonomous-Markov advance) via the
+    # ``_force_into_impact`` helper to drive the env deterministically to
+    # IMPACT. The default tug-of-war dynamics route progression through
+    # ``_advance_tug_of_war`` instead, bypassing that patch, so we pin the
+    # legacy path here. ``impact_is_terminal`` semantics are orthogonal to the
+    # progression rule, so this does not weaken the contract under test.
+    #
+    # We also disable the per-episode proportional-bonus cap
+    # (``proportional_bonus_cap=None``). The ``_force_into_impact`` helper rolls
+    # ~20 BENIGN warmup steps, each earning the +5 proportionality bonus; with
+    # the default cap (100 = 20*5) that budget is fully consumed before the
+    # IMPACT-arrival step, which would zero out the +5 the arrival-step reward
+    # assertions expect. The cap is an orthogonal reward-shaping concern, so we
+    # switch it off to isolate the ``impact_is_terminal`` reward shape.
+    env_cfg = AdversarialEnvConfig(tug_of_war=False, proportional_bonus_cap=None)
     for k, v in config_overrides:
         setattr(env_cfg, k, v)
     return AdversarialIoTEnv(generator_path, dataset_path, config=env_cfg)

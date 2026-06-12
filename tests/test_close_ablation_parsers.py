@@ -127,7 +127,12 @@ def test_g72_strand1_passes_when_reward_comparable_cell_beats_dqn():
             mit=0.55,
         ),
     ]
-    result = _evaluate_g72(rows)
+    result = _evaluate_g72(
+        rows,
+        deployable_best=1336.0,
+        oracle_ceiling=1624.0,
+        deployable_best_mitigated=0.20,
+    )
     assert result["passes"] is True
     assert result["best_reward_comparable_cell"] == "impact_is_terminal_false"
     # Raw-reward winner is reported but not the headline.
@@ -155,7 +160,12 @@ def test_g72_strand1_fails_strand2_passes_activates_d7_1_1():
             mit=0.55,
         ),
     ]
-    result = _evaluate_g72(rows)
+    result = _evaluate_g72(
+        rows,
+        deployable_best=1336.0,
+        oracle_ceiling=1624.0,
+        deployable_best_mitigated=0.20,
+    )
     assert result["passes"] is False  # strand-1 failed
     assert result["security_kpi_strand_passes"] is True  # strand-2 passed
     assert result["best_security_kpi_cell"] == "impact_is_terminal_false"
@@ -175,7 +185,12 @@ def test_g72_both_strands_fail():
             mit=0.18,
         ),
     ]
-    result = _evaluate_g72(rows)
+    result = _evaluate_g72(
+        rows,
+        deployable_best=1336.0,
+        oracle_ceiling=1624.0,
+        deployable_best_mitigated=0.20,
+    )
     assert result["passes"] is False
     assert result["security_kpi_strand_passes"] is False
     assert "FAIL-WITH-FINDING" in result["interpretation"]
@@ -194,7 +209,12 @@ def test_g72_oracle_stretch_met():
             mit=0.95,
         ),
     ]
-    result = _evaluate_g72(rows)
+    result = _evaluate_g72(
+        rows,
+        deployable_best=1336.0,
+        oracle_ceiling=1624.0,
+        deployable_best_mitigated=0.20,
+    )
     assert result["passes"] is True
     assert result["meets_oracle_ceiling_stretch"] is True
     assert "STRETCH MET" in result["interpretation"]
@@ -211,7 +231,12 @@ def test_g72_no_finite_rows_returns_failure():
             "mitigated_impact_rate": math.nan,
         }
     ]
-    result = _evaluate_g72(rows)
+    result = _evaluate_g72(
+        rows,
+        deployable_best=1336.0,
+        oracle_ceiling=1624.0,
+        deployable_best_mitigated=0.20,
+    )
     assert result["passes"] is False
     assert "no candidate" in result.get("reason", "")
 
@@ -231,7 +256,12 @@ def test_g72_reward_coefficient_cell_does_not_count_for_strand1():
             mit=0.55,
         ),
     ]
-    result = _evaluate_g72(rows)
+    result = _evaluate_g72(
+        rows,
+        deployable_best=1336.0,
+        oracle_ceiling=1624.0,
+        deployable_best_mitigated=0.20,
+    )
     assert result["passes"] is False
     # The reward-coefficient cell is the raw winner but not the
     # apples-to-apples winner.

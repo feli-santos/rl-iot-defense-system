@@ -212,7 +212,7 @@ class TestActionAggregation:
         out = agg.action_counts_by_bin(records, [0, 100, 200])
         # Bucket 0: 5 OBSERVE + 5 LOG -> [0.5, 0.5, 0, 0, 0]
         assert out[0].tolist() == pytest.approx([0.5, 0.5, 0.0, 0.0, 0.0])
-        # Bucket 1: 5 THROTTLE + 5 BLOCK -> [0, 0, 0.5, 0.5, 0]
+        # Bucket 1: 5 RESTRICT + 5 BLOCK -> [0, 0, 0.5, 0.5, 0]
         assert out[1].tolist() == pytest.approx([0.0, 0.0, 0.5, 0.5, 0.0])
 
     def test_per_stage_action_distribution_hand_computed(self) -> None:

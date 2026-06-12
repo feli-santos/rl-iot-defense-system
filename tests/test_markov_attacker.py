@@ -34,21 +34,31 @@ class TestMarkovAttackerMatrix:
             assert trans[i, :i].sum() == 0.0
 
     def test_benign_row_weighted_by_distribution(self):
-        # Heavily weight ACCESS (stage 2); its onset prob should dominate the
-        # other attack-onset entries in the BENIGN row.
+        # BENIGN-row distribution weighting only applies to the skip-capable
+        # ablation (skip_weight > 0); the strict-sequential headline onset is
+        # RECON-only. Heavily weight ACCESS (stage 2); its onset prob should
+        # then dominate the other attack-onset entries in the BENIGN row.
         dist = {1: 0.01, 2: 1.0, 3: 0.01, 4: 0.01}
-        attacker = MarkovAttacker(stage_distribution=dist)
+        attacker = MarkovAttacker(stage_distribution=dist, skip_weight=0.2)
         benign_row = attacker.transition_matrix[0]
         attack_onsets = benign_row[1:]
         assert np.argmax(attack_onsets) == 1  # index 1 within [1:] == stage 2
 
     def test_missing_distribution_defaults_to_quarter(self):
-        # With no distribution, all attack-onset entries share the same prior.
-        attacker = MarkovAttacker()
+        # Skip-capable ablation: with no distribution, all attack-onset entries
+        # share the same prior.
+        attacker = MarkovAttacker(skip_weight=0.2)
         benign_row = attacker.transition_matrix[0]
         np.testing.assert_allclose(
             benign_row[1:], np.full(NUM_STAGES - 1, benign_row[1]), rtol=1e-9
         )
+
+    def test_strict_sequential_headline_onset_is_recon_only(self):
+        # Headline (skip_weight=0): BENIGN can only begin an attack at RECON.
+        attacker = MarkovAttacker()
+        benign_row = attacker.transition_matrix[0]
+        assert benign_row[1] == pytest.approx(0.6)
+        assert benign_row[2:].sum() == pytest.approx(0.0)
 
 
 class TestMarkovAttackerSampling:

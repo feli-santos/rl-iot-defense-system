@@ -201,11 +201,16 @@ class TestEpisodeGeneratorGrammar:
                     pytest.fail(f"Regression from {max_stage_seen} to {stage} in {episode}")
                 max_stage_seen = max(max_stage_seen, stage)
 
-    def test_can_skip_stages(self, generator: EpisodeGenerator) -> None:
+    def test_can_skip_stages(self) -> None:
         """Should be possible to skip intermediate stages.
 
-        e.g., RECON -> IMPACT (skipping ACCESS and MANEUVER)
+        e.g., RECON -> IMPACT (skipping ACCESS and MANEUVER).
+
+        Stage skips are a property of the *skip-capable* attacker ablation
+        (``skip_weight > 0``); the strict-sequential headline grammar
+        (``skip_weight = 0``) never skips. Pin the ablation config explicitly.
         """
+        generator = EpisodeGenerator(config=EpisodeGeneratorConfig(skip_weight=0.2), seed=42)
         skips_found = False
 
         for _ in range(200):
