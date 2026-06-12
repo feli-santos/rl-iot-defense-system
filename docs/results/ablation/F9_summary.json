@@ -9,8 +9,11 @@
     "penalty_disproportionate": 5.0,
     "reward_benign_passive": 10.0
   },
-  "phase6_oracle_ceiling": 1624.4,
-  "phase6_deployable_best": 1336.3,
+  "phase6_oracle_ceiling": 543.0603333333335,
+  "phase6_deployable_best": 278.47533333333337,
+  "phase6_deployable_best_policy": "a2c",
+  "phase6_deployable_best_mitigated": 0.12333333333333334,
+  "phase6_refs_source": "docs/results/benchmark/F5_summary.json",
   "rows": [
     {
       "cell_id": "baseline_defaults",
@@ -20,11 +23,11 @@
       "impact_is_terminal": true,
       "n_seeds": 10,
       "n_episodes": 300,
-      "mean_reward": 862.1493333333333,
-      "ci_low": 801.1207083333335,
-      "ci_high": 923.8080916666668,
-      "compromise_rate": 1.0,
-      "mitigated_impact_rate": 0.3333333333333333
+      "mean_reward": 130.3313333333333,
+      "ci_low": 114.52733333333333,
+      "ci_high": 145.7720833333333,
+      "compromise_rate": 0.9233333333333333,
+      "mitigated_impact_rate": 0.0
     },
     {
       "cell_id": "defense_success_bonus_x0p5",
@@ -34,11 +37,11 @@
       "impact_is_terminal": true,
       "n_seeds": 10,
       "n_episodes": 300,
-      "mean_reward": 316.19266666666664,
-      "ci_low": 284.08737499999995,
-      "ci_high": 347.67791666666665,
-      "compromise_rate": 1.0,
-      "mitigated_impact_rate": 0.28
+      "mean_reward": 130.40166666666667,
+      "ci_low": 101.01151666666668,
+      "ci_high": 161.35904166666668,
+      "compromise_rate": 0.9266666666666666,
+      "mitigated_impact_rate": 0.0
     },
     {
       "cell_id": "defense_success_bonus_x2p0",
@@ -48,11 +51,11 @@
       "impact_is_terminal": true,
       "n_seeds": 10,
       "n_episodes": 300,
-      "mean_reward": 2243.816,
-      "ci_low": 2169.9256500000006,
-      "ci_high": 2311.2939333333334,
-      "compromise_rate": 1.0,
-      "mitigated_impact_rate": 0.49
+      "mean_reward": 127.22299999999998,
+      "ci_low": 112.27071666666664,
+      "ci_high": 142.15949999999998,
+      "compromise_rate": 0.9033333333333333,
+      "mitigated_impact_rate": 0.0
     },
     {
       "cell_id": "impact_is_terminal_false",
@@ -62,11 +65,11 @@
       "impact_is_terminal": false,
       "n_seeds": 10,
       "n_episodes": 300,
-      "mean_reward": 1125.7,
-      "ci_low": 1079.630666666667,
-      "ci_high": 1184.2510416666667,
-      "compromise_rate": 1.0,
-      "mitigated_impact_rate": 0.8666666666666667
+      "mean_reward": 278.524,
+      "ci_low": 266.7409416666667,
+      "ci_high": 290.4873083333333,
+      "compromise_rate": 0.9933333333333333,
+      "mitigated_impact_rate": 0.85
     },
     {
       "cell_id": "penalty_disproportionate_x0p5",
@@ -76,11 +79,11 @@
       "impact_is_terminal": true,
       "n_seeds": 10,
       "n_episodes": 300,
-      "mean_reward": 899.536,
-      "ci_low": 873.1043666666667,
-      "ci_high": 919.8196583333332,
-      "compromise_rate": 1.0,
-      "mitigated_impact_rate": 0.3433333333333333
+      "mean_reward": 114.793,
+      "ci_low": 59.45119166666666,
+      "ci_high": 162.75628333333336,
+      "compromise_rate": 0.9166666666666666,
+      "mitigated_impact_rate": 0.0
     },
     {
       "cell_id": "penalty_disproportionate_x2p0",
@@ -90,11 +93,11 @@
       "impact_is_terminal": true,
       "n_seeds": 10,
       "n_episodes": 300,
-      "mean_reward": 904.0686666666666,
-      "ci_low": 864.7206916666668,
-      "ci_high": 945.0319249999999,
-      "compromise_rate": 1.0,
-      "mitigated_impact_rate": 0.36
+      "mean_reward": 120.40833333333333,
+      "ci_low": 93.19400833333333,
+      "ci_high": 148.35022499999994,
+      "compromise_rate": 0.9366666666666666,
+      "mitigated_impact_rate": 0.0
     },
     {
       "cell_id": "penalty_missed_impact_x0p5",
@@ -104,11 +107,11 @@
       "impact_is_terminal": true,
       "n_seeds": 10,
       "n_episodes": 300,
-      "mean_reward": 950.7313333333334,
-      "ci_low": 904.2937583333332,
-      "ci_high": 997.1800666666664,
-      "compromise_rate": 1.0,
-      "mitigated_impact_rate": 0.3333333333333333
+      "mean_reward": 209.79799999999997,
+      "ci_low": 184.71298333333334,
+      "ci_high": 237.58910833333326,
+      "compromise_rate": 0.89,
+      "mitigated_impact_rate": 0.0
     },
     {
       "cell_id": "penalty_missed_impact_x2p0",
@@ -118,11 +121,11 @@
       "impact_is_terminal": true,
       "n_seeds": 10,
       "n_episodes": 300,
-      "mean_reward": 743.0459999999999,
-      "ci_low": 700.9419083333333,
-      "ci_high": 784.7136666666667,
-      "compromise_rate": 1.0,
-      "mitigated_impact_rate": 0.30333333333333334
+      "mean_reward": 17.056,
+      "ci_low": -12.48368333333333,
+      "ci_high": 50.916899999999984,
+      "compromise_rate": 0.9866666666666667,
+      "mitigated_impact_rate": 0.0
     },
     {
       "cell_id": "reward_benign_passive_x0p5",
@@ -132,11 +135,11 @@
       "impact_is_terminal": true,
       "n_seeds": 10,
       "n_episodes": 300,
-      "mean_reward": 861.0026666666668,
-      "ci_low": 818.4321083333334,
-      "ci_high": 902.4393749999999,
-      "compromise_rate": 1.0,
-      "mitigated_impact_rate": 0.34
+      "mean_reward": -47.041666666666664,
+      "ci_low": -67.092725,
+      "ci_high": -25.39254166666668,
+      "compromise_rate": 0.97,
+      "mitigated_impact_rate": 0.0
     },
     {
       "cell_id": "reward_benign_passive_x2p0",
@@ -146,11 +149,11 @@
       "impact_is_terminal": true,
       "n_seeds": 10,
       "n_episodes": 300,
-      "mean_reward": 987.5673333333332,
-      "ci_low": 939.8675916666667,
-      "ci_high": 1036.5325833333332,
-      "compromise_rate": 1.0,
-      "mitigated_impact_rate": 0.32666666666666666
+      "mean_reward": 363.77233333333334,
+      "ci_low": 343.4843333333333,
+      "ci_high": 382.926625,
+      "compromise_rate": 0.91,
+      "mitigated_impact_rate": 0.0
     },
     {
       "cell_id": "reward_proportional_x0p5",
@@ -160,11 +163,11 @@
       "impact_is_terminal": true,
       "n_seeds": 10,
       "n_episodes": 300,
-      "mean_reward": 872.1776666666667,
-      "ci_low": 806.4492416666667,
-      "ci_high": 940.4503916666667,
-      "compromise_rate": 1.0,
-      "mitigated_impact_rate": 0.3233333333333333
+      "mean_reward": 112.21266666666668,
+      "ci_low": 85.21885,
+      "ci_high": 141.327025,
+      "compromise_rate": 0.89,
+      "mitigated_impact_rate": 0.0
     },
     {
       "cell_id": "reward_proportional_x2p0",
@@ -174,45 +177,45 @@
       "impact_is_terminal": true,
       "n_seeds": 10,
       "n_episodes": 300,
-      "mean_reward": 1015.359,
-      "ci_low": 958.8879166666666,
-      "ci_high": 1062.2043666666666,
-      "compromise_rate": 1.0,
-      "mitigated_impact_rate": 0.37333333333333335
+      "mean_reward": 102.269,
+      "ci_low": 78.88271666666665,
+      "ci_high": 125.91036666666668,
+      "compromise_rate": 0.94,
+      "mitigated_impact_rate": 0.0
     }
   ],
   "gates": {
     "G7.2": {
       "passes": false,
       "best_reward_comparable_cell": "impact_is_terminal_false",
-      "best_reward_comparable_mean": 1125.7,
+      "best_reward_comparable_mean": 278.524,
       "best_reward_comparable_ci": [
-        1079.630666666667,
-        1184.2510416666667
+        266.7409416666667,
+        290.4873083333333
       ],
-      "best_reward_comparable_mitigated": 0.8666666666666667,
+      "best_reward_comparable_mitigated": 0.85,
       "best_security_kpi_cell": "impact_is_terminal_false",
-      "best_security_kpi_mitigated": 0.8666666666666667,
-      "best_security_kpi_reward": 1125.7,
+      "best_security_kpi_mitigated": 0.85,
+      "best_security_kpi_reward": 278.524,
       "security_kpi_strand_passes": true,
-      "security_kpi_threshold": 0.22949999999999998,
-      "raw_reward_winner_cell": "defense_success_bonus_x2p0",
-      "raw_reward_winner_mean": 2243.816,
+      "security_kpi_threshold": 0.185,
+      "raw_reward_winner_cell": "reward_benign_passive_x2p0",
+      "raw_reward_winner_mean": 363.77233333333334,
       "raw_reward_winner_note": "raw-reward winner across ALL cells; NOT directly comparable to benchmark if axis='reward' because reward-coefficient cells use a different reward function. See best_reward_comparable_* for the apples-to-apples row.",
-      "deployable_best_threshold": 1336.3,
-      "deployable_best_mitigated": 0.153,
-      "oracle_ceiling": 1624.4,
+      "deployable_best_threshold": 278.47533333333337,
+      "deployable_best_mitigated": 0.12333333333333334,
+      "oracle_ceiling": 543.0603333333335,
       "meets_oracle_ceiling_stretch": false,
       "best_cell": "impact_is_terminal_false",
-      "best_mean_reward": 1125.7,
+      "best_mean_reward": 278.524,
       "best_ci": [
-        1079.630666666667,
-        1184.2510416666667
+        266.7409416666667,
+        290.4873083333333
       ],
-      "delta_to_deployable": -210.5999999999999,
-      "delta_to_oracle": -498.70000000000005,
-      "interpretation": "FAIL-WITH-FINDING (D7.1.1, activated 2026-05-01): no reward-comparable cell (environment-design reward fn preserved) beats DQN +1336 on raw reward by \u2265 1\u03c3. BUT: the security-KPI strand passes \u2014 cell `impact_is_terminal_false` improves mitigated_impact_rate to 0.867 (vs DQN baseline 0.153, \u2265 1.5\u00d7 threshold 0.229). The one-at-a-time linear sweep characterised the limit of environment-design-style reward shaping at the apples-to-apples reward level, but env-semantics + coefficient scaling do move the real-security needle. Closing the +288 reward gap under fixed reward semantics requires a different mechanism (curriculum, reward modelling, or attack-aware exploration), deferred to future work."
+      "delta_to_deployable": 0.04866666666663377,
+      "delta_to_oracle": -264.53633333333346,
+      "interpretation": "FAIL-WITH-FINDING (D7.1.1, activated 2026-05-01): no reward-comparable cell (environment-design reward fn preserved) beats the deployable best (+278) on raw reward by \u2265 1\u03c3. BUT: the security-KPI strand passes \u2014 cell `impact_is_terminal_false` improves mitigated_impact_rate to 0.850 (vs deployable-best baseline 0.123, \u2265 1.5\u00d7 threshold 0.185). The one-at-a-time linear sweep characterised the limit of environment-design-style reward shaping at the apples-to-apples reward level, but env-semantics + coefficient scaling do move the real-security needle. Closing the +265 reward gap under fixed reward semantics requires a different mechanism (curriculum, reward modelling, or attack-aware exploration), deferred to future work."
     }
   },
-  "headline": "FAIL-WITH-FINDING (D7.1.1, activated 2026-05-01): no reward-comparable cell (environment-design reward fn preserved) beats DQN +1336 on raw reward by \u2265 1\u03c3. BUT: the security-KPI strand passes \u2014 cell `impact_is_terminal_false` improves mitigated_impact_rate to 0.867 (vs DQN baseline 0.153, \u2265 1.5\u00d7 threshold 0.229). The one-at-a-time linear sweep characterised the limit of environment-design-style reward shaping at the apples-to-apples reward level, but env-semantics + coefficient scaling do move the real-security needle. Closing the +288 reward gap under fixed reward semantics requires a different mechanism (curriculum, reward modelling, or attack-aware exploration), deferred to future work."
+  "headline": "FAIL-WITH-FINDING (D7.1.1, activated 2026-05-01): no reward-comparable cell (environment-design reward fn preserved) beats the deployable best (+278) on raw reward by \u2265 1\u03c3. BUT: the security-KPI strand passes \u2014 cell `impact_is_terminal_false` improves mitigated_impact_rate to 0.850 (vs deployable-best baseline 0.123, \u2265 1.5\u00d7 threshold 0.185). The one-at-a-time linear sweep characterised the limit of environment-design-style reward shaping at the apples-to-apples reward level, but env-semantics + coefficient scaling do move the real-security needle. Closing the +265 reward gap under fixed reward semantics requires a different mechanism (curriculum, reward modelling, or attack-aware exploration), deferred to future work."
 }

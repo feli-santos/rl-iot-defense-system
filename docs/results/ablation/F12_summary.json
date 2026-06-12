@@ -3,21 +3,21 @@
   "phase": 7,
   "figure": "F12",
   "n_points_total": 32,
-  "n_frontier_points": 4,
+  "n_frontier_points": 7,
   "points": [
     {
       "source": "phase6",
       "policy": "a2c",
       "label": "a2c",
-      "security_gain": 0.31000000000000005,
-      "availability_cost": 0.3717986030267753,
+      "security_gain": 0.5966666666666667,
+      "availability_cost": 0.14642245072836332,
       "n_episodes": 300
     },
     {
       "source": "phase6",
       "policy": "always_block",
       "label": "always_block",
-      "security_gain": 0.6433333333333333,
+      "security_gain": 1.0,
       "availability_cost": 1.0,
       "n_episodes": 300
     },
@@ -33,40 +33,40 @@
       "source": "phase6",
       "policy": "dqn",
       "label": "dqn",
-      "security_gain": 0.3633333333333333,
-      "availability_cost": 0.3938811705586757,
+      "security_gain": 0.5366666666666666,
+      "availability_cost": 0.07899968609396255,
       "n_episodes": 300
     },
     {
       "source": "phase6",
       "policy": "ppo",
       "label": "ppo",
-      "security_gain": 0.32333333333333336,
-      "availability_cost": 0.40067587422862183,
+      "security_gain": 0.32999999999999996,
+      "availability_cost": 0.20800361745421658,
       "n_episodes": 300
     },
     {
       "source": "phase6",
       "policy": "random",
       "label": "random",
-      "security_gain": 0.16000000000000003,
-      "availability_cost": 0.40695475047286483,
+      "security_gain": 0.13666666666666671,
+      "availability_cost": 0.40820435384421794,
       "n_episodes": 300
     },
     {
       "source": "phase6",
       "policy": "recommended_action",
       "label": "recommended_action",
-      "security_gain": 0.5266666666666666,
-      "availability_cost": 0.36789834964217905,
+      "security_gain": 1.0,
+      "availability_cost": 0.0,
       "n_episodes": 300
     },
     {
       "source": "phase6",
       "policy": "rf_acting",
       "label": "rf_acting",
-      "security_gain": 0.3933333333333333,
-      "availability_cost": 0.35915697674418606,
+      "security_gain": 0.9733333333333334,
+      "availability_cost": 0.01810118562765861,
       "n_episodes": 300
     },
     {
@@ -76,8 +76,8 @@
       "component": null,
       "multiplier": 1.0,
       "label": "f9:baseline_defaults",
-      "security_gain": 0.0,
-      "availability_cost": 0.3979296066252588,
+      "security_gain": 0.07666666666666666,
+      "availability_cost": 0.08193094200469327,
       "n_episodes": 300
     },
     {
@@ -87,8 +87,8 @@
       "component": "defense_success_bonus",
       "multiplier": 0.5,
       "label": "f9:defense_success_bonus_x0p5",
-      "security_gain": 0.0,
-      "availability_cost": 0.3294019703066463,
+      "security_gain": 0.07333333333333336,
+      "availability_cost": 0.08211387752271308,
       "n_episodes": 300
     },
     {
@@ -98,8 +98,8 @@
       "component": "defense_success_bonus",
       "multiplier": 2.0,
       "label": "f9:defense_success_bonus_x2p0",
-      "security_gain": 0.0,
-      "availability_cost": 0.530154091392136,
+      "security_gain": 0.09666666666666668,
+      "availability_cost": 0.0749566146041917,
       "n_episodes": 300
     },
     {
@@ -109,8 +109,8 @@
       "component": "impact_is_terminal",
       "multiplier": null,
       "label": "f9:impact_is_terminal_false",
-      "security_gain": 0.0,
-      "availability_cost": 0.42366462060859345,
+      "security_gain": 0.0033333333333332993,
+      "availability_cost": 0.2505137690094533,
       "n_episodes": 300
     },
     {
@@ -120,8 +120,8 @@
       "component": "penalty_disproportionate",
       "multiplier": 0.5,
       "label": "f9:penalty_disproportionate_x0p5",
-      "security_gain": 0.0,
-      "availability_cost": 0.38870807980755623,
+      "security_gain": 0.06666666666666665,
+      "availability_cost": 0.1091897233201581,
       "n_episodes": 300
     },
     {
@@ -131,8 +131,8 @@
       "component": "penalty_disproportionate",
       "multiplier": 2.0,
       "label": "f9:penalty_disproportionate_x2p0",
-      "security_gain": 0.0,
-      "availability_cost": 0.3884568153909128,
+      "security_gain": 0.09666666666666668,
+      "availability_cost": 0.07686029111685486,
       "n_episodes": 300
     },
     {
@@ -142,8 +142,8 @@
       "component": "penalty_missed_impact",
       "multiplier": 0.5,
       "label": "f9:penalty_missed_impact_x0p5",
-      "security_gain": 0.0,
-      "availability_cost": 0.39241561327962216,
+      "security_gain": 0.10999999999999999,
+      "availability_cost": 0.09520783017668742,
       "n_episodes": 300
     },
     {
@@ -153,8 +153,8 @@
       "component": "penalty_missed_impact",
       "multiplier": 2.0,
       "label": "f9:penalty_missed_impact_x2p0",
-      "security_gain": 0.0,
-      "availability_cost": 0.4012379642365887,
+      "security_gain": 0.013333333333333308,
+      "availability_cost": 0.05278012983347446,
       "n_episodes": 300
     },
     {
@@ -164,8 +164,8 @@
       "component": "reward_benign_passive",
       "multiplier": 0.5,
       "label": "f9:reward_benign_passive_x0p5",
-      "security_gain": 0.0,
-      "availability_cost": 0.3899405831145502,
+      "security_gain": 0.09999999999999998,
+      "availability_cost": 0.10159179342058719,
       "n_episodes": 300
     },
     {
@@ -175,8 +175,8 @@
       "component": "reward_benign_passive",
       "multiplier": 2.0,
       "label": "f9:reward_benign_passive_x2p0",
-      "security_gain": 0.0,
-      "availability_cost": 0.39585039585039583,
+      "security_gain": 0.13666666666666671,
+      "availability_cost": 0.07013157894736842,
       "n_episodes": 300
     },
     {
@@ -186,8 +186,8 @@
       "component": "reward_proportional",
       "multiplier": 0.5,
       "label": "f9:reward_proportional_x0p5",
-      "security_gain": 0.0,
-      "availability_cost": 0.38916928113490656,
+      "security_gain": 0.10999999999999999,
+      "availability_cost": 0.08604884576781532,
       "n_episodes": 300
     },
     {
@@ -197,143 +197,146 @@
       "component": "reward_proportional",
       "multiplier": 2.0,
       "label": "f9:reward_proportional_x2p0",
-      "security_gain": 0.0,
-      "availability_cost": 0.3920210555478598,
+      "security_gain": 0.06000000000000005,
+      "availability_cost": 0.08424372980458532,
       "n_episodes": 300
     },
     {
       "source": "f10_aggressiveness",
       "kind": "ppo",
-      "p_defender_deescalation": 0.0,
+      "p_down": 0.0,
       "label": "f10:ppo_p0.0",
       "security_gain": 0.0,
-      "availability_cost": 0.8010335917312662,
+      "availability_cost": 0.4531925718646655,
       "n_episodes": 300
     },
     {
       "source": "f10_aggressiveness",
       "kind": "ppo",
-      "p_defender_deescalation": 0.2,
+      "p_down": 0.2,
       "label": "f10:ppo_p0.2",
-      "security_gain": 0.0,
-      "availability_cost": 0.5249809014514897,
+      "security_gain": 0.040000000000000036,
+      "availability_cost": 0.1355485680292343,
       "n_episodes": 300
     },
     {
       "source": "f10_aggressiveness",
       "kind": "ppo",
-      "p_defender_deescalation": 0.4,
+      "p_down": 0.4,
       "label": "f10:ppo_p0.4",
-      "security_gain": 0.0,
-      "availability_cost": 0.4299438368312149,
+      "security_gain": 0.09999999999999998,
+      "availability_cost": 0.1003709810387469,
       "n_episodes": 300
     },
     {
       "source": "f10_aggressiveness",
       "kind": "ppo",
-      "p_defender_deescalation": 0.6,
+      "p_down": 0.6,
       "label": "f10:ppo_p0.6",
-      "security_gain": 0.0,
-      "availability_cost": 0.39289118888737573,
+      "security_gain": 0.09333333333333338,
+      "availability_cost": 0.09015136360605454,
       "n_episodes": 300
     },
     {
       "source": "f10_aggressiveness",
       "kind": "ppo",
-      "p_defender_deescalation": 0.8,
+      "p_down": 0.8,
       "label": "f10:ppo_p0.8",
-      "security_gain": 0.0,
-      "availability_cost": 0.3721809412071438,
+      "security_gain": 0.07666666666666666,
+      "availability_cost": 0.08929589509692132,
       "n_episodes": 300
     },
     {
       "source": "f10_aggressiveness",
       "kind": "ppo",
-      "p_defender_deescalation": 1.0,
+      "p_down": 1.0,
       "label": "f10:ppo_p1.0",
-      "security_gain": 0.0,
-      "availability_cost": 0.3488031265266243,
+      "security_gain": 0.10999999999999999,
+      "availability_cost": 0.0741234756097561,
       "n_episodes": 300
     },
     {
       "source": "f10_aggressiveness",
       "kind": "rule",
-      "p_defender_deescalation": 0.0,
+      "p_down": 0.0,
       "label": "f10:rule_p0.0",
-      "security_gain": 0.0,
-      "availability_cost": 0.8840713407134071,
+      "security_gain": 1.0,
+      "availability_cost": 0.0,
       "n_episodes": 150
     },
     {
       "source": "f10_aggressiveness",
       "kind": "rule",
-      "p_defender_deescalation": 0.2,
+      "p_down": 0.2,
       "label": "f10:rule_p0.2",
-      "security_gain": 0.0,
-      "availability_cost": 0.5923207227555054,
+      "security_gain": 1.0,
+      "availability_cost": 0.0,
       "n_episodes": 150
     },
     {
       "source": "f10_aggressiveness",
       "kind": "rule",
-      "p_defender_deescalation": 0.4,
+      "p_down": 0.4,
       "label": "f10:rule_p0.4",
-      "security_gain": 0.0,
-      "availability_cost": 0.45989010989010987,
+      "security_gain": 1.0,
+      "availability_cost": 0.0,
       "n_episodes": 150
     },
     {
       "source": "f10_aggressiveness",
       "kind": "rule",
-      "p_defender_deescalation": 0.6,
+      "p_down": 0.6,
       "label": "f10:rule_p0.6",
-      "security_gain": 0.0,
-      "availability_cost": 0.3657854600915099,
+      "security_gain": 1.0,
+      "availability_cost": 0.0,
       "n_episodes": 150
     },
     {
       "source": "f10_aggressiveness",
       "kind": "rule",
-      "p_defender_deescalation": 0.8,
+      "p_down": 0.8,
       "label": "f10:rule_p0.8",
-      "security_gain": 0.0,
-      "availability_cost": 0.31565480344266106,
+      "security_gain": 1.0,
+      "availability_cost": 0.0,
       "n_episodes": 150
     },
     {
       "source": "f10_aggressiveness",
       "kind": "rule",
-      "p_defender_deescalation": 1.0,
+      "p_down": 1.0,
       "label": "f10:rule_p1.0",
-      "security_gain": 0.0,
-      "availability_cost": 0.27622134753415145,
+      "security_gain": 1.0,
+      "availability_cost": 0.0,
       "n_episodes": 150
     }
   ],
   "frontier_indices": [
-    1,
-    2,
     6,
-    7
+    26,
+    27,
+    28,
+    29,
+    30,
+    31
   ],
   "gates": {
     "G7.4": {
-      "passes": true,
-      "n_distinct_frontier_points": 4,
+      "passes": false,
+      "n_distinct_frontier_points": 1,
       "frontier_indices": [
-        1,
-        2,
         6,
-        7
+        26,
+        27,
+        28,
+        29,
+        30,
+        31
       ],
       "frontier_distinct_indices": [
-        1,
-        2,
-        6,
-        7
+        6
       ],
-      "interpretation": "PASS: Pareto frontier has 4 distinct dominant points \u2014 non-trivial trade-off surface; operating-point choice is a real defender contribution."
+      "interpretation": "FAIL-WITH-FINDING (R7.3): only 1 distinct dominant point(s) on the frontier. Under the tug-of-war dynamics the stage-aware proportional oracle (recommended_action) attains perfect security (security_gain=1.0) at near-zero availability cost, strictly dominating always_block (which also prevents 100% but at unit availability cost) and every interior learned policy. The security-availability trade-off therefore collapses to a single dominant operating point *given perfect stage perception*; the interior placement of the RL agents quantifies the cost of partial observability (POMDP), not a genuine multi-point frontier."
     }
   },
-  "headline": "PASS: Pareto frontier has 4 distinct dominant points \u2014 non-trivial trade-off surface; operating-point choice is a real defender contribution."
+  "headline": "FAIL-WITH-FINDING (R7.3): only 1 distinct dominant point(s) on the frontier. Under the tug-of-war dynamics the stage-aware proportional oracle (recommended_action) attains perfect security (security_gain=1.0) at near-zero availability cost, strictly dominating always_block (which also prevents 100% but at unit availability cost) and every interior learned policy. The security-availability trade-off therefore collapses to a single dominant operating point *given perfect stage perception*; the interior placement of the RL agents quantifies the cost of partial observability (POMDP), not a genuine multi-point frontier."
 }
