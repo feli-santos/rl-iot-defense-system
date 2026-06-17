@@ -79,14 +79,15 @@ The supervised stage detector classifies a 29-feature CICIoT2023 vector into one
 \centering
 \caption{Comparison of supervised stage-detector architectures on the held-out \texttt{test\_balanced} split. ``Production'' indicates the model used in the RL environment's stage-prediction feature. Latency is median per-sample CPU inference on the evaluation host.}
 \label{tab:detector_comparison}
-\begin{tabular}{lrrrrl}
+\small
+\begin{tabularx}{\textwidth}{lrrrcX}
 \toprule
 \textbf{Model} & \textbf{Params} & \textbf{Size (KB)} & \textbf{Macro-F1} & \textbf{Latency (ms)} & \textbf{Role} \\
 \midrule
-MLP (production) & 4{,}357 & 20 & 0.786 & 0.039 & RL stage feature; evaluated \\
-RandomForest (100 trees) & $\sim$2.6\,M & 22{,}000 & 0.903 & 0.039 & RF-Acting baseline \\
+MLP (production) & 4{,}357 & 20 & 0.786 & 0.039 & optional \texttt{stage\_pred} feature \\
+RandomForest (100 trees) & $\sim$2.6\,M & 22{,}000 & 0.903 & \RFLatency & RF-Acting baseline \\
 \bottomrule
-\end{tabular}
+\end{tabularx}
 \end{table}
 
 The RandomForest achieves higher in-distribution macro-F1 (0.903 vs.\ 0.786 for the MLP) but is approximately three orders of magnitude larger on disk ($\sim$22\,MB vs.\ $\sim$20\,KB) and has a p50 per-decision inference latency of \RFLatency\,ms (sklearn tree-traversal overhead for 100 trees) versus 0.039\,ms for the MLP. The RandomForest is retained as the supervised classifier underlying the deployable RF-Acting baseline (Section~\ref{sec:baselines}), where its higher accuracy justifies the latency cost. The production MLP is selected for the RL environment's optional \texttt{stage\_pred} field on the grounds of size and latency parity with the trained RL agents; the goal of this optional field is not to maximise stage-detection accuracy but to provide a low-overhead feature that can optionally be consumed.
@@ -139,7 +140,7 @@ R^{\mathrm{term}} \;=\; -p_{\mathrm{impact}} \;+\; \textrm{(terminal action bonu
 \end{equation}
 Two further signals govern the tug-of-war dynamics and are decoupled from the terminal accounting. A \textbf{de-escalation reward} of $+r_{\mathrm{deesc}} = 15$ is granted each time a proportionate action pushes the attacker one stage back (capped at $b_{\mathrm{deesc\text{-}cap}} = 150$ per episode), and a \textbf{prevention bonus} of $+b_{\mathrm{prevent}} = 50$ is granted once if the attacker's intrusion budget is exhausted before \textsc{impact}. The mid-episode de-escalation reward is deliberately small and is \emph{not} the terminal $+b_{\mathrm{success}} = 250$ bonus, which is reserved exclusively for surviving a terminal-\textsc{impact} step; this separation, together with a per-episode cap of $b_{\mathrm{prop\text{-}cap}} = 100$ on the cumulative proportionality bonus, removes the reward-farming incentives (repeatedly collecting the proportionality or de-escalation bonus to inflate reward without genuinely defending) that a naive uncapped formulation admits.
 
-The environment-design default constants used throughout the dissertation (\texttt{AdversarialEnvConfig}) are listed in Table~\ref{tab:reward_constants}. They were calibrated so that the recommended-action policy is net-positive in expectation across an episode (gate G3.4) while the always-\textsc{observe} policy is net-negative (gate G3.5), with all 13 calibration tests in \texttt{tests/test\_env\_design\_gates.py} green under the tug-of-war environment contract.
+The environment-design default constants used throughout the dissertation (\texttt{AdversarialEnvConfig}) are listed in Table~\ref{tab:reward_constants}. They were calibrated so that the recommended-action policy is net-positive in expectation across an episode (gate G3.4) while the always-\textsc{observe} policy is net-negative (gate G3.5), with all 13 calibration tests in \path{tests/test_env_design_gates.py} green under the tug-of-war environment contract.
 
 The action-cost vector $C_{\mathrm{action}}(a)$ uses scale $\alpha = 1.0$ as the default. A sensitivity sweep over $\alpha \in \{0.5, 1.0, 2.0\}$ (Section~\ref{ssec:action_cost_justification}) shows that all three settings produce overlapping 95\,\% bootstrap confidence intervals, confirming that the default $\alpha = 1.0$ is robust to $\pm 2\times$ perturbation in action cost.
 
@@ -147,7 +148,8 @@ The action-cost vector $C_{\mathrm{action}}(a)$ uses scale $\alpha = 1.0$ as the
 \centering
 \caption[Default reward constants for the environment design.]{Default reward constants for the environment design (\texttt{AdversarialEnvConfig}). Symbols match Equations~\eqref{eq:reward} and~\eqref{eq:reward_terminal}.}
 \label{tab:reward_constants}
-\begin{tabular}{llrl}
+\small
+\begin{tabularx}{\textwidth}{llrX}
 \toprule
 Name & Symbol & Value & Description \\
 \midrule
@@ -173,10 +175,10 @@ onset prob.\ (access)     & \texttt{p\_onset\_access}  & 0.10  & autonomous beni
 budget step cost          & \texttt{budget\_step\_cost} & 1    & budget drained per active attacker step \\
 budget reset cost         & \texttt{budget\_reset\_cost} & 2   & extra budget drained on a forced de-escalation \\
 \bottomrule
-\end{tabular}
+\end{tabularx}
 \end{table}
 
-Algorithm~\ref{alg:reward} presents the complete reward function as pseudocode, which is the authoritative specification used in \texttt{src/environment/adversarial\_env.py:\_compute\_reward()}.
+Algorithm~\ref{alg:reward} presents the complete reward function as pseudocode, which is the authoritative specification used in \path{src/environment/adversarial_env.py::_compute_reward()}.
 
 \begin{algorithm}[!htbp]
 \caption{Per-step reward computation (\texttt{\_compute\_reward()} in \texttt{AdversarialIoTEnv})}
@@ -221,10 +223,10 @@ The reward is evaluated against the \emph{decision-time} stage $s_t$, not agains
 The de-escalation success probability $p_{\mathrm{down}}$ controls how strongly a correct, proportionate defender action pushes the attacker one stage back down the kill chain. The environment-difficulty sweep over $p_{\mathrm{down}} \in \{0.0, 0.2, 0.4, 0.6, 0.8, 1.0\}$ (Figure~\ref{fig:f10}, Section~\ref{sec:ablation_results}) shows that both the trained PPO policy and the oracle recommended-action rule earn monotonically more reward as $p_{\mathrm{down}}$ rises (PPO from $-111$ at $p_{\mathrm{down}} = 0.0$ to $+145$ at $p_{\mathrm{down}} = 1.0$; the oracle rule from $+110$ to $+893$), a clean dose-response with no rank inversions. The headline value $p_{\mathrm{down}} = 0.90$ sits in the near-optimal region while remaining sub-certain, so that (i) a proportionate response reliably but not deterministically reverses the attacker, (ii) the residual stochasticity prevents a degenerate lookup-table solution and keeps value learning meaningful, and (iii) the trained policy's reward is in the same order of magnitude as the oracle ceiling. The full sweep is provided in Appendix~D.
 
 \subsection{Justification of $\alpha = 1.0$ (Action-Cost Scale)}\label{ssec:action_cost_justification}
-The action-cost scale $\alpha$ determines how strongly the reward function penalises high-disruption actions. A sweep over $\alpha \in \{0.5, 1.0, 2.0\}$ (Appendix~D, Figure~FA\_action\_cost\_sweep) returns three mutually overlapping reward confidence intervals, confirming that the default $\alpha = 1.0$ is robust to $\pm 2\times$ perturbation in action cost, with reward variation across the full range below 3\,\%.\footnote{This calibration sweep was conducted under the pre-redesign reward scale (absolute rewards on the order of $+1500$) and was not re-run under the tug-of-war reward contract; only its \emph{relative} conclusion is claimed here---namely that the action-cost scale does not materially change the achievable reward (overlapping CIs across $\pm 2\times$)---a result that is invariant to the overall reward-magnitude shift introduced by the bonus caps.}
+The action-cost scale $\alpha$ determines how strongly the reward function penalises high-disruption actions. A sweep over $\alpha \in \{0.5, 1.0, 2.0\}$ (Appendix~D, Figure~\ref{fig:app_fa_cost}) returns three mutually overlapping reward confidence intervals, confirming that the default $\alpha = 1.0$ is robust to $\pm 2\times$ perturbation in action cost, with reward variation across the full range below 3\,\%.\footnote{This calibration sweep was conducted under the pre-redesign reward scale (absolute rewards on the order of $+1500$) and was not re-run under the tug-of-war reward contract; only its \emph{relative} conclusion is claimed here---namely that the action-cost scale does not materially change the achievable reward (overlapping CIs across $\pm 2\times$)---a result that is invariant to the overall reward-magnitude shift introduced by the bonus caps.}
 
 \subsection{Justification of $w = 5$ (History Window Size)}\label{ssec:window_justification}
-The history window size $w$ controls how many recent feature vectors the agent can observe. A window-size ablation over $w \in \{1, 3, 5, 10\}$ (Appendix~D, Figure~FA\_window\_ablation) shows that $w = 5$ and $w = 10$ produce statistically indistinguishable reward (overlapping confidence intervals), with no improvement from the larger window. The plateau beyond $w = 5$ indicates that the additional temporal context from larger windows does not provide a statistically significant reward improvement while increasing the observation dimension from 290 to 580 features, roughly doubling the input size without benefit.\footnote{As with the action-cost sweep, this window ablation was run under the pre-redesign reward scale and was not re-run under the tug-of-war contract; only its relative conclusion---that $w = 5$ is on the reward plateau and $w = 10$ adds no benefit---is claimed, and this conclusion is invariant to the reward-magnitude shift.}
+The history window size $w$ controls how many recent feature vectors the agent can observe. A window-size ablation over $w \in \{1, 3, 5, 10\}$ (Appendix~D, Figure~\ref{fig:app_fa_window}) shows that $w = 5$ and $w = 10$ produce statistically indistinguishable reward (overlapping confidence intervals), with no improvement from the larger window. The plateau beyond $w = 5$ indicates that the additional temporal context from larger windows does not provide a statistically significant reward improvement while increasing the observation dimension from 290 to 580 features, roughly doubling the input size without benefit.\footnote{As with the action-cost sweep, this window ablation was run under the pre-redesign reward scale and was not re-run under the tug-of-war contract; only its relative conclusion---that $w = 5$ is on the reward plateau and $w = 10$ adds no benefit---is claimed, and this conclusion is invariant to the reward-magnitude shift.}
 
 % --- Subsection 3.6 ---
 \section{Blue-Team Training Protocol}\label{sec:drl_training}
@@ -251,7 +253,7 @@ The trained DRL agents are evaluated against four reference policies that span t
 Two ablation strands characterise the trained policy's sensitivity to environment design.
 
 \subsection{Reward-Component Sweep (F9)}\label{ssec:f9}
-A sparse one-at-a-time sweep perturbs each of the five principal reward coefficients (\texttt{defense\_success\_bonus}, \texttt{penalty\_missed\_impact}, \texttt{reward\_proportional}, \texttt{reward\_benign\_passive}, \texttt{penalty\_disproportionate}) by $0.5\times$ and $2.0\times$ around its environment-design default, holding all other coefficients fixed. A separate cell perturbs the binary \texttt{impact\_is\_terminal} flag, which controls whether the \textsc{impact}-stage transition immediately ends the episode (\emph{True}: naive contract) or grants the agent one final mitigation turn (\emph{False}: primary corrected contract). The \emph{False} contract was selected as the primary evaluation contract based on this ablation finding; the \emph{True} contract is retained as a reward mis-specification case study. Each cell trains PPO over five seeds for $250{,}000$ steps under the perturbed environment and reports mean test reward + bootstrap CI on \texttt{test\_balanced}.
+A sparse one-at-a-time sweep perturbs each of the five principal reward coefficients by $0.5\times$ and $2.0\times$ around its environment-design default: defense-success bonus, missed-impact penalty, proportionality reward, benign-passive reward, and disproportionate-action penalty. A separate cell perturbs the binary \texttt{impact\_is\_terminal} flag, which controls whether the \textsc{impact}-stage transition immediately ends the episode (\emph{True}: naive contract) or grants the agent one final mitigation turn (\emph{False}: primary corrected contract). The \emph{False} contract was selected as the primary evaluation contract based on this ablation finding; the \emph{True} contract is retained as a reward mis-specification case study. Each cell trains PPO over \NumSeeds{} seeds for $250{,}000$ steps under the perturbed environment and reports mean test reward + bootstrap CI on \texttt{test\_balanced}.
 
 The verdict logic for the sweep is two-strand to remain apples-to-apples: cells that scale a reward coefficient also scale the absolute reward number, so they are not directly comparable to the held-out benchmark unscaled baseline; only cells that preserve the original reward function (the centre baseline and the two \texttt{impact\_is\_terminal} cells) are eligible for the apples-to-apples raw-reward gate. Reward-coefficient cells are scored on the \texttt{mitigated\_impact\_rate} security KPI, which is unaffected by reward-coefficient scaling.
 

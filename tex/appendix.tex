@@ -17,10 +17,11 @@ Every development stage of the framework emits one or more \texttt{manifest.json
 \centering
 \caption{Per-stage reproducibility-artefact inventory under \texttt{docs/results/}. \texttt{F<k>} entries are figures or tables, \texttt{G<n>\_scoreboard.json} are gate-evaluation scoreboards. Run-time roll-out JSONLs (under \texttt{runs/<phase>/}) are gitignored but their SHA-256 hashes are pinned by the stage manifest.}
 \label{tab:manifest_inventory}
-\begin{tabular}{l l l}
-\hline
+\scriptsize
+\begin{tabularx}{\textwidth}{l l X}
+\toprule
 Stage & Path & Key artefacts \\
-\hline
+\midrule
 1 (Dataset prep.) & \texttt{01\_dataset/} & \texttt{F0\_class\_distribution.png}, \texttt{F0\_stage\_distribution.png}, \texttt{F0\_summary.json}, \texttt{manifest.json} \\
 2 (Markov attacker) & --- & Closed-form $5\times5$ transition matrix (\texttt{MarkovAttacker}); no trained artefacts (requires no training) \\
 3 (Env. design) & \texttt{03\_env/} & \texttt{PLAN.md}, \texttt{RESULTS.md} (no figures; environment is infrastructure) \\
@@ -28,8 +29,8 @@ Stage & Path & Key artefacts \\
 5 (Blue-team DRL) & \texttt{05\_blue\_team/} & \texttt{F3/F4\_*.png}, \texttt{F3/F4\_summary.json}, \texttt{F3/F4\_manifest.json}, \texttt{T1\_hparams.\{json,md\}}, \texttt{G5\_scoreboard.json}, \texttt{RESULTS.md} \\
 6 (Benchmark) & \texttt{06\_benchmark/} & \texttt{F5/F6/F7/F8\_*.png}, per-figure \texttt{summary.json} + \texttt{manifest.json} + \texttt{caption.md}, \texttt{G6\_scoreboard.json}, \texttt{RESULTS.md} \\
 7 (Ablation/OOD) & \texttt{07\_ablation/} & \texttt{F9/F10/F12/F15\_*.png}, per-figure \texttt{summary.json} + \texttt{manifest.json} + \texttt{caption.md}, \texttt{G7\_scoreboard.json}, \texttt{RESULTS.md} \\
-\hline
-\end{tabular}
+\bottomrule
+\end{tabularx}
 \end{table}
 
 \section{Gate Scoreboards}\label{app:scoreboards}
@@ -39,16 +40,17 @@ Four \texttt{G<n>\_scoreboard.json} files (one per gated stage) record the thres
 \centering
 \caption{Gate-scoreboard summary across the four gated development stages. Verdicts are reported per-gate; the dissertation's headline-finding gates (G6.2 audit-AF2 reframe, G5.4 reward-hacking, G7.2 reward-component sweep, G7.9 OOD finding-activation) are highlighted.}
 \label{tab:scoreboard_summary}
-\begin{tabular}{l c c c c l}
-\hline
-Stage & \textsc{pass} & \textsc{pass-w/-finding} & \textsc{pass-w/o-stretch} & \textsc{fail-w/-finding} & Headline-gate ID \\
-\hline
-Stage detector (\texttt{G4}) & 4 & 1 & --- & --- & G4.4 (OOD recall asymmetry, $\Delta = 0.998$) \\
-Blue-team DRL (\texttt{G5}) & 6 & 1 & --- & --- & G5.4 (prevention-rate primary KPI; best-algo prevention $0.602$) \\
-Benchmark (\texttt{G6}) & 4 & 1 & --- & 1 & G6.2 (audit-AF2 reframe, \OracleCapturePct\,\% of oracle ceiling) \\
-Ablation/OOD (\texttt{G7}) & 7 & 1 & --- & 2 & G7.2 (F9 \texttt{impact\_is\_terminal}=False, D7.1.1) \\
-\hline
-\end{tabular}
+\scriptsize
+\begin{tabularx}{\textwidth}{l c c c c X}
+\toprule
+Stage & Pass & Pass+finding & Pass no stretch & Fail+finding & Headline gate \\
+\midrule
+Detector (\texttt{G4}) & 4 & 1 & --- & --- & G4.4: OOD recall asymmetry ($\Delta = 0.998$) \\
+Blue-team (\texttt{G5}) & 6 & 1 & --- & --- & G5.4: prevention-rate primary KPI; best-algo prevention $0.602$ \\
+Benchmark (\texttt{G6}) & 4 & 1 & --- & 1 & G6.2: audit-AF2 reframe, \OracleCapturePct\,\% of oracle ceiling \\
+Ablation/OOD (\texttt{G7}) & 7 & 1 & --- & 2 & G7.2: F9 \texttt{impact\_is\_terminal}=False, D7.1.1 \\
+\bottomrule
+\end{tabularx}
 \end{table}
 
 \section{Smoke-Reproducibility Harness}\label{app:r1}
@@ -71,9 +73,9 @@ git clone <repo-url> rl-iot-defense-system
 cd rl-iot-defense-system
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
-pytest -q                                        # expect: \NumTests{} passed
-python -m scripts.reproducibility_smoke         # expect: VERDICT PASS
-                                                 #         0 FAIL / 2 KNOWN-DIVERGENCE
+pytest -q                             # expect: \NumTests{} passed
+python -m scripts.reproducibility_smoke
+# expect: VERDICT PASS; 0 FAIL / 2 KNOWN-DIVERGENCE
 \end{verbatim}
 
 The dissertation PDF is compiled via a local container image (Podman, with Docker as a fallback; no host-side \LaTeX{} installation required):
@@ -90,13 +92,12 @@ bash tex/build.sh
 A full re-train of every stage from scratch (preserving the audited reproducibility contract) is also supported via \texttt{make}:
 
 \begin{verbatim}
-make dataset                              # CICIoT2023 splits + F0a/F0b
-                                          # (requires raw dataset on disk)
-make detector                             # supervised stage detector + F11
-make blue-team-sweep BLUE_TEAM_TIMESTEPS=250000   # ~108 min CPU
-make benchmark                            # held-out benchmark + F5/F6/F7/F8
-make ablation                             # ablations + F9/F10/F12/F15 (~7.5 h CPU)
-make ablation-close                       # G7 scoreboard + RESULTS.md
+make dataset                 # CICIoT2023 splits; needs raw data
+make detector                # supervised stage detector + F11
+make blue-team-sweep BLUE_TEAM_TIMESTEPS=250000
+make benchmark               # held-out benchmark + F5/F6/F7/F8
+make ablation                # ablations + F9/F10/F12/F15
+make ablation-close          # G7 scoreboard + RESULTS.md
 \end{verbatim}
 
 After a full re-train the per-stage \texttt{manifest.json} files are re-emitted with new input SHAs corresponding to the freshly trained checkpoints; the harness will then verify the new chain end-to-end.
@@ -108,13 +109,14 @@ All experiments reported in this dissertation were run on a single CPU core. No 
 \chapter{CICIoT2023 Label to Kill Chain Stage Mapping}\label{app:kc_mapping}
 % ====================================================================
 
-The 34 CICIoT2023 labels (33 attack classes plus \texttt{BenignTraffic}) are projected onto the five Kill Chain stages defined in Section~\ref{sec:kill_chain} via the closed mapping in Table~\ref{tab:kc_mapping}. The mapping is implemented in \texttt{src/utils/label\_mapper.py::AbstractStateLabelMapper}; an unknown label encountered at processing time raises an explicit \texttt{KeyError} so that any new attack class added to the dataset cannot silently leak into an existing stage. The full design rationale, including why the Lockheed Martin seven-step chain is coarsened to five stages here and why the $\textsc{benign} \to \textsc{recon} \to \textsc{access} \to \textsc{maneuver} \to \textsc{impact}$ ordering is monotone in attacker progress, is provided in \texttt{docs/kill-chain-mapping.md}.
+The 34 CICIoT2023 labels (33 attack classes plus \texttt{BenignTraffic}) are projected onto the five Kill Chain stages defined in Section~\ref{sec:kill_chain} via the closed mapping in Table~\ref{tab:kc_mapping}. The mapping is implemented in \path{src/utils/label_mapper.py}; an unknown label encountered at processing time raises an explicit \texttt{KeyError} so that any new attack class added to the dataset cannot silently leak into an existing stage. The full design rationale, including why the Lockheed Martin seven-step chain is coarsened to five stages here and why the $\textsc{benign} \to \textsc{recon} \to \textsc{access} \to \textsc{maneuver} \to \textsc{impact}$ ordering is monotone in attacker progress, is provided in \path{docs/kill-chain-mapping.md}.
 
 \begin{table}[!htbp]
 \centering
 \caption{Per-class CICIoT2023 to Kill Chain stage mapping. Classes marked $^\star$ are reserved as held-out out-of-distribution attack classes (Section~\ref{ssec:splits}) and are never seen during training of either the supervised stage detector or the DRL agents.}
 \label{tab:kc_mapping}
-\begin{tabular}{l p{10cm}}
+\small
+\begin{tabularx}{\textwidth}{lX}
 \hline
 Stage & CICIoT2023 labels \\
 \hline
@@ -128,7 +130,7 @@ Stage & CICIoT2023 labels \\
 \hline
 \textsc{impact}  & DoS variants (\texttt{DoS-TCP\_Flood}, \texttt{DoS-UDP\_Flood}, \texttt{DoS-SYN\_Flood}, \texttt{DoS-HTTP\_Flood}); DDoS variants (\texttt{DDoS-TCP\_Flood}, \texttt{DDoS-UDP\_Flood}, \texttt{DDoS-SYN\_Flood}, \texttt{DDoS-RSTFINFlood}, \texttt{DDoS-PSHACK\_Flood}, \texttt{DDoS-SynonymousIP\_Flood}, \texttt{DDoS-ICMP\_Flood}, \texttt{DDoS-ICMP\_Fragmentation}, \texttt{DDoS-UDP\_Fragmentation}, \texttt{DDoS-ACK\_Fragmentation}, \texttt{DDoS-SlowLoris}, \texttt{DDoS-HTTP\_Flood}$^\star$) \\
 \hline
-\end{tabular}
+\end{tabularx}
 \end{table}
 
 % ====================================================================
@@ -142,7 +144,7 @@ The blue-team training hyperparameter table (T1) for DQN, PPO, and A2C is reprod
 \caption{Blue-team training per-algorithm hyperparameters. Values are frozen at PLAN \S8 D5.4 and used across all \NumSeeds{} seeds and 250{,}000 environment steps per run. N/A indicates the hyperparameter does not apply to the algorithm.}
 \label{tab:hparams}
 \small
-\begin{tabular}{l r r r r r r r r}
+\begin{tabularx}{\textwidth}{lrrrrrrrr}
 \toprule
 algo & lr & $n_{\text{steps}}$ & $\gamma$ & $\lambda_{\text{GAE}}$ & ent\_coef & vf\_coef & batch\_size & $n_{\text{epochs}}$ \\
 \midrule
@@ -150,13 +152,13 @@ A2C & $7\!\cdot\!10^{-4}$ & 5    & 0.99 & 1.00 & 0.000 & 0.50 & N/A  & N/A  \\
 DQN & $1\!\cdot\!10^{-3}$ & N/A  & 0.99 & N/A  & N/A   & N/A  & 32   & N/A  \\
 PPO & $3\!\cdot\!10^{-4}$ & 2048 & 0.99 & 0.95 & 0.010 & 0.50 & 64   & 10   \\
 \bottomrule
-\end{tabular}
+\end{tabularx}
 \end{table}
 \par\smallskip\noindent{\small\textit{Note: N/A = hyperparameter not defined for that algorithm family. $n_{\text{steps}}$ applies only to on-policy methods (PPO/A2C); batch\_size and $n_{\text{epochs}}$ apply only to PPO; $\lambda_{\text{GAE}}$, ent\_coef, vf\_coef apply only to actor-critic methods. DQN off-policy fields listed below.}}
 
-For DQN-specific off-policy hyperparameters (replay buffer, exploration schedule, target-network update interval), the values used were: \texttt{buffer\_size} $= 50{,}000$, \texttt{learning\_starts} $= 1000$, \texttt{tau} $= 1.0$, \texttt{target\_update\_interval} $= 1000$, \texttt{exploration\_fraction} $= 0.10$, \texttt{exploration\_initial\_eps} $= 1.0$, \texttt{exploration\_final\_eps} $= 0.05$, \texttt{max\_grad\_norm} $= 0.5$. The complete machine-readable record is at \texttt{docs/results/05\_blue\_team/T1\_hparams.json}.
+For DQN-specific off-policy hyperparameters, the values used were: replay buffer $50{,}000$, learning starts $1000$, target update interval $1000$, exploration fraction $0.10$, initial/final exploration $1.0/0.05$, and max gradient norm $0.5$. The complete machine-readable record is at \path{docs/results/05_blue_team/T1_hparams.json}.
 
-The ablation and OOD-robustness evaluations re-use the PPO hyperparameters above unchanged --- only the environment (\texttt{impact\_is\_terminal}, \texttt{p\_defender\_deescalation}) and the reward coefficients (\texttt{defense\_success\_bonus}, \texttt{penalty\_missed\_impact}, \texttt{reward\_proportional}, \texttt{reward\_benign\_passive}, \texttt{penalty\_disproportionate}) are perturbed.
+The ablation and OOD-robustness evaluations re-use the PPO hyperparameters above unchanged; only the environment contract and reward coefficients are perturbed.
 
 % ====================================================================
 \chapter{Sensitivity Sweep Figures}\label{app:sensitivity}

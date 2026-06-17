@@ -34,3 +34,9 @@ class TestRenderTables:
         tex = _render_tables()
         assert r"\newcommand{\BenchmarkTableBody}" in tex
         assert r"\newcommand{\LatencyTableBody}" in tex
+
+    def test_benchmark_table_uses_compromise_and_prevention_rates(self):
+        tex = _render_tables()
+        assert "DQN & $+267.8$" in tex
+        assert "300 & 0.463 & 0.537" in tex
+        assert "300 & 0.127" not in tex

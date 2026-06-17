@@ -29,26 +29,19 @@
 % --- Folha de rosto ---
 \imprimirfolhaderosto
 
-% --- Ficha catalogr\'{a}fica (placeholder) ---
-\begin{fichacatalografica}
-    \vspace*{\fill}
-    \begin{center}
-        \textsc{Inclua aqui o pdf com a ficha catalogr\'{a}fica fornecida pela BAE.}
-    \end{center}
-    \vspace*{\fill}
-    %\includepdf{ficha-catalografica.pdf}
-\end{fichacatalografica}
+% Ficha catalografica and signed approval pages are inserted only when the
+% university-provided PDFs exist locally. The public defense build omits the
+% old placeholder pages so the compiled PDF contains no template instructions.
+\IfFileExists{ficha-catalografica.pdf}{%
+    \begin{fichacatalografica}
+        \includepdf{ficha-catalografica.pdf}
+    \end{fichacatalografica}
+}{}
 
-% --- Folha de aprova\c{c}\~{a}o (placeholder) ---
-\newpage
-\vspace*{\fill}
-\begin{center}
-    \textsc{Inclua aqui a folha de assinaturas.}
-\end{center}
-\vspace*{\fill}
-\newpage
-%\includepdf[pagecommand={\thispagestyle{plain}}]{folha-assinaturas.pdf}
-\cleardoublepage
+\IfFileExists{folha-assinaturas.pdf}{%
+    \includepdf[pagecommand={\thispagestyle{plain}}]{folha-assinaturas.pdf}
+    \cleardoublepage
+}{}
 
 % --- Dedicat\'{o}ria ---
 \begin{dedicatoria}

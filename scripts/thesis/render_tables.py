@@ -198,7 +198,8 @@ def _render_benchmark_table() -> str:
         body.append(
             f"  {name} & {_fmt_reward(r['mean_reward'])} & "
             f"{_fmt_ci(r['mean_reward_ci_low'], r['mean_reward_ci_high'])} & "
-            f"{r['n_episodes']} & {r['mitigated_impact_rate']:.3f} \\\\"
+            f"{r['n_episodes']} & {r['compromise_rate']:.3f} & "
+            f"{r['prevention_rate']:.3f} \\\\"
         )
     return "\n".join(body)
 

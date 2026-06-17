@@ -302,6 +302,7 @@ def _render_markdown(rows: list[dict[str, Any]], best: str | None) -> str:
         "Mean reward (95 % CI)",
         "MTTC",
         "Compromise %",
+        "Prevention %",
         "Mitigated %",
         "Ep. length",
         "Latency p50 (ms)",
@@ -321,6 +322,7 @@ def _render_markdown(rows: list[dict[str, Any]], best: str | None) -> str:
             ci,
             f"{r['mean_mttc']:.2f}" if not math.isnan(r["mean_mttc"]) else "—",
             f"{100 * r['compromise_rate']:.1f}",
+            f"{100 * r['prevention_rate']:.1f}",
             f"{100 * r['mitigated_impact_rate']:.1f}",
             f"{r['mean_episode_length']:.1f}",
             (
@@ -355,6 +357,7 @@ def _render_png(
         "Mean reward (95 % CI)",
         "MTTC",
         "Comp %",
+        "Prev %",
         "Mit %",
         "Ep. len.",
         "p50 ms",
@@ -376,6 +379,7 @@ def _render_png(
                 ci,
                 f"{r['mean_mttc']:.2f}" if not math.isnan(r["mean_mttc"]) else "—",
                 f"{100 * r['compromise_rate']:.1f}",
+                f"{100 * r['prevention_rate']:.1f}",
                 f"{100 * r['mitigated_impact_rate']:.1f}",
                 f"{r['mean_episode_length']:.1f}",
                 (
