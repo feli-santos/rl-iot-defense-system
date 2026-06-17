@@ -78,8 +78,9 @@ tornam ineficazes as soluções de segurança tradicionais e motivam mecanismos 
 defesa adaptativos capazes de operar autonomamente. Esta dissertação projeta,
 implementa e avalia rigorosamente um arcabouço de defesa adaptativo ciente da
 cadeia de eliminação cibernética (\emph{kill-chain-aware}) para redes IoT,
-baseado em Aprendizado por Reforço Profundo (DRL). O sistema é avaliado de ponta
-a ponta no \emph{dataset} CICIoT2023, projetado sobre uma Cyber Kill Chain de
+baseado em Aprendizado por Reforço Profundo (DRL). O sistema é avaliado sobre
+linhas de características reais do \emph{dataset} CICIoT2023 amostradas em uma
+trajetória de \emph{kill chain} simulada, projetada sobre uma Cyber Kill Chain de
 cinco estágios. O adversário segue um \emph{cabo de guerra} (\emph{tug-of-war})
 sobre a cadeia de eliminação: uma ação proporcional do defensor empurra o
 atacante um estágio para trás, uma ação de força insuficiente o deixa avançar e
@@ -114,7 +115,7 @@ de \emph{hashes} SHA-256 verificada de ponta a ponta.
 
     \vspace{\onelineskip}
 
-    \noindent\textbf{Palavras-chaves}: Segurança IoT; Aprendizado por Reforço Profundo;
+    \noindent\textbf{Palavras-chave}: Segurança IoT; Aprendizado por Reforço Profundo;
     Cyber Kill Chain; Observabilidade Parcial (POMDP); Orçamento de Intrusão; CICIoT2023;
     Especificação de Recompensa; Reprodutibilidade.
 
@@ -131,8 +132,8 @@ security solutions ineffective and motivate intelligent, adaptive defence
 mechanisms capable of operating autonomously. This dissertation designs,
 implements, and rigorously evaluates a kill-chain-aware adaptive defence
 framework for IoT networks, built on Deep Reinforcement Learning (DRL). The
-framework is evaluated end-to-end on the CICIoT2023 dataset, projected onto a
-five-stage Cyber Kill Chain. The adversary follows a \emph{tug-of-war} on the
+framework is evaluated on real CICIoT2023 feature rows sampled into a simulated
+kill-chain trajectory, projected onto a five-stage Cyber Kill Chain. The adversary follows a \emph{tug-of-war} on the
 kill chain: a proportionate defender action pushes the attacker one stage back,
 an under-forced action lets it advance, and an over-forced action merely holds
 it, all under a finite intrusion budget; each stage is realised by a real

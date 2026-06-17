@@ -19,6 +19,12 @@
 	sumario=tradicional,
 	]{abntex2}
 
+% Stop \paragraph run-in headings from being numbered (X.Y.Z.0.N) or listed in
+% the ToC. The body uses no \subsubsection and many \paragraph emphatic leads;
+% numbering/listing down to subsection keeps the Sumario clean (X.Y.Z).
+\setsecnumdepth{subsection}
+\settocdepth{subsection}
+
 % ---
 % PACOTES
 % ---

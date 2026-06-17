@@ -1,7 +1,7 @@
 {
   "version": "1.0",
-  "generated_at": "2026-06-09T05:01:48Z",
-  "git_sha": "df47695e5797",
+  "generated_at": "2026-06-17T05:30:27Z",
+  "git_sha": "28d96231c52d",
   "inputs": {
     "features.npy": "5d1ff73d8cc1dc3706db4ca0381e9b88c542ec40a5ae5d6e5fd784e4d166dcc7",
     "stages.npy": "607730a5daeb3a17ad4f3dc105247db5a34ca01f9d11be14d71887b2ec94d046",
@@ -12,15 +12,15 @@
   },
   "outputs": {
     "F11_per_stage_recall.png": "206743ce8f18e77ac096663855eec1aac0ce1bc12ea952a27d28ce1e948ba23a",
-    "F11_summary.json": "7cef17883964680536de2f78ed3834a31f18401d377ce2abd108a5ab73a8edd1",
+    "F11_summary.json": "123bfbdf39b392ca5e7e9e3cd336142b3d5acbbe39c1fef72c7c5d9df9caba6a",
     "F11_caption.md": "0ec60863b42ee3c87f4ed5a9eab3551a3d1b19931373803e7088a4a3b39f8330",
-    "stage_detector.pt": "2fbfd7eb8740122239616f619b73018d0366fb85f57c46f921b2e189d12773f6",
-    "random_forest.joblib": "cd56fe46af7e7d3803b14ba1ec138b0b151ec86ac9980266145a524c4f49ae3e"
+    "stage_detector.pt": "a77c3d6937947ac1a46943ba6bcf04ecfe60c80b2565b79283f9cc23fc36c314",
+    "random_forest.joblib": "b0bef811922e7c66ffee4cf01e9b5c3a3caa8e8c04df7030d406e1b2b6301106"
   },
   "gates_status": {
     "G4.2": "PASS",
     "G4.3": "PASS",
-    "G4.4": "PASS-with-finding",
+    "G4.4": "PASS-WITH-FINDING",
     "G4.5": "PASS"
   }
 }

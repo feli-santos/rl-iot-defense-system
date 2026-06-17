@@ -73,7 +73,7 @@ def _render_numbers() -> str:
     latency_ratio = rf["p50_inference_latency_ms"] / best["p50_inference_latency_ms"]
 
     lines = [
-        f"% Auto-generated from {F5} — do not hand-edit",
+        f"% Auto-generated from {F5} (benchmark) and {F9} (ablation) — do not hand-edit",
         r"\newcommand{\BestAgentName}{" + best["policy"].upper() + "}",
         r"\newcommand{\BestAgentReward}{%+0.1f}" % best["mean_reward"],
         r"\newcommand{\BestAgentCILow}{%+0.1f}" % best["mean_reward_ci_low"],

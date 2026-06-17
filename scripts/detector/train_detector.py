@@ -63,7 +63,7 @@ logger = logging.getLogger(__name__)
 # train / val / test splits.
 _OOD_EXPECTED_STAGE: dict[str, int] = {
     "DDoS-HTTP_Flood": 4,  # IMPACT
-    "Mirai-udpplain": 4,  # IMPACT
+    "Mirai-udpplain": 3,  # MANEUVER (canonical, per src/utils/label_mapper.py)
     "VulnerabilityScan": 1,  # RECON
     "XSS": 2,  # ACCESS
 }

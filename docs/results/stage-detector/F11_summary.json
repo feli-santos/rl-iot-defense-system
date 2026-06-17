@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "git_sha": "df47695e5797",
+  "git_sha": "28d96231c52d",
   "seed": 0,
   "n_train": 281420,
   "n_val_balanced": 1000,
@@ -29,7 +29,7 @@
       "run_info": {
         "best_epoch": 10,
         "best_val_macro_f1": 0.7918957775718545,
-        "train_time_seconds": 9.456643208,
+        "train_time_seconds": 10.263095959000001,
         "train_loss_history": [
           0.8810128433288741,
           0.6636820731103044,
@@ -198,7 +198,7 @@
         "n_jobs": -1
       },
       "run_info": {
-        "train_time_seconds": 6.789657375,
+        "train_time_seconds": 7.010680208000002,
         "feature_importances": [
           0.0614899942528828,
           0.0871204364927548,
@@ -363,9 +363,9 @@
     },
     "Mirai-udpplain": {
       "attack_class": "Mirai-udpplain",
-      "expected_stage": "IMPACT",
+      "expected_stage": "MANEUVER",
       "n_samples": 12121,
-      "recall": 0.915436,
+      "recall": 0.084399,
       "predicted_stage_distribution": {
         "BENIGN": 1,
         "RECON": 0,
@@ -401,7 +401,7 @@
       }
     }
   },
-  "inference_latency_ms_per_sample": 0.0386,
+  "inference_latency_ms_per_sample": 0.0387,
   "gates": {
     "G4.2": {
       "name": "Detector head macro-F1 on test_balanced >= 0.75",
@@ -426,17 +426,17 @@
       "observed_gap": 0.99868,
       "per_class": {
         "DDoS-HTTP_Flood": 0.998927,
-        "Mirai-udpplain": 0.915436,
+        "Mirai-udpplain": 0.084399,
         "VulnerabilityScan": 0.000248,
         "XSS": 0.952938
       },
-      "status": "PASS-with-finding",
+      "status": "PASS-WITH-FINDING",
       "note": "Asymmetric OOD generalisation observed (max=0.999, min=0.000, gap=0.999). At least one held-out class falls within the ambitious threshold; the detector has a genuine blind spot for the RL agent to compensate for. Recorded as a thesis finding (PLAN \u00a78.D2 revised step 4.5)."
     },
     "G4.5": {
       "name": "StageDetector per-sample inference <= 1 ms",
       "threshold_ms": 1.0,
-      "observed_ms": 0.0386,
+      "observed_ms": 0.0387,
       "status": "PASS"
     }
   }
