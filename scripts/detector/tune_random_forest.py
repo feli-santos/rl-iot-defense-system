@@ -156,9 +156,7 @@ def main() -> None:
     ood_class_to_idx = {
         cls: _load_ood_split(args.processed_dir, cls) for cls in _OOD_EXPECTED_STAGE
     }
-    _verify_disjoint(
-        {**splits, **{f"ood:{c}": idx for c, idx in ood_class_to_idx.items()}}
-    )
+    _verify_disjoint({**splits, **{f"ood:{c}": idx for c, idx in ood_class_to_idx.items()}})
 
     X_train = np.ascontiguousarray(X[splits["train"]], dtype=np.float32)
     y_train = y[splits["train"]].astype(np.int64)
@@ -274,9 +272,7 @@ def main() -> None:
         "input_hashes": {
             "features.npy": _sha256(args.processed_dir / "features.npy"),
             "stages.npy": _sha256(args.processed_dir / "stages.npy"),
-            "splits/train.idx.npy": _sha256(
-                args.processed_dir / "splits" / "train.idx.npy"
-            ),
+            "splits/train.idx.npy": _sha256(args.processed_dir / "splits" / "train.idx.npy"),
             "splits/val_balanced.idx.npy": _sha256(
                 args.processed_dir / "splits" / "val_balanced.idx.npy"
             ),
@@ -299,8 +295,7 @@ def main() -> None:
         logger.info("Promoted tuned RF -> %s (in use by RF-Acting)", rf_path)
     else:
         logger.info(
-            "DRY RUN: tuned model NOT promoted. Re-run with --commit to "
-            "replace %s.",
+            "DRY RUN: tuned model NOT promoted. Re-run with --commit to " "replace %s.",
             args.rf_path,
         )
 

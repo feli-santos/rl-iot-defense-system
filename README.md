@@ -2,7 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
-[![Tests: 473 passed](https://img.shields.io/badge/tests-473%20passed-brightgreen.svg)](#)
+[![Tests: 446 passed](https://img.shields.io/badge/tests-446%20passed-brightgreen.svg)](#)
 [![Thesis: 84 pages](https://img.shields.io/badge/thesis-84%20pages-blue.svg)](#thesis)
 
 > A reproducible MSc-thesis codebase: an adversarial reinforcement-learning
@@ -101,7 +101,7 @@ cd rl-iot-defense-system
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
-make test                    # 473 passed in ~60-90 s on CPU
+make test                    # 446 passed in ~60-90 s on CPU
 ```
 
 ### Dataset
@@ -190,7 +190,7 @@ rl-iot-defense-system/
 │   └── utils/                # Dataset processor + realization engine
 ├── scripts/                  # Runners, plotters, thesis tooling
 │   ├── data/  detector/  blue_team/  benchmark/  ablation/  thesis/
-├── tests/                    # 473 unit + integration tests (pytest)
+├── tests/                    # 446 unit + integration tests (pytest)
 ├── docs/                     # Architecture, environment, dataset docs
 │   ├── results/              # Canonical figures + manifest hash-chains
 │   ├── ARCHITECTURE.md       # Module map + adversarial loop

@@ -98,9 +98,7 @@ def summarise_mode(
     for algo in algos:
         pooled: list[float] = []
         for seed in seeds:
-            pooled.extend(
-                _episode_rewards(mode_root / algo / f"seed_{seed}" / "eval_test.jsonl")
-            )
+            pooled.extend(_episode_rewards(mode_root / algo / f"seed_{seed}" / "eval_test.jsonl"))
         if pooled:
             lo, mean, hi = bootstrap_ci(pooled)
             per_algo[algo] = {
@@ -118,9 +116,7 @@ def summarise_mode(
             }
 
     # Best RL = algorithm with the highest mean reward (ignoring empty cells).
-    ranked = [
-        (a, s["mean_reward"]) for a, s in per_algo.items() if s["mean_reward"] is not None
-    ]
+    ranked = [(a, s["mean_reward"]) for a, s in per_algo.items() if s["mean_reward"] is not None]
     best_algo = max(ranked, key=lambda t: t[1])[0] if ranked else None
     best_rl_reward = per_algo[best_algo]["mean_reward"] if best_algo else None
 
@@ -131,11 +127,7 @@ def summarise_mode(
     else:
         rf_mean = rf_lo = rf_hi = None
 
-    gap = (
-        rf_mean - best_rl_reward
-        if (rf_mean is not None and best_rl_reward is not None)
-        else None
-    )
+    gap = rf_mean - best_rl_reward if (rf_mean is not None and best_rl_reward is not None) else None
 
     return {
         "mode": mode,
@@ -220,9 +212,7 @@ def _build_argparser() -> argparse.ArgumentParser:
     p.add_argument("--out-root", default="runs/ablation/reward_coupling")
     p.add_argument("--modes", nargs="+", default=["coupled", "outcome"])
     p.add_argument("--algos", nargs="+", default=list(_RL_ALGOS))
-    p.add_argument(
-        "--seeds", nargs="+", type=int, default=[0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
-    )
+    p.add_argument("--seeds", nargs="+", type=int, default=[0, 1, 2, 3, 4, 5, 6, 7, 8, 9])
     p.add_argument("--out-dir", default="docs/results/ablation")
     return p
 
@@ -235,9 +225,7 @@ def main(argv: list[str] | None = None) -> int:
     out_dir.mkdir(parents=True, exist_ok=True)
 
     per_mode = {
-        mode: summarise_mode(
-            out_root, mode, algos=tuple(args.algos), seeds=list(args.seeds)
-        )
+        mode: summarise_mode(out_root, mode, algos=tuple(args.algos), seeds=list(args.seeds))
         for mode in args.modes
     }
     summary: dict[str, Any] = {

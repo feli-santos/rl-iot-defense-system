@@ -1218,7 +1218,7 @@ class TestPartialObservabilityRedesign:
         rows = [
             tuple(engine.sample_by_id(3, session_coherent=True).tolist()) for _ in range(pool_size)
         ]
-        assert len({r for r in rows}) == pool_size  # no repeats within one pass
+        assert len(set(rows)) == pool_size  # no repeats within one pass
 
     # --- (iii) post-transition-leak removal ---------------------------------
 

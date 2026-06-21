@@ -50,7 +50,7 @@ def _load(path: Path) -> dict:
 
 
 def _newcmd(name: str, value: str) -> str:
-    return r"\newcommand{\%s}{%s}" % (name, value)
+    return rf"\newcommand{{\{name}}}{{{value}}}"
 
 
 # ---------------------------------------------------------------------------
@@ -72,7 +72,7 @@ def _render_numbers() -> str:
     # Headline agent + seed count (PPO is the sole headline RL agent).
     n_seeds = per_alpha["0.0"]["ppo"].get("n_seeds", 10)
     lines.append(_newcmd("BestAgentName", "PPO"))
-    lines.append(_newcmd("NumSeeds", "%d" % n_seeds))
+    lines.append(_newcmd("NumSeeds", f"{n_seeds:d}"))
 
     # Per-alpha reward macros for PPO (headline), tuned RF-Acting, and the oracle
     # ceiling, plus the PPO-minus-RF crossover gap and its significance verdict.
@@ -81,42 +81,42 @@ def _render_numbers() -> str:
         ppo = cell["ppo"]
         rf = cell["rf_acting"]
         orc = cell["recommended_action"]
-        lines.append(_newcmd(f"Alpha{word}PPO", "%+0.1f" % ppo["mean"]))
-        lines.append(_newcmd(f"Alpha{word}PPOCILow", "%+0.1f" % ppo["ci_low"]))
-        lines.append(_newcmd(f"Alpha{word}PPOCIHigh", "%+0.1f" % ppo["ci_high"]))
-        lines.append(_newcmd(f"Alpha{word}RF", "%+0.1f" % rf["mean"]))
-        lines.append(_newcmd(f"Alpha{word}Oracle", "%+0.1f" % orc["mean"]))
+        lines.append(_newcmd(f"Alpha{word}PPO", f"{ppo['mean']:+0.1f}"))
+        lines.append(_newcmd(f"Alpha{word}PPOCILow", f"{ppo['ci_low']:+0.1f}"))
+        lines.append(_newcmd(f"Alpha{word}PPOCIHigh", f"{ppo['ci_high']:+0.1f}"))
+        lines.append(_newcmd(f"Alpha{word}RF", f"{rf['mean']:+0.1f}"))
+        lines.append(_newcmd(f"Alpha{word}Oracle", f"{orc['mean']:+0.1f}"))
         cr = crossover[float(akey)]
-        lines.append(_newcmd(f"Alpha{word}Gap", "%+0.1f" % cr["ppo_minus_rf"]))
+        lines.append(_newcmd(f"Alpha{word}Gap", f"{cr['ppo_minus_rf']:+0.1f}"))
         sig = "significant" if cr["verdict"] == "ppo_significant" else "overlapping"
         lines.append(_newcmd(f"Alpha{word}Verdict", sig))
 
     # Convenience aliases for the headline anchor (alpha=0) and operating point
     # (alpha=0.4, where the PPO advantage first becomes significant).
     lines.append(_newcmd("HeadlineAlpha", "0.4"))
-    lines.append(_newcmd("AnchorPPO", "%+0.1f" % per_alpha["0.0"]["ppo"]["mean"]))
-    lines.append(_newcmd("AnchorRF", "%+0.1f" % per_alpha["0.0"]["rf_acting"]["mean"]))
+    lines.append(_newcmd("AnchorPPO", f"{per_alpha['0.0']['ppo']['mean']:+0.1f}"))
+    lines.append(_newcmd("AnchorRF", f"{per_alpha['0.0']['rf_acting']['mean']:+0.1f}"))
     lines.append(
-        _newcmd("OracleCeiling", "%+0.1f" % per_alpha["0.0"]["recommended_action"]["mean"])
+        _newcmd("OracleCeiling", f"{per_alpha['0.0']['recommended_action']['mean']:+0.1f}")
     )
 
     # Coupled-vs-outcome ablation gaps (RF-Acting minus best RL; negative => RL wins).
     gc = fc["gap_coupled"]
     go = fc["gap_outcome"]
-    lines.append(_newcmd("CouplingGapCoupled", "%+0.1f" % gc))
-    lines.append(_newcmd("CouplingGapOutcome", "%+0.1f" % go))
+    lines.append(_newcmd("CouplingGapCoupled", f"{gc:+0.1f}"))
+    lines.append(_newcmd("CouplingGapOutcome", f"{go:+0.1f}"))
     lines.append(_newcmd("CouplingBestCoupled", fc["per_mode"]["coupled"]["best_algo"].upper()))
     lines.append(_newcmd("CouplingBestOutcome", fc["per_mode"]["outcome"]["best_algo"].upper()))
     lines.append(
         _newcmd(
             "CouplingDQNCoupled",
-            "%+0.1f" % fc["per_mode"]["coupled"]["per_algo"]["dqn"]["mean_reward"],
+            f"{fc['per_mode']['coupled']['per_algo']['dqn']['mean_reward']:+0.1f}",
         )
     )
     lines.append(
         _newcmd(
             "CouplingDQNOutcome",
-            "%+0.1f" % fc["per_mode"]["outcome"]["per_algo"]["dqn"]["mean_reward"],
+            f"{fc['per_mode']['outcome']['per_algo']['dqn']['mean_reward']:+0.1f}",
         )
     )
 
@@ -125,7 +125,7 @@ def _render_numbers() -> str:
         num_tests = json.loads(TEST_COUNT.read_text()).get("num_tests", 473)
     else:
         num_tests = 473
-    lines.append(_newcmd("NumTests", "%d" % num_tests))
+    lines.append(_newcmd("NumTests", f"{num_tests:d}"))
 
     return "\n".join(lines) + "\n"
 

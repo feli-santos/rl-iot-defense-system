@@ -39,7 +39,7 @@ import json
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 _SCHEMA_VERSION = "1.0"
 
@@ -76,7 +76,7 @@ class EnvConfigSerializable:
     impact_is_terminal: bool = True
 
     # Stage-prediction ablation (review 2.4.1)
-    stage_detector_path: Optional[str] = None
+    stage_detector_path: str | None = None
     include_stage_pred: bool = False
 
     # Non-monotonic attacker stress-test (review 2.4.3)
@@ -115,9 +115,9 @@ class EnvConfigSerializable:
     # used as a reward-mis-specification ablation cell). Routine de-escalations
     # earn ``reward_deescalation`` (small), decoupled from the
     # ``defense_success_bonus`` reserved for surviving a terminal IMPACT step.
-    proportional_bonus_cap: Optional[float] = 100.0
+    proportional_bonus_cap: float | None = 100.0
     reward_deescalation: float = 15.0
-    deescalation_bonus_cap: Optional[float] = 150.0
+    deescalation_bonus_cap: float | None = 150.0
     # Reward mode. Canonical: "coupled" (kill-chain-aware shaping, the
     # reward-shaping ablation cell) or "outcome" (outcome-only, the primary
     # deployment contract). Legacy aliases "proportional"/"outcome_only" are

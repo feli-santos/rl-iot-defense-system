@@ -19,8 +19,6 @@ Kill-chain grammar (stages ``0 BENIGN, 1 RECON, 2 ACCESS, 3 MANEUVER, 4 IMPACT``
 
 from __future__ import annotations
 
-from typing import Dict, Optional
-
 import numpy as np
 
 # Defaults mirror EpisodeGeneratorConfig so dynamics match the legacy generator.
@@ -52,7 +50,7 @@ class MarkovAttacker:
     def __init__(
         self,
         num_stages: int = DEFAULT_NUM_STAGES,
-        stage_distribution: Optional[Dict[int, float]] = None,
+        stage_distribution: dict[int, float] | None = None,
         persistence_weight: float = DEFAULT_PERSISTENCE_WEIGHT,
         progression_weight: float = DEFAULT_PROGRESSION_WEIGHT,
         skip_weight: float = DEFAULT_SKIP_WEIGHT,
@@ -60,7 +58,7 @@ class MarkovAttacker:
         if num_stages < 2:
             raise ValueError(f"num_stages must be >= 2, got {num_stages}")
         self.num_stages = int(num_stages)
-        self._stage_distribution: Dict[int, float] = dict(stage_distribution or {})
+        self._stage_distribution: dict[int, float] = dict(stage_distribution or {})
         self.persistence_weight = float(persistence_weight)
         self.progression_weight = float(progression_weight)
         self.skip_weight = float(skip_weight)

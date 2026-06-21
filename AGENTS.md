@@ -118,4 +118,4 @@ These are fixed contracts; do not silently change them.
   tie at α=0 (overlapping CIs), disjoint CIs from α=0.4. Oracle ceiling +194.8.
   Reward-coupling: coupled gap −63.1 (DQN +226.2 best), outcome gap −43.1 (PPO
   best; DQN collapses to −8.6). OOD: PPO prevents 0.37–0.65 vs RF 0.00–0.18 on
-  all 10 held-out zero-day classes. Test suite: **473 passed**.
+  all 10 held-out zero-day classes. Test suite: **446 passed**.
