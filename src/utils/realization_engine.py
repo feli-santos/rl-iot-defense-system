@@ -82,6 +82,9 @@ class RealizationEngine:
         """
         self._data_path = Path(data_path)
         self._rng = np.random.default_rng(seed)
+        # Per-stage without-replacement cursor for session-coherent sampling:
+        # maps stage_id -> (shuffled_index_array, position). Lazily populated.
+        self._session_cursor: dict[int, tuple[np.ndarray, int]] = {}
 
         self._validate_data_path()
         self._load_artifacts()
@@ -272,28 +275,80 @@ class RealizationEngine:
         self,
         stage: KillChainStage,
         normalize: bool = True,
+        *,
+        aliasing_rate: float = 0.0,
+        session_coherent: bool = False,
     ) -> np.ndarray:
         """Sample a feature vector for the given Kill Chain stage.
 
         Args:
             stage: Kill Chain stage to sample from.
             normalize: Whether to return normalized features (default True).
+            aliasing_rate: Probability of emitting a feature row drawn from a
+                kill-chain-adjacent stage instead of the true stage (partial
+                observability). 0.0 reproduces the legacy unaliased behaviour.
+            session_coherent: When True, draw rows without replacement in a
+                contiguous run per stage (correlated within-session sequence)
+                rather than i.i.d. with replacement.
 
         Returns:
             Feature vector of shape (num_features,).
         """
-        return self.sample_by_id(stage.value, normalize=normalize)
+        return self.sample_by_id(
+            stage.value,
+            normalize=normalize,
+            aliasing_rate=aliasing_rate,
+            session_coherent=session_coherent,
+        )
+
+    def _adjacent_stage_id(self, stage_id: int) -> int:
+        """Pick a kill-chain-adjacent stage id (stage +/- 1, clamped to 0..4).
+
+        Interior stages choose +1 or -1 uniformly; endpoints fall back to their
+        single valid neighbour. Only stages present in ``_state_indices`` are
+        eligible, so a held-out neighbour stage is skipped.
+        """
+        candidates = [
+            s for s in (stage_id - 1, stage_id + 1) if s in self._state_indices
+        ]
+        if not candidates:
+            return stage_id
+        return int(self._rng.choice(candidates))
+
+    def _next_session_index(self, stage_id: int) -> int:
+        """Return the next row index for a stage via a without-replacement cursor.
+
+        Maintains a per-stage shuffled permutation of the stage's indices and
+        advances a cursor through it, reshuffling when exhausted. This yields a
+        contiguous, non-repeating run of same-stage rows (a session proxy)
+        instead of i.i.d. draws with replacement.
+        """
+        cursor = self._session_cursor.get(stage_id)
+        if cursor is None or cursor[1] >= len(cursor[0]):
+            order = self._rng.permutation(self._state_indices[stage_id])
+            cursor = (order, 0)
+        order, pos = cursor
+        selected = int(order[pos])
+        self._session_cursor[stage_id] = (order, pos + 1)
+        return selected
 
     def sample_by_id(
         self,
         stage_id: int,
         normalize: bool = True,
+        *,
+        aliasing_rate: float = 0.0,
+        session_coherent: bool = False,
     ) -> np.ndarray:
         """Sample a feature vector by integer stage ID.
 
         Args:
             stage_id: Integer stage ID (0-4).
             normalize: Whether to return normalized features.
+            aliasing_rate: Probability of drawing the row from a kill-chain
+                adjacent stage instead of ``stage_id`` (partial observability).
+            session_coherent: Draw without replacement in a contiguous per-stage
+                run instead of i.i.d. with replacement.
 
         Returns:
             Feature vector of shape (num_features,).
@@ -304,8 +359,17 @@ class RealizationEngine:
         if stage_id not in self._state_indices:
             raise ValueError(f"Invalid stage_id: {stage_id}. Must be 0-4.")
 
-        indices = self._state_indices[stage_id]
-        selected_idx = self._rng.choice(indices)
+        # Observation aliasing: with prob aliasing_rate the emitted row comes
+        # from a kill-chain-adjacent stage, making a single observation
+        # ambiguous about the true stage (the partial-observability mechanism).
+        emit_stage_id = stage_id
+        if aliasing_rate > 0.0 and self._rng.random() < aliasing_rate:
+            emit_stage_id = self._adjacent_stage_id(stage_id)
+
+        if session_coherent:
+            selected_idx = self._next_session_index(emit_stage_id)
+        else:
+            selected_idx = self._rng.choice(self._state_indices[emit_stage_id])
 
         if normalize or self._raw_features is None:
             return self._features[selected_idx].copy()

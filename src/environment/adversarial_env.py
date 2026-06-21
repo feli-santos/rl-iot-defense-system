@@ -39,7 +39,7 @@ Key Design
 import logging
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Optional, Union
+from typing import Any, ClassVar, Optional, Union
 
 import gymnasium as gym
 import numpy as np
@@ -311,6 +311,17 @@ class AdversarialEnvConfig:
     # attacker -> prevent early" is genuinely reward-optimal rather than a
     # proportional-reward-farming trap.
     budget_reset_cost: int = 2
+    # Budget-drain model. ``"hybrid"`` (default, legacy): every active-attacker
+    # step drains ``budget_step_cost`` regardless of the defender's action, so
+    # even mis-targeted over-forcing eventually exhausts the attacker. This makes
+    # prevention nearly independent of detector skill once the budget is small.
+    # ``"targeted"``: only correctly-targeted proportional force (the response
+    # that actually de-escalates the attacker) and natural attacker activity draw
+    # the budget down; disproportionately heavy, mis-targeted force (e.g. a blind
+    # detector spraying ISOLATE at RECON) stalls the attacker but does NOT exhaust
+    # its foothold and drains nothing. This restores a detector-skill signal at a
+    # finite operating budget and better reflects that indiscriminate force does
+    # not destroy an established intrusion.
     budget_cost_model: str = "hybrid"
     # Explicit terminal reward for a prevented attack (attacker budget exhausted
     # before IMPACT). Calibrated to +50, mirroring the net reward of a correct
@@ -343,12 +354,29 @@ class AdversarialEnvConfig:
     # reward-mis-specification ablation cell).
     proportional_bonus_cap: Optional[float] = 100.0
 
-    # Reward mode (ablation): ``"proportional"`` is the default kill-chain-aware
-    # shaping; ``"outcome_only"`` strips every stage-conditioned shaping term
-    # (proportionality, benign/recon guardrails, benign-passive bonus) so the
-    # per-step reward is only the action cost. Outcome signals (de-escalation
-    # bonus, impact penalty, prevention bonus, FPR penalty) live outside this
-    # method and are unaffected. Tests whether the shaping is load-bearing.
+    # Reward mode. Two contracts:
+    #
+    # - ``"coupled"`` (alias ``"proportional"``): kill-chain-aware *shaping*. The
+    #   per-step reward includes a proportionality term keyed on
+    #   ``d = action - recommended_action(stage)`` — the SAME quantity that
+    #   drives the attacker's tug-of-war transition. Under this contract the
+    #   value-maximising policy reduces to "infer the stage, emit the matching
+    #   action", i.e. a 5-way stage classifier. A supervised detector that acts
+    #   on its prediction (RF-Acting) is exactly that classifier and is hard to
+    #   beat in-distribution. Retained as the reward-shaping ablation cell.
+    #
+    # - ``"outcome"`` (alias ``"outcome_only"``): the per-step reward is ONLY the
+    #   action cost; every stage-conditioned shaping term (proportionality,
+    #   benign/recon guardrails, benign-passive bonus) is stripped. The learning
+    #   signal then comes exclusively from realised OUTCOMES applied in
+    #   ``step()``/``_step_at_impact``: the capped de-escalation bonus (paid only
+    #   on an actual attacker pushdown), the terminal prevention bonus, the
+    #   terminal IMPACT penalty/mitigation accounting, and the optional terminal
+    #   FPR penalty. The reward is therefore NOT a function of matching the
+    #   per-step ``recommended_action(stage)`` label, which de-couples the
+    #   objective from the attacker dynamics and removes the privileged-shaping
+    #   advantage of a supervised classifier. This is the primary deployment
+    #   contract for the re-posed task.
     reward_mode: str = "proportional"
 
     # Reward — terminal & extreme cases
@@ -388,6 +416,74 @@ class AdversarialEnvConfig:
     # At episode end, subtract beta * (benign_blocks / benign_steps).
     # beta=0.0 disables the penalty (default, preserves prior behaviour).
     fpr_penalty_beta: float = 0.0
+
+    # -------------------------------------------------------------------------
+    # Partial-observability redesign (sequential-decision re-pose).
+    #
+    # The legacy environment samples a CICIoT2023 feature row i.i.d. per step,
+    # which makes a memoryless supervised classifier (RF-Acting) optimal by
+    # construction: every observation fully reveals the stage, so there is no
+    # value in integrating evidence over time. The three knobs below restore the
+    # partial observability and temporal structure that real IoT intrusion
+    # detection exhibits, so that a recurrent belief-state agent can outperform a
+    # per-step classifier. All default to the legacy behaviour (byte-compatible).
+    #
+    # ``aliasing_rate`` (alpha): probability that a step emits a feature row from
+    # an ADJACENT kill-chain stage instead of the true stage. A single RECON flow
+    # can look benign; a single ACCESS flow can look like RECON. The stage is then
+    # only reliably inferable from the *sequence*, not any single observation.
+    # Applied identically to every consumer (RL and RF-Acting see the same
+    # ambiguous stream), so it confers no information asymmetry. alpha=0 is the
+    # legacy fully-observable anchor where the classifier is expected to win.
+    aliasing_rate: float = 0.0
+    # ``session_coherent``: when True, draw observations as a contiguous,
+    # without-replacement run of same-stage rows (a session/campaign proxy) rather
+    # than an independent uniform draw each step, so the per-step deltas carry
+    # genuine temporal signal instead of being differences of unrelated flows.
+    session_coherent: bool = False
+    # ``no_post_transition_leak``: when True, the observation refreshed after the
+    # attacker moves is drawn from the PRE-transition stage, so the just-happened
+    # transition is not revealed one step early. Closes an observation leak that
+    # weakened the partial-observability claim.
+    no_post_transition_leak: bool = False
+    # ``proximity_coupled``: RESTRAIN-style defense-tolerance dynamics that
+    # replace the finite intrusion budget. The attacker's escalation pressure
+    # scales with its proximity to the goal (lambda = stage / IMPACT): the closer
+    # to IMPACT, the harder an under-forced defender finds it to hold the line.
+    # Prevention is earned by holding the attacker below IMPACT for the entire
+    # horizon (awarded at truncation), not by draining a counter. This removes the
+    # "any forcing policy prevents once the budget is small" degeneracy and the
+    # "B is cherry-picked" critique. Default False keeps the budget path.
+    proximity_coupled: bool = False
+    # Floor on the proximity-scaled under-force escalation probability, as a
+    # fraction of ``p_up``. At stage RECON (lambda=0.25) escalation probability is
+    # p_up * (proximity_min_escalation + (1-proximity_min_escalation)*lambda);
+    # at MANEUVER (lambda=0.75) it is higher. Keeps early-stage escalation
+    # non-trivial while making late-stage holding demanding.
+    proximity_min_escalation: float = 0.4
+
+    # Canonical reward-mode names and their accepted aliases. ``__post_init__``
+    # normalises every alias to its canonical token so the rest of the code only
+    # ever compares against the canonical set.
+    _REWARD_MODE_ALIASES: ClassVar[dict[str, str]] = {
+        "proportional": "coupled",
+        "coupled": "coupled",
+        "outcome_only": "outcome",
+        "outcome": "outcome",
+    }
+
+    def __post_init__(self) -> None:
+        # Normalise reward-mode aliases and fail fast on a typo. A silently
+        # ignored bad ``reward_mode`` would fall through to coupled shaping and
+        # corrupt the coupled-vs-decoupled ablation, so this must raise.
+        canonical = self._REWARD_MODE_ALIASES.get(self.reward_mode)
+        if canonical is None:
+            valid = sorted(set(self._REWARD_MODE_ALIASES))
+            raise ValueError(
+                f"Unknown reward_mode {self.reward_mode!r}; "
+                f"expected one of {valid}."
+            )
+        self.reward_mode = canonical
 
 
 # =============================================================================
@@ -593,7 +689,11 @@ class AdversarialIoTEnv(gym.Env):
         # Initialize observation window with BENIGN features
         self._observation_window = []
         for _ in range(self._config.window_size):
-            features = self._realization_engine.sample(KillChainStage.BENIGN)
+            features = self._realization_engine.sample(
+                KillChainStage.BENIGN,
+                aliasing_rate=self._config.aliasing_rate,
+                session_coherent=self._config.session_coherent,
+            )
             self._observation_window.append(features)
 
         # Build initial observation
@@ -710,10 +810,25 @@ class AdversarialIoTEnv(gym.Env):
         ):
             self._compromise_step = self._step_count
 
-        # 4) Refresh the observation window with a sample drawn from the
-        # *new* stage. This is intentional: the agent's *next* observation
-        # already reflects whatever the attacker just did.
-        new_features = self._realization_engine.sample(KillChainStage(self._current_attack_stage))
+        # 4) Refresh the observation window with a sample drawn from the stage
+        # the attacker occupied *before* this transition was decided. Sampling
+        # from ``previous_attack_stage`` (not the new stage) removes the
+        # post-transition feature leakage: the agent must infer that the
+        # attacker moved from the *evidence it accumulates over time*, rather
+        # than reading the just-completed transition off the very next
+        # observation. Under partial observability this is the realistic
+        # condition — the defender never gets an instantaneous, noise-free
+        # readout of the attacker's current stage.
+        obs_stage = (
+            previous_attack_stage
+            if self._config.no_post_transition_leak
+            else self._current_attack_stage
+        )
+        new_features = self._realization_engine.sample(
+            KillChainStage(obs_stage),
+            aliasing_rate=self._config.aliasing_rate,
+            session_coherent=self._config.session_coherent,
+        )
         self._observation_window.pop(0)
         self._observation_window.append(new_features)
         self._last_action = action
@@ -771,6 +886,23 @@ class AdversarialIoTEnv(gym.Env):
             terminated = False
         truncated = self._step_count >= self._config.max_steps
 
+        # Proximity-coupled prevention: with no finite budget, the defender
+        # wins by holding the attacker below IMPACT for the entire horizon.
+        # When the episode truncates (max_steps reached) and the kill chain
+        # never consummated, award the prevention bonus and label the outcome
+        # "prevented" — the line was held. This only fires when no terminal
+        # outcome was already set (outcome is still the in-flight label).
+        if (
+            self._config.proximity_coupled
+            and truncated
+            and not terminated
+            and self._current_attack_stage < KillChainStage.IMPACT.value
+            and outcome not in ("prevented", "impact_mitigated", "impact_missed", "compromised")
+        ):
+            self._attacker_exhausted = True
+            reward += self._config.prevention_bonus
+            outcome = "prevented"
+
         if terminated or truncated:
             reward = self._apply_episode_fpr_penalty(reward)
 
@@ -794,7 +926,11 @@ class AdversarialIoTEnv(gym.Env):
         else:
             outcome = "impact_unmitigated"
 
-        new_features = self._realization_engine.sample(KillChainStage.IMPACT)
+        new_features = self._realization_engine.sample(
+            KillChainStage.IMPACT,
+            aliasing_rate=self._config.aliasing_rate,
+            session_coherent=self._config.session_coherent,
+        )
         self._observation_window.pop(0)
         self._observation_window.append(new_features)
         self._last_action = action
@@ -882,7 +1018,23 @@ class AdversarialIoTEnv(gym.Env):
 
         if d <= -1:
             # Under-force: the attacker advances toward IMPACT.
-            if self._rng.random() < self._config.p_up:
+            #
+            # Proximity-coupled mode (RESTRAIN-style): escalation pressure
+            # scales with the attacker's proximity to its goal,
+            # lambda = stage / IMPACT. The closer the attacker is to IMPACT the
+            # harder an under-forced defender finds it to hold the line, so the
+            # defender must become decisive near the end of the chain. With no
+            # finite budget, prevention is earned by holding the attacker below
+            # IMPACT for the full horizon (awarded at truncation), not by
+            # draining a counter. Default (legacy) mode uses a flat p_up.
+            p_up_eff = self._config.p_up
+            if self._config.proximity_coupled:
+                lam = stage / KillChainStage.IMPACT.value
+                p_up_eff = self._config.p_up * (
+                    self._config.proximity_min_escalation
+                    + (1.0 - self._config.proximity_min_escalation) * lam
+                )
+            if self._rng.random() < p_up_eff:
                 self._current_attack_stage = min(KillChainStage.IMPACT.value, stage + 1)
             self._attack_history.append(self._current_attack_stage)
             self._drain_budget(self._config.budget_step_cost)
@@ -907,8 +1059,20 @@ class AdversarialIoTEnv(gym.Env):
             return "ongoing"
 
         # d >= 1: over-force -> the attacker holds (stalled, not advanced).
+        # Under the "targeted" cost model, mis-targeted (disproportionately
+        # heavy) force does NOT exhaust the attacker's foothold: spraying
+        # ISOLATE at a low stage stalls but does not destroy the intrusion, so
+        # it drains no budget. Only correctly-targeted proportional force (the
+        # d == 0 branch above) draws the budget down toward prevention. Under
+        # the default "hybrid" model every active step costs the attacker, so
+        # over-forcing also drains the per-step activity cost (legacy behaviour).
         self._attack_history.append(self._current_attack_stage)
-        self._drain_budget(self._config.budget_step_cost)
+        over_force_cost = (
+            0
+            if self._config.budget_cost_model == "targeted"
+            else self._config.budget_step_cost
+        )
+        self._drain_budget(over_force_cost)
         return "ongoing"
 
     def _drain_budget(self, amount: int) -> None:
@@ -1062,23 +1226,22 @@ class AdversarialIoTEnv(gym.Env):
         }
 
     def _calculate_reward(self, action: int, previous_stage: int) -> float:
-        """Reward for one non-IMPACT step.
+        """Per-step reward for one non-IMPACT step.
 
-        New formulation (environment-design, B2 fix). The reward depends *only* on the
-        decision-time stage and the action — not on the agent's previous
-        action. Components:
+        The reward depends only on the decision-time stage and the action.
+        Behaviour is governed by ``reward_mode`` (see ``AdversarialEnvConfig``):
 
-        - ``- C_action``: Cost of executing ``action`` (force-continuum scale).
-        - Stage-specific guardrails on extreme errors (penalty_overreact_*,
-          penalty_block_*, penalty_missed_impact at IMPACT — although the
-          IMPACT branch is normally handled by ``_step_at_impact``).
-        - ``+ reward_benign_passive`` when the agent picks OBSERVE/LOG on
-          truly benign traffic — small but consistent positive signal so
-          the "do nothing" baseline does not net to zero.
-        - **Proportionality term (the core)**: ``+ reward_proportional`` when
-          ``|action - recommended_action(stage)| ≤ 1``, else
-          ``- penalty_disproportionate``. This is the policy the agent is
-          ultimately graded against.
+        - ``"outcome"``: returns only ``- C_action``. All stage-conditioned
+          shaping below is skipped; the learning signal comes from realised
+          outcomes applied in ``step()``/``_step_at_impact``. This is the
+          primary deployment contract.
+        - ``"coupled"`` (default): adds the kill-chain-aware shaping terms:
+          benign/recon guardrails, the benign-passive bonus, and the
+          proportionality term (``+ reward_proportional`` when
+          ``|action - recommended_action(stage)| ≤ 1`` else
+          ``- penalty_disproportionate``). Retained as the reward-shaping
+          ablation cell; under it the optimal policy reduces to stage
+          classification.
 
         Args:
             action: Defensive action taken (0..4).
@@ -1094,10 +1257,14 @@ class AdversarialIoTEnv(gym.Env):
         # 1) Cost of action.
         reward -= get_action_cost(action) * self._config.action_cost_scale
 
-        # Outcome-only ablation: skip all stage-conditioned shaping (guardrails,
+        # Outcome contract: skip all stage-conditioned shaping (guardrails,
         # benign-passive bonus, proportionality core). Only the action cost
-        # remains here; outcome signals are applied in step()/_step_at_impact.
-        if self._config.reward_mode == "outcome_only":
+        # remains here; the learning signal comes from realised outcomes
+        # (de-escalation bonus, prevention bonus, terminal IMPACT accounting,
+        # FPR penalty) applied in step()/_step_at_impact. This de-couples the
+        # objective from d = action - recommended(stage), so the task is no
+        # longer reducible to per-step stage classification.
+        if self._config.reward_mode == "outcome":
             return reward
 
         # 2) Asymmetric guardrails on extreme errors.

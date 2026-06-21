@@ -93,6 +93,13 @@ class EnvConfigSerializable:
     attacker_budget: Optional[int] = None
     budget_step_cost: int = 1
     budget_reset_cost: int = 2
+    # budget_cost_model: "hybrid" (default, legacy) drains the per-step
+    # activity cost on every active attacker step, so any forcing policy -- even
+    # a blind detector spraying ISOLATE -- exhausts the budget and prevents,
+    # masking detector skill. "targeted" drains only under correctly-targeted
+    # proportional force (and the attacker's own activity); mis-targeted heavy
+    # force stalls the attacker but drains nothing, restoring a detector-skill
+    # signal at a budgeted operating point. Must match between train and eval.
     budget_cost_model: str = "hybrid"
     prevention_bonus: float = 50.0
 
@@ -124,7 +131,11 @@ class EnvConfigSerializable:
     proportional_bonus_cap: Optional[float] = 100.0
     reward_deescalation: float = 15.0
     deescalation_bonus_cap: Optional[float] = 150.0
-    # Reward mode ablation: "proportional" (default) or "outcome_only".
+    # Reward mode. Canonical: "coupled" (kill-chain-aware shaping, the
+    # reward-shaping ablation cell) or "outcome" (outcome-only, the primary
+    # deployment contract). Legacy aliases "proportional"/"outcome_only" are
+    # accepted and normalised in __post_init__ so serialised manifests are
+    # canonical (keeps the train/eval parity check alias-insensitive).
     reward_mode: str = "proportional"
     impact_penalty: float = 200.0
     penalty_missed_impact: float = 150.0
@@ -137,6 +148,43 @@ class EnvConfigSerializable:
     # Lagrangian FPR penalty (review 2.2 / Direction 6)
     fpr_penalty_beta: float = 0.0
 
+    # Partial-observability redesign (sequential POMDP). ``aliasing_rate`` (alpha)
+    # is the probability that a step emits a feature row drawn from an adjacent
+    # kill-chain stage instead of the true stage, applied identically to every
+    # policy so the supervised baseline and the RL agents see the same ambiguous
+    # observation stream. ``session_coherent`` draws contiguous without-replacement
+    # runs of same-stage rows (a session proxy). ``no_post_transition_leak`` emits
+    # the refreshed observation from the pre-transition stage so the just-occurred
+    # transition is not revealed one step early. ``proximity_coupled`` replaces the
+    # finite intrusion budget with a proximity-coupled escalation/tolerance rule
+    # (prevention is awarded for holding the attacker below IMPACT for the horizon,
+    # not for draining a counter); ``proximity_min_escalation`` floors the
+    # proximity-scaled under-force escalation probability. Defaults reproduce the
+    # legacy fully-observable, budget-based contract byte-for-byte. Must match
+    # between train and eval.
+    aliasing_rate: float = 0.0
+    session_coherent: bool = False
+    no_post_transition_leak: bool = False
+    proximity_coupled: bool = False
+    proximity_min_escalation: float = 0.4
+
+    def __post_init__(self) -> None:
+        # Normalise reward-mode aliases to the canonical token so manifests are
+        # consistent regardless of which spelling the caller passed.
+        _aliases = {
+            "proportional": "coupled",
+            "coupled": "coupled",
+            "outcome_only": "outcome",
+            "outcome": "outcome",
+        }
+        canonical = _aliases.get(self.reward_mode)
+        if canonical is None:
+            raise ValueError(
+                f"Unknown reward_mode {self.reward_mode!r}; "
+                f"expected one of {sorted(set(_aliases))}."
+            )
+        self.reward_mode = canonical
+
 
 @dataclass
 class BlueTeamRunConfig:
@@ -147,6 +195,15 @@ class BlueTeamRunConfig:
     total_timesteps: int = 500_000
     eval_freq: int = 25_000
     n_eval_episodes: int = 30
+    # Early-stopping on the eval-reward plateau. ``total_timesteps`` is the
+    # generous cap; training stops early when the best-so-far eval reward has
+    # not improved for ``early_stop_patience`` consecutive evaluations, but
+    # never before ``early_stop_min_evals`` evaluations have happened. The
+    # best-eval checkpoint (``best_model.zip``) is what downstream eval loads,
+    # so per-algorithm convergence speed does not bias the comparison.
+    early_stop: bool = True
+    early_stop_patience: int = 10
+    early_stop_min_evals: int = 10
     out_dir: str = "runs/ppo/seed_0"
     generator_path: str = "artifacts/generator/phase2"
     dataset_path: str = "data/processed/ciciot2023"
@@ -157,6 +214,80 @@ class BlueTeamRunConfig:
     )
     algo_hparams: dict[str, Any] = field(default_factory=dict)
     notes: str = ""
+
+    # Env fields that define the *task contract*. Train and eval must agree on
+    # every one of these or the reported eval number measures a different MDP
+    # than the one the agent trained on. ``split`` and the eval-only sampling
+    # knobs are intentionally excluded (train uses ``train`` / eval uses a
+    # held-out balanced split by design).
+    _PARITY_FIELDS = (
+        "exclude_ood",
+        "impact_is_terminal",
+        "reward_mode",
+        "tug_of_war",
+        "attacker_budget",
+        "budget_step_cost",
+        "budget_reset_cost",
+        "budget_cost_model",
+        "p_onset",
+        "p_onset_access",
+        "p_down",
+        "p_up",
+        "p_down_isolate",
+        "p_defender_deescalation",
+        "retreat_prob",
+        "evasion_prob",
+        "action_cost_scale",
+        "reward_proportional",
+        "penalty_disproportionate",
+        "proportional_bonus_cap",
+        "reward_deescalation",
+        "deescalation_bonus_cap",
+        "impact_penalty",
+        "penalty_missed_impact",
+        "defense_success_bonus",
+        "reward_benign_passive",
+        "penalty_overreact_benign",
+        "penalty_block_benign",
+        "penalty_block_recon",
+        "prevention_bonus",
+        "fpr_penalty_beta",
+        "min_episode_length",
+        "max_steps",
+        "window_size",
+        "include_deltas",
+        "include_stage_pred",
+        "aliasing_rate",
+        "session_coherent",
+        "no_post_transition_leak",
+        "proximity_coupled",
+        "proximity_min_escalation",
+    )
+
+    def __post_init__(self) -> None:
+        self.assert_train_eval_parity()
+
+    def assert_train_eval_parity(self) -> None:
+        """Fail loudly if train/eval disagree on any task-contract field.
+
+        Without this, a silent mismatch (e.g. training with ``attacker_budget=40``
+        but evaluating unbounded, or training ``coupled`` and evaluating
+        ``outcome``) would not error — the eval number would simply measure a
+        different MDP. The eval manifest records these values but nothing else
+        enforces that they match the training contract.
+        """
+        mismatches = []
+        for name in self._PARITY_FIELDS:
+            train_val = getattr(self.env, name)
+            eval_val = getattr(self.eval_env, name)
+            if train_val != eval_val:
+                mismatches.append(f"  {name}: train={train_val!r} eval={eval_val!r}")
+        if mismatches:
+            raise ValueError(
+                "BlueTeamRunConfig: train/eval env contract mismatch — the eval "
+                "number would measure a different MDP than training:\n"
+                + "\n".join(mismatches)
+            )
 
     @property
     def run_id(self) -> str:
@@ -180,6 +311,9 @@ class BlueTeamRunConfig:
             "total_timesteps": self.total_timesteps,
             "eval_freq": self.eval_freq,
             "n_eval_episodes": self.n_eval_episodes,
+            "early_stop": self.early_stop,
+            "early_stop_patience": self.early_stop_patience,
+            "early_stop_min_evals": self.early_stop_min_evals,
             "env": asdict(self.env),
             "eval_env": asdict(self.eval_env),
             "algo_hparams": dict(self.algo_hparams),
@@ -204,6 +338,9 @@ class BlueTeamRunConfig:
                 "final_eval_reward",
                 "final_eval_mttc",
                 "final_eval_compromise_rate",
+                "early_stopped",
+                "actual_timesteps",
+                "best_model_path",
             ):
                 if k in extra:
                     d[k] = extra[k]
@@ -240,6 +377,9 @@ class BlueTeamRunConfig:
             total_timesteps=int(d.get("total_timesteps", 500_000)),
             eval_freq=int(d.get("eval_freq", 25_000)),
             n_eval_episodes=int(d.get("n_eval_episodes", 30)),
+            early_stop=bool(d.get("early_stop", True)),
+            early_stop_patience=int(d.get("early_stop_patience", 10)),
+            early_stop_min_evals=int(d.get("early_stop_min_evals", 10)),
             out_dir=str(paths.get("out_dir", "")),
             generator_path=str(paths.get("generator", "")),
             dataset_path=str(paths.get("dataset", "")),
