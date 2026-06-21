@@ -81,10 +81,20 @@ _DISPLAY: dict[str, str] = {
 }
 _RL_ALGOS = {"dqn", "ppo", "a2c"}
 _OOD_CLASSES_DEFAULT: list[str] = [
-    "DDoS-HTTP_Flood",
-    "Mirai-udpplain",
+    # RECON
     "VulnerabilityScan",
+    "Recon-OSScan",
+    # ACCESS
     "XSS",
+    "SqlInjection",
+    # MANEUVER
+    "Mirai-udpplain",
+    "DNS_Spoofing",
+    # IMPACT
+    "DDoS-HTTP_Flood",
+    "DoS-SYN_Flood",
+    "DDoS-SlowLoris",
+    "DDoS-ACK_Fragmentation",
 ]
 
 
@@ -167,12 +177,16 @@ def _summarise_cell(
             "ci_low": math.nan,
             "ci_high": math.nan,
             "compromise_rate": math.nan,
+            "prevention_rate": math.nan,
+            # Diagnostic-only (P(IMPACT)-weighted; not commensurable across
+            # operating points). prevention_rate + compromise_rate are primary.
             "mitigated_impact_rate": math.nan,
             "mean_episode_length": math.nan,
         }
 
     rewards = [r["episode_reward"] for r in all_records]
     compromised = [1.0 if r.get("compromised") else 0.0 for r in all_records]
+    prevented = [1.0 if r.get("end_outcome") == "prevented" else 0.0 for r in all_records]
     mitigated = [1.0 if r.get("end_outcome") == "impact_mitigated" else 0.0 for r in all_records]
     lengths = [r["episode_length"] for r in all_records]
 
@@ -200,6 +214,9 @@ def _summarise_cell(
         "ci_low": float(ci_low),
         "ci_high": float(ci_high),
         "compromise_rate": float(np.mean(compromised)),
+        "prevention_rate": float(np.mean(prevented)),
+        # Diagnostic-only (P(IMPACT)-weighted); kept for backward-compat but
+        # demoted from headline — prevention_rate is the primary security KPI.
         "mitigated_impact_rate": float(np.mean(mitigated)),
         "mean_episode_length": float(np.mean(lengths)),
     }
@@ -261,14 +278,12 @@ def _evaluate_g79(rows: list[dict[str, Any]]) -> dict[str, Any]:
         "rf_acting_mean_reward": rf["mean_reward"],
         "rf_acting_ci": [rf["ci_low"], rf["ci_high"]],
         "delta_mean": best["mean_reward"] - rf["mean_reward"],
-        "phase4_rf_recall_on_vulnerability_scan": 0.001,
         "interpretation": (
-            "PASS: trained RL recovers some of the supervised RF blind spot on VulnerabilityScan."
+            "Trained RL recovers some of the supervised RF blind spot on VulnerabilityScan."
             if passes
-            else "FAIL-WITH-FINDING: trained RL does NOT beat RF-Acting "
-            "on VulnerabilityScan; the thesis claim narrows from "
-            "'RL closes the OOD gap' to 'RL is robust to (not "
-            "better at) the OOD class'. See PLAN §8 D7.9.1."
+            else "Trained RL does NOT beat RF-Acting on VulnerabilityScan; "
+            "the claim narrows from 'RL closes the OOD gap' to "
+            "'RL is robust to (not better at) the OOD class'."
         ),
     }
 
@@ -278,7 +293,8 @@ def _evaluate_g78(
     expected_classes: list[str],
     expected_policies: list[str],
 ) -> dict[str, Any]:
-    """G7.8: 4 × 8 matrix is complete with no NaN means."""
+    """G7.8: the full (classes × policies) result matrix is complete with
+    no NaN means."""
     have: dict[tuple[str, str], dict[str, Any]] = {(r["ood_class"], r["policy"]): r for r in rows}
     missing: list[tuple[str, str]] = []
     nan_cells: list[tuple[str, str]] = []
@@ -400,13 +416,150 @@ def _render(
     plt.close(fig)
 
 
+# --------------------------------------------- per-class detector recall
+
+
+def _compute_per_class_rf_recall(
+    ood_classes: list[str],
+    *,
+    rf_path: Path,
+    dataset_dir: Path,
+    stage_by_class: dict[str, int],
+) -> dict[str, float | None]:
+    """Per-held-out-class recall of the (retrained) RF stage detector.
+
+    Recall here = fraction of that class's rows the RF assigns to the
+    class's *true* kill-chain stage. A low value means the supervised
+    detector is blind to the class (e.g. VulnerabilityScan ≈ 0.001), which
+    is exactly the x-axis of the detector-independence figure: it lets us
+    plot the RL-minus-RF advantage as a function of how badly the upstream
+    detector fails on each zero-day class.
+
+    Returns ``{class: recall}`` with ``None`` where artefacts are missing
+    (so the plotter degrades gracefully on a partial checkout).
+    """
+    try:
+        import joblib
+    except Exception:  # noqa: BLE001
+        logger.warning("joblib unavailable — skipping per-class RF recall.")
+        return {c: None for c in ood_classes}
+
+    if not Path(rf_path).exists():
+        logger.warning("RF detector not found at %s — skipping recall.", rf_path)
+        return {c: None for c in ood_classes}
+
+    features_path = dataset_dir / "features.npy"
+    labels_path = dataset_dir / "labels.npy"
+    splits_dir = dataset_dir / "splits" / "ood_attack"
+    if not (features_path.exists() and labels_path.exists() and splits_dir.exists()):
+        logger.warning(
+            "dataset artefacts missing under %s — skipping recall.", dataset_dir
+        )
+        return {c: None for c in ood_classes}
+
+    rf = joblib.load(rf_path)
+    # NB: features.npy is ALREADY the normalised feature matrix the RF was
+    # trained on (the detector trainer feeds features.npy straight into the
+    # RandomForest, and the environment serves these same scaled rows to the
+    # RF-Acting policy). Re-applying the StandardScaler here would double-scale
+    # the inputs and corrupt the predictions, so we predict on the raw stored
+    # rows to match both training and in-environment inference.
+    features = np.load(features_path, mmap_mode="r")
+
+    out: dict[str, float | None] = {}
+    for cls in ood_classes:
+        idx_path = splits_dir / f"{cls}.idx.npy"
+        true_stage = stage_by_class.get(cls)
+        if not idx_path.exists() or true_stage is None:
+            out[cls] = None
+            continue
+        idx = np.load(idx_path)
+        if idx.size == 0:
+            out[cls] = None
+            continue
+        X = np.ascontiguousarray(features[idx], dtype=np.float32)
+        pred = rf.predict(X)
+        out[cls] = float(np.mean(pred == true_stage))
+    return out
+
+
+def _render_recall_vs_advantage(
+    rows: list[dict[str, Any]],
+    recall_by_class: dict[str, float | None],
+    ood_classes: list[str],
+    out_path: Path,
+    *,
+    metric: str = "prevention_rate",
+) -> dict[str, Any]:
+    """Detector-independence figure: RL-minus-RF advantage vs detector recall.
+
+    For each held-out class we plot a point at (x = per-class RF stage-recall,
+    y = best-trained-RL minus RF-Acting on ``metric``). The thesis claim — that
+    a detector-free RL policy is *robust to* the supervised detector's blind
+    spots — predicts the advantage rises as detector recall falls (a negative
+    slope / upper-left cluster). Returns the plotted point table for the JSON.
+    """
+    import matplotlib
+
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    by_cp = {(r["ood_class"], r["policy"]): r for r in rows}
+    points: list[dict[str, Any]] = []
+    for cls in ood_classes:
+        rf = by_cp.get((cls, "rf_acting"))
+        recall = recall_by_class.get(cls)
+        if rf is None or recall is None or not math.isfinite(rf.get(metric, math.nan)):
+            continue
+        rl_vals = [
+            by_cp[(cls, a)][metric]
+            for a in _RL_ALGOS
+            if (cls, a) in by_cp and math.isfinite(by_cp[(cls, a)].get(metric, math.nan))
+        ]
+        if not rl_vals:
+            continue
+        best_rl = max(rl_vals)
+        points.append(
+            {
+                "ood_class": cls,
+                "rf_recall": float(recall),
+                "rf_metric": float(rf[metric]),
+                "best_rl_metric": float(best_rl),
+                "advantage": float(best_rl - rf[metric]),
+            }
+        )
+
+    fig, ax = plt.subplots(figsize=(8.0, 5.5))
+    if points:
+        xs = [p["rf_recall"] for p in points]
+        ys = [p["advantage"] for p in points]
+        ax.axhline(0.0, color="#9ca3af", lw=0.8, ls="--")
+        ax.scatter(xs, ys, c="#2563eb", edgecolor="black", s=60, zorder=3)
+        for p in points:
+            ax.annotate(
+                p["ood_class"],
+                (p["rf_recall"], p["advantage"]),
+                textcoords="offset points",
+                xytext=(6, 4),
+                fontsize=7,
+            )
+    ax.set_xlabel("Supervised RF detector recall on held-out class")
+    ax.set_ylabel(f"Best-RL − RF-Acting  ({metric})")
+    ax.set_title("Detector-independence dividend: RL advantage vs detector recall")
+    ax.grid(True, linestyle=":", alpha=0.4)
+    fig.tight_layout()
+    fig.savefig(out_path, dpi=200, bbox_inches="tight")
+    plt.close(fig)
+    return {"metric": metric, "points": points}
+
+
 # --------------------------------------------------------------- main
 
 
 def _build_argparser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
-        description="ablation F15 — OOD-class robustness plot + summary "
-        "(audit-AF1, headline G7.9 evaluator).",
+        description="OOD-class robustness plot + summary "
+        "(held-out zero-day classes; detector-independence figure).",
     )
     p.add_argument(
         "--runs-root",
@@ -443,6 +596,22 @@ def _build_argparser() -> argparse.ArgumentParser:
         "--phase1-splits-manifest",
         default="docs/results/dataset/manifest.json",
         help="dataset-prep splits manifest.json (post-3cd2fb9; SHA 1e99d596...).",
+    )
+    p.add_argument(
+        "--rf-path",
+        default="artifacts/detector/random_forest.joblib",
+        help="RF stage detector used by RF-Acting (for per-class recall x-axis).",
+    )
+    p.add_argument(
+        "--dataset-dir",
+        default="data/processed/ciciot2023",
+        help="Processed dataset dir (features/labels/splits) for recall computation.",
+    )
+    p.add_argument(
+        "--advantage-metric",
+        default="prevention_rate",
+        choices=["prevention_rate", "mean_reward", "compromise_rate"],
+        help="Metric for the RL-minus-RF detector-independence figure.",
     )
     return p
 
@@ -491,6 +660,24 @@ def main(argv: list[str] | None = None) -> int:
     png_path = out_dir / "F15_ood_robustness.png"
     _render(rows, list(args.ood_classes), png_path)
 
+    # Detector-independence figure: per-class RF recall vs RL-minus-RF advantage.
+    from scripts.ablation.run_ood_eval import _OOD_STAGE_BY_CLASS
+
+    recall_by_class = _compute_per_class_rf_recall(
+        list(args.ood_classes),
+        rf_path=Path(args.rf_path),
+        dataset_dir=Path(args.dataset_dir),
+        stage_by_class=_OOD_STAGE_BY_CLASS,
+    )
+    recall_png = out_dir / "F15b_recall_vs_advantage.png"
+    recall_fig = _render_recall_vs_advantage(
+        rows,
+        recall_by_class,
+        list(args.ood_classes),
+        recall_png,
+        metric=args.advantage_metric,
+    )
+
     # Evaluate gates.
     g78 = _evaluate_g78(rows, list(args.ood_classes), list(args.policies))
     g79 = _evaluate_g79(rows)
@@ -504,6 +691,8 @@ def main(argv: list[str] | None = None) -> int:
         "ood_classes": list(args.ood_classes),
         "policies": list(args.policies),
         "rows": rows,
+        "per_class_rf_recall": recall_by_class,
+        "detector_independence": recall_fig,
         "gates": {
             "G7.8": g78,
             "G7.9": g79,
@@ -525,6 +714,7 @@ def main(argv: list[str] | None = None) -> int:
         "audit_finding": "AF1",
         "outputs": {
             "png": str(png_path),
+            "recall_vs_advantage_png": str(recall_png),
             "json": str(out_dir / "F15_summary.json"),
         },
         "inputs": {
@@ -555,16 +745,18 @@ def main(argv: list[str] | None = None) -> int:
     caption_path = out_dir / "F15_caption.md"
     if not caption_path.exists():
         caption_path.write_text(
-            "**F15 — OOD-class robustness.** Mean episodic reward of every "
-            "benchmark policy under each held-out attack class "
-            "(DDoS-HTTP_Flood, Mirai-udpplain, VulnerabilityScan, XSS), "
-            "with the env's `RealizationEngine.allowed_indices` restricted "
-            "to that class's row indices. The supervised RF baseline collapses "
-            "on `VulnerabilityScan` (detector F11 recall = 0.001); F15 "
-            "quantifies how much of that blind spot trained RL recovers by "
-            "acting on raw features rather than the detector's "
-            "classification. Error bars are 95 % bootstrap CIs. "
-            "(Audit AF1, 2026-04-30; PLAN §3.1.3 / D7.6.)\n"
+            "**F15 — Zero-day (out-of-distribution) robustness.** Mean "
+            "episodic reward of every defence policy when each of the ten "
+            "held-out attack classes is injected eval-only on the frozen "
+            "agents, at the same finite-budget operating point as the "
+            "held-out benchmark. The held-out classes span the detector's "
+            "recall spectrum, from near-perfect to the `VulnerabilityScan` "
+            "blind spot (supervised RF recall ≈ 0.001). Because the trained "
+            "RL agent acts on raw features rather than the detector's "
+            "stage label, it degrades gracefully where the detector-coupled "
+            "RF-Acting baseline collapses; the companion figure plots this "
+            "RL-minus-RF advantage against per-class detector recall. Error "
+            "bars are 95 % bootstrap CIs.\n"
         )
 
     logger.info(

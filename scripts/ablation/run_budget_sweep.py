@@ -87,6 +87,7 @@ def _run_cell(
         split="test_balanced",
         exclude_ood=True,
         impact_is_terminal=False,  # primary training contract
+        reward_mode="outcome",  # re-posed contract; sweep KPIs are dynamics-invariant
         attacker_budget=budget,
     )
     env = _build_env(

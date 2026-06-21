@@ -85,10 +85,20 @@ _ROOT = Path(__file__).resolve().parents[2]
 # include other stages, ``_resolve_ood_stage`` falls back to a runtime
 # scan of state_indices.json.
 _OOD_STAGE_BY_CLASS: dict[str, int] = {
-    "DDoS-HTTP_Flood": 4,  # IMPACT
-    "Mirai-udpplain": 3,  # MANEUVER
-    "VulnerabilityScan": 1,  # RECON  ← detector F11 0.001-recall blind spot
+    # RECON
+    "VulnerabilityScan": 1,  # RECON  ← RF detector ~0.001-recall blind spot
+    "Recon-OSScan": 1,  # RECON
+    # ACCESS
     "XSS": 2,  # ACCESS
+    "SqlInjection": 2,  # ACCESS
+    # MANEUVER
+    "Mirai-udpplain": 3,  # MANEUVER
+    "DNS_Spoofing": 3,  # MANEUVER
+    # IMPACT
+    "DDoS-HTTP_Flood": 4,  # IMPACT
+    "DoS-SYN_Flood": 4,  # IMPACT
+    "DDoS-SlowLoris": 4,  # IMPACT
+    "DDoS-ACK_Fragmentation": 4,  # IMPACT
 }
 
 
@@ -138,10 +148,20 @@ def _load_sb3_model(algo: str, model_path: Path, env: Any) -> Any:
     raise ValueError(f"unknown algo {algo!r}; expected dqn / ppo / a2c")
 
 
-def _ood_eval_env_spec() -> EnvConfigSerializable:
-    """environment-design-frozen reward config (D7.4) on the *train* split.
+def _ood_eval_env_spec(
+    attacker_budget: int | None = None,
+    reward_mode: str = "outcome",
+    budget_cost_model: str = "hybrid",
+    *,
+    aliasing_rate: float = 0.0,
+    session_coherent: bool = False,
+    no_post_transition_leak: bool = False,
+    proximity_coupled: bool = False,
+    proximity_min_escalation: float = 0.4,
+) -> EnvConfigSerializable:
+    """Reward config (on the *train* split) for the zero-day OOD eval.
 
-    Why train (not test_balanced)? F15's hybrid realiser pattern
+    Why train (not test_balanced)? The hybrid realiser pattern
     (see _build_ood_env) keeps the *non-OOD-stage* feature pool from
     the training-distribution rows, so the agent sees normal-looking
     features at every non-attack-stage step and OOD-class features
@@ -149,11 +169,34 @@ def _ood_eval_env_spec() -> EnvConfigSerializable:
     the most generous setup for trained RL: any failure to react is
     truly an OOD-feature failure, not a distribution-shift on
     benign / non-attack features.
+
+    ``attacker_budget``, ``reward_mode`` and ``budget_cost_model`` MUST
+    match the held-out benchmark operating point so OOD numbers are
+    commensurable with the in-distribution benchmark. A finite budget
+    also bounds the episode (prevention can fire), so we report
+    compromise / prevention rates rather than an unbounded penalty-bleed
+    reward. ``budget_cost_model='targeted'`` makes only correctly-aimed
+    proportional force drain the attacker budget, so a blind detector
+    that over-forces can no longer "prevent" for free.
+
+    The five partial-observability redesign fields (``aliasing_rate``,
+    ``session_coherent``, ``no_post_transition_leak``, ``proximity_coupled``,
+    ``proximity_min_escalation``) MUST also match the trained checkpoints'
+    contract, otherwise the OOD eval would run a different MDP than training
+    (the train/eval parity assertion enforces this).
     """
     return EnvConfigSerializable(
         split="train",
         exclude_ood=True,  # base pool is in-distribution; OOD overlay is added below
         impact_is_terminal=False,  # match the primary training contract
+        attacker_budget=attacker_budget,
+        reward_mode=reward_mode,
+        budget_cost_model=budget_cost_model,
+        aliasing_rate=aliasing_rate,
+        session_coherent=session_coherent,
+        no_post_transition_leak=no_post_transition_leak,
+        proximity_coupled=proximity_coupled,
+        proximity_min_escalation=proximity_min_escalation,
     )
 
 
@@ -218,7 +261,16 @@ def _build_ood_env(
     pool), then the OOD class's stage gets its ``_state_indices``
     entry surgically replaced with the OOD-class rows.
     """
-    spec = _ood_eval_env_spec()
+    spec = _ood_eval_env_spec(
+        attacker_budget=getattr(args, "attacker_budget", None),
+        reward_mode=getattr(args, "reward_mode", "outcome"),
+        budget_cost_model=getattr(args, "budget_cost_model", "hybrid"),
+        aliasing_rate=getattr(args, "aliasing_rate", 0.0),
+        session_coherent=getattr(args, "session_coherent", False),
+        no_post_transition_leak=getattr(args, "no_post_transition_leak", False),
+        proximity_coupled=getattr(args, "proximity_coupled", False),
+        proximity_min_escalation=getattr(args, "proximity_min_escalation", 0.4),
+    )
 
     # 1. Build the env on the train pool (all 5 stages populated).
     env = _build_env(
@@ -277,7 +329,7 @@ def _build_argparser() -> argparse.ArgumentParser:
     p.add_argument(
         "--ood-classes",
         nargs="+",
-        default=["DDoS-HTTP_Flood", "Mirai-udpplain", "VulnerabilityScan", "XSS"],
+        default=list(_OOD_STAGE_BY_CLASS),
         help="Held-out attack classes to evaluate (one outer loop each).",
     )
     p.add_argument(
@@ -324,6 +376,62 @@ def _build_argparser() -> argparse.ArgumentParser:
     p.add_argument("--generator-path", default="artifacts/generator/red_team")
     p.add_argument("--dataset-path", default="data/processed/ciciot2023")
     p.add_argument(
+        "--attacker-budget",
+        type=int,
+        default=None,
+        help="Finite intrusion budget for the OOD eval. MUST match the held-out "
+        "benchmark operating point so OOD numbers are commensurable with the "
+        "in-distribution benchmark (and so prevention can fire, bounding the "
+        "episode instead of an unbounded penalty-bleed reward).",
+    )
+    p.add_argument(
+        "--reward-mode",
+        default="outcome",
+        choices=["outcome", "outcome_only", "coupled", "proportional"],
+        help="Reward contract; must match the trained checkpoints' contract.",
+    )
+    p.add_argument(
+        "--budget-cost-model",
+        default="hybrid",
+        choices=["hybrid", "targeted"],
+        help="Attacker-budget drain model; must match the trained checkpoints' "
+        "contract. 'targeted' drains the budget only under correctly-aimed "
+        "proportional force, so a blind detector that over-forces cannot "
+        "exhaust the attacker for free.",
+    )
+    p.add_argument(
+        "--aliasing-rate",
+        type=float,
+        default=0.0,
+        help="Partial-observability aliasing rate; must match the trained "
+        "checkpoints' contract.",
+    )
+    p.add_argument(
+        "--session-coherent",
+        action="store_true",
+        help="Sample session-coherent (contiguous same-stage) observation runs; "
+        "must match the trained checkpoints' contract.",
+    )
+    p.add_argument(
+        "--no-post-transition-leak",
+        action="store_true",
+        help="Sample the refreshed observation from the pre-transition stage; "
+        "must match the trained checkpoints' contract.",
+    )
+    p.add_argument(
+        "--proximity-coupled",
+        action="store_true",
+        help="Use proximity-coupled attacker escalation + truncation-prevention; "
+        "must match the trained checkpoints' contract.",
+    )
+    p.add_argument(
+        "--proximity-min-escalation",
+        type=float,
+        default=0.4,
+        help="Floor on the proximity-scaled under-force escalation probability; "
+        "must match the trained checkpoints' contract.",
+    )
+    p.add_argument(
         "--splits-manifest",
         default="data/processed/ciciot2023/splits/manifest.json",
     )
@@ -363,7 +471,11 @@ def _roll_rl(
     seed: int,
 ) -> dict[str, Any]:
     """One (ood_class, RL_algo, seed) cell."""
-    model_path = Path(args.phase5_runs) / algo / f"seed_{seed}" / "model.zip"
+    # Prefer the best-eval checkpoint (training EvalCallback); fall back to the
+    # last-model checkpoint for pre-early-stop runs.
+    _run_root = Path(args.phase5_runs) / algo / f"seed_{seed}"
+    _best = _run_root / "best_model.zip"
+    model_path = _best if _best.exists() else _run_root / "model.zip"
     out_dir = Path(args.out_root) / ood_class / algo / f"seed_{seed}"
     out_dir.mkdir(parents=True, exist_ok=True)
     eval_jsonl = out_dir / "eval_test.jsonl"
@@ -512,7 +624,16 @@ def _roll_deterministic(
         # Probe the env to discover the obs dim, then compute num_features
         # the same way scripts/benchmark/run_test_eval.py does (environment-design
         # frozen contract).
-        spec = _ood_eval_env_spec()
+        spec = _ood_eval_env_spec(
+            attacker_budget=getattr(args, "attacker_budget", None),
+            reward_mode=getattr(args, "reward_mode", "outcome"),
+            budget_cost_model=getattr(args, "budget_cost_model", "hybrid"),
+            aliasing_rate=getattr(args, "aliasing_rate", 0.0),
+            session_coherent=getattr(args, "session_coherent", False),
+            no_post_transition_leak=getattr(args, "no_post_transition_leak", False),
+            proximity_coupled=getattr(args, "proximity_coupled", False),
+            proximity_min_escalation=getattr(args, "proximity_min_escalation", 0.4),
+        )
         probe_env = _build_ood_env(args, ood_class, seed=0)
         try:  # noqa: SIM105
             obs0 = probe_env.reset()
@@ -636,6 +757,16 @@ def main(argv: list[str] | None = None) -> int:
     blue_team_sweep_manifest = Path(args.phase5_runs) / "sweep_manifest.json"
     benchmark_eval_manifest = Path(args.phase6_eval_manifest)
 
+    _manifest_spec = _ood_eval_env_spec(
+        attacker_budget=getattr(args, "attacker_budget", None),
+        reward_mode=getattr(args, "reward_mode", "outcome"),
+        budget_cost_model=getattr(args, "budget_cost_model", "hybrid"),
+        aliasing_rate=getattr(args, "aliasing_rate", 0.0),
+        session_coherent=getattr(args, "session_coherent", False),
+        no_post_transition_leak=getattr(args, "no_post_transition_leak", False),
+        proximity_coupled=getattr(args, "proximity_coupled", False),
+        proximity_min_escalation=getattr(args, "proximity_min_escalation", 0.4),
+    )
     eval_manifest = {
         "schema_version": "1.0",
         "phase": 7,
@@ -659,15 +790,26 @@ def main(argv: list[str] | None = None) -> int:
         "ood_classes": list(args.ood_classes),
         "policies": list(args.policies),
         "eval_env": {
-            "exclude_ood": False,  # F15 specifically: keep OOD rows alive
-            "window_size": _ood_eval_env_spec().window_size,
-            "include_deltas": _ood_eval_env_spec().include_deltas,
-            "max_steps": _ood_eval_env_spec().max_steps,
-            "min_episode_length": _ood_eval_env_spec().min_episode_length,
-            "p_defender_deescalation": _ood_eval_env_spec().p_defender_deescalation,
-            "impact_is_terminal": _ood_eval_env_spec().impact_is_terminal,
-            "_note": "environment-design frozen reward config (D7.4) — F15 isolates "
-            "the generalisation axis from the reward-shaping axis.",
+            "exclude_ood": False,  # keep the OOD rows alive (overlaid per class)
+            "window_size": _manifest_spec.window_size,
+            "include_deltas": _manifest_spec.include_deltas,
+            "max_steps": _manifest_spec.max_steps,
+            "min_episode_length": _manifest_spec.min_episode_length,
+            "p_defender_deescalation": _manifest_spec.p_defender_deescalation,
+            "impact_is_terminal": _manifest_spec.impact_is_terminal,
+            # Commensurability contract: these MUST match the held-out benchmark
+            # operating point so OOD numbers can be read on the same axis as the
+            # in-distribution results.
+            "attacker_budget": _manifest_spec.attacker_budget,
+            "reward_mode": _manifest_spec.reward_mode,
+            "budget_cost_model": _manifest_spec.budget_cost_model,
+            "aliasing_rate": _manifest_spec.aliasing_rate,
+            "session_coherent": _manifest_spec.session_coherent,
+            "no_post_transition_leak": _manifest_spec.no_post_transition_leak,
+            "proximity_coupled": _manifest_spec.proximity_coupled,
+            "proximity_min_escalation": _manifest_spec.proximity_min_escalation,
+            "_note": "Reward/operating-point contract matches the held-out "
+            "benchmark; the OOD eval isolates the generalisation axis only.",
         },
         "runs": results,
         "n_ok": sum(1 for r in results if r.get("ok")),
