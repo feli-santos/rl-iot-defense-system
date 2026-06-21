@@ -95,8 +95,8 @@ BLUE_TEAM_TIMESTEPS     ?= 250000
 BLUE_TEAM_SEEDS         ?= 0 1 2 3 4 5 6 7 8 9
 BLUE_TEAM_ALGOS         ?= dqn ppo a2c
 BLUE_TEAM_PARALLEL      ?= 1
-BLUE_TEAM_IMPACT_TERM   ?= true   # Phase 4 primary contract: override to 'false'
-# JSON forwarded to train_agent --reward-overrides, e.g. {"attacker_budget":40}
+BLUE_TEAM_IMPACT_TERM   ?= false  # Phase 4 primary contract: false (locked)
+# JSON forwarded to train_agent --reward-overrides, e.g. {"aliasing_rate":0.2}
 BLUE_TEAM_REWARD_OVERRIDES ?=
 
 .PHONY: blue-team-smoke
@@ -140,15 +140,15 @@ blue-team-gates:  ## Blue-team: evaluate G5.2-G5.7 against runs/blue_team/.
 blue-team: blue-team-sweep blue-team-figures blue-team-gates  ## Blue-team: full sweep + figures + gate scoreboard.
 
 # -----------------------------------------------------------------------------
-# Benchmark — F5 + F6 + F7 + F8 from frozen blue-team checkpoints
+# Benchmark — evaluation from frozen blue-team checkpoints
 # -----------------------------------------------------------------------------
 BENCHMARK_RUNS_ROOT      ?= runs/benchmark
 BENCHMARK_OUT_DIR        ?= docs/results/benchmark
 BENCHMARK_N_EPISODES     ?= 30
 BENCHMARK_N_DET_EPISODES ?= 300
 BENCHMARK_RF_PATH ?= artifacts/detector/random_forest.joblib
-# Finite attacker budget for the benchmark eval env (must match training, e.g. 40);
-# empty = unbounded (recovers the compromise_rate=1.0 control cell).
+# Proximity-coupled escalation regime: no fixed attacker budget. Escalation
+# pressure scales with proximity to IMPACT (sigma_min=0.4, lambda=stage/4).
 BENCHMARK_ATTACKER_BUDGET ?=
 
 .PHONY: benchmark-smoke
@@ -167,24 +167,8 @@ benchmark-eval:  ## Benchmark: roll blue-team checkpoints + 5 baselines on test_
 	    --rf-path $(BENCHMARK_RF_PATH) \
 	    $(if $(BENCHMARK_ATTACKER_BUDGET),--attacker-budget $(BENCHMARK_ATTACKER_BUDGET),)
 
-.PHONY: benchmark-figures
-benchmark-figures:  ## Benchmark: render F5, F6, F7, F8 from runs/benchmark/.
-	$(PYTHON) -m scripts.benchmark.build_summary_table \
-	    --runs-root $(BENCHMARK_RUNS_ROOT) \
-	    --out-dir $(BENCHMARK_OUT_DIR)
-	$(PYTHON) -m scripts.benchmark.plot_stage_action_cm \
-	    --runs-root $(BENCHMARK_RUNS_ROOT) \
-	    --out-dir $(BENCHMARK_OUT_DIR)
-	$(PYTHON) -m scripts.benchmark.plot_overhead \
-	    --runs-root $(BENCHMARK_RUNS_ROOT) \
-	    --phase5-runs-root $(BLUE_TEAM_RUNS_ROOT) \
-	    --out-dir $(BENCHMARK_OUT_DIR)
-	$(PYTHON) -m scripts.benchmark.plot_baselines \
-	    --runs-root $(BENCHMARK_RUNS_ROOT) \
-	    --out-dir $(BENCHMARK_OUT_DIR)
-
 .PHONY: benchmark
-benchmark: benchmark-eval benchmark-figures  ## Benchmark: full eval sweep + F5/F6/F7/F8 figures.
+benchmark: benchmark-eval  ## Benchmark: full eval sweep from frozen blue-team checkpoints.
 
 ##@ Ablation — reward-component sweep + OOD-class robustness (PLAN: docs/results/ablation/PLAN.md)
 ABLATION_OUT_DIR         ?= docs/results/ablation
@@ -229,36 +213,6 @@ ablation-ood-figure:  ## Ablation: render F15 from runs/ablation/ood/.
 .PHONY: ablation-ood
 ablation-ood: ablation-ood-eval ablation-ood-figure  ## Ablation F15: full OOD eval + figure.
 
-# F9 — Reward-component ablation sweep
-ABLATION_REWARD_RUNS_ROOT ?= runs/ablation/reward_sweep
-ABLATION_REWARD_TIMESTEPS ?= 250000
-ABLATION_REWARD_ALGO      ?= ppo
-
-.PHONY: ablation-reward-smoke
-ablation-reward-smoke:  ## Ablation F9 smoke: 1 cell × 1 seed × 5K (~30 s).
-	$(PYTHON) -m scripts.ablation.run_reward_sweep \
-	    --smoke --algo $(ABLATION_REWARD_ALGO) \
-	    --out-root $(ABLATION_REWARD_RUNS_ROOT)
-
-.PHONY: ablation-reward-sweep
-ablation-reward-sweep:  ## Ablation F9: PPO × 10 seeds × 12 cells (~6 h CPU).
-	$(PYTHON) -m scripts.ablation.run_reward_sweep \
-	    --algo $(ABLATION_REWARD_ALGO) \
-	    --seeds $(BLUE_TEAM_SEEDS) \
-	    --total-timesteps $(ABLATION_REWARD_TIMESTEPS) \
-	    --out-root $(ABLATION_REWARD_RUNS_ROOT) \
-	    --parallel $(ABLATION_PARALLEL) \
-	    --continue-on-failure
-
-.PHONY: ablation-reward-figure
-ablation-reward-figure:  ## Ablation: render F9 from runs/ablation/reward_sweep/.
-	$(PYTHON) -m scripts.ablation.plot_reward_ablation \
-	    --runs-root $(ABLATION_REWARD_RUNS_ROOT) \
-	    --out-dir $(ABLATION_OUT_DIR)
-
-.PHONY: ablation-reward
-ablation-reward: ablation-reward-sweep ablation-reward-figure  ## Ablation F9: full sweep + figure.
-
 # ------------------------------------------------------------------------------
 # Coupled-vs-decoupled reward ablation (the reward-design control)
 ABLATION_COUPLING_RUNS_ROOT ?= runs/ablation/reward_coupling
@@ -294,6 +248,7 @@ ablation-reward-coupling: ablation-reward-coupling-sweep ablation-reward-couplin
 
 # F10 — Attack-aggressiveness sweep (PPO + oracle rule × 6 p values × 10 seeds)
 ABLATION_AGGR_RUNS_ROOT ?= runs/ablation/aggressiveness
+ABLATION_AGGR_TIMESTEPS ?= 250000
 
 .PHONY: ablation-aggressiveness-smoke
 ablation-aggressiveness-smoke:  ## Ablation F10 smoke: 2 p values × 1 seed × 5K (~30 s).
@@ -304,7 +259,7 @@ ablation-aggressiveness-smoke:  ## Ablation F10 smoke: 2 p values × 1 seed × 5
 ablation-aggressiveness-sweep:  ## Ablation F10: PPO × 6 p values × 10 seeds + oracle rule (~1.5 h CPU).
 	$(PYTHON) -m scripts.ablation.run_aggressiveness_sweep \
 	    --seeds $(BLUE_TEAM_SEEDS) \
-	    --total-timesteps $(ABLATION_REWARD_TIMESTEPS) \
+	    --total-timesteps $(ABLATION_AGGR_TIMESTEPS) \
 	    --out-root $(ABLATION_AGGR_RUNS_ROOT) \
 	    --parallel $(ABLATION_PARALLEL) \
 	    --continue-on-failure
@@ -318,12 +273,11 @@ ablation-aggressiveness-figure:  ## Ablation: render F10 from runs/ablation/aggr
 .PHONY: ablation-aggressiveness
 ablation-aggressiveness: ablation-aggressiveness-sweep ablation-aggressiveness-figure  ## Ablation F10: full sweep + figure.
 
-# F12 — Security-vs-availability Pareto (plotter-only; reads F9 + F10 + benchmark)
+# F12 — Security-vs-availability Pareto (plotter-only; reads F10 + benchmark)
 .PHONY: ablation-pareto
-ablation-pareto:  ## Ablation F12: render Pareto plot from F9 + F10 + benchmark outputs.
+ablation-pareto:  ## Ablation F12: render Pareto plot from F10 + benchmark outputs.
 	$(PYTHON) -m scripts.ablation.plot_pareto \
 	    --phase6-runs $(BENCHMARK_RUNS_ROOT) \
-	    --phase7-f9-runs $(ABLATION_REWARD_RUNS_ROOT) \
 	    --phase7-f10-runs $(ABLATION_AGGR_RUNS_ROOT) \
 	    --out-dir $(ABLATION_OUT_DIR)
 
@@ -335,16 +289,10 @@ ablation-close:  ## Ablation: assemble G7 scoreboard + RESULTS.md skeleton.
 
 # Top-level ablation chains
 .PHONY: ablation-figures
-ablation-figures: ablation-ood-figure ablation-reward-figure ablation-aggressiveness-figure ablation-pareto  ## Ablation: render F9/F10/F12/F15 from existing runs/ablation/.
+ablation-figures: ablation-ood-figure ablation-aggressiveness-figure ablation-pareto  ## Ablation: render F10/F12/F15 from existing runs/ablation/.
 
 .PHONY: ablation
-ablation: ablation-ood ablation-reward ablation-aggressiveness ablation-pareto  ## Ablation: full F9 + F10 + F12 + F15 (~7.5 h CPU walk-away).
-
-.PHONY: train-generator
-train-generator:  ## Train the LSTM Red Team generator.
-	$(PYTHON) main.py --mode train-generator --config $(CONFIG) \
-	    --data-path $(DATA) --generator-path $(GEN_DIR) \
-	    --generator-epochs $(EPOCHS)
+ablation: ablation-ood ablation-aggressiveness ablation-pareto  ## Ablation: full F10 + F12 + F15 (~7.5 h CPU walk-away).
 
 .PHONY: train-rl
 train-rl:  ## Train a single RL agent (override ALGO=ppo|dqn|a2c).
@@ -387,15 +335,9 @@ sync-figures: export-figure-pdfs  ## Export PDFs then copy them from docs/result
 	@echo "Syncing figures ..."
 	@cp docs/results/blue-team-training/F3_*.pdf tex/figs/ 2>/dev/null || true
 	@cp docs/results/blue-team-training/F4_*.pdf tex/figs/ 2>/dev/null || true
-	@cp docs/results/benchmark/F5_table.pdf tex/figs/ 2>/dev/null || true
-	@cp docs/results/benchmark/F6_*.pdf tex/figs/ 2>/dev/null || true
-	@cp docs/results/benchmark/F7_*.pdf tex/figs/ 2>/dev/null || true
-	@cp docs/results/benchmark/F8_*.pdf tex/figs/ 2>/dev/null || true
-	@cp docs/results/ablation/F9_*.pdf tex/figs/ 2>/dev/null || true
 	@cp docs/results/ablation/F10_*.pdf tex/figs/ 2>/dev/null || true
 	@cp docs/results/ablation/F12_*.pdf tex/figs/ 2>/dev/null || true
 	@cp docs/results/ablation/F15_*.pdf tex/figs/ 2>/dev/null || true
-	@cp docs/results/ablation/F16_*.pdf tex/figs/ 2>/dev/null || true
 	@cp docs/results/ablation/F17_*.pdf tex/figs/ 2>/dev/null || true
 	@echo "Done."
 
@@ -429,13 +371,12 @@ verify-fresh-fix:  ## Re-run render-tables + gen-results-index if any artifact i
 ##@ Reproducibility
 .PHONY: reproduce-thesis
 reproduce-thesis:  ## End-to-end thesis reproduction (full chain).
-	@echo ">>> 1/7 process-data";   $(MAKE) process-data
-	@echo ">>> 2/7 train-generator"; $(MAKE) train-generator
-	@echo ">>> 3/7 detector";        $(MAKE) detector
-	@echo ">>> 4/7 blue-team";       $(MAKE) blue-team BLUE_TEAM_IMPACT_TERM=false
-	@echo ">>> 5/7 benchmark";       $(MAKE) benchmark
-	@echo ">>> 6/7 ablation";        $(MAKE) ablation
-	@echo ">>> 7/7 smoke";           $(MAKE) smoke
+	@echo ">>> 1/6 process-data";   $(MAKE) process-data
+	@echo ">>> 2/6 detector";        $(MAKE) detector
+	@echo ">>> 3/6 blue-team";       $(MAKE) blue-team BLUE_TEAM_IMPACT_TERM=false
+	@echo ">>> 4/6 benchmark";       $(MAKE) benchmark
+	@echo ">>> 5/6 ablation";        $(MAKE) ablation
+	@echo ">>> 6/6 smoke";           $(MAKE) smoke
 	@echo "Done. Figures in docs/results/, raw data in $(RUNS_DIR)/."
 
 ##@ Maintenance

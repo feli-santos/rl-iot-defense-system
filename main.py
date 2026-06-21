@@ -8,13 +8,10 @@ Main entry point for the adversarial RL defense system. This system uses:
 
 Modes:
 - process-data: Prepare CICIoT2023 dataset for adversarial environment
-- train-rl: Train single RL defense agent (Blue Team)
-- train-all-rl: Train all RL algorithms (DQN, PPO, A2C)
-- train-all: Run complete training pipeline
 
-For benchmark evaluation and ablation sweeps, use the canonical
-Makefile targets: ``make benchmark-eval``, ``make ablation-ood-eval``,
-or the scripts directly: ``python -m scripts.benchmark.run_test_eval``.
+For blue-team training, benchmark evaluation and ablation sweeps, use the
+canonical Makefile targets: ``make blue-team``, ``make benchmark-eval``,
+``make ablation-ood-eval``, or the scripts directly.
 """
 
 import argparse
@@ -43,68 +40,6 @@ def setup_logging(log_level: str = "INFO", log_dir: Path = Path("results/logs"))
 logger = logging.getLogger(__name__)
 
 
-def get_generator_path(args: argparse.Namespace) -> Path:
-    """Resolve generator path with auto-detection of latest.
-
-    Args:
-        args: Parsed command line arguments.
-
-    Returns:
-        Path to generator directory containing attack_sequence_generator.pth
-    """
-    if args.generator_path:
-        path = Path(args.generator_path)
-
-        # If it's a .pth file, return parent directory
-        if path.suffix == ".pth":
-            return path.parent
-
-        # If it's a directory with the model, use it directly
-        if path.is_dir() and (path / "attack_sequence_generator.pth").exists():
-            return path
-
-        # If it's a directory with timestamped subdirs, find latest
-        if path.is_dir():
-            timestamped_dirs = sorted(
-                [
-                    d
-                    for d in path.iterdir()
-                    if d.is_dir() and (d / "attack_sequence_generator.pth").exists()
-                ],
-                key=lambda x: x.stat().st_mtime,
-                reverse=True,
-            )
-            if timestamped_dirs:
-                latest = timestamped_dirs[0]
-                logger.info(f"Auto-detected latest generator: {latest}")
-                return latest
-
-    # Default path
-    default_path = Path("artifacts/generator")
-
-    # Check if default has the model
-    if (default_path / "attack_sequence_generator.pth").exists():
-        return default_path
-
-    # Check for timestamped subdirs in default
-    if default_path.exists():
-        timestamped_dirs = sorted(
-            [
-                d
-                for d in default_path.iterdir()
-                if d.is_dir() and (d / "attack_sequence_generator.pth").exists()
-            ],
-            key=lambda x: x.stat().st_mtime,
-            reverse=True,
-        )
-        if timestamped_dirs:
-            latest = timestamped_dirs[0]
-            logger.info(f"Auto-detected latest generator: {latest}")
-            return latest
-
-    return default_path
-
-
 def parse_arguments() -> argparse.Namespace:
     """Parse command line arguments."""
     parser = argparse.ArgumentParser(
@@ -114,17 +49,9 @@ def parse_arguments() -> argparse.Namespace:
 Examples:
   # Process raw CICIoT2023 dataset
   python main.py --mode process-data
-  
-  # Train single RL agent (Blue Team)
-  python main.py --mode train-rl --algorithm ppo
-  
-  # Train all RL algorithms
-  python main.py --mode train-all-rl
-  
-  # Full pipeline
-  python main.py --mode train-all
 
-  # For benchmark/ablation evaluation, use the Makefile:
+  # For blue-team training, benchmark/ablation evaluation, use the Makefile:
+  #   make blue-team
   #   make benchmark-eval
   #   make ablation-ood-eval
         """,
@@ -133,8 +60,8 @@ Examples:
     # Mode selection
     parser.add_argument(
         "--mode",
-        choices=["process-data", "train-rl", "train-all-rl", "train-all"],
-        default="train-all",
+        choices=["process-data"],
+        default="process-data",
         help="Training mode",
     )
 
@@ -162,24 +89,12 @@ Examples:
         "--rl-path", type=str, default="artifacts/rl", help="Path to RL model directory"
     )
 
-    # Generator training options
-    parser.add_argument(
-        "--generator-epochs",
-        type=int,
-        default=None,
-        help="Generator training epochs (overrides config)",
-    )
-
-    parser.add_argument(
-        "--num-episodes", type=int, default=None, help="Number of episodes to generate for training"
-    )
-
     # RL training options
     parser.add_argument(
         "--algorithm",
         choices=["dqn", "ppo", "a2c"],
         default="ppo",
-        help="RL algorithm to train (for train-rl mode)",
+        help="RL algorithm (dqn, ppo, or a2c)",
     )
 
     parser.add_argument(
@@ -270,245 +185,6 @@ def process_data(config: dict, args: argparse.Namespace) -> bool:
         return False
 
 
-def train_rl(config: dict, args: argparse.Namespace) -> bool:
-    """Train RL defense agent (Blue Team)."""
-    print("\n🔵 Training RL Defense Agent (Blue Team)")
-    print("=" * 60)
-
-    try:
-        import shutil
-        import uuid
-        from datetime import datetime
-
-        from src.algorithms.adversarial_algorithm import (
-            AdversarialAlgorithm,
-            AdversarialAlgorithmConfig,
-        )
-        from src.environment.adversarial_env import AdversarialEnvConfig, AdversarialIoTEnv
-        from src.training.training_manager import TrainingManager
-
-        # Check dependencies
-        generator_path = Path(args.generator_path)
-        if not (generator_path / "attack_sequence_generator.pth").exists():
-            print("❌ Generator not found. Train generator first.")
-            return False
-
-        data_path = Path(args.data_path)
-        if not (data_path / "features.npy").exists():
-            print("❌ Processed data not found. Process data first.")
-            return False
-
-        # Get config values
-        rl_config = config.get("rl", {})
-        env_config = config.get("adversarial_environment", {})
-        algo_config = rl_config.get("algorithms", {}).get(args.algorithm, {})
-
-        # Create environment config
-        reward_config = env_config.get("reward", {})
-        defense_reward_config = reward_config.get("defense_reward", {})
-        adversarial_env_config = AdversarialEnvConfig(
-            max_steps=env_config.get("max_steps", 500),
-            window_size=env_config.get("observation", {}).get("window_size", 5),
-            include_deltas=env_config.get("observation", {}).get("include_deltas", True),
-            num_actions=env_config.get("actions", {}).get("num_actions", 5),
-            action_cost_scale=reward_config.get("action_cost_scale", 1.0),
-            impact_penalty=reward_config.get("impact_penalty", 200.0),
-            defense_success_bonus=reward_config.get("defense_success_bonus", 10.0),
-            false_positive_penalty=reward_config.get("false_positive_penalty", 30.0),
-            penalty_overreact_benign=reward_config.get("penalty_overreact_benign", 50.0),
-            penalty_block_benign=reward_config.get("penalty_block_benign", 100.0),
-            penalty_block_recon=reward_config.get("penalty_block_recon", 50.0),
-            penalty_missed_impact=reward_config.get("penalty_missed_impact", 150.0),
-            reward_benign_passive=reward_config.get("reward_benign_passive", 10.0),
-            patience_bonus=reward_config.get("patience_bonus", 1.0),
-            correct_escalation_reward=defense_reward_config.get("correct_escalation", 5.0),
-            correct_de_escalation_reward=defense_reward_config.get("correct_de_escalation", 0.5),
-            maintained_defense_reward=defense_reward_config.get("maintained_defense", 0.2),
-        )
-
-        # Create environment
-        print("   Creating environment...")
-        env = AdversarialIoTEnv(
-            generator_path=generator_path,
-            dataset_path=data_path,
-            config=adversarial_env_config,
-            device=args.device,
-        )
-
-        print(f"   Observation space: {env.observation_space}")
-        print(f"   Observation shape: {env.observation_space.shape}")
-        print(f"   Action space: {env.action_space}")
-        if hasattr(env.action_space, "n"):
-            print(f"   Action count: {env.action_space.n}")
-        if hasattr(env, "_num_features"):
-            print(f"   Base feature dimension (from dataset): {env._num_features}")
-
-        # Integration smoke check: verify Gymnasium API tuple contract and transition flow
-        smoke_obs, smoke_info = env.reset(seed=42)
-        smoke_action = int(env.action_space.sample())
-        smoke_next_obs, smoke_reward, smoke_terminated, smoke_truncated, smoke_step_info = env.step(
-            smoke_action
-        )
-        print(
-            "   Smoke check: "
-            f"reset_obs_shape={smoke_obs.shape}, "
-            f"step_obs_shape={smoke_next_obs.shape}, "
-            f"reward={smoke_reward:.3f}, "
-            f"terminated={smoke_terminated}, truncated={smoke_truncated}, "
-            f"stage={smoke_step_info.get('attack_stage_name')}"
-        )
-
-        # Reset cleanly before training starts
-        env.reset(seed=43)
-
-        # Get training timesteps
-        timesteps = args.timesteps or rl_config.get("training", {}).get("total_timesteps", 50000)
-
-        # Create algorithm config
-        algorithm_config = AdversarialAlgorithmConfig(
-            algorithm_type=args.algorithm,
-            total_timesteps=timesteps,
-            learning_rate=algo_config.get("learning_rate", 3e-4),
-            gamma=algo_config.get("gamma", 0.99),
-            verbose=1,
-        )
-
-        # Merge algorithm-specific params
-        if args.algorithm == "dqn":
-            algorithm_config.buffer_size = algo_config.get("buffer_size", 50000)
-            algorithm_config.batch_size = algo_config.get("batch_size", 32)
-            algorithm_config.target_update_interval = algo_config.get(
-                "target_update_interval", 1000
-            )
-        elif args.algorithm == "ppo":
-            algorithm_config.n_steps = algo_config.get("n_steps", 2048)
-            algorithm_config.n_epochs = algo_config.get("n_epochs", 10)
-            algorithm_config.batch_size = algo_config.get("batch_size", 64)
-        elif args.algorithm == "a2c":
-            algorithm_config.n_steps = algo_config.get("n_steps", 5)
-
-        # Create algorithm
-        algorithm = AdversarialAlgorithm(config=algorithm_config)
-
-        print(f"   Algorithm: {args.algorithm.upper()}")
-        print(f"   Training for {timesteps:,} timesteps...")
-
-        # Create model and train with experiment tracking
-        model = algorithm.create_model(env)
-        experiment_name = config.get("mlflow", {}).get("experiment_name", "iot_defense_system")
-        manager = TrainingManager(
-            algorithm=model,
-            experiment_name=experiment_name,
-            save_path=Path(args.rl_path),
-        )
-        manager.start_run(run_name=f"{args.algorithm}_train")
-        training_results = manager.train_algorithm(
-            algorithm=model,
-            total_timesteps=timesteps,
-            eval_freq=rl_config.get("training", {}).get("eval_freq", 5000),
-            n_eval_episodes=rl_config.get("training", {}).get("n_eval_episodes", 10),
-            save_freq=rl_config.get("training", {}).get("save_freq", 12500),
-        )
-        manager.end_run()
-
-        if not training_results.get("success", False):
-            print(f"❌ RL training failed: {training_results.get('error', 'unknown error')}")
-            env.close()
-            return False
-
-        trained_model = model
-
-        # Save model with timestamp
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        run_id = str(uuid.uuid4())[:6]
-        model_dir = Path(args.rl_path) / f"{args.algorithm}_{timestamp}_{run_id}"
-        model_dir.mkdir(parents=True, exist_ok=True)
-
-        algorithm.save_model(trained_model, model_dir / f"{args.algorithm}_agent")
-
-        # Save canonical final deliverable model path for reporting
-        canonical_model_dir = Path("artifacts/rl_agent")
-        canonical_model_dir.mkdir(parents=True, exist_ok=True)
-        canonical_model_path = canonical_model_dir / f"blue_team_{args.algorithm}_final.zip"
-        source_model_path = Path(f"{model_dir / f'{args.algorithm}_agent'}.zip")
-        shutil.copy2(source_model_path, canonical_model_path)
-
-        # Quick evaluation
-        print("   Running quick evaluation...")
-        total_reward = 0.0
-        n_episodes = 10
-        episode_rewards = []
-
-        for _ in range(n_episodes):
-            obs, _ = env.reset()
-            done = False
-            episode_reward = 0.0
-            while not done:
-                action, _ = trained_model.predict(obs, deterministic=True)
-                obs, reward, terminated, truncated, _ = env.step(action)
-                total_reward += reward
-                episode_reward += reward
-                done = terminated or truncated
-            episode_rewards.append(float(episode_reward))
-
-        avg_reward = total_reward / n_episodes
-
-        print("✅ RL training completed!")
-        print(f"   - Algorithm: {args.algorithm.upper()}")
-        print(f"   - Average reward (10 episodes): {avg_reward:.2f}")
-        print(f"   - Episode rewards (first 5): {episode_rewards[:5]}")
-        print(f"   - Model saved to: {model_dir}")
-        print(f"   - Canonical final model: {canonical_model_path}")
-        if training_results.get("training_curve_path"):
-            print(f"   - Training reward curve: {training_results['training_curve_path']}")
-
-        env.close()
-        return True
-
-    except Exception as e:
-        logger.error(f"RL training failed: {e}")
-        print(f"❌ RL training failed: {e}")
-        import traceback
-
-        traceback.print_exc()
-        return False
-
-
-def train_all_rl(config: dict, args: argparse.Namespace) -> bool:
-    """Train all RL algorithms (DQN, PPO, A2C)."""
-    print("\n🔵 Training All RL Algorithms (Blue Team)")
-    print("=" * 60)
-
-    algorithms = ["dqn", "ppo", "a2c"]
-    results = {}
-
-    for algorithm in algorithms:
-        print(f"\n{'=' * 50}")
-        print(f"Training {algorithm.upper()}...")
-        print(f"{'=' * 50}")
-
-        # Create a modified args for this algorithm
-        algo_args = argparse.Namespace(**vars(args))
-        algo_args.algorithm = algorithm
-
-        success = train_rl(config, algo_args)
-        results[algorithm] = success
-
-        if not success:
-            print(f"⚠️  {algorithm.upper()} training failed, continuing with next...")
-
-    # Summary
-    print("\n" + "=" * 60)
-    print("Training Summary")
-    print("=" * 60)
-    for algo, success in results.items():
-        status = "✅" if success else "❌"
-        print(f"   {status} {algo.upper()}")
-
-    all_success = all(results.values())
-    return all_success
-
-
 def main() -> None:
     """Main entry point."""
     args = parse_arguments()
@@ -516,18 +192,11 @@ def main() -> None:
     # Setup logging
     setup_logging(args.log_level)
 
-    # Resolve generator path early
-    resolved_generator_path = get_generator_path(args)
-    args.generator_path = resolved_generator_path
-
     print("\n" + "=" * 60)
     print("🚀 IoT Defense System - Adversarial Training Pipeline")
     print("=" * 60)
     print(f"   Mode: {args.mode}")
-    if args.mode == "train-rl":
-        print(f"   Algorithm: {args.algorithm}")
     print(f"   Device: {args.device}")
-    print(f"   Generator: {args.generator_path}")
     print("=" * 60)
 
     try:
@@ -536,19 +205,6 @@ def main() -> None:
 
         if args.mode == "process-data":
             process_data(config, args)
-
-        elif args.mode == "train-rl":
-            train_rl(config, args)
-
-        elif args.mode == "train-all-rl":
-            train_all_rl(config, args)
-
-        elif args.mode == "train-all":
-            # Full pipeline
-            if not process_data(config, args):
-                return
-            if not train_rl(config, args):
-                return
 
         print("\n🎉 Pipeline completed successfully!")
 
