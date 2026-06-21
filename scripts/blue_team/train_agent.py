@@ -114,23 +114,6 @@ DEFAULT_HPARAMS: dict[str, dict[str, Any]] = {
         "vf_coef": 0.5,
         "max_grad_norm": 0.5,
     },
-    # Recurrent (LSTM) headline agent for the partial-observability
-    # redesign: an MlpLstmPolicy maintains a belief state over the
-    # hidden kill-chain stage, which a memoryless feedforward agent
-    # (or a per-flow supervised classifier) cannot. n_steps must span
-    # at least one episode horizon (max_steps=100) for clean BPTT; the
-    # factory enforces n_steps>=128.
-    "recurrent_ppo": {
-        "learning_rate": 3e-4,
-        "n_steps": 128,
-        "batch_size": 64,
-        "n_epochs": 10,
-        "gamma": 0.99,
-        "gae_lambda": 0.95,
-        "ent_coef": 0.01,
-        "vf_coef": 0.5,
-        "max_grad_norm": 0.5,
-    },
 }
 
 
@@ -471,7 +454,7 @@ def _build_argparser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         description="blue-team single (algo, seed) RL Blue-Team training run."
     )
-    p.add_argument("--algo", required=True, choices=("ppo", "dqn", "a2c", "recurrent_ppo"))
+    p.add_argument("--algo", required=True, choices=("ppo", "dqn", "a2c"))
     p.add_argument("--seed", type=int, required=True)
     p.add_argument(
         "--total-timesteps",

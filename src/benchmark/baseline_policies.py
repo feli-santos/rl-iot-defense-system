@@ -1,4 +1,4 @@
-"""Non-RL baseline policies for Phase 6 (PLAN §3.1.1).
+"""Non-RL baseline policies for the Held-Out Benchmark.
 
 Every policy is callable with the same signature::
 
@@ -10,15 +10,16 @@ the same rollout loop. The signature is:
 
 - ``obs``: the env's flattened observation. Shape
   ``(window_size * num_features,)`` (no deltas) or
-  ``(window_size * num_features * 2,)`` (with deltas, the Phase-5
+  ``(window_size * num_features * 2,)`` (with deltas, the Blue-Team
   default). Most baselines ignore it; :class:`RFActingPolicy` slices
   the **last step's raw features** out of it.
 - ``info``: the env's per-step ``info`` dict, including
-  ``info["recommended_action"]`` (Phase-3 contract).
+  ``info["recommended_action"]`` (env contract).
 
 Returns an integer action in ``[0, 4]``.
 
-The baselines covered here implement the four "non-RL" rows of F5 / F8:
+The baselines covered here implement the four "non-RL" rows of the
+held-out benchmark:
 
 ================================  ===================================================
 Policy                            What it does
@@ -29,11 +30,12 @@ Policy                            What it does
 ``recommended_action_policy``     Returns ``info["recommended_action"]`` —
                                   the IoTWarden hand-crafted rule baseline.
 :class:`RFActingPolicy`           ``recommended_action(rf.predict(features))`` —
-                                  supervised classifier + rules (D6.5).
+                                  supervised classifier + rules.
 ================================  ===================================================
 
-The fifth comparator in F5 / F8 is the trained RL trio (DQN / PPO / A2C),
-which arrives via :class:`SB3PolicyAdapter`.
+The fifth comparator in the held-out benchmark is the trained RL
+comparators (DQN / PPO / A2C), which arrives via
+:class:`SB3PolicyAdapter`.
 """
 
 from __future__ import annotations
@@ -273,12 +275,6 @@ class SB3PolicyAdapter:
             )
         self._model = model
         self._deterministic = bool(deterministic)
-        # Recurrent (LSTM) policies (sb3-contrib RecurrentPPO) carry a
-        # hidden state across timesteps that must be reset at each
-        # episode boundary. Feedforward policies (DQN/PPO/A2C) ignore
-        # this machinery entirely, keeping their roll byte-identical.
-        self._is_recurrent = type(model).__name__ == "RecurrentPPO"
-        self._lstm_state: Any = None
 
     @property
     def model(self) -> Any:
@@ -295,23 +291,7 @@ class SB3PolicyAdapter:
         x = np.asarray(obs)
         if x.ndim == 1:
             x = x[None, :]
-        if self._is_recurrent:
-            # decision_step == 0 marks the first decision of an episode;
-            # episode_start=True resets the LSTM hidden state. We carry
-            # the returned state forward across steps within the episode.
-            episode_start = np.array([int(info.get("decision_step", 0)) == 0], dtype=bool)
-            if episode_start[0]:
-                self._lstm_state = None
-            action_arr, self._lstm_state = self._model.predict(
-                x,
-                state=self._lstm_state,
-                episode_start=episode_start,
-                deterministic=self._deterministic,
-            )
-        else:
-            action_arr, _state = self._model.predict(
-                x, deterministic=self._deterministic
-            )
+        action_arr, _state = self._model.predict(x, deterministic=self._deterministic)
         # action_arr shape: (1,) for Discrete spaces.
         return int(np.asarray(action_arr).reshape(-1)[0])
 
