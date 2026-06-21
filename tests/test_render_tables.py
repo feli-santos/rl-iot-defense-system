@@ -1,53 +1,82 @@
-"""Tests for the JSON→LaTeX render_tables generator."""
+"""Tests for the JSON->LaTeX render_tables generator."""
 
 from scripts.thesis.render_tables import (
-    F5,
-    _best_deployable_rl,
-    _find_row,
+    FALPHA,
+    FCOUPLING,
     _load,
+    _render_alpha_table,
+    _render_coupling_table,
     _render_numbers,
     _render_tables,
 )
 
 
 class TestRenderTables:
-    def test_load_existing_json(self):
-        f5 = _load(F5)
-        assert "rows" in f5
+    def test_load_alpha_json(self):
+        fa = _load(FALPHA)
+        assert "per_alpha" in fa
+        assert set(fa["per_alpha"]) >= {"0.0", "0.2", "0.4", "0.6"}
 
-    def test_find_row(self):
-        f5 = _load(F5)
-        row = _find_row(f5["rows"], "ppo")
-        assert row["policy"] == "ppo"
+    def test_load_coupling_json(self):
+        fc = _load(FCOUPLING)
+        assert "per_mode" in fc
+        assert set(fc["per_mode"]) >= {"coupled", "outcome"}
 
-    def test_best_deployable_rl(self):
-        f5 = _load(F5)
-        best = _best_deployable_rl(f5["rows"])
-        assert best["policy"] in {"dqn", "ppo", "a2c"}
-
-    def test_render_numbers_not_empty(self):
+    def test_render_numbers_headline_macros(self):
         tex = _render_numbers()
-        assert r"\newcommand{\BestAgentName}" in tex
-        assert r"\newcommand{\OracleCapturePct}" in tex
+        assert r"\newcommand{\BestAgentName}{PPO}" in tex
+        assert r"\newcommand{\NumSeeds}" in tex
+        assert r"\newcommand{\OracleCeiling}" in tex
+        assert r"\newcommand{\NumTests}" in tex
 
-    def test_render_tables_not_empty(self):
-        tex = _render_tables()
-        assert r"\newcommand{\BenchmarkTableBody}" in tex
-        assert r"\newcommand{\LatencyTableBody}" in tex
+    def test_render_numbers_per_alpha_macros(self):
+        # Spelled-out alpha words (LaTeX macros cannot contain digits).
+        tex = _render_numbers()
+        for word in ("Zero", "Two", "Four", "Six"):
+            assert rf"\newcommand{{\Alpha{word}PPO}}" in tex
+            assert rf"\newcommand{{\Alpha{word}RF}}" in tex
+            assert rf"\newcommand{{\Alpha{word}Gap}}" in tex
+            assert rf"\newcommand{{\Alpha{word}Verdict}}" in tex
 
-    def test_benchmark_table_uses_compromise_and_prevention_rates(self):
-        # Derive expectations from the live canonical JSON so the test verifies
-        # the *structure* of the rendered table (reward, n_episodes, compromise,
-        # prevention columns) rather than pinning stale literal numbers that
-        # shift on every data regeneration.
-        f5 = _load(F5)
-        dqn = _find_row(f5["rows"], "dqn")
+    def test_render_numbers_anchor_matches_json(self):
+        # Numbers are mechanically derived from the canonical JSON, not pinned
+        # to stale literals: verify the anchor (alpha=0) PPO mean round-trips.
+        fa = _load(FALPHA)
+        anchor = fa["per_alpha"]["0.0"]["ppo"]["mean"]
+        tex = _render_numbers()
+        assert _newcmd_value(tex, "AnchorPPO") == f"{anchor:+.1f}"
+
+    def test_render_numbers_coupling_gaps_match_json(self):
+        fc = _load(FCOUPLING)
+        tex = _render_numbers()
+        assert _newcmd_value(tex, "CouplingGapCoupled") == f"{fc['gap_coupled']:+.1f}"
+        assert _newcmd_value(tex, "CouplingGapOutcome") == f"{fc['gap_outcome']:+.1f}"
+
+    def test_render_tables_wraps_bodies(self):
         tex = _render_tables()
-        # The DQN row renders with its current reward from the JSON.
-        assert f"DQN & ${dqn['mean_reward']:+.1f}$" in tex
-        # The benchmark table carries compromise_rate + prevention_rate columns
-        # (the retired mitigated_impact_rate must not appear as a trailing pair).
-        assert (
-            f"{dqn['n_episodes']} & {dqn['compromise_rate']:.3f} & "
-            f"{dqn['prevention_rate']:.3f}"
-        ) in tex
+        assert r"\newcommand{\AlphaCurveTableBody}" in tex
+        assert r"\newcommand{\CouplingTableBody}" in tex
+
+    def test_alpha_table_one_row_per_alpha(self):
+        # The body emits one LaTeX row (\\ terminator) per alpha level, with the
+        # alpha key leading each row, derived live from the JSON.
+        fa = _load(FALPHA)
+        body = _render_alpha_table()
+        for akey in ("0.0", "0.2", "0.4", "0.6"):
+            assert f"  {akey} &" in body
+        assert body.count(r"\\") == len(fa["per_alpha"])
+
+    def test_coupling_table_rows_match_json(self):
+        fc = _load(FCOUPLING)
+        body = _render_coupling_table()
+        for mode in ("coupled", "outcome"):
+            best = fc["per_mode"][mode]["best_algo"].upper()
+            assert f"  {mode.capitalize()} & {best} &" in body
+
+
+def _newcmd_value(tex: str, name: str) -> str:
+    """Extract the body of ``\\newcommand{\\<name>}{<value>}`` from rendered tex."""
+    marker = rf"\newcommand{{\{name}}}{{"
+    start = tex.index(marker) + len(marker)
+    end = tex.index("}", start)
+    return tex[start:end]
