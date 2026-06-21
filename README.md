@@ -1,7 +1,7 @@
 # RL IoT Defense System — Adversarial RL for Kill-Chain-Aware IoT Defense
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
+[![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
 [![Tests: 473 passed](https://img.shields.io/badge/tests-473%20passed-brightgreen.svg)](#)
 [![Thesis: 84 pages](https://img.shields.io/badge/thesis-84%20pages-blue.svg)](#thesis)
 
@@ -88,7 +88,7 @@ Detailed designs:
 
 ### Prerequisites
 
-- Python **3.10+** (tested on 3.10/3.11; CI runs on both)
+- Python **3.9+** (developed and tested on 3.9)
 - `make` (GNU Make or BSD Make)
 - ~30 GB free disk for processed CICIoT2023 features + model checkpoints
 - **Podman** (for thesis PDF builds; Docker is a fallback)

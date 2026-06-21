@@ -36,7 +36,6 @@ class DataProcessingConfig:
     dataset_path: Path
     output_path: Path
     sample_size: int
-    sequence_length: int
     train_split: float = 0.7
     val_split: float = 0.15
     test_split: float = 0.15

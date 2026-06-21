@@ -135,7 +135,6 @@ def process_data(config: dict, args: argparse.Namespace) -> bool:
             dataset_path=Path(config["dataset"]["raw_path"]),
             output_path=Path(args.data_path),
             sample_size=config["dataset"]["sample_size"],
-            sequence_length=config["dataset"]["sequence_length"],
             train_split=config["dataset"]["train_split"],
             val_split=config["dataset"]["val_split"],
             test_split=config["dataset"]["test_split"],

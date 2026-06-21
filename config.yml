@@ -15,7 +15,6 @@ dataset:
   sampling_mode: "smart_balanced" # Smart class-aware sampling with benign quota + derived attack cap
   benign_target_count: 100_000 # Keep ~20% benign to preserve normal behavior signal
   max_samples_per_attack_class: null # null -> derive cap from remaining budget / attack classes
-  sequence_length: 5 # EDA recommendation
   train_split: 0.7
   val_split: 0.1
   test_split: 0.2

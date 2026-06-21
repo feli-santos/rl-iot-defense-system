@@ -64,7 +64,6 @@ class TestDataProcessorAdversarialEnv:
             dataset_path=raw_data_dir,
             output_path=output_dir,
             sample_size=500,
-            sequence_length=5,
         )
         return CICIoTProcessor(config)
 
@@ -231,7 +230,6 @@ class TestDataProcessorWithLabelMapper:
             dataset_path=raw_data_with_all_stages,
             output_path=output,
             sample_size=1000,
-            sequence_length=5,
         )
         return CICIoTProcessor(config)
 
@@ -278,7 +276,6 @@ class TestDataProcessorRegressionFixes:
             dataset_path=data_dir,
             output_path=out_dir,
             sample_size=180,
-            sequence_length=5,
             sampling_mode="smart_balanced",
             benign_target_count=60,
             sampling_strategy="balanced",
@@ -299,7 +296,6 @@ class TestDataProcessorRegressionFixes:
             dataset_path=tmp_path,
             output_path=tmp_path,
             sample_size=100,
-            sequence_length=5,
             feature_selection=True,
             correlation_threshold=0.95,
             feature_keep_keywords=["rate"],
@@ -348,7 +344,6 @@ class TestDataProcessorRegressionFixes:
             dataset_path=data_dir,
             output_path=out_dir,
             sample_size=n,
-            sequence_length=5,
             feature_selection=False,
         )
         processor = CICIoTProcessor(config)
@@ -395,7 +390,6 @@ class TestDataProcessorRegressionFixes:
             dataset_path=data_dir,
             output_path=out_dir,
             sample_size=n,
-            sequence_length=5,
             feature_selection=True,
             correlation_threshold=0.95,
             feature_keep_keywords=["rate"],

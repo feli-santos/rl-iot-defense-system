@@ -8,7 +8,7 @@
 
 [tool.black]
 line-length = 100
-target-version = ["py39", "py310", "py311"]
+target-version = ["py39"]
 include = '\.pyi?$'
 extend-exclude = '''
 /(
@@ -69,16 +69,6 @@ ignore = [
 "tests/*"     = ["N802", "N803", "N806"]
 "notebooks/*" = ["E402", "F401", "F811"]
 "scripts/*"   = ["E402"]
-
-[tool.pytest.ini_options]
-# pytest config; pytest.ini at the repo root takes precedence if present.
-testpaths = ["tests"]
-addopts = "-q --strict-markers"
-markers = [
-    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
-    "integration: marks integration tests requiring full pipeline",
-    "gpu: marks tests requiring CUDA/MPS",
-]
 
 [tool.mypy]
 python_version = "3.9"

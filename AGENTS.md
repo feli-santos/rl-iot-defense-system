@@ -17,7 +17,7 @@ pytest tests/test_adversarial_env.py::TestX::test_y   # single test
 ```
 
 Order that matters for commits/CI: **format → lint → test**. CI runs `ruff
-check`, `black --check`, then `pytest -q --cov` on Python 3.10 and 3.11.
+check`, `black --check`, then `pytest -q --cov` on Python 3.9.
 Pre-commit hooks (ruff, ruff-format, black, isort) run on commit; `make
 install-dev` installs them. The dev lint/format tools (ruff, black, pre-commit)
 are **not** in the project `.venv` — they are system-level only.
