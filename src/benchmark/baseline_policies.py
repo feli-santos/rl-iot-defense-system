@@ -273,6 +273,12 @@ class SB3PolicyAdapter:
             )
         self._model = model
         self._deterministic = bool(deterministic)
+        # Recurrent (LSTM) policies (sb3-contrib RecurrentPPO) carry a
+        # hidden state across timesteps that must be reset at each
+        # episode boundary. Feedforward policies (DQN/PPO/A2C) ignore
+        # this machinery entirely, keeping their roll byte-identical.
+        self._is_recurrent = type(model).__name__ == "RecurrentPPO"
+        self._lstm_state: Any = None
 
     @property
     def model(self) -> Any:
@@ -281,7 +287,7 @@ class SB3PolicyAdapter:
     def __call__(
         self,
         obs: np.ndarray,
-        info: dict[str, Any],  # noqa: ARG002 — SB3 doesn't read info
+        info: dict[str, Any],
     ) -> int:
         # SB3.predict expects a leading batch dim; our caller (eval_runner)
         # passes the raw vec-env obs which is already batched. Make this
@@ -289,7 +295,23 @@ class SB3PolicyAdapter:
         x = np.asarray(obs)
         if x.ndim == 1:
             x = x[None, :]
-        action_arr, _state = self._model.predict(x, deterministic=self._deterministic)
+        if self._is_recurrent:
+            # decision_step == 0 marks the first decision of an episode;
+            # episode_start=True resets the LSTM hidden state. We carry
+            # the returned state forward across steps within the episode.
+            episode_start = np.array([int(info.get("decision_step", 0)) == 0], dtype=bool)
+            if episode_start[0]:
+                self._lstm_state = None
+            action_arr, self._lstm_state = self._model.predict(
+                x,
+                state=self._lstm_state,
+                episode_start=episode_start,
+                deterministic=self._deterministic,
+            )
+        else:
+            action_arr, _state = self._model.predict(
+                x, deterministic=self._deterministic
+            )
         # action_arr shape: (1,) for Discrete spaces.
         return int(np.asarray(action_arr).reshape(-1)[0])
 

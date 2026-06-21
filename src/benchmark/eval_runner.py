@@ -163,7 +163,7 @@ def run_policy(
             # SB3 does inside the previous env.step (the obs returned
             # by step() *is* the post-reset obs).
             while not done:
-                info_for_policy = _info_seed(decision_stage)
+                info_for_policy = _info_seed(decision_stage, step_idx)
                 t0 = time.perf_counter_ns() if lat_fh is not None else 0
                 action = int(policy(_squeeze(obs), info_for_policy))
                 t1 = time.perf_counter_ns() if lat_fh is not None else 0
@@ -240,14 +240,18 @@ def _squeeze(obs: Any) -> np.ndarray:
     return arr
 
 
-def _info_seed(decision_stage: int) -> dict[str, Any]:
+def _info_seed(decision_stage: int, decision_step: int = 0) -> dict[str, Any]:
     """Build the *pre-step* info dict the policy sees at decision time.
 
-    The Phase-3 env's ``info["recommended_action"]`` is a function of
-    the *current* attack stage at decision time (not the post-step
-    stage). We reconstruct it here from ``decision_stage`` so policies
-    that depend on it (``recommended_action_policy``) still work even
-    on the very first step (where the env hasn't emitted info yet).
+    The env's ``info["recommended_action"]`` is a function of the
+    *current* attack stage at decision time (not the post-step stage).
+    We reconstruct it here from ``decision_stage`` so policies that
+    depend on it (``recommended_action_policy``) still work even on the
+    very first step (where the env hasn't emitted info yet).
+
+    ``decision_step`` is the within-episode step index (0 on the first
+    decision of each episode). A recurrence-aware policy adapter uses
+    it to reset its hidden state at episode boundaries.
 
     The mapping must stay in sync with
     ``src/environment/adversarial_env.py::_recommended_action``; the
@@ -259,6 +263,7 @@ def _info_seed(decision_stage: int) -> dict[str, Any]:
     return {
         "attack_stage": int(decision_stage),
         "recommended_action": int(_RECOMMENDED_BY_STAGE[int(decision_stage)]),
+        "decision_step": int(decision_step),
     }
 
 

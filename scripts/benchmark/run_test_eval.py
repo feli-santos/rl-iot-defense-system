@@ -139,7 +139,16 @@ def _load_sb3_model(algo: str, model_path: Path, env: Any) -> Any:
     raise ValueError(f"unknown algo {algo!r}; expected dqn / ppo / a2c")
 
 
-def _eval_env_spec(attacker_budget: int | None = None) -> EnvConfigSerializable:
+def _eval_env_spec(
+    attacker_budget: int | None = None,
+    reward_mode: str = "outcome",
+    *,
+    aliasing_rate: float = 0.0,
+    session_coherent: bool = False,
+    no_post_transition_leak: bool = False,
+    proximity_coupled: bool = False,
+    proximity_min_escalation: float = 0.4,
+) -> EnvConfigSerializable:
     """benchmark eval env spec: held-out test_balanced split (D6.2).
 
     Reward-shaping fields stay at the environment-design frozen defaults; only the
@@ -155,19 +164,120 @@ def _eval_env_spec(attacker_budget: int | None = None) -> EnvConfigSerializable:
     contract match the training contract under the finite-budget MDP. It must be
     set to the same value the agents were trained with (e.g. 40); ``None``
     recovers the unbounded ``compromise_rate``=1.0 control cell.
+
+    ``reward_mode`` MUST match the training contract too (the primary deployment
+    contract is ``"outcome"``). If agents were trained ``outcome`` but evaluated
+    ``coupled``, the reported reward would measure a different objective than the
+    one optimised. :func:`_assert_train_eval_contract` cross-checks this against
+    each training manifest.
+
+    The partial-observability redesign fields (``aliasing_rate``,
+    ``session_coherent``, ``no_post_transition_leak``, ``proximity_coupled``,
+    ``proximity_min_escalation``) MUST match the training contract: agents trained
+    under observation aliasing / proximity-coupled dynamics must be benchmarked on
+    the same regime, or the held-out reward measures a different (easier or harder)
+    MDP than the one optimised. Defaults reproduce the legacy fully-observable
+    budget regime.
     """
     return EnvConfigSerializable(
         split="test_balanced",
         exclude_ood=True,
         impact_is_terminal=False,
         attacker_budget=attacker_budget,
+        reward_mode=reward_mode,
+        aliasing_rate=aliasing_rate,
+        session_coherent=session_coherent,
+        no_post_transition_leak=no_post_transition_leak,
+        proximity_coupled=proximity_coupled,
+        proximity_min_escalation=proximity_min_escalation,
     )
+
+
+# Env contract fields the eval env must share with the training run, or the
+# eval number measures a different MDP than the one the agent optimised.
+_BENCHMARK_PARITY_FIELDS = (
+    "exclude_ood",
+    "impact_is_terminal",
+    "reward_mode",
+    "attacker_budget",
+    "tug_of_war",
+    "p_onset",
+    "p_onset_access",
+    "p_down",
+    "p_up",
+    "p_down_isolate",
+    "action_cost_scale",
+    "aliasing_rate",
+    "session_coherent",
+    "no_post_transition_leak",
+    "proximity_coupled",
+    "proximity_min_escalation",
+)
+
+
+def _eval_env_spec_from_args(args: argparse.Namespace) -> EnvConfigSerializable:
+    """Build the eval env spec from CLI args, threading the redesign contract."""
+    return _eval_env_spec(
+        getattr(args, "attacker_budget", None),
+        reward_mode=getattr(args, "reward_mode", "outcome"),
+        aliasing_rate=getattr(args, "aliasing_rate", 0.0),
+        session_coherent=getattr(args, "session_coherent", False),
+        no_post_transition_leak=getattr(args, "no_post_transition_leak", False),
+        proximity_coupled=getattr(args, "proximity_coupled", False),
+        proximity_min_escalation=getattr(args, "proximity_min_escalation", 0.4),
+    )
+
+
+def _assert_train_eval_contract(
+    eval_spec: EnvConfigSerializable,
+    run_root: Path,
+    *,
+    algo: str,
+    seed: int,
+) -> None:
+    """Cross-script parity: fail if the benchmark eval contract diverges from
+    the contract recorded in the training ``run_manifest.json``.
+
+    This is the cross-process complement to
+    :meth:`BlueTeamRunConfig.assert_train_eval_parity` (which only guards
+    train-vs-eval *within* one training run). Here we guard
+    training-vs-benchmark *across* scripts so the F5 number cannot silently be
+    measured under a different attacker budget / reward mode than training.
+    """
+    manifest_path = run_root / "run_manifest.json"
+    if not manifest_path.exists():
+        # Pre-manifest checkpoint; nothing to check against. Warn, don't fail.
+        logger.warning(
+            "no run_manifest.json under %s; cannot verify train/eval contract "
+            "for %s seed %d",
+            run_root,
+            algo,
+            seed,
+        )
+        return
+    train_env = json.loads(manifest_path.read_text()).get("env", {})
+    # Normalise the training reward_mode alias for an apples-to-apples compare.
+    train_spec = EnvConfigSerializable(**train_env)
+    mismatches = []
+    for name in _BENCHMARK_PARITY_FIELDS:
+        if name not in train_env:
+            continue  # legacy manifest without this field; skip
+        eval_val = getattr(eval_spec, name)
+        train_val = getattr(train_spec, name)
+        if eval_val != train_val:
+            mismatches.append(f"  {name}: train={train_val!r} eval={eval_val!r}")
+    if mismatches:
+        raise ValueError(
+            f"benchmark eval contract for {algo} seed {seed} diverges from its "
+            f"training manifest ({manifest_path}) — the F5 number would measure "
+            "a different MDP than training:\n" + "\n".join(mismatches)
+        )
 
 
 def _build_eval_env(args: argparse.Namespace, seed: int | None = None) -> Any:
     """Build a fresh eval env on test_balanced for one rollout."""
     return make_eval_env(
-        spec=_eval_env_spec(getattr(args, "attacker_budget", None)),
+        spec=_eval_env_spec_from_args(args),
         generator_path=args.generator_path,
         dataset_path=args.dataset_path,
         splits_manifest=args.splits_manifest,
@@ -212,6 +322,44 @@ def _build_argparser() -> argparse.ArgumentParser:
             "agents were trained with, e.g. 40). Default None = unbounded "
             "(recovers the compromise_rate=1.0 control)."
         ),
+    )
+    p.add_argument(
+        "--reward-mode",
+        default="outcome",
+        choices=["outcome", "outcome_only", "coupled", "proportional"],
+        help=(
+            "Reward contract for the eval env; MUST match training. Default "
+            "'outcome' is the primary deployment contract. Aliases "
+            "outcome_only/proportional are normalised."
+        ),
+    )
+    # Partial-observability redesign contract (must match training).
+    p.add_argument(
+        "--aliasing-rate",
+        type=float,
+        default=0.0,
+        help="Observation aliasing rate alpha; MUST match training. Default 0.0.",
+    )
+    p.add_argument(
+        "--session-coherent",
+        action="store_true",
+        help="Session-coherent (contiguous, without-replacement) sampling; MUST match training.",
+    )
+    p.add_argument(
+        "--no-post-transition-leak",
+        action="store_true",
+        help="Sample refreshed obs from the pre-transition stage; MUST match training.",
+    )
+    p.add_argument(
+        "--proximity-coupled",
+        action="store_true",
+        help="RESTRAIN-style proximity-coupled escalation/prevention; MUST match training.",
+    )
+    p.add_argument(
+        "--proximity-min-escalation",
+        type=float,
+        default=0.4,
+        help="Floor on proximity-scaled escalation; MUST match training. Default 0.4.",
     )
     p.add_argument(
         "--generator-path",
@@ -268,7 +416,11 @@ def _roll_trained(
     The function is the inner loop's worker; it owns env construction
     and tear-down so a per-run failure can never leak resources.
     """
-    model_path = Path(args.phase5_runs_root) / algo / f"seed_{seed}" / "model.zip"
+    # Prefer the best-eval checkpoint (written by the training EvalCallback);
+    # fall back to the last-model checkpoint for pre-early-stop runs.
+    run_root = Path(args.phase5_runs_root) / algo / f"seed_{seed}"
+    best_path = run_root / "best_model.zip"
+    model_path = best_path if best_path.exists() else run_root / "model.zip"
     out_dir = Path(args.out_root) / algo / f"seed_{seed}"
     out_dir.mkdir(parents=True, exist_ok=True)
     eval_jsonl = out_dir / "eval_test.jsonl"
@@ -288,6 +440,15 @@ def _roll_trained(
             "model_path": str(model_path),
             "model_sha256": None,
         }
+
+    # Cross-script parity: the eval contract must match what this checkpoint was
+    # trained under, or the F5 reward measures a different MDP.
+    _assert_train_eval_contract(
+        _eval_env_spec_from_args(args),
+        run_root,
+        algo=algo,
+        seed=seed,
+    )
 
     n_ep = 2 if args.smoke else args.n_episodes
     env = _build_eval_env(args, seed=seed)
@@ -419,7 +580,7 @@ def _roll_deterministic(
                 "rf_sha256": None,
             }
         # Default env spec: window=5, F=29, deltas=True (environment-design frozen).
-        spec = _eval_env_spec(getattr(args, "attacker_budget", None))
+        spec = _eval_env_spec_from_args(args)
         # F is whatever the env reports at construction; use a probe
         # rollout instead of hard-coding 29 to stay robust to a
         # smaller-feature-matrix split.
@@ -569,7 +730,7 @@ def main(argv: list[str] | None = None) -> int:
         # was hand-rolled from bare _eval_env_spec() (no budget arg) and listed
         # only 7 fields, so attacker_budget/evasion_prob/impact_is_terminal read
         # back as absent/None even when a finite budget was applied.
-        "eval_env": dataclasses.asdict(_eval_env_spec(getattr(args, "attacker_budget", None))),
+        "eval_env": dataclasses.asdict(_eval_env_spec_from_args(args)),
         "runs": results,
         "n_ok": sum(1 for r in results if r.get("ok")),
         "n_failed": sum(1 for r in results if not r.get("ok")),

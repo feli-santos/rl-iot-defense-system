@@ -190,10 +190,14 @@ benchmark: benchmark-eval benchmark-figures  ## Benchmark: full eval sweep + F5/
 ABLATION_OUT_DIR         ?= docs/results/ablation
 ABLATION_PARALLEL        ?= 1
 ABLATION_OOD_RUNS_ROOT   ?= runs/ablation/ood
-ABLATION_OOD_CLASSES     ?= DDoS-HTTP_Flood Mirai-udpplain VulnerabilityScan XSS
+ABLATION_OOD_CLASSES     ?= VulnerabilityScan Recon-OSScan XSS SqlInjection Mirai-udpplain DNS_Spoofing DDoS-HTTP_Flood DoS-SYN_Flood DDoS-SlowLoris DDoS-ACK_Fragmentation
 ABLATION_OOD_POLICIES    ?= recommended_action rf_acting dqn ppo a2c random always_observe always_block
 ABLATION_OOD_N_EPISODES  ?= 30
 ABLATION_OOD_N_DET_EPISODES ?= 300
+# Commensurability: the OOD eval MUST run at the same operating point as the
+# held-out benchmark, else OOD reward is on an incomparable (unbounded) axis.
+ABLATION_OOD_ATTACKER_BUDGET ?= $(BENCHMARK_ATTACKER_BUDGET)
+ABLATION_OOD_REWARD_MODE ?= outcome
 
 .PHONY: ablation-ood-smoke
 ablation-ood-smoke:  ## Ablation F15 smoke: 1 OOD class × 2 policies × 1 seed × 2 ep (~10 s).
@@ -201,7 +205,7 @@ ablation-ood-smoke:  ## Ablation F15 smoke: 1 OOD class × 2 policies × 1 seed 
 	    --smoke --out-root $(ABLATION_OOD_RUNS_ROOT)
 
 .PHONY: ablation-ood-eval
-ablation-ood-eval:  ## Ablation F15: 4 OOD classes × 8 policies eval (~1 h CPU).
+ablation-ood-eval:  ## Ablation: zero-day OOD eval, 10 held-out classes × 8 policies (~2 h CPU).
 	$(PYTHON) -m scripts.ablation.run_ood_eval \
 	    --ood-classes $(ABLATION_OOD_CLASSES) \
 	    --policies $(ABLATION_OOD_POLICIES) \
@@ -210,6 +214,8 @@ ablation-ood-eval:  ## Ablation F15: 4 OOD classes × 8 policies eval (~1 h CPU)
 	    --n-deterministic-episodes $(ABLATION_OOD_N_DET_EPISODES) \
 	    --phase5-runs $(BLUE_TEAM_RUNS_ROOT) \
 	    --out-root $(ABLATION_OOD_RUNS_ROOT) \
+	    --reward-mode $(ABLATION_OOD_REWARD_MODE) \
+	    $(if $(ABLATION_OOD_ATTACKER_BUDGET),--attacker-budget $(ABLATION_OOD_ATTACKER_BUDGET),) \
 	    --rf-path $(BENCHMARK_RF_PATH)
 
 .PHONY: ablation-ood-figure
@@ -252,6 +258,39 @@ ablation-reward-figure:  ## Ablation: render F9 from runs/ablation/reward_sweep/
 
 .PHONY: ablation-reward
 ablation-reward: ablation-reward-sweep ablation-reward-figure  ## Ablation F9: full sweep + figure.
+
+# ------------------------------------------------------------------------------
+# Coupled-vs-decoupled reward ablation (the reward-design control)
+ABLATION_COUPLING_RUNS_ROOT ?= runs/ablation/reward_coupling
+ABLATION_COUPLING_TIMESTEPS ?= 1000000
+ABLATION_COUPLING_ATTACKER_BUDGET ?= $(BENCHMARK_ATTACKER_BUDGET)
+
+.PHONY: ablation-reward-coupling-smoke
+ablation-reward-coupling-smoke:  ## Coupling smoke: coupled+outcome × 1 algo × 1 seed × 5K (~1 min).
+	$(PYTHON) -m scripts.ablation.run_reward_coupling \
+	    --smoke \
+	    --out-root $(ABLATION_COUPLING_RUNS_ROOT) \
+	    $(if $(ABLATION_COUPLING_ATTACKER_BUDGET),--attacker-budget $(ABLATION_COUPLING_ATTACKER_BUDGET),)
+
+.PHONY: ablation-reward-coupling-sweep
+ablation-reward-coupling-sweep:  ## Coupling: {coupled,outcome} × 3 algos × 10 seeds + RF-Acting (~6 h CPU).
+	$(PYTHON) -m scripts.ablation.run_reward_coupling \
+	    --seeds $(BLUE_TEAM_SEEDS) \
+	    --total-timesteps $(ABLATION_COUPLING_TIMESTEPS) \
+	    --out-root $(ABLATION_COUPLING_RUNS_ROOT) \
+	    --parallel $(ABLATION_PARALLEL) \
+	    $(if $(ABLATION_COUPLING_ATTACKER_BUDGET),--attacker-budget $(ABLATION_COUPLING_ATTACKER_BUDGET),) \
+	    --continue-on-failure
+
+.PHONY: ablation-reward-coupling-figure
+ablation-reward-coupling-figure:  ## Coupling: render coupled-vs-outcome gap figure.
+	$(PYTHON) -m scripts.ablation.plot_reward_coupling \
+	    --out-root $(ABLATION_COUPLING_RUNS_ROOT) \
+	    --seeds $(BLUE_TEAM_SEEDS) \
+	    --out-dir $(ABLATION_OUT_DIR)
+
+.PHONY: ablation-reward-coupling
+ablation-reward-coupling: ablation-reward-coupling-sweep ablation-reward-coupling-figure  ## Coupling: full sweep + figure.
 
 # F10 — Attack-aggressiveness sweep (PPO + oracle rule × 6 p values × 10 seeds)
 ABLATION_AGGR_RUNS_ROOT ?= runs/ablation/aggressiveness
