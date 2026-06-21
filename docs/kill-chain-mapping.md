@@ -21,7 +21,7 @@ identical for many semantically related labels (a TCP SYN flood and a
 UDP flood call for the same response). The Kill Chain abstraction
 collapses this into 5 stages **monotone in attacker progression
 severity**, which is the property the thesis's proportional-defense
-reward shape (`docs/reward-shaping.md`) actually depends on.
+reward shape (`docs/ENVIRONMENT.md` §Reward) actually depends on.
 
 The five stages adopted here trace to Lockheed Martin's Cyber Kill
 Chain (Hutchins, Cloppert, Amin, 2011) and the closely related MITRE
@@ -36,7 +36,7 @@ testbed traces. The 5-stage mapping below is the simplest abstraction
 that (i) covers every CICIoT2023 label, (ii) is monotone in attacker
 progress, and (iii) admits a non-trivial recommended-action mapping
 (BENIGN→OBSERVE, RECON→LOG, ACCESS→RESTRICT, MANEUVER→BLOCK,
-IMPACT→ISOLATE — see `docs/reward-shaping.md` §Recommended actions).
+IMPACT→ISOLATE — see `docs/ENVIRONMENT.md` §Reward).
 
 ## 2 — Stage definitions (operational)
 
@@ -59,7 +59,7 @@ The progression `BENIGN → RECON → ACCESS → MANEUVER → IMPACT` is
 a closer approach to the operational objective (service denial). The
 order also induces a natural ordering on the recommended action
 (OBSERVE < LOG < RESTRICT < BLOCK < ISOLATE) used by the proportional
-reward shape and tested by Phase-3 gate G3 (`docs/results/environment/RESULTS.md`).
+reward shape and tested by the Adversarial Environment gate.
 
 ## 3 — Label → Stage table (canonical)
 
@@ -249,8 +249,8 @@ being OBSERVE — and gating that decision through the same proportional
 reward shape that handles the attack stages avoids special-case logic
 in the environment (`src/environment/adversarial_env.py`). The
 trade-off is that aggregate confusion matrices include a BENIGN row /
-column; this is reported transparently in F6
-(`docs/results/benchmark/stage_action_proportionality.caption.md`).
+column; this is reported transparently in the stage-action
+proportionality analysis.
 
 ## 5 — Properties enforced by the implementation
 
@@ -278,7 +278,7 @@ The committee or any reader who disagrees with a placement above can:
    than the operational definitions allow).
 3. Quantify the impact: rerun `python -m scripts.data.derive_stage_labels`
    with the proposed mapping and inspect the resulting per-stage
-   confusion matrices. The Phase-2/4/5 results would need to be
+   confusion matrices. The Markov Attacker / Stage Detector / Blue-Team Training results would need to be
    regenerated, which Step 7 of the mentor-review loop is the
    scoped place to do.
 4. Update this document, `src/utils/label_mapper.py`,
@@ -304,6 +304,6 @@ caught by the tests.
   Large-Scale Attacks in IoT Environment*, University of New
   Brunswick. See `docs/papers/` for the full PDF. The Mirai-* class
   semantics in §4.2 derive from §IV-B of that paper.
-- **Reward shape that consumes the stages.** `docs/reward-shaping.md`
-  (proportional defense reward), `src/environment/adversarial_env.py`
+- **Reward shape that consumes the stages.** `docs/ENVIRONMENT.md` §Reward
+   (proportional defense reward), `src/environment/adversarial_env.py`
   (recommended-action mapping).

@@ -1,7 +1,6 @@
 # Reference Papers
 
-This directory previously contained PDF copies of referenced papers. Binary
-PDFs have been removed from the repository. Access papers via the DOIs/links
+PDF copies of referenced papers are gitignored. Access via DOIs and links
 below. BibTeX entries are in [`tex/thesis.bib`](../../tex/thesis.bib).
 
 ## Core dataset and inspiration

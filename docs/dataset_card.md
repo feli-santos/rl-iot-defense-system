@@ -42,14 +42,14 @@ snapshot.
 
 ## 2 — Why a *processed* snapshot, not the raw CSVs
 
-Training the LSTM Red Team and the RL Blue Team requires three properties
+Training the Markov attacker and the RL Blue Team requires three properties
 that the raw release does not have on its own:
 
 1. **Bounded class imbalance.** Raw CICIoT2023 has a 1 059:1 ratio between
    the largest class (`DDoS-ICMP_Flood`, 7.2 M) and the smallest
    (`Uploading_Attack`, 1 252). Without resampling, every model collapses
    to predicting the majority class — exactly the failure mode diagnosed
-   in `docs/results/00_phase0_diagnosis.md` §2.1.
+   during initial dataset diagnostics.
 2. **Bounded compute footprint.** 47 M float32 rows × 47 features ≈ 8.7 GB,
    too large to keep in memory on a research workstation.
 3. **Deterministic feature space.** Two CSVs in the release ship with
@@ -114,7 +114,7 @@ in canonical order and split across:
 
 All 29 features are zero-mean / unit-variance scaled with
 `sklearn.preprocessing.StandardScaler`. The scaler is fit on the **train
-split only** (see `docs/data-pipeline.md` §Anti-leakage protocol) and
+split only** (see `docs/ENVIRONMENT.md` §Anti-leakage protocol) and
 persisted to `data/processed/ciciot2023/scaler.joblib`. The same fitted
 scaler is used unchanged on the val, test, balanced-eval, and OOD splits
 throughout the thesis — code reference: `src/utils/dataset_processor.py`
@@ -130,7 +130,7 @@ The split builder is `scripts/data/build_split_indices.py`. With seed 42
 and the default 70 / 10 / 20 ratios it produces the following partition
 of the 442 237-row processed snapshot.
 
-### Top-level row counts (post Phase-4 OOD-leakage fix, commit `3cd2fb9`)
+### Top-level row counts (post Stage Detector OOD-leakage fix, commit `3cd2fb9`)
 
 OOD-class rows are removed from the snapshot **before** the stratified
 train/val/test split (see `scripts/data/build_split_indices.py:258-283`),
@@ -145,7 +145,7 @@ train/val/test. The 442 237 total is therefore split as:
 | **ood_attack** (held out from training)    | 106 059 | union of the 10 OOD classes; never seen during any training phase |
 | **all**                                    |  442 237 | `train ⊔ val ⊔ test ⊔ ood_attack` |
 
-These are the sizes printed by the Phase-4 fix commit message; the canonical
+These are the sizes printed by the Stage Detector fix commit message; the canonical
 source of truth at any commit is the corresponding
 `data/processed/ciciot2023/splits/manifest.json::sizes` field. Per-stage
 counts within each split are recomputed on each build and are recorded in
@@ -156,7 +156,7 @@ pairwise disjoint. The disjointness invariant — including OOD lockout —
 is asserted by
 `tests/test_build_split_indices.py::TestBuildSplitsEndToEnd::test_run_on_synthetic_dataset`
 (see lines 181–198 for the explicit `ood_set.intersection(split_idx) == ∅`
-regression check that locks the Phase-4 fix in place).
+regression check that locks the Stage Detector fix in place).
 
 ### Balanced eval subsets
 
@@ -167,7 +167,7 @@ regression check that locks the Phase-4 fix in place).
 
 `val_balanced ⊆ val`, `test_balanced ⊆ test`. They are drawn from the
 already-disjoint, already-OOD-free in-distribution pools
-(`build_split_indices.py:305+`) and are designed for the LSTM held-out
+(`build_split_indices.py:305+`) and are designed for the stage-detector held-out
 evaluation (so per-stage F1 is meaningful) and the RL benchmark's
 per-stage decision matrices.
 
@@ -207,11 +207,11 @@ structural blind spot:
 > and stratifies *only* the in-distribution pool. As a result no
 > downstream training script ever needs to "subtract OOD before
 > fitting" — it simply consumes the relevant `<split>.idx.npy` and the
-> OOD rows are absent by construction. The default Phase 2 / Phase 4
+> OOD rows are absent by construction. The default Episode Generation / Stage Detector
 > training entry point is
 > `RealizationEngine.from_split_manifest(..., exclude_ood=True)`
 > (`src/utils/realization_engine.py:104`), where `exclude_ood=True` is
-> a belt-and-braces second line of defence.
+> a belt-and-braces second line of defense.
 
 ## 6 — Hash manifest
 
@@ -227,7 +227,7 @@ state_indices.json  83f28824e28b66dd033f3490800715de117b39b6428401e83858a34bbb07
 ```
 
 If any of these change, downstream MLflow runs become invalid — the
-benchmarking layer (Phase 7) will refuse to compare runs with mismatched
+benchmarking layer (Ablation & Robustness) will refuse to compare runs with mismatched
 data hashes.
 
 ## 7 — Limitations & caveats (declared up-front)
@@ -241,7 +241,7 @@ data hashes.
    (e.g. multiple stages within a single flow) is invisible to the
    classifier.
 3. **No temporal ordering across rows.** Rows are shuffled during
-   processing. Sequence-level training (Phase 2) constructs synthetic
+   processing. Sequence-level training (Episode Generation) constructs synthetic
    episodes via `EpisodeGenerator`; we do *not* claim to have learned
    from real attack timelines.
 4. **`Uploading_Attack` underrepresented.** 1 252 rows is too few for
@@ -272,4 +272,4 @@ sha256sum data/processed/ciciot2023/{features,labels}.npy \
 
 If the hashes diverge, the snapshot is no longer the v1 of this card.
 Bump `splits/manifest.json::version`, regenerate this card, and document
-the change in `CHANGELOG.md`.
+the change in the manifest version history.

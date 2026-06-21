@@ -13,11 +13,11 @@ up to integer rounding.*
 2. Stages 1 (RECON) and 2 (ACCESS) are the rarest in the test split
    (~7 k–10 k rows each); per-stage F1 on those classes therefore has
    higher variance and motivates the **balanced** held-out splits
-   (`val_balanced`, `test_balanced`) used for Phase-2 model selection.
+   (`val_balanced`, `test_balanced`) used for Stage Detector model selection.
 3. Stage 4 (IMPACT) dominates each split — 38 787 rows in test alone — so
    any model that only optimizes overall accuracy will still look good
-   on this distribution. This is exactly the failure mode quantified in
-   `docs/results/00_phase0_diagnosis.md` §2.1.
+   on this distribution. This is exactly the failure mode quantified
+   during initial dataset diagnostics.
 
 **How it was generated.** `python -m scripts.data.plot_dataset_overview`,
 reading `data/processed/ciciot2023/splits/{train,val,test}.idx.npy`.
