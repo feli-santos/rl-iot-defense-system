@@ -65,14 +65,12 @@
 % --- Lane 2: Tug-of-War Attacker ---
 \node[stageBox, fill=colOffline, right=of dataset] (redteam) {
   \textbf{Tug-of-War Attacker}\\[3pt]
-  Reactive $5\times5$\\
+  Proximity-coupled\\
   kill-chain process\\[3pt]
   Strictly sequential;\\
   defender-driven\\
   de-escalation;\\
-  absorbing \textsc{impact}\\[3pt]
-  Finite intrusion\\
-  budget ($B=40$)
+  absorbing \textsc{impact}
 };
 
 % --- Lane 3: Stage Detector ---
@@ -111,9 +109,10 @@
 \node[envBox, fill=colOnline,
       left=0.7cm of env] (realizer) {
   \textbf{Realization Engine}\\[3pt]
-  Split-aware sampling\\
-  of 29-dim feature\\
-  vectors from train
+  Session-coherent,\\
+  aliasing-aware\\
+  sampling of 29-dim\\
+  feature vectors
 };
 
 % --- Reward function ---
@@ -133,7 +132,7 @@
   DQN / PPO / A2C\\
   (Stable Baselines3\\
    MultiInputPolicy)\\[3pt]
-  10 seeds $\times$ 250k steps
+  10 seeds $\times$ $\leq$1.5M steps
 };
 
 % --- Online bounding box ---
@@ -155,9 +154,9 @@
   \textbf{Stage III — Benchmark \& Ablation (held-out \texttt{test\_balanced})}\\[4pt]
   Trained DRL (DQN / PPO / A2C) \quad vs.\quad
   Random \;|\; Always-Observe \;|\; Always-Block \;|\; RF-Acting \;|\; Oracle\\[2pt]
-  Reward-component ablation (F9) \;|\;
-  Environment-difficulty sweep (F10) \;|\;
-  OOD injection evaluation (F15)
+  Reward-coupling ablation \;|\;
+  Environment-difficulty sweep \;|\;
+  OOD injection evaluation
 };
 
 %% ==============================================================
