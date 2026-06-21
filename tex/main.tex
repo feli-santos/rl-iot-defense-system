@@ -74,43 +74,45 @@ cadeia de eliminação cibernética (\emph{kill-chain-aware}) para redes IoT,
 baseado em Aprendizado por Reforço Profundo (DRL). O sistema é avaliado sobre
 linhas de características reais do \emph{dataset} CICIoT2023 amostradas em uma
 trajetória de \emph{kill chain} simulada, projetada sobre uma Cyber Kill Chain de
-cinco estágios. O adversário segue um \emph{cabo de guerra} (\emph{tug-of-war})
-sobre a cadeia de eliminação: uma ação proporcional do defensor empurra o
-atacante um estágio para trás, uma ação de força insuficiente o deixa avançar e
-uma ação de força excessiva apenas o mantém, tudo sob um orçamento de intrusão
-finito (\emph{intrusion budget}); cada estágio é realizado por uma linha de
-características real do CICIoT2023, expondo um agente defensor com cinco ações em
-um ambiente compatível com Gymnasium. De forma crucial, o defensor nunca observa
-o verdadeiro estágio da cadeia de eliminação --- ele deve agir apenas sobre
-linhas de características brutas --- de modo que a tarefa é fundamentalmente de
-inferência de estágio sob observabilidade parcial (um POMDP). Sob o orçamento
-finito, uma defesa correta pode \emph{prevenir} o comprometimento exaurindo o
-atacante antes do estágio de impacto, e não apenas mitigá-lo reativamente, e
-mostramos empiricamente que essa prevenção depende de um orçamento calibrado.
-Três algoritmos DRL (DQN, PPO, A2C) são treinados em \NumSeeds{} sementes e
-comparados a quatro políticas de referência e a um oráculo. Uma análise de
-especificação incorreta de recompensa (\emph{reward mis-specification})
-identifica que o contrato ingênuo ($\texttt{impact\_is\_terminal}=\mathit{True}$)
-induz uma estratégia de gatilho armado (\emph{cocked-trigger}); o contrato
-corrigido ($=\mathit{False}$) é adotado como contrato primário de treinamento e
-avaliação. Os três agentes treinados são estatisticamente indistinguíveis em
-recompensa; o melhor agente implantável (\BestAgentName, $+\BestAgentReward$)
-captura \OracleCapturePct\,\% do teto do oráculo ($+\OracleCeiling$) mantendo sua
-taxa de falsos positivos benignos abaixo de 1\,\%. Não afirmamos que o DRL supera
-a \emph{baseline} implantável mais forte: uma política de Floresta Aleatória
-acoplada a detector (RF-Acting) atinge recompensa mais alta ($+\RFReward$), mas
-depende de um classificador de estágio a montante e incorre em latência de
-\RFLatency\,ms por decisão. Os agentes de RL ocupam, em vez disso, um ponto
-operacional distinto --- livres de detector e abaixo de 0{,}1\,ms por decisão ---
-tornando a comparação um compromisso honesto de implantação, e não uma alegação
-de dominância em recompensa. Todos os resultados são reprodutíveis por uma cadeia
-de \emph{hashes} SHA-256 verificada de ponta a ponta.
+cinco estágios. O adversário reage à força do defensor num \emph{cabo de guerra}
+(\emph{tug-of-war}) sobre a cadeia de eliminação, com pressão de escalada acoplada
+à sua proximidade do estágio de impacto: uma ação proporcional empurra o atacante
+para trás, uma ação de força insuficiente o deixa avançar e uma ação de força
+excessiva apenas o mantém. De forma central, formulamos a defesa como um problema
+genuíno de \emph{observabilidade parcial}: o defensor nunca observa o verdadeiro
+estágio da cadeia e age apenas sobre linhas de características brutas amostradas de
+forma \emph{coerente por sessão}, e estágios adjacentes são estatisticamente
+\emph{aliasados} (uma taxa $\alpha$ controla a ambiguidade de cada observação
+individual), de modo que nenhuma linha isolada revela o estágio --- ele só pode
+ser inferido ao longo de uma janela temporal. Esta é a condição realista que a
+formulação anterior, baseada em amostragem independente por passo, abstraía.
+Treinamos um agente de RL com janela temporal (PPO, com DQN e A2C como
+\emph{baselines}) sobre \NumSeeds{} sementes e o comparamos a uma Floresta
+Aleatória acoplada a detector (RF-Acting), a um oráculo de observabilidade total e
+a políticas triviais. Três resultados sustentam a contribuição. Primeiro, à medida
+que a ambiguidade observacional $\alpha$ aumenta, o classificador supervisionado
+por fluxo degrada monotonicamente enquanto o agente PPO com janela permanece
+estável: em $\alpha=0$ os dois empatam (provando que o redesenho não favorece
+artificialmente o RL), e a partir de $\alpha=\HeadlineAlpha$ o PPO supera a RF com
+intervalos de confiança disjuntos. Segundo, uma ablação de recompensa
+acoplada-versus-desacoplada mostra que, uma vez que o ambiente é parcialmente
+observável, o melhor agente de RL supera a RF em \emph{ambos} os regimes de
+recompensa, neutralizando a objeção de que uma recompensa com informação
+privilegiada reduziria a tarefa a uma classificação de estágio. Terceiro, sob
+\emph{distribuição deslocada} (dez classes de ataque \emph{zero-day} retidas), o
+PPO previne uma fração uniformemente maior dos ataques do que a RF em todas as dez
+classes, independentemente da acurácia do detector: a prevenção é uma propriedade
+de controle temporal que um classificador sem memória não captura. Reportamos
+que apenas o PPO, em política e com \emph{rollouts} longos, é estável
+sob a recompensa esparsa baseada em desfecho; DQN e A2C são
+instáveis nesse regime. Todos os resultados são acompanhados de intervalos de
+confiança por \emph{bootstrap} e de uma cadeia de artefatos reprodutível.
 
     \vspace{\onelineskip}
 
     \noindent\textbf{Palavras-chave}: Segurança IoT; Aprendizado por Reforço Profundo;
-    Cyber Kill Chain; Observabilidade Parcial (POMDP); Orçamento de Intrusão; CICIoT2023;
-    Especificação de Recompensa; Reprodutibilidade.
+    Cyber Kill Chain; Observabilidade Parcial (POMDP); \emph{Aliasing} de Observação;
+    Robustez a Distribuição Deslocada; CICIoT2023; Reprodutibilidade.
 
     \vspace{\onelineskip}
     \vspace{\onelineskip}
@@ -121,45 +123,46 @@ de \emph{hashes} SHA-256 verificada de ponta a ponta.
 The exponential proliferation of the Internet of Things (IoT) has produced a
 vast attack surface while the global economic impact of cyber threats continues
 to grow. The computational constraints of many IoT devices render traditional
-security solutions ineffective and motivate intelligent, adaptive defence
+security solutions ineffective and motivate intelligent, adaptive defense
 mechanisms capable of operating autonomously. This dissertation designs,
-implements, and rigorously evaluates a kill-chain-aware adaptive defence
+implements, and rigorously evaluates a kill-chain-aware adaptive defense
 framework for IoT networks, built on Deep Reinforcement Learning (DRL). The
 framework is evaluated on real CICIoT2023 feature rows sampled into a simulated
-kill-chain trajectory, projected onto a five-stage Cyber Kill Chain. The adversary follows a \emph{tug-of-war} on the
-kill chain: a proportionate defender action pushes the attacker one stage back,
-an under-forced action lets it advance, and an over-forced action merely holds
-it, all under a finite intrusion budget; each stage is realised by a real
-CICIoT2023 feature row, exposing a five-action defender in a custom
-Gymnasium-compatible environment. Crucially, the defender never observes the
-true kill-chain stage --- it must act on raw feature rows alone --- so the task
-is fundamentally one of stage inference under partial observability (a POMDP).
-Under the finite budget, a correct defence can \emph{prevent} compromise by
-exhausting the attacker before the impact stage rather than only mitigating it
-reactively, and we show empirically that this prevention is contingent on a
-calibrated budget. Three DRL algorithms (DQN, PPO, A2C) are trained over
-\NumSeeds{} seeds and benchmarked against four reference policies and an oracle.
-A reward mis-specification analysis identifies that the naive reward contract
-($\texttt{impact\_is\_terminal}=\mathit{True}$) induces a cocked-trigger
-strategy; the corrected contract ($=\mathit{False}$) is adopted as the primary
-training and evaluation contract. The three trained agents are statistically
-indistinguishable on reward; the best deployable agent (\BestAgentName,
-$+\BestAgentReward$) captures \OracleCapturePct\,\% of the oracle ceiling
-($+\OracleCeiling$) while keeping its benign false-positive rate below
-1\,\%. We do not claim DRL dominates the strongest deployable
-baseline: a detector-coupled Random-Forest policy (RF-Acting) attains a higher
-reward ($+\RFReward$) but depends on an upstream stage classifier and incurs a
-\RFLatency\,ms per-decision latency. The RL agents instead occupy a distinct
-operating point --- detector-free and sub-0.1\,ms per decision
---- making the comparison an honest deployment trade-off rather than a
-reward-domination claim. All results are reproducible via a SHA-256-verified
-artifact chain.
+kill-chain trajectory, projected onto a five-stage Cyber Kill Chain. The adversary
+reacts to defender force in a \emph{tug-of-war} on the kill chain, with escalation
+pressure coupled to its proximity to the impact stage: a proportionate action
+pushes the attacker back, an under-forced action lets it advance, and an
+over-forced action merely holds it. Centrally, we cast the defense as a genuine
+\emph{partially observable} problem: the defender never observes the true stage
+and acts on raw feature rows alone, drawn \emph{session-coherently}, while adjacent
+stages are statistically \emph{aliased} (a rate $\alpha$ controls how ambiguous
+each single observation is), so no individual row reveals the stage --- it can be
+inferred only across a temporal window. This is the realistic condition that the
+earlier independent-per-step sampling abstracted away. We train a windowed RL agent
+(PPO, with DQN and A2C as baselines) over \NumSeeds{} seeds and compare it against a
+detector-coupled Random-Forest policy (RF-Acting), a full-observability oracle, and
+trivial baselines. Three results support the contribution. First, as the
+observation ambiguity $\alpha$ rises, the per-flow supervised classifier degrades
+monotonically while the windowed PPO agent stays flat: at $\alpha=0$ the two tie
+(proving the redesign does not favour RL by construction), and from
+$\alpha=\HeadlineAlpha$ onward PPO beats RF-Acting with disjoint confidence
+intervals. Second, a coupled-versus-decoupled reward ablation shows that, once the
+environment is partially observable, the best RL agent beats RF-Acting under
+\emph{both} reward regimes, neutralising the objection that a privileged-information
+reward would reduce the task to stage classification. Third, under distribution
+shift (ten held-out \emph{zero-day} attack classes), PPO prevents a uniformly larger
+fraction of attacks than RF-Acting across all ten classes, independent of detector
+accuracy: prevention is a temporal-control property that a memoryless classifier
+cannot capture. We report that only on-policy, long-rollout PPO is stable
+under the sparse outcome-based reward; DQN and A2C are unstable in
+this regime. All results carry bootstrap confidence intervals and a reproducible
+artefact chain.
 
     \vspace{\onelineskip}
 
     \noindent\textbf{Keywords}: IoT security; Deep Reinforcement Learning; Cyber
-    Kill Chain; Partial Observability (POMDP); Intrusion Budget; CICIoT2023;
-    Reward Mis-specification; Reproducibility.
+    Kill Chain; Partial Observability (POMDP); Observation Aliasing;
+    Out-of-Distribution Robustness; CICIoT2023; Reproducibility.
 
     \end{otherlanguage*}
 \end{resumo}

@@ -90,6 +90,12 @@
 \graphicspath{{eps/}{figs/}{cap1/}}
 \DeclareGraphicsExtensions{.pdf,.png,.eps,.jpg}
 
+% Line-breaking relief: lets TeX absorb the few minor overfull boxes caused by
+% unbreakable long \texttt{} tokens (file paths, class names) without loosening
+% body text or altering any wording.
+\emergencystretch=3em
+\tolerance=1200
+
 %customiza\c{c}\~{a}o do negrito em ambientes matem\'{a}ticos
 \newcommand{\mb}[1]{\mathbf{#1}}
 \newcommand{\abs}[1]{\left|#1\right|}
