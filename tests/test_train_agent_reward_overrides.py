@@ -123,7 +123,7 @@ class TestBuildRunConfigOverrides:
         """Minimal valid CLI for build_run_config()."""
         return ["--algo", "ppo", "--seed", "0", "--splits-manifest", ""]
 
-    def test_no_overrides_matches_phase5_baseline(self) -> None:
+    def test_no_overrides_matches_blue_team_baseline(self) -> None:
         """No flags → env spec uses Blue-Team defaults verbatim.
 
         This is the **invariant that lets Blue-Team trained checkpoints

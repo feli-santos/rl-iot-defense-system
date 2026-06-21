@@ -19,9 +19,9 @@
       "path": "runs/benchmark/eval_manifest.json",
       "sha256": "5c15cd7869a095dd122a547e3300ce4374d1e586e5014d1e9ef1ece397c93765"
     },
-    "phase1_splits_manifest": {
+    "split_splits_manifest": {
       "path": "docs/results/dataset/manifest.json",
-      "sha256": "e5c23ff994c59cf1e71fb05da46f2e75b573b6593ce582f1ac0a3af66ff58de1"
+      "sha256": "3be6590bfecb42dc2ee8424085c33a69088e05d6f7ab2e165f24009eff5d530b"
     },
     "eval_jsonls_sha256": {
       "runs/ablation/aggressiveness/ppo_p0p0/seed_0/eval_test.jsonl": "6b7854deb60c59c1a46059dde9e93f387ffc083405f83044836ee4cd6095b9a2",

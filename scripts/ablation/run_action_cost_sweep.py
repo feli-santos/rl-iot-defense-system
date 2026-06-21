@@ -20,7 +20,7 @@ Outputs::
 
     runs/ablation_action_cost/
         x0p5/ppo/seed_0/   ...  (new training runs)
-        x1p0/ppo/seed_0/   ...  (symlink or copy from phase5_primary, or re-train)
+        x1p0/ppo/seed_0/   ...  (symlink or copy from blue_team_primary, or re-train)
         x2p0/ppo/seed_0/   ...  (new training runs)
         sweep_manifest.json
 
@@ -76,7 +76,7 @@ def _run_cell(
     tag = _scale_to_tag(scale)
     out_dir = str(Path(out_root) / tag / "ppo" / f"seed_{seed}")
 
-    # Reuse phase5_primary baseline for scale=1.0 if available
+    # Reuse blue_team_primary baseline for scale=1.0 if available
     if abs(scale - 1.0) < 1e-9 and blue_team_primary_root:
         primary_run = Path(blue_team_primary_root) / "ppo" / f"seed_{seed}"
         manifest_path = primary_run / "run_manifest.json"
@@ -272,7 +272,7 @@ def main(argv: list | None = None) -> int:  # type: ignore[type-arg]
     )
     p.add_argument("--parallel", type=int, default=3)
     p.add_argument(
-        "--phase5-primary-root",
+        "--blue-team-primary-root",
         default="runs/blue_team_primary",
         help="Root of the primary Blue-Team training runs (for scale=1.0 reuse).",
     )
@@ -299,7 +299,7 @@ def main(argv: list | None = None) -> int:  # type: ignore[type-arg]
         splits_manifest=args.splits_manifest,
         parallel=args.parallel,
         smoke=args.smoke,
-        blue_team_primary_root=args.phase5_primary_root,
+        blue_team_primary_root=args.blue_team_primary_root,
     )
     print(
         f"OK: {manifest['n_ok']} / Failed: {manifest['n_failed']} / Reused: {manifest['n_reused']}"

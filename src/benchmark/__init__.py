@@ -1,7 +1,7 @@
 """Held-Out Benchmark RL Algorithm Benchmark — public package surface.
 
 The benchmark package consumes the **frozen Blue-Team Training checkpoints** at
-``runs/phase5/<algo>/seed_<k>/model.zip`` and rolls them — together with
+``runs/blue_team/<algo>/seed_<k>/model.zip`` and rolls them — together with
 a fixed set of non-RL baselines — on the held-out ``test_balanced``
 split, emitting JSONL files in the same v1.0 schema as
 :class:`src.blue_team.callbacks.EpisodeJSONLCallback` so all downstream

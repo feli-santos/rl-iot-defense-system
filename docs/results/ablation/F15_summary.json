@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "phase": 7,
+  "stage": "ablation",
   "figure": "F15",
   "audit_finding": "AF1 \u2014 promote OOD-class robustness to Tier-1 deliverable (2026-04-30 mentor audit).",
   "ood_classes": [

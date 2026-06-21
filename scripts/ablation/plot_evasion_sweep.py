@@ -313,7 +313,7 @@ def main(argv: list[str] | None = None) -> int:
     g710 = _evaluate_g710(rows, robust_tol=args.robust_tol)
     summary = {
         "schema_version": "1.0",
-        "phase": 7,
+        "stage": "ablation",
         "figure": "F17",
         "evasion_values": list(args.evasion_values),
         "rows": rows,

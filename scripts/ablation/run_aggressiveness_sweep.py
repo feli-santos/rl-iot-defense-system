@@ -415,7 +415,7 @@ def main(argv: list[str] | None = None) -> int:
 
     sweep_manifest = {
         "schema_version": "1.0",
-        "phase": 7,
+        "stage": "ablation",
         "kind": "f10_aggressiveness_sweep_manifest",
         "git_sha": _git_sha(),
         "started_at": datetime.fromtimestamp(t_start, tz=timezone.utc).strftime(

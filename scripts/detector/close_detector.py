@@ -182,7 +182,7 @@ def build_scoreboard(out_dir: Path) -> dict[str, Any]:
     statuses = [g["status"] for g in gates]
     payload = {
         "schema_version": "2.0",
-        "phase": 4,
+        "stage": "stage_detector",
         "git_sha": _git_sha(),
         "completed_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "evaluated_against": {

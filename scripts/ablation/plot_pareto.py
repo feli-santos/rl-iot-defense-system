@@ -128,14 +128,14 @@ def _summarise_seed_dirs(
     return _summarise_records(all_records)
 
 
-def _collect_phase6_points(
+def _collect_benchmark_points(
     benchmark_root: Path,
     sha_collector: dict[str, str],
 ) -> list[dict[str, Any]]:
     """benchmark anchor points: 8 baseline policies on test_balanced."""
     points: list[dict[str, Any]] = []
     if not benchmark_root.exists():
-        logger.warning("phase6 root missing: %s — skipping anchors", benchmark_root)
+        logger.warning("benchmark root missing: %s — skipping anchors", benchmark_root)
         return points
     for policy_dir in sorted(benchmark_root.iterdir()):
         if not policy_dir.is_dir():
@@ -151,7 +151,7 @@ def _collect_phase6_points(
         )
         points.append(
             {
-                "source": "phase6",
+                "source": "benchmark",
                 "policy": policy_dir.name,
                 "label": policy_dir.name,
                 "security_gain": sec,
@@ -326,12 +326,12 @@ def _render(
 
     # Group by source for colour/marker.
     colours = {
-        "phase6": "#9ca3af",
+        "benchmark": "#9ca3af",
         "f9_reward_sweep": "#2563eb",
         "f10_aggressiveness": "#16a34a",
     }
     markers = {
-        "phase6": "s",
+        "benchmark": "s",
         "f9_reward_sweep": "o",
         "f10_aggressiveness": "^",
     }
@@ -399,18 +399,18 @@ def _build_argparser() -> argparse.ArgumentParser:
         description="ablation F12 — security-vs-availability Pareto plot. "
         "Plotter-only (D7.5); reads F9 + F10 + benchmark outputs.",
     )
-    p.add_argument("--phase6-runs", default="runs/benchmark")
-    p.add_argument("--phase7-f9-runs", default="runs/ablation/reward_sweep")
-    p.add_argument("--phase7-f10-runs", default="runs/ablation/aggressiveness")
+    p.add_argument("--benchmark-runs", default="runs/benchmark")
+    p.add_argument("--ablation-reward-runs", default="runs/ablation/reward_sweep")
+    p.add_argument("--ablation-aggressiveness-runs", default="runs/ablation/aggressiveness")
     p.add_argument("--out-dir", default="docs/results/ablation")
     # Step-8 F2 (07_HANDOFF.md §5): explicit upstream-manifest SHA pins.
     p.add_argument(
-        "--phase5-sweep-manifest",
+        "--blue-team-sweep-manifest",
         default="runs/blue_team/sweep_manifest.json",
         help="Blue-Team sweep_manifest.json (warm-start trained checkpoints).",
     )
     p.add_argument(
-        "--phase1-splits-manifest",
+        "--split-splits-manifest",
         default="docs/results/dataset/manifest.json",
         help="dataset-prep splits manifest.json (post-3cd2fb9; SHA 1e99d596...).",
     )
@@ -426,14 +426,14 @@ def main(argv: list[str] | None = None) -> int:
 
     sha_collector: dict[str, str] = {}
     points: list[dict[str, Any]] = []
-    points += _collect_phase6_points(Path(args.phase6_runs), sha_collector)
-    points += _collect_f9_points(Path(args.phase7_f9_runs), sha_collector)
-    points += _collect_f10_points(Path(args.phase7_f10_runs), sha_collector)
-    logger.info("F12: collected %d points (phase6 + F9 + F10)", len(points))
+    points += _collect_benchmark_points(Path(args.benchmark_runs), sha_collector)
+    points += _collect_f9_points(Path(args.ablation_reward_runs), sha_collector)
+    points += _collect_f10_points(Path(args.ablation_aggressiveness_runs), sha_collector)
+    logger.info("F12: collected %d points (benchmark + F9 + F10)", len(points))
 
     if not points:
         logger.error(
-            "F12: no points collected — run phase-6, phase-7-reward, phase-7-aggressiveness first."
+            "F12: no points collected — run benchmark, ablation-reward, ablation-aggressiveness first."
         )
         return 1
 
@@ -447,7 +447,7 @@ def main(argv: list[str] | None = None) -> int:
 
     summary = {
         "schema_version": "1.0",
-        "phase": 7,
+        "stage": "ablation",
         "figure": "F12",
         "n_points_total": len(points),
         "n_frontier_points": len(frontier),
@@ -468,26 +468,26 @@ def main(argv: list[str] | None = None) -> int:
         },
         "inputs": {
             "benchmark_eval_manifest": {
-                "path": str(Path(args.phase6_runs) / "eval_manifest.json"),
-                "sha256": _sha256(Path(args.phase6_runs) / "eval_manifest.json"),
+                "path": str(Path(args.benchmark_runs) / "eval_manifest.json"),
+                "sha256": _sha256(Path(args.benchmark_runs) / "eval_manifest.json"),
             },
-            "phase7_f9_sweep_manifest": {
-                "path": str(Path(args.phase7_f9_runs) / "sweep_manifest.json"),
-                "sha256": _sha256(Path(args.phase7_f9_runs) / "sweep_manifest.json"),
+            "ablation_reward_sweep_manifest": {
+                "path": str(Path(args.ablation_reward_runs) / "sweep_manifest.json"),
+                "sha256": _sha256(Path(args.ablation_reward_runs) / "sweep_manifest.json"),
             },
-            "phase7_f10_sweep_manifest": {
-                "path": str(Path(args.phase7_f10_runs) / "sweep_manifest.json"),
-                "sha256": _sha256(Path(args.phase7_f10_runs) / "sweep_manifest.json"),
+            "ablation_aggressiveness_sweep_manifest": {
+                "path": str(Path(args.ablation_aggressiveness_runs) / "sweep_manifest.json"),
+                "sha256": _sha256(Path(args.ablation_aggressiveness_runs) / "sweep_manifest.json"),
             },
             # Step-8 F2: explicit upstream-manifest SHA pins so the F12
             # hash chain is self-contained (no transitive lookups).
             "blue_team_sweep_manifest": {
-                "path": str(args.phase5_sweep_manifest),
-                "sha256": _sha256(Path(args.phase5_sweep_manifest)),
+                "path": str(args.blue_team_sweep_manifest),
+                "sha256": _sha256(Path(args.blue_team_sweep_manifest)),
             },
-            "phase1_splits_manifest": {
-                "path": str(args.phase1_splits_manifest),
-                "sha256": _sha256(Path(args.phase1_splits_manifest)),
+            "split_splits_manifest": {
+                "path": str(args.split_splits_manifest),
+                "sha256": _sha256(Path(args.split_splits_manifest)),
             },
             "eval_jsonls_sha256": sha_collector,
         },

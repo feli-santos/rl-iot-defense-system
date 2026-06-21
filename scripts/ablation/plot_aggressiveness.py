@@ -267,17 +267,17 @@ def _build_argparser() -> argparse.ArgumentParser:
     )
     # Step-8 F2 (07_HANDOFF.md §5): explicit upstream-manifest SHA pins.
     p.add_argument(
-        "--phase5-sweep-manifest",
+        "--blue-team-sweep-manifest",
         default="runs/blue_team/sweep_manifest.json",
         help="Blue-Team sweep_manifest.json (warm-start trained checkpoints).",
     )
     p.add_argument(
-        "--phase6-eval-manifest",
+        "--benchmark-eval-manifest",
         default="runs/benchmark/eval_manifest.json",
         help="benchmark eval_manifest.json (oracle-rule reference rolls).",
     )
     p.add_argument(
-        "--phase1-splits-manifest",
+        "--split-splits-manifest",
         default="docs/results/dataset/manifest.json",
         help="dataset-prep splits manifest.json (post-3cd2fb9; SHA 1e99d596...).",
     )
@@ -309,7 +309,7 @@ def main(argv: list[str] | None = None) -> int:
     g73 = _evaluate_g73(ppo_rows, rule_rows)
     summary = {
         "schema_version": "1.0",
-        "phase": 7,
+        "stage": "ablation",
         "figure": "F10",
         "p_values": list(args.p_values),
         "ppo_rows": ppo_rows,
@@ -336,16 +336,16 @@ def main(argv: list[str] | None = None) -> int:
             # Step-8 F2: explicit upstream-manifest SHA pins so the
             # F10 hash chain is self-contained (no transitive lookups).
             "blue_team_sweep_manifest": {
-                "path": str(args.phase5_sweep_manifest),
-                "sha256": _sha256(Path(args.phase5_sweep_manifest)),
+                "path": str(args.blue_team_sweep_manifest),
+                "sha256": _sha256(Path(args.blue_team_sweep_manifest)),
             },
             "benchmark_eval_manifest": {
-                "path": str(args.phase6_eval_manifest),
-                "sha256": _sha256(Path(args.phase6_eval_manifest)),
+                "path": str(args.benchmark_eval_manifest),
+                "sha256": _sha256(Path(args.benchmark_eval_manifest)),
             },
-            "phase1_splits_manifest": {
-                "path": str(args.phase1_splits_manifest),
-                "sha256": _sha256(Path(args.phase1_splits_manifest)),
+            "split_splits_manifest": {
+                "path": str(args.split_splits_manifest),
+                "sha256": _sha256(Path(args.split_splits_manifest)),
             },
             "eval_jsonls_sha256": sha_collector,
         },

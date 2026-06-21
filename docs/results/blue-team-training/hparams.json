@@ -19,11 +19,11 @@
       4
     ],
     "examples": [
-      "runs/phase5/a2c/seed_0/run_manifest.json",
-      "runs/phase5/a2c/seed_1/run_manifest.json",
-      "runs/phase5/a2c/seed_2/run_manifest.json",
-      "runs/phase5/a2c/seed_3/run_manifest.json",
-      "runs/phase5/a2c/seed_4/run_manifest.json"
+      "runs/blue_team/a2c/seed_0/run_manifest.json",
+      "runs/blue_team/a2c/seed_1/run_manifest.json",
+      "runs/blue_team/a2c/seed_2/run_manifest.json",
+      "runs/blue_team/a2c/seed_3/run_manifest.json",
+      "runs/blue_team/a2c/seed_4/run_manifest.json"
     ]
   },
   {
@@ -49,11 +49,11 @@
       4
     ],
     "examples": [
-      "runs/phase5/dqn/seed_0/run_manifest.json",
-      "runs/phase5/dqn/seed_1/run_manifest.json",
-      "runs/phase5/dqn/seed_2/run_manifest.json",
-      "runs/phase5/dqn/seed_3/run_manifest.json",
-      "runs/phase5/dqn/seed_4/run_manifest.json"
+      "runs/blue_team/dqn/seed_0/run_manifest.json",
+      "runs/blue_team/dqn/seed_1/run_manifest.json",
+      "runs/blue_team/dqn/seed_2/run_manifest.json",
+      "runs/blue_team/dqn/seed_3/run_manifest.json",
+      "runs/blue_team/dqn/seed_4/run_manifest.json"
     ]
   },
   {
@@ -78,11 +78,11 @@
       4
     ],
     "examples": [
-      "runs/phase5/ppo/seed_0/run_manifest.json",
-      "runs/phase5/ppo/seed_1/run_manifest.json",
-      "runs/phase5/ppo/seed_2/run_manifest.json",
-      "runs/phase5/ppo/seed_3/run_manifest.json",
-      "runs/phase5/ppo/seed_4/run_manifest.json"
+      "runs/blue_team/ppo/seed_0/run_manifest.json",
+      "runs/blue_team/ppo/seed_1/run_manifest.json",
+      "runs/blue_team/ppo/seed_2/run_manifest.json",
+      "runs/blue_team/ppo/seed_3/run_manifest.json",
+      "runs/blue_team/ppo/seed_4/run_manifest.json"
     ]
   }
 ]

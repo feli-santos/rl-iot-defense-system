@@ -1,6 +1,6 @@
 {
   "schema_version": "2.0",
-  "phase": 5,
+  "stage": "blue_team",
   "runs_root": "runs/blue_team",
   "fraction": 0.1,
   "best_algo": "dqn",
@@ -437,7 +437,7 @@
       "description": "no regression on environment-design frozen tests",
       "status": "SKIP",
       "evaluated": false,
-      "note": "evaluated separately by `pytest -q tests/test_phase3_env_gates.py tests/test_adversarial_env.py`"
+      "note": "evaluated separately by `pytest -q tests/test_adversarial_env.py`"
     },
     "G5.7": {
       "description": "F3/F4/T1 manifests exist & hash-pin inputs",

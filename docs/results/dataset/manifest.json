@@ -27,9 +27,9 @@
     "stage_distribution.png": "16d4b2de769e33a469aa7a2262b3a89ed1111f1be66fd79168dc74b44f46d333",
     "dataset_summary.json": "43d9168d56410cdc09d96fbc75a8ba6f84eb48818bc0a82f91675c36d97aa311"
   },
-  "phase": 1,
+  "stage": "dataset",
   "produced_by": "scripts/data/plot_dataset_overview.py",
   "tier": "context",
-  "title": "Phase-1 dataset overview (CICIoT2023, post-rebalance)",
+  "title": "Dataset-Split overview (CICIoT2023, post-rebalance)",
   "_note": "This manifest covers two figures (F0a, F0b) emitted by a single script run. The hash chain on outputs is unchanged from the original single-figure_id manifest produced at git_sha a69846f7. See docs/mentor_review/01_dataset.md §3 Finding 5 for the rationale behind splitting figure_id into figure_ids/figures."
 }

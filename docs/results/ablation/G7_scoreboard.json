@@ -1,6 +1,6 @@
 {
   "schema_version": "2.0",
-  "phase": 7,
+  "stage": "ablation",
   "git_sha": "2b16224c0249c4a84baec244f630ed793c4c3989",
   "completed_at": "2026-06-12T00:03:50Z",
   "summary": {
@@ -22,7 +22,7 @@
     },
     {
       "id": "G7.2",
-      "threshold": "F9 best reward-comparable cell mean test reward > Phase-6 DQN +1336 by \u22651\u03c3 (apples-to-apples; reward-coefficient cells fall back to security-KPI strand per D7.1.1)",
+      "threshold": "F9 best reward-comparable cell mean test reward > Held-Out-Benchmark DQN +1336 by \u22651\u03c3 (apples-to-apples; reward-coefficient cells fall back to security-KPI strand per D7.1.1)",
       "value": "reward-comparable best=impact_is_terminal_false (+278.5); security-KPI best=impact_is_terminal_false (mit=0.850); meets_oracle_stretch=False",
       "status": "FAIL-WITH-FINDING",
       "finding_id": "D7.1.1",

@@ -195,7 +195,7 @@ def evaluate(runs_root: Path, out_dir: Path, fraction: float = 0.10) -> dict[str
 
     scoreboard = {
         "schema_version": "2.0",
-        "phase": 5,
+        "stage": "blue_team",
         "runs_root": str(runs_root),
         "fraction": fraction,
         "best_algo": best_algo,
@@ -238,7 +238,7 @@ def evaluate(runs_root: Path, out_dir: Path, fraction: float = 0.10) -> dict[str
                 "description": "no regression on environment-design frozen tests",
                 "status": "SKIP",
                 "evaluated": False,
-                "note": "evaluated separately by `pytest -q tests/test_phase3_env_gates.py tests/test_adversarial_env.py`",
+                "note": "evaluated separately by `pytest -q tests/test_adversarial_env.py`",
             },
             "G5.7": {
                 "description": "F3/F4/T1 manifests exist & hash-pin inputs",

@@ -74,7 +74,7 @@ def build_summary(sweep_root: str) -> dict[str, Any]:
             if not run["ok"]:
                 continue
             run_dir = Path(run["out_dir"])
-            # Handle symlinks to phase5_primary or reused_from.txt
+            # Handle symlinks to blue_team_primary or reused_from.txt
             reused_txt = run_dir / "reused_from.txt"
             if not (run_dir / "eval.jsonl").exists() and reused_txt.exists():
                 run_dir = Path(reused_txt.read_text().strip())

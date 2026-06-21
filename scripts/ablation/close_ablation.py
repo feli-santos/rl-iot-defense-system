@@ -564,7 +564,7 @@ def _write_scoreboard(
 
     payload = {
         "schema_version": "2.0",
-        "phase": 7,
+        "stage": "ablation",
         "git_sha": _git_sha(),
         "completed_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "summary": {

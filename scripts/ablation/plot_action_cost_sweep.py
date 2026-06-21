@@ -80,7 +80,7 @@ def build_summary(
             if not run["ok"]:
                 continue
             run_dir = Path(run["out_dir"])
-            # Handle symlinks to phase5_primary
+            # Handle symlinks to blue_team_primary
             if not run_dir.exists() and (run_dir / "reused_from.txt").exists():
                 run_dir = Path((run_dir / "reused_from.txt").read_text().strip())
             all_rewards.extend(_read_final_rewards(run_dir))

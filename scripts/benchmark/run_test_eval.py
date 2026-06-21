@@ -18,7 +18,7 @@ Usage::
     python -m scripts.benchmark.run_test_eval \\
         [--algos dqn ppo a2c] [--seeds 0 1 2 3 4] \\
         [--n-episodes 30] \\
-        [--phase5-runs-root runs/blue_team] \\
+        [--blue-team-runs-root runs/blue_team] \\
         [--out-root runs/benchmark] \\
         [--rf-path artifacts/detector/random_forest.joblib] \\
         [--smoke]
@@ -35,7 +35,7 @@ Total: ~1200 episodes, expected wallclock < 10 minutes on Apple silicon
 CPU with the production env (max_steps=100).
 
 The sweeper deliberately does NOT use subprocesses (cf. Blue-Team Training's
-``run_phase5.py``): we do not need clean PyTorch state per run because
+trainer): we do not need clean PyTorch state per run because
 no training happens, and a single-process sweep produces hashable
 ``runs/benchmark/eval_manifest.json`` in one atomic write.
 
@@ -296,7 +296,7 @@ def _build_argparser() -> argparse.ArgumentParser:
         help="Episodes per deterministic baseline (D6.3); single seed.",
     )
     p.add_argument(
-        "--phase5-runs-root",
+        "--blue-team-runs-root",
         default="runs/blue_team",
         help="Where the trained Blue-Team model.zip files live.",
     )
@@ -392,7 +392,7 @@ def _roll_trained(
     """
     # Prefer the best-eval checkpoint (written by the training EvalCallback);
     # fall back to the last-model checkpoint for pre-early-stop runs.
-    run_root = Path(args.phase5_runs_root) / algo / f"seed_{seed}"
+    run_root = Path(args.blue_team_runs_root) / algo / f"seed_{seed}"
     best_path = run_root / "best_model.zip"
     model_path = best_path if best_path.exists() else run_root / "model.zip"
     out_dir = Path(args.out_root) / algo / f"seed_{seed}"
@@ -683,7 +683,7 @@ def main(argv: list[str] | None = None) -> int:
 
     eval_manifest = {
         "schema_version": "1.1",
-        "phase": 6,
+        "stage": "benchmark",
         "kind": "eval_manifest",
         "git_sha": _git_sha(),
         "started_at": datetime.fromtimestamp(t_start, tz=timezone.utc).strftime(
@@ -708,7 +708,7 @@ def main(argv: list[str] | None = None) -> int:
     manifest_path = out_root / "eval_manifest.json"
     manifest_path.write_text(json.dumps(eval_manifest, indent=2))
     logger.info(
-        "phase-6 eval sweep done: %d ok / %d failed in %.1fs; manifest -> %s",
+        "benchmark eval sweep done: %d ok / %d failed in %.1fs; manifest -> %s",
         eval_manifest["n_ok"],
         eval_manifest["n_failed"],
         eval_manifest["wallclock_seconds"],

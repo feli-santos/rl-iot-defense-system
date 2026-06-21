@@ -1,6 +1,6 @@
 {
   "schema_version": "2.0",
-  "phase": 4,
+  "stage": "stage_detector",
   "git_sha": "99b2452b0602734aabd20841f04526f4341b8a5b",
   "completed_at": "2026-05-07T13:37:32Z",
   "evaluated_against": {
@@ -23,10 +23,10 @@
       "id": "G4.1",
       "description": "full pytest suite green",
       "threshold": "all tests green",
-      "value": "329 / 329 (Phase-4 lock; post-Phase-10 cleanup: 411/411 at HEAD; see Step-7 \u00a79 footnote)",
+      "value": "329 / 329 (Stage-Detector lock; post-cleanup: 411/411 at HEAD; see Step-7 \u00a79 footnote)",
       "status": "SKIP",
       "evaluated": false,
-      "note": "evaluated separately by `pytest -q`; locked Phase-4 value preserved verbatim from RESULTS.md \u00a72"
+      "note": "evaluated separately by `pytest -q`; locked Stage-Detector value preserved verbatim from RESULTS.md \u00a72"
     },
     {
       "id": "G4.2",

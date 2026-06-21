@@ -95,7 +95,7 @@ BLUE_TEAM_TIMESTEPS     ?= 250000
 BLUE_TEAM_SEEDS         ?= 0 1 2 3 4 5 6 7 8 9
 BLUE_TEAM_ALGOS         ?= dqn ppo a2c
 BLUE_TEAM_PARALLEL      ?= 1
-BLUE_TEAM_IMPACT_TERM   ?= false  # Phase 4 primary contract: false (locked)
+BLUE_TEAM_IMPACT_TERM   ?= false  # Blue-Team Training primary contract: false (locked)
 # JSON forwarded to train_agent --reward-overrides, e.g. {"aliasing_rate":0.2}
 BLUE_TEAM_REWARD_OVERRIDES ?=
 
@@ -149,7 +149,6 @@ BENCHMARK_N_DET_EPISODES ?= 300
 BENCHMARK_RF_PATH ?= artifacts/detector/random_forest.joblib
 # Proximity-coupled escalation regime: no fixed attacker budget. Escalation
 # pressure scales with proximity to IMPACT (sigma_min=0.4, lambda=stage/4).
-BENCHMARK_ATTACKER_BUDGET ?=
 
 .PHONY: benchmark-smoke
 benchmark-smoke:  ## Benchmark smoke: 1 algo × 1 seed × 2 ep + 2 ep / baseline (~20 s CPU).
@@ -162,10 +161,9 @@ benchmark-eval:  ## Benchmark: roll blue-team checkpoints + 5 baselines on test_
 	    --algos $(BLUE_TEAM_ALGOS) --seeds $(BLUE_TEAM_SEEDS) \
 	    --n-episodes $(BENCHMARK_N_EPISODES) \
 	    --n-deterministic-episodes $(BENCHMARK_N_DET_EPISODES) \
-	    --phase5-runs-root $(BLUE_TEAM_RUNS_ROOT) \
+	    --blue-team-runs-root $(BLUE_TEAM_RUNS_ROOT) \
 	    --out-root $(BENCHMARK_RUNS_ROOT) \
-	    --rf-path $(BENCHMARK_RF_PATH) \
-	    $(if $(BENCHMARK_ATTACKER_BUDGET),--attacker-budget $(BENCHMARK_ATTACKER_BUDGET),)
+	    --rf-path $(BENCHMARK_RF_PATH)
 
 .PHONY: benchmark
 benchmark: benchmark-eval  ## Benchmark: full eval sweep from frozen blue-team checkpoints.
@@ -180,7 +178,6 @@ ABLATION_OOD_N_EPISODES  ?= 30
 ABLATION_OOD_N_DET_EPISODES ?= 300
 # Commensurability: the OOD eval MUST run at the same operating point as the
 # held-out benchmark, else OOD reward is on an incomparable (unbounded) axis.
-ABLATION_OOD_ATTACKER_BUDGET ?= $(BENCHMARK_ATTACKER_BUDGET)
 ABLATION_OOD_REWARD_MODE ?= outcome
 
 .PHONY: ablation-ood-smoke
@@ -196,10 +193,9 @@ ablation-ood-eval:  ## Ablation: zero-day OOD eval, 10 held-out classes × 8 pol
 	    --seeds $(BLUE_TEAM_SEEDS) \
 	    --n-episodes $(ABLATION_OOD_N_EPISODES) \
 	    --n-deterministic-episodes $(ABLATION_OOD_N_DET_EPISODES) \
-	    --phase5-runs $(BLUE_TEAM_RUNS_ROOT) \
+	    --blue-team-runs $(BLUE_TEAM_RUNS_ROOT) \
 	    --out-root $(ABLATION_OOD_RUNS_ROOT) \
 	    --reward-mode $(ABLATION_OOD_REWARD_MODE) \
-	    $(if $(ABLATION_OOD_ATTACKER_BUDGET),--attacker-budget $(ABLATION_OOD_ATTACKER_BUDGET),) \
 	    --rf-path $(BENCHMARK_RF_PATH)
 
 .PHONY: ablation-ood-figure
@@ -217,14 +213,12 @@ ablation-ood: ablation-ood-eval ablation-ood-figure  ## Ablation F15: full OOD e
 # Coupled-vs-decoupled reward ablation (the reward-design control)
 ABLATION_COUPLING_RUNS_ROOT ?= runs/ablation/reward_coupling
 ABLATION_COUPLING_TIMESTEPS ?= 1000000
-ABLATION_COUPLING_ATTACKER_BUDGET ?= $(BENCHMARK_ATTACKER_BUDGET)
 
 .PHONY: ablation-reward-coupling-smoke
 ablation-reward-coupling-smoke:  ## Coupling smoke: coupled+outcome × 1 algo × 1 seed × 5K (~1 min).
 	$(PYTHON) -m scripts.ablation.run_reward_coupling \
 	    --smoke \
-	    --out-root $(ABLATION_COUPLING_RUNS_ROOT) \
-	    $(if $(ABLATION_COUPLING_ATTACKER_BUDGET),--attacker-budget $(ABLATION_COUPLING_ATTACKER_BUDGET),)
+	    --out-root $(ABLATION_COUPLING_RUNS_ROOT)
 
 .PHONY: ablation-reward-coupling-sweep
 ablation-reward-coupling-sweep:  ## Coupling: {coupled,outcome} × 3 algos × 10 seeds + RF-Acting (~6 h CPU).
@@ -233,7 +227,6 @@ ablation-reward-coupling-sweep:  ## Coupling: {coupled,outcome} × 3 algos × 10
 	    --total-timesteps $(ABLATION_COUPLING_TIMESTEPS) \
 	    --out-root $(ABLATION_COUPLING_RUNS_ROOT) \
 	    --parallel $(ABLATION_PARALLEL) \
-	    $(if $(ABLATION_COUPLING_ATTACKER_BUDGET),--attacker-budget $(ABLATION_COUPLING_ATTACKER_BUDGET),) \
 	    --continue-on-failure
 
 .PHONY: ablation-reward-coupling-figure
@@ -277,8 +270,8 @@ ablation-aggressiveness: ablation-aggressiveness-sweep ablation-aggressiveness-f
 .PHONY: ablation-pareto
 ablation-pareto:  ## Ablation F12: render Pareto plot from F10 + benchmark outputs.
 	$(PYTHON) -m scripts.ablation.plot_pareto \
-	    --phase6-runs $(BENCHMARK_RUNS_ROOT) \
-	    --phase7-f10-runs $(ABLATION_AGGR_RUNS_ROOT) \
+	    --benchmark-runs $(BENCHMARK_RUNS_ROOT) \
+	    --ablation-aggressiveness-runs $(ABLATION_AGGR_RUNS_ROOT) \
 	    --out-dir $(ABLATION_OUT_DIR)
 
 # Close (G7 scoreboard + RESULTS.md)

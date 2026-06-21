@@ -21,9 +21,9 @@
       "path": "runs/blue_team/sweep_manifest.json",
       "sha256": null
     },
-    "phase1_splits_manifest": {
+    "split_splits_manifest": {
       "path": "docs/results/dataset/manifest.json",
-      "sha256": "e5c23ff994c59cf1e71fb05da46f2e75b573b6593ce582f1ac0a3af66ff58de1"
+      "sha256": "3be6590bfecb42dc2ee8424085c33a69088e05d6f7ab2e165f24009eff5d530b"
     },
     "eval_jsonls_sha256": {
       "runs/ablation/ood/VulnerabilityScan/recommended_action/seed_0/eval_test.jsonl": "fd6e53d6899eceb9bd0cf2faf14d443d7f455d8ff5ed59c254fd9116b0372f9e",

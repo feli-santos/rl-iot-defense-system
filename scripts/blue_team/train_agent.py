@@ -288,7 +288,7 @@ def train(cfg: BlueTeamRunConfig, *, verbose: int = 0) -> dict[str, Any]:
     out_dir.mkdir(parents=True, exist_ok=True)
 
     logger.info(
-        "phase-5 train: algo=%s seed=%d total_timesteps=%d out_dir=%s",
+        "blue-team train: algo=%s seed=%d total_timesteps=%d out_dir=%s",
         cfg.algo,
         cfg.seed,
         cfg.total_timesteps,
@@ -423,7 +423,7 @@ def train(cfg: BlueTeamRunConfig, *, verbose: int = 0) -> dict[str, Any]:
         sb3_eval_env.close()
 
     logger.info(
-        "phase-5 train done: wallclock=%.1fs episodes_train=%d episodes_eval=%d",
+        "blue-team train done: wallclock=%.1fs episodes_train=%d episodes_eval=%d",
         wallclock,
         n_train_episodes,
         n_eval_episodes,

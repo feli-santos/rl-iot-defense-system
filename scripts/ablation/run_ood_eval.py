@@ -22,7 +22,7 @@ Usage::
         [--ood-classes DDoS-HTTP_Flood Mirai-udpplain VulnerabilityScan XSS] \\
         [--policies rule rf_acting dqn ppo a2c random always_observe always_block] \\
         [--n-episodes 30] [--seeds 0 1 2 3 4] \\
-        [--phase5-runs runs/blue_team] [--out-root runs/ablation/ood] \\
+        [--blue-team-runs runs/blue_team] [--out-root runs/ablation/ood] \\
         [--rf-path artifacts/detector/random_forest.joblib] \\
         [--smoke]
 
@@ -358,7 +358,7 @@ def _build_argparser() -> argparse.ArgumentParser:
         help="Episodes per (ood_class, deterministic_baseline) cell (single seed=0).",
     )
     p.add_argument(
-        "--phase5-runs",
+        "--blue-team-runs",
         default="runs/blue_team",
         help="Where the trained Blue-Team model.zip files live.",
     )
@@ -411,7 +411,7 @@ def _build_argparser() -> argparse.ArgumentParser:
         default="artifacts/detector/random_forest.joblib",
     )
     p.add_argument(
-        "--phase6-eval-manifest",
+        "--benchmark-eval-manifest",
         default="runs/benchmark/eval_manifest.json",
         help="Upstream benchmark eval manifest, hash-pinned in the F15 manifest "
         "for the SHA-256 reproducibility chain (D7.7).",
@@ -444,7 +444,7 @@ def _roll_rl(
     """One (ood_class, RL_algo, seed) cell."""
     # Prefer the best-eval checkpoint (training EvalCallback); fall back to the
     # last-model checkpoint for pre-early-stop runs.
-    _run_root = Path(args.phase5_runs) / algo / f"seed_{seed}"
+    _run_root = Path(args.blue_team_runs) / algo / f"seed_{seed}"
     _best = _run_root / "best_model.zip"
     model_path = _best if _best.exists() else _run_root / "model.zip"
     out_dir = Path(args.out_root) / ood_class / algo / f"seed_{seed}"
@@ -723,8 +723,8 @@ def main(argv: list[str] | None = None) -> int:
     splits_manifest = Path(args.splits_manifest)
     scaler_path = Path(args.dataset_path) / "scaler.joblib"
     rf_path = Path(args.rf_path)
-    blue_team_sweep_manifest = Path(args.phase5_runs) / "sweep_manifest.json"
-    benchmark_eval_manifest = Path(args.phase6_eval_manifest)
+    blue_team_sweep_manifest = Path(args.blue_team_runs) / "sweep_manifest.json"
+    benchmark_eval_manifest = Path(args.benchmark_eval_manifest)
 
     _manifest_spec = _ood_eval_env_spec(
         reward_mode=getattr(args, "reward_mode", "outcome"),
@@ -736,7 +736,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     eval_manifest = {
         "schema_version": "1.0",
-        "phase": 7,
+        "stage": "ablation",
         "kind": "f15_ood_eval_manifest",
         "audit_finding": "AF1 — promote OOD-class robustness to Tier-1 "
         "deliverable (2026-04-30 mentor audit).",

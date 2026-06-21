@@ -11,11 +11,11 @@
       "path": "runs/benchmark/eval_manifest.json",
       "sha256": "5c15cd7869a095dd122a547e3300ce4374d1e586e5014d1e9ef1ece397c93765"
     },
-    "phase7_f9_sweep_manifest": {
+    "ablation_reward_sweep_manifest": {
       "path": "runs/ablation/reward_sweep/sweep_manifest.json",
       "sha256": "825dbfe068feaa2a283cf13cc179dde53eed70fcf385749b14b743e54c0a4879"
     },
-    "phase7_f10_sweep_manifest": {
+    "ablation_aggressiveness_sweep_manifest": {
       "path": "runs/ablation/aggressiveness/sweep_manifest.json",
       "sha256": "ec9c0d93ded0f316463085f6015c045ff68210240915c012d1fe2db55daefc3a"
     },
@@ -23,9 +23,9 @@
       "path": "runs/blue_team/sweep_manifest.json",
       "sha256": "837fa46125bf13fa8c53e18b7d904b72a9afba6a4a23cf53059cf7af4c755773"
     },
-    "phase1_splits_manifest": {
+    "split_splits_manifest": {
       "path": "docs/results/dataset/manifest.json",
-      "sha256": "e5c23ff994c59cf1e71fb05da46f2e75b573b6593ce582f1ac0a3af66ff58de1"
+      "sha256": "3be6590bfecb42dc2ee8424085c33a69088e05d6f7ab2e165f24009eff5d530b"
     },
     "eval_jsonls_sha256": {
       "runs/benchmark/a2c/seed_0/eval_test.jsonl": "b343a02da3976a6502a2c7be8789d6938aab9afa9f1814951938d540c33b326e",

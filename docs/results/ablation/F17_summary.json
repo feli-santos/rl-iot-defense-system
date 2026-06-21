@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "phase": 7,
+  "stage": "ablation",
   "figure": "F17",
   "attacker_budget": 40,
   "evasion_values": [

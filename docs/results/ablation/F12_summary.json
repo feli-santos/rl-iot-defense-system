@@ -1,12 +1,12 @@
 {
   "schema_version": "1.0",
-  "phase": 7,
+  "stage": "ablation",
   "figure": "F12",
   "n_points_total": 32,
   "n_frontier_points": 7,
   "points": [
     {
-      "source": "phase6",
+      "source": "benchmark",
       "policy": "a2c",
       "label": "a2c",
       "security_gain": 0.5966666666666667,
@@ -14,7 +14,7 @@
       "n_episodes": 300
     },
     {
-      "source": "phase6",
+      "source": "benchmark",
       "policy": "always_block",
       "label": "always_block",
       "security_gain": 1.0,
@@ -22,7 +22,7 @@
       "n_episodes": 300
     },
     {
-      "source": "phase6",
+      "source": "benchmark",
       "policy": "always_observe",
       "label": "always_observe",
       "security_gain": 0.0,
@@ -30,7 +30,7 @@
       "n_episodes": 300
     },
     {
-      "source": "phase6",
+      "source": "benchmark",
       "policy": "dqn",
       "label": "dqn",
       "security_gain": 0.5366666666666666,
@@ -38,7 +38,7 @@
       "n_episodes": 300
     },
     {
-      "source": "phase6",
+      "source": "benchmark",
       "policy": "ppo",
       "label": "ppo",
       "security_gain": 0.32999999999999996,
@@ -46,7 +46,7 @@
       "n_episodes": 300
     },
     {
-      "source": "phase6",
+      "source": "benchmark",
       "policy": "random",
       "label": "random",
       "security_gain": 0.13666666666666671,
@@ -54,7 +54,7 @@
       "n_episodes": 300
     },
     {
-      "source": "phase6",
+      "source": "benchmark",
       "policy": "recommended_action",
       "label": "recommended_action",
       "security_gain": 1.0,
@@ -62,7 +62,7 @@
       "n_episodes": 300
     },
     {
-      "source": "phase6",
+      "source": "benchmark",
       "policy": "rf_acting",
       "label": "rf_acting",
       "security_gain": 0.9733333333333334,
