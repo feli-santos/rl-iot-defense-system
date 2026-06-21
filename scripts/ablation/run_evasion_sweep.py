@@ -1,8 +1,8 @@
 """ablation F17 — Evasion-reactive sweep driver (prevention pivot).
 
 Sweeps ``evasion_prob ∈ {0.0, 0.25, 0.5, 0.75}`` × PPO only × N seeds ×
-250K timesteps, all at the locked ``attacker_budget=40`` and the primary
-``impact_is_terminal=False`` contract. Total: 4 × N runs.
+250K timesteps, all under the primary ``impact_is_terminal=False`` contract.
+Total: 4 × N runs.
 
 ``evasion_prob`` models an *evasive* attacker (adversarial_env.py
 "evasion-before-commit"): when the defender has recently applied force
@@ -12,7 +12,7 @@ progressing — coupling the attacker's transition to the defender's action.
 At ``evasion_prob=0`` this reduces to the standard Markov attacker.
 
 The cell at each evasion level both TRAINS PPO and EVALUATES it on
-``test_balanced`` under the SAME evasion_prob + budget, so the curve shows
+``test_balanced`` under the SAME evasion_prob, so the curve shows
 how a defender that must train against an evasive attacker fares as the
 evasion coupling strengthens.
 
@@ -53,7 +53,6 @@ logger = logging.getLogger("scripts.ablation.run_evasion_sweep")
 _ROOT = Path(__file__).resolve().parents[2]
 
 _DEFAULT_EVASION_VALUES: list[float] = [0.0, 0.25, 0.5, 0.75]
-_LOCKED_ATTACKER_BUDGET = 40
 
 
 def _sha256(path: Path) -> str | None:
@@ -88,7 +87,7 @@ def _e_slug(e: float) -> str:
 
 
 def _overrides_json(e: float) -> str:
-    return json.dumps({"attacker_budget": _LOCKED_ATTACKER_BUDGET, "evasion_prob": e})
+    return json.dumps({"evasion_prob": e})
 
 
 # --------------------------------------------------------------------- per-cell
@@ -116,8 +115,6 @@ def _train_ppo(args: argparse.Namespace, e: float, seed: int) -> dict[str, Any]:
         str(args.n_eval_episodes),
         "--out-dir",
         str(out_dir),
-        "--generator-path",
-        args.generator_path,
         "--dataset-path",
         args.dataset_path,
         "--splits-manifest",
@@ -166,7 +163,6 @@ def _train_ppo(args: argparse.Namespace, e: float, seed: int) -> dict[str, Any]:
     return {
         "kind": "ppo",
         "evasion_prob": e,
-        "attacker_budget": _LOCKED_ATTACKER_BUDGET,
         "seed": seed,
         "ok_train": ok,
         "ok_test_eval": test_eval_ok,
@@ -191,7 +187,7 @@ def _eval_ppo_on_test(
     """Roll the trained PPO at this evasion_prob on test_balanced.
 
     Reads the just-finished run's ``run_manifest.json`` to mirror the
-    training-time env shape (window_size, max_steps, budget, evasion) so
+    training-time env shape (window_size, max_steps, evasion) so
     the trained model's observation space matches the eval env's.
     """
     run_manifest_path = out_dir / "run_manifest.json"
@@ -199,22 +195,19 @@ def _eval_ppo_on_test(
         manifest = json.loads(run_manifest_path.read_text())
         spec = EnvConfigSerializable(**manifest["eval_env"])
         spec.split = "test_balanced"
-        # Belt-and-braces: ensure the eval cell carries budget + evasion even
-        # if the manifest round-trip dropped them (caveat C10 metadata gap).
-        spec.attacker_budget = _LOCKED_ATTACKER_BUDGET
+        # Belt-and-braces: ensure the eval cell carries evasion even
+        # if the manifest round-trip dropped it (caveat C10 metadata gap).
         spec.evasion_prob = e
         spec.impact_is_terminal = False
     else:
         spec = EnvConfigSerializable(
             split="test_balanced",
             exclude_ood=True,
-            attacker_budget=_LOCKED_ATTACKER_BUDGET,
             evasion_prob=e,
             impact_is_terminal=False,
         )
     env = make_eval_env(
         spec=spec,
-        generator_path=args.generator_path,
         dataset_path=args.dataset_path,
         splits_manifest=args.splits_manifest,
         seed=seed,
@@ -246,7 +239,7 @@ def _eval_ppo_on_test(
 
 def _build_argparser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
-        description="ablation F17 — evasion-reactive sweep (budget=40).",
+        description="ablation F17 — evasion-reactive sweep.",
     )
     p.add_argument(
         "--evasion-values",
@@ -260,7 +253,6 @@ def _build_argparser() -> argparse.ArgumentParser:
     p.add_argument("--n-eval-episodes", type=int, default=300)
     p.add_argument("--out-root", default="runs/ablation/evasion")
     p.add_argument("--parallel", type=int, default=1)
-    p.add_argument("--generator-path", default="artifacts/generator/red_team")
     p.add_argument(
         "--dataset-path",
         default="data/processed/ciciot2023",
@@ -287,11 +279,10 @@ def main(argv: list[str] | None = None) -> int:
     cells = [(e, seed) for e in args.evasion_values for seed in args.seeds]
     n_workers = max(1, int(args.parallel))
     logger.info(
-        "F17 evasion sweep: %d evasion × %d seeds = %d runs (budget=%d, %d worker(s))",
+        "F17 evasion sweep: %d evasion × %d seeds = %d runs (%d worker(s))",
         len(args.evasion_values),
         len(args.seeds),
         len(cells),
-        _LOCKED_ATTACKER_BUDGET,
         n_workers,
     )
 
@@ -331,7 +322,6 @@ def main(argv: list[str] | None = None) -> int:
         "figure": "F17",
         "git_sha": _git_sha(),
         "created_utc": datetime.now(timezone.utc).isoformat(),
-        "attacker_budget": _LOCKED_ATTACKER_BUDGET,
         "evasion_values": list(args.evasion_values),
         "seeds": list(args.seeds),
         "total_timesteps": args.total_timesteps,

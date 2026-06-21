@@ -41,10 +41,6 @@ def _build_env(tmp_path: Path, *, config_overrides: Iterable[tuple] = ()) -> Adv
     That stresses the env's lifecycle (the agent must survive frequent
     BENIGN <-> RECON jitter and occasional fast escalations).
     """
-    # Ignored generator-path dir (attacker is now a first-order Markov chain)
-    generator_path = tmp_path / "gen"
-    generator_path.mkdir(parents=True, exist_ok=True)
-
     # Dataset (100 rows × 8 features, 20 rows per stage)
     dataset_path = tmp_path / "ds"
     dataset_path.mkdir(parents=True, exist_ok=True)
@@ -60,7 +56,7 @@ def _build_env(tmp_path: Path, *, config_overrides: Iterable[tuple] = ()) -> Adv
     env_cfg = AdversarialEnvConfig()
     for k, v in config_overrides:
         setattr(env_cfg, k, v)
-    return AdversarialIoTEnv(generator_path, dataset_path, config=env_cfg)
+    return AdversarialIoTEnv(dataset_path, config=env_cfg)
 
 
 @pytest.fixture(scope="module")
@@ -153,7 +149,8 @@ class TestG3_1_RegressionTests:  # noqa: N801
 
     def test_recommended_action_yields_positive_reward_per_step(self, env_factory):
         """B2 fix: picking the recommended action earns net-positive reward."""
-        env = env_factory()
+        # B2 proportionality shaping lives in the coupled reward contract.
+        env = env_factory(reward_mode="proportional")
         # Force the env to BENIGN, then call the reward function directly.
         env.reset(seed=0)
         # Action == recommended for every stage should always be net-positive.
@@ -171,7 +168,8 @@ class TestG3_1_RegressionTests:  # noqa: N801
     def test_underreaction_on_impact_yields_negative_reward(self, env_factory):
         """B2/guardrail: picking OBSERVE on IMPACT (via _calculate_reward, not
         _step_at_impact) must net negative."""
-        env = env_factory()
+        # B2/guardrail penalties live in the coupled reward contract.
+        env = env_factory(reward_mode="proportional")
         env.reset(seed=0)
         r = env._calculate_reward(action=0, previous_stage=KillChainStage.IMPACT.value)
         assert r < 0, f"underreaction at IMPACT scored {r:+.2f}; expected negative"

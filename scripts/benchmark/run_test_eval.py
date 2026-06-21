@@ -140,30 +140,24 @@ def _load_sb3_model(algo: str, model_path: Path, env: Any) -> Any:
 
 
 def _eval_env_spec(
-    attacker_budget: int | None = None,
     reward_mode: str = "outcome",
     *,
     aliasing_rate: float = 0.0,
     session_coherent: bool = False,
     no_post_transition_leak: bool = False,
-    proximity_coupled: bool = False,
+    proximity_coupled: bool = True,
     proximity_min_escalation: float = 0.4,
 ) -> EnvConfigSerializable:
     """benchmark eval env spec: held-out test_balanced split (D6.2).
 
     Reward-shaping fields stay at the environment-design frozen defaults; only the
-    split changes vs. blue-team's ``val_balanced`` eval.
+    split changes vs. Blue-Team's ``val_balanced`` eval.
 
     ``impact_is_terminal=False`` is set explicitly to match the training
     contract: agents are trained with ``impact_is_terminal=False`` (the primary
     reward contract), so the eval env must terminate IMPACT the same way.
     Without this the eval env would default to ``True`` and silently evaluate
     under a different terminal contract than training.
-
-    ``attacker_budget`` (default ``None`` = unbounded) makes the benchmark eval
-    contract match the training contract under the finite-budget MDP. It must be
-    set to the same value the agents were trained with (e.g. 40); ``None``
-    recovers the unbounded ``compromise_rate``=1.0 control cell.
 
     ``reward_mode`` MUST match the training contract too (the primary deployment
     contract is ``"outcome"``). If agents were trained ``outcome`` but evaluated
@@ -176,14 +170,12 @@ def _eval_env_spec(
     ``proximity_min_escalation``) MUST match the training contract: agents trained
     under observation aliasing / proximity-coupled dynamics must be benchmarked on
     the same regime, or the held-out reward measures a different (easier or harder)
-    MDP than the one optimised. Defaults reproduce the legacy fully-observable
-    budget regime.
+    MDP than the one optimised.
     """
     return EnvConfigSerializable(
         split="test_balanced",
         exclude_ood=True,
         impact_is_terminal=False,
-        attacker_budget=attacker_budget,
         reward_mode=reward_mode,
         aliasing_rate=aliasing_rate,
         session_coherent=session_coherent,
@@ -199,7 +191,6 @@ _BENCHMARK_PARITY_FIELDS = (
     "exclude_ood",
     "impact_is_terminal",
     "reward_mode",
-    "attacker_budget",
     "tug_of_war",
     "p_onset",
     "p_onset_access",
@@ -218,7 +209,6 @@ _BENCHMARK_PARITY_FIELDS = (
 def _eval_env_spec_from_args(args: argparse.Namespace) -> EnvConfigSerializable:
     """Build the eval env spec from CLI args, threading the redesign contract."""
     return _eval_env_spec(
-        getattr(args, "attacker_budget", None),
         reward_mode=getattr(args, "reward_mode", "outcome"),
         aliasing_rate=getattr(args, "aliasing_rate", 0.0),
         session_coherent=getattr(args, "session_coherent", False),
@@ -248,8 +238,7 @@ def _assert_train_eval_contract(
     if not manifest_path.exists():
         # Pre-manifest checkpoint; nothing to check against. Warn, don't fail.
         logger.warning(
-            "no run_manifest.json under %s; cannot verify train/eval contract "
-            "for %s seed %d",
+            "no run_manifest.json under %s; cannot verify train/eval contract " "for %s seed %d",
             run_root,
             algo,
             seed,
@@ -278,7 +267,6 @@ def _build_eval_env(args: argparse.Namespace, seed: int | None = None) -> Any:
     """Build a fresh eval env on test_balanced for one rollout."""
     return make_eval_env(
         spec=_eval_env_spec_from_args(args),
-        generator_path=args.generator_path,
         dataset_path=args.dataset_path,
         splits_manifest=args.splits_manifest,
         seed=seed,
@@ -313,16 +301,6 @@ def _build_argparser() -> argparse.ArgumentParser:
         help="Where the trained blue-team model.zip files live.",
     )
     p.add_argument("--out-root", default="runs/benchmark")
-    p.add_argument(
-        "--attacker-budget",
-        type=int,
-        default=None,
-        help=(
-            "Finite attacker budget for the eval env (must match the value the "
-            "agents were trained with, e.g. 40). Default None = unbounded "
-            "(recovers the compromise_rate=1.0 control)."
-        ),
-    )
     p.add_argument(
         "--reward-mode",
         default="outcome",
@@ -360,10 +338,6 @@ def _build_argparser() -> argparse.ArgumentParser:
         type=float,
         default=0.4,
         help="Floor on proximity-scaled escalation; MUST match training. Default 0.4.",
-    )
-    p.add_argument(
-        "--generator-path",
-        default="artifacts/generator/red_team",
     )
     p.add_argument(
         "--dataset-path",
@@ -723,13 +697,9 @@ def main(argv: list[str] | None = None) -> int:
             "scaler": _sha256(scaler_path),
             "rf_model": _sha256(rf_path),
         },
-        # C10 fix: serialise the *actual* eval spec used (built with the
-        # --attacker-budget that was passed), via asdict() so every
-        # EnvConfigSerializable field — attacker_budget, evasion_prob,
-        # impact_is_terminal, … — is faithfully recorded. Previously this block
-        # was hand-rolled from bare _eval_env_spec() (no budget arg) and listed
-        # only 7 fields, so attacker_budget/evasion_prob/impact_is_terminal read
-        # back as absent/None even when a finite budget was applied.
+        # C10 fix: serialise the *actual* eval spec used, via asdict() so every
+        # EnvConfigSerializable field — evasion_prob, impact_is_terminal,
+        # proximity_coupled, … — is faithfully recorded.
         "eval_env": dataclasses.asdict(_eval_env_spec_from_args(args)),
         "runs": results,
         "n_ok": sum(1 for r in results if r.get("ok")),

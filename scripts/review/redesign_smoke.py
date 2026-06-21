@@ -44,24 +44,47 @@ _ROOT = Path(__file__).resolve().parents[2]
 
 _RL_HPARAMS = {
     "recurrent_ppo": dict(
-        learning_rate=3e-4, n_steps=128, batch_size=64, n_epochs=10,
-        gamma=0.99, gae_lambda=0.95, ent_coef=0.01, vf_coef=0.5,
+        learning_rate=3e-4,
+        n_steps=128,
+        batch_size=64,
+        n_epochs=10,
+        gamma=0.99,
+        gae_lambda=0.95,
+        ent_coef=0.01,
+        vf_coef=0.5,
         max_grad_norm=0.5,
     ),
     "ppo": dict(
-        learning_rate=3e-4, n_steps=2048, batch_size=64, n_epochs=10,
-        gamma=0.99, gae_lambda=0.95, ent_coef=0.01, vf_coef=0.5,
+        learning_rate=3e-4,
+        n_steps=2048,
+        batch_size=64,
+        n_epochs=10,
+        gamma=0.99,
+        gae_lambda=0.95,
+        ent_coef=0.01,
+        vf_coef=0.5,
         max_grad_norm=0.5,
     ),
     "dqn": dict(
-        learning_rate=1e-3, buffer_size=50000, learning_starts=1000,
-        batch_size=32, tau=1.0, gamma=0.99, target_update_interval=1000,
-        exploration_fraction=0.1, exploration_initial_eps=1.0,
+        learning_rate=1e-3,
+        buffer_size=50000,
+        learning_starts=1000,
+        batch_size=32,
+        tau=1.0,
+        gamma=0.99,
+        target_update_interval=1000,
+        exploration_fraction=0.1,
+        exploration_initial_eps=1.0,
         exploration_final_eps=0.05,
     ),
     "a2c": dict(
-        learning_rate=7e-4, n_steps=5, gamma=0.99, gae_lambda=1.0,
-        ent_coef=0.0, vf_coef=0.5, max_grad_norm=0.5,
+        learning_rate=7e-4,
+        n_steps=5,
+        gamma=0.99,
+        gae_lambda=1.0,
+        ent_coef=0.0,
+        vf_coef=0.5,
+        max_grad_norm=0.5,
     ),
 }
 
@@ -74,7 +97,6 @@ def _redesign_spec(alpha: float, split: str) -> EnvConfigSerializable:
         split=split,
         exclude_ood=True,
         impact_is_terminal=False,
-        attacker_budget=None,
         reward_mode="outcome",
         aliasing_rate=alpha,
         session_coherent=True,
@@ -83,18 +105,21 @@ def _redesign_spec(alpha: float, split: str) -> EnvConfigSerializable:
     )
 
 
-def _train_rl(algo, alpha, *, timesteps, seed, gen, data, splits,
-              recurrent_n_steps=None):
+def _train_rl(algo, alpha, *, timesteps, seed, data, splits, recurrent_n_steps=None):
     spec = _redesign_spec(alpha, split="train")
     train_env = make_train_env(
-        spec=spec, generator_path=gen, dataset_path=data,
-        splits_manifest=splits, seed=seed,
+        spec=spec,
+        dataset_path=data,
+        splits_manifest=splits,
+        seed=seed,
     )
     hp = dict(_RL_HPARAMS[algo])
     if algo == "recurrent_ppo" and recurrent_n_steps is not None:
         hp["n_steps"] = int(recurrent_n_steps)
     cfg = AdversarialAlgorithmConfig(
-        algorithm_type=algo, total_timesteps=timesteps, verbose=0,
+        algorithm_type=algo,
+        total_timesteps=timesteps,
+        verbose=0,
         **{k: v for k, v in hp.items()},
     )
     model = AdversarialAlgorithm(cfg).create_model(train_env)
@@ -147,10 +172,7 @@ def _roll(policy, env, n_episodes):
     n = float(n_episodes)
     arr = np.asarray(ep_rewards, dtype=float)
     total_actions = sum(action_counter.values()) or 1
-    action_dist = {
-        _ACTION_NAMES[a]: action_counter.get(a, 0) / total_actions
-        for a in range(5)
-    }
+    action_dist = {_ACTION_NAMES[a]: action_counter.get(a, 0) / total_actions for a in range(5)}
     top = max(action_dist.values())
     return {
         "prevention_rate": prevented / n,
@@ -169,18 +191,18 @@ def main() -> None:
     ap.add_argument("--timesteps", type=int, default=60000)
     ap.add_argument("--n-episodes", type=int, default=120)
     ap.add_argument("--seed", type=int, default=0)
-    ap.add_argument("--algos", nargs="+",
-                    default=["recurrent_ppo", "dqn", "ppo", "a2c"])
-    ap.add_argument("--recurrent-n-steps", type=int, default=None,
-                    help="Override n_steps for recurrent_ppo (longer BPTT).")
-    ap.add_argument("--generator-path", default="artifacts/generator/red_team")
+    ap.add_argument("--algos", nargs="+", default=["recurrent_ppo", "dqn", "ppo", "a2c"])
+    ap.add_argument(
+        "--recurrent-n-steps",
+        type=int,
+        default=None,
+        help="Override n_steps for recurrent_ppo (longer BPTT).",
+    )
     ap.add_argument("--dataset-path", default="data/processed/ciciot2023")
-    ap.add_argument("--rf-path",
-                    default="artifacts/detector/random_forest.joblib")
+    ap.add_argument("--rf-path", default="artifacts/detector/random_forest.joblib")
     ap.add_argument("--out", default="docs/review/redesign_smoke.json")
     args = ap.parse_args()
 
-    gen = args.generator_path
     data = args.dataset_path
     splits = str(Path(data) / "splits" / "manifest.json")
     rf = joblib.load(args.rf_path)
@@ -197,8 +219,12 @@ def main() -> None:
         for algo in args.algos:
             ts = time.time()
             rl_adapters[algo] = _train_rl(
-                algo, alpha, timesteps=args.timesteps, seed=args.seed,
-                gen=gen, data=data, splits=splits,
+                algo,
+                alpha,
+                timesteps=args.timesteps,
+                seed=args.seed,
+                data=data,
+                splits=splits,
                 recurrent_n_steps=args.recurrent_n_steps,
             )
             print(f"  trained {algo} in {time.time()-ts:.0f}s", flush=True)
@@ -206,8 +232,10 @@ def main() -> None:
         # --- build eval env (val split) + size RF-Acting ---
         eval_spec = _redesign_spec(alpha, split="val_balanced")
         probe = make_eval_env(
-            spec=eval_spec, generator_path=gen, dataset_path=data,
-            splits_manifest=splits, seed=args.seed + 9999,
+            spec=eval_spec,
+            dataset_path=data,
+            splits_manifest=splits,
+            seed=args.seed + 9999,
         )
         obs_dim = probe.observation_space.shape[0]
         per_row = obs_dim // 5
@@ -216,7 +244,9 @@ def main() -> None:
 
         policies = {
             "rf_acting": RFActingPolicy(
-                rf, num_features=num_features, window_size=5,
+                rf,
+                num_features=num_features,
+                window_size=5,
                 include_deltas=True,
             ),
             "recommended_action": recommended_action_policy,
@@ -227,8 +257,10 @@ def main() -> None:
 
         for pname, pol in policies.items():
             env = make_eval_env(
-                spec=eval_spec, generator_path=gen, dataset_path=data,
-                splits_manifest=splits, seed=args.seed + 9999,
+                spec=eval_spec,
+                dataset_path=data,
+                splits_manifest=splits,
+                seed=args.seed + 9999,
             )
             cell[pname] = _roll(pol, env, args.n_episodes)
             env.close()
@@ -239,9 +271,11 @@ def main() -> None:
         rf_rew = cell["rf_acting"]["mean_reward"]
         print(
             f"  alpha={alpha}: rf_acting={rf_rew:+.1f}  "
-            + "  ".join(f"{a}={cell[a]['mean_reward']:+.1f}"
-                        f"{'*COLLAPSE' if cell[a]['collapsed'] else ''}"
-                        for a in rl_present)
+            + "  ".join(
+                f"{a}={cell[a]['mean_reward']:+.1f}"
+                f"{'*COLLAPSE' if cell[a]['collapsed'] else ''}"
+                for a in rl_present
+            )
             + f"  oracle={cell['recommended_action']['mean_reward']:+.1f}"
             + f"  | best_rl={best_rl} "
             f"(gap_vs_rf={cell[best_rl]['mean_reward']-rf_rew:+.1f})",
@@ -256,9 +290,11 @@ def main() -> None:
         "alphas": args.alphas,
         "algos": args.algos,
         "regime": {
-            "session_coherent": True, "no_post_transition_leak": True,
-            "proximity_coupled": True, "attacker_budget": None,
-            "reward_mode": "outcome", "impact_is_terminal": False,
+            "session_coherent": True,
+            "no_post_transition_leak": True,
+            "proximity_coupled": True,
+            "reward_mode": "outcome",
+            "impact_is_terminal": False,
         },
         "elapsed_seconds": time.time() - t0,
         "results": results,

@@ -37,10 +37,6 @@ def _build_env(
     *,
     config_overrides: Iterable[tuple] = (),
 ) -> AdversarialIoTEnv:
-    # Ignored generator-path dir (attacker is now a first-order Markov chain)
-    generator_path = tmp_path / "gen"
-    generator_path.mkdir(parents=True, exist_ok=True)
-
     dataset_path = tmp_path / "ds"
     dataset_path.mkdir(parents=True, exist_ok=True)
     rng = np.random.default_rng(0)
@@ -67,10 +63,18 @@ def _build_env(
     # IMPACT-arrival step, which would zero out the +5 the arrival-step reward
     # assertions expect. The cap is an orthogonal reward-shaping concern, so we
     # switch it off to isolate the ``impact_is_terminal`` reward shape.
-    env_cfg = AdversarialEnvConfig(tug_of_war=False, proportional_bonus_cap=None)
+    # These tests pin the *coupled* (proportional) reward shape (e.g. the +5
+    # proportionality band on the IMPACT-arrival step), so the base config uses
+    # ``reward_mode="proportional"``; the default deployment contract is now the
+    # sparse ``"outcome"`` mode, which would strip that shaping.
+    env_cfg = AdversarialEnvConfig(
+        tug_of_war=False,
+        proportional_bonus_cap=None,
+        reward_mode="proportional",
+    )
     for k, v in config_overrides:
         setattr(env_cfg, k, v)
-    return AdversarialIoTEnv(generator_path, dataset_path, config=env_cfg)
+    return AdversarialIoTEnv(dataset_path, config=env_cfg)
 
 
 @pytest.fixture(scope="function")

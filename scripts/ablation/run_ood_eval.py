@@ -149,14 +149,12 @@ def _load_sb3_model(algo: str, model_path: Path, env: Any) -> Any:
 
 
 def _ood_eval_env_spec(
-    attacker_budget: int | None = None,
     reward_mode: str = "outcome",
-    budget_cost_model: str = "hybrid",
     *,
     aliasing_rate: float = 0.0,
     session_coherent: bool = False,
     no_post_transition_leak: bool = False,
-    proximity_coupled: bool = False,
+    proximity_coupled: bool = True,
     proximity_min_escalation: float = 0.4,
 ) -> EnvConfigSerializable:
     """Reward config (on the *train* split) for the zero-day OOD eval.
@@ -170,14 +168,11 @@ def _ood_eval_env_spec(
     truly an OOD-feature failure, not a distribution-shift on
     benign / non-attack features.
 
-    ``attacker_budget``, ``reward_mode`` and ``budget_cost_model`` MUST
-    match the held-out benchmark operating point so OOD numbers are
-    commensurable with the in-distribution benchmark. A finite budget
-    also bounds the episode (prevention can fire), so we report
-    compromise / prevention rates rather than an unbounded penalty-bleed
-    reward. ``budget_cost_model='targeted'`` makes only correctly-aimed
-    proportional force drain the attacker budget, so a blind detector
-    that over-forces can no longer "prevent" for free.
+    ``reward_mode`` MUST match the held-out benchmark operating point so
+    OOD numbers are commensurable with the in-distribution benchmark.
+    Under proximity-coupled escalation the episode is bounded (prevention
+    can fire), so we report compromise / prevention rates rather than an
+    unbounded penalty-bleed reward.
 
     The five partial-observability redesign fields (``aliasing_rate``,
     ``session_coherent``, ``no_post_transition_leak``, ``proximity_coupled``,
@@ -189,9 +184,7 @@ def _ood_eval_env_spec(
         split="train",
         exclude_ood=True,  # base pool is in-distribution; OOD overlay is added below
         impact_is_terminal=False,  # match the primary training contract
-        attacker_budget=attacker_budget,
         reward_mode=reward_mode,
-        budget_cost_model=budget_cost_model,
         aliasing_rate=aliasing_rate,
         session_coherent=session_coherent,
         no_post_transition_leak=no_post_transition_leak,
@@ -262,20 +255,17 @@ def _build_ood_env(
     entry surgically replaced with the OOD-class rows.
     """
     spec = _ood_eval_env_spec(
-        attacker_budget=getattr(args, "attacker_budget", None),
         reward_mode=getattr(args, "reward_mode", "outcome"),
-        budget_cost_model=getattr(args, "budget_cost_model", "hybrid"),
         aliasing_rate=getattr(args, "aliasing_rate", 0.0),
         session_coherent=getattr(args, "session_coherent", False),
         no_post_transition_leak=getattr(args, "no_post_transition_leak", False),
-        proximity_coupled=getattr(args, "proximity_coupled", False),
+        proximity_coupled=getattr(args, "proximity_coupled", True),
         proximity_min_escalation=getattr(args, "proximity_min_escalation", 0.4),
     )
 
     # 1. Build the env on the train pool (all 5 stages populated).
     env = _build_env(
         spec=spec,
-        generator_path=args.generator_path,
         dataset_path=args.dataset_path,
         splits_manifest=args.splits_manifest,
         seed=seed,
@@ -373,31 +363,12 @@ def _build_argparser() -> argparse.ArgumentParser:
         help="Where the trained blue-team model.zip files live.",
     )
     p.add_argument("--out-root", default="runs/ablation/ood")
-    p.add_argument("--generator-path", default="artifacts/generator/red_team")
     p.add_argument("--dataset-path", default="data/processed/ciciot2023")
-    p.add_argument(
-        "--attacker-budget",
-        type=int,
-        default=None,
-        help="Finite intrusion budget for the OOD eval. MUST match the held-out "
-        "benchmark operating point so OOD numbers are commensurable with the "
-        "in-distribution benchmark (and so prevention can fire, bounding the "
-        "episode instead of an unbounded penalty-bleed reward).",
-    )
     p.add_argument(
         "--reward-mode",
         default="outcome",
         choices=["outcome", "outcome_only", "coupled", "proportional"],
         help="Reward contract; must match the trained checkpoints' contract.",
-    )
-    p.add_argument(
-        "--budget-cost-model",
-        default="hybrid",
-        choices=["hybrid", "targeted"],
-        help="Attacker-budget drain model; must match the trained checkpoints' "
-        "contract. 'targeted' drains the budget only under correctly-aimed "
-        "proportional force, so a blind detector that over-forces cannot "
-        "exhaust the attacker for free.",
     )
     p.add_argument(
         "--aliasing-rate",
@@ -625,13 +596,11 @@ def _roll_deterministic(
         # the same way scripts/benchmark/run_test_eval.py does (environment-design
         # frozen contract).
         spec = _ood_eval_env_spec(
-            attacker_budget=getattr(args, "attacker_budget", None),
             reward_mode=getattr(args, "reward_mode", "outcome"),
-            budget_cost_model=getattr(args, "budget_cost_model", "hybrid"),
             aliasing_rate=getattr(args, "aliasing_rate", 0.0),
             session_coherent=getattr(args, "session_coherent", False),
             no_post_transition_leak=getattr(args, "no_post_transition_leak", False),
-            proximity_coupled=getattr(args, "proximity_coupled", False),
+            proximity_coupled=getattr(args, "proximity_coupled", True),
             proximity_min_escalation=getattr(args, "proximity_min_escalation", 0.4),
         )
         probe_env = _build_ood_env(args, ood_class, seed=0)
@@ -758,13 +727,11 @@ def main(argv: list[str] | None = None) -> int:
     benchmark_eval_manifest = Path(args.phase6_eval_manifest)
 
     _manifest_spec = _ood_eval_env_spec(
-        attacker_budget=getattr(args, "attacker_budget", None),
         reward_mode=getattr(args, "reward_mode", "outcome"),
-        budget_cost_model=getattr(args, "budget_cost_model", "hybrid"),
         aliasing_rate=getattr(args, "aliasing_rate", 0.0),
         session_coherent=getattr(args, "session_coherent", False),
         no_post_transition_leak=getattr(args, "no_post_transition_leak", False),
-        proximity_coupled=getattr(args, "proximity_coupled", False),
+        proximity_coupled=getattr(args, "proximity_coupled", True),
         proximity_min_escalation=getattr(args, "proximity_min_escalation", 0.4),
     )
     eval_manifest = {
@@ -800,9 +767,7 @@ def main(argv: list[str] | None = None) -> int:
             # Commensurability contract: these MUST match the held-out benchmark
             # operating point so OOD numbers can be read on the same axis as the
             # in-distribution results.
-            "attacker_budget": _manifest_spec.attacker_budget,
             "reward_mode": _manifest_spec.reward_mode,
-            "budget_cost_model": _manifest_spec.budget_cost_model,
             "aliasing_rate": _manifest_spec.aliasing_rate,
             "session_coherent": _manifest_spec.session_coherent,
             "no_post_transition_leak": _manifest_spec.no_post_transition_leak,

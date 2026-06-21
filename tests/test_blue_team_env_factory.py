@@ -18,16 +18,8 @@ from src.environment.adversarial_env import AdversarialIoTEnv
 
 
 @pytest.fixture
-def synthetic_paths(tmp_path: Path) -> tuple[Path, Path]:
-    """Create a tiny dataset, no dataset-prep manifest.
-
-    ``gen_dir`` is an ignored generator-path directory (attacker is now a
-    first-order Markov chain).
-    """
-    # Ignored generator-path dir
-    gen_dir = tmp_path / "generator"
-    gen_dir.mkdir(parents=True)
-
+def synthetic_paths(tmp_path: Path) -> Path:
+    """Create a tiny dataset, no dataset-prep manifest."""
     # Dataset
     ds_dir = tmp_path / "dataset"
     ds_dir.mkdir(parents=True)
@@ -43,11 +35,11 @@ def synthetic_paths(tmp_path: Path) -> tuple[Path, Path]:
     scaler = StandardScaler().fit(features)
     joblib.dump(scaler, ds_dir / "scaler.joblib")
 
-    return gen_dir, ds_dir
+    return ds_dir
 
 
 @pytest.fixture
-def synthetic_manifest(synthetic_paths: tuple[Path, Path]) -> Path:
+def synthetic_manifest(synthetic_paths: Path) -> Path:
     """Build a dataset-prep-shape splits manifest pointing at the synthetic dataset.
 
     The manifest has the same on-disk layout the production
@@ -55,7 +47,7 @@ def synthetic_manifest(synthetic_paths: tuple[Path, Path]) -> Path:
     ``splits/manifest.json``. We split the 100 rows 70/15/15 and reserve
     a small OOD slice.
     """
-    _, ds_dir = synthetic_paths
+    ds_dir = synthetic_paths
     splits = ds_dir / "splits"
     splits.mkdir(parents=True)
 
@@ -91,10 +83,8 @@ def synthetic_manifest(synthetic_paths: tuple[Path, Path]) -> Path:
 
 
 class TestMakeTrainEnv:
-    def test_returns_dummy_vec_env_with_correct_obs_space(
-        self, synthetic_paths: tuple[Path, Path]
-    ) -> None:
-        gen_dir, ds_dir = synthetic_paths
+    def test_returns_dummy_vec_env_with_correct_obs_space(self, synthetic_paths: Path) -> None:
+        ds_dir = synthetic_paths
         spec = EnvConfigSerializable(
             split="train",
             exclude_ood=False,
@@ -105,7 +95,6 @@ class TestMakeTrainEnv:
         )
         vec = make_train_env(
             spec=spec,
-            generator_path=gen_dir,
             dataset_path=ds_dir,
             splits_manifest=None,
             seed=0,
@@ -115,8 +104,8 @@ class TestMakeTrainEnv:
         assert vec.observation_space.shape == (4 * 29 * 2,)
         assert vec.action_space.n == 5
 
-    def test_obs_space_no_deltas(self, synthetic_paths: tuple[Path, Path]) -> None:
-        gen_dir, ds_dir = synthetic_paths
+    def test_obs_space_no_deltas(self, synthetic_paths: Path) -> None:
+        ds_dir = synthetic_paths
         spec = EnvConfigSerializable(
             split="train",
             include_deltas=False,
@@ -124,7 +113,6 @@ class TestMakeTrainEnv:
         )
         vec = make_train_env(
             spec=spec,
-            generator_path=gen_dir,
             dataset_path=ds_dir,
             splits_manifest=None,
             seed=0,
@@ -132,8 +120,8 @@ class TestMakeTrainEnv:
         # 3 * 29 * 1 = 87
         assert vec.observation_space.shape == (3 * 29,)
 
-    def test_step_with_random_action(self, synthetic_paths: tuple[Path, Path]) -> None:
-        gen_dir, ds_dir = synthetic_paths
+    def test_step_with_random_action(self, synthetic_paths: Path) -> None:
+        ds_dir = synthetic_paths
         spec = EnvConfigSerializable(
             split="train",
             min_episode_length=5,
@@ -141,7 +129,6 @@ class TestMakeTrainEnv:
         )
         vec = make_train_env(
             spec=spec,
-            generator_path=gen_dir,
             dataset_path=ds_dir,
             splits_manifest=None,
             seed=0,
@@ -157,16 +144,15 @@ class TestMakeTrainEnv:
 class TestSplitAwareManifest:
     def test_train_engine_only_sees_in_distribution_indices(
         self,
-        synthetic_paths: tuple[Path, Path],
+        synthetic_paths: Path,
         synthetic_manifest: Path,
     ) -> None:
-        gen_dir, ds_dir = synthetic_paths
+        ds_dir = synthetic_paths
         spec = EnvConfigSerializable(
             split="train", exclude_ood=True, window_size=4, max_steps=10, min_episode_length=4
         )
         vec = make_train_env(
             spec=spec,
-            generator_path=gen_dir,
             dataset_path=ds_dir,
             splits_manifest=synthetic_manifest,
             seed=0,
@@ -190,10 +176,10 @@ class TestSplitAwareManifest:
 
     def test_eval_split_is_val_balanced(
         self,
-        synthetic_paths: tuple[Path, Path],
+        synthetic_paths: Path,
         synthetic_manifest: Path,
     ) -> None:
-        gen_dir, ds_dir = synthetic_paths
+        ds_dir = synthetic_paths
         spec = EnvConfigSerializable(
             split="val_balanced",
             exclude_ood=True,
@@ -203,7 +189,6 @@ class TestSplitAwareManifest:
         )
         vec = make_eval_env(
             spec=spec,
-            generator_path=gen_dir,
             dataset_path=ds_dir,
             splits_manifest=synthetic_manifest,
             seed=0,
@@ -217,16 +202,15 @@ class TestSplitAwareManifest:
 
     def test_train_eval_pools_disjoint(
         self,
-        synthetic_paths: tuple[Path, Path],
+        synthetic_paths: Path,
         synthetic_manifest: Path,
     ) -> None:
         """The environment-design R2 invariant: training never sees eval rows."""
-        gen_dir, ds_dir = synthetic_paths
+        ds_dir = synthetic_paths
         train_vec = make_train_env(
             spec=EnvConfigSerializable(
                 split="train", exclude_ood=True, window_size=4, max_steps=10, min_episode_length=4
             ),
-            generator_path=gen_dir,
             dataset_path=ds_dir,
             splits_manifest=synthetic_manifest,
             seed=0,
@@ -239,7 +223,6 @@ class TestSplitAwareManifest:
                 max_steps=10,
                 min_episode_length=4,
             ),
-            generator_path=gen_dir,
             dataset_path=ds_dir,
             splits_manifest=synthetic_manifest,
             seed=0,

@@ -55,10 +55,6 @@ def _build_argparser() -> argparse.ArgumentParser:
         help="Number of concurrent subprocesses (default 1 = serial).",
     )
     p.add_argument(
-        "--generator-path",
-        default="artifacts/generator/red_team",
-    )
-    p.add_argument(
         "--dataset-path",
         default="data/processed/ciciot2023",
     )
@@ -130,8 +126,6 @@ def _run_one(args: argparse.Namespace, algo: str, seed: int) -> dict:
         str(args.n_eval_episodes),
         "--out-dir",
         str(out_dir),
-        "--generator-path",
-        args.generator_path,
         "--dataset-path",
         args.dataset_path,
         "--splits-manifest",

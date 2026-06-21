@@ -200,9 +200,7 @@ def _render_curve(
             label=_POLICY_LABEL.get(policy, policy),
         )
         if policy in ("ppo", "rf_acting"):
-            ax.fill_between(
-                xs, los, his, color=style.get("color"), alpha=0.15, zorder=1
-            )
+            ax.fill_between(xs, los, his, color=style.get("color"), alpha=0.15, zorder=1)
     ax.set_xlabel("Observation aliasing rate $\\alpha$")
     ax.set_ylabel("Mean episodic reward (10 seeds, 300 episodes)")
     ax.set_title(
@@ -264,7 +262,6 @@ def main() -> None:
         "kind": "alpha_curve_summary",
         "regime": {
             "reward_mode": "outcome",
-            "attacker_budget": None,
             "session_coherent": True,
             "no_post_transition_leak": True,
             "proximity_coupled": True,
@@ -272,9 +269,7 @@ def main() -> None:
             "impact_is_terminal": False,
         },
         "alphas": list(args.alphas),
-        "per_alpha": {
-            f"{a:.1f}": per_alpha[a] for a in sorted(per_alpha)
-        },
+        "per_alpha": {f"{a:.1f}": per_alpha[a] for a in sorted(per_alpha)},
         "crossover": crossover,
     }
     summary_path = out_dir / "Falpha_summary.json"
@@ -299,10 +294,7 @@ def main() -> None:
     # Console crossover read.
     print("alpha-curve PPO-vs-RF crossover:")
     for r in crossover["per_alpha"]:
-        print(
-            f"  alpha={r['alpha']:.1f}  PPO-RF={r['ppo_minus_rf']:+.1f}  "
-            f"=> {r['verdict']}"
-        )
+        print(f"  alpha={r['alpha']:.1f}  PPO-RF={r['ppo_minus_rf']:+.1f}  " f"=> {r['verdict']}")
     print(f"Wrote {summary_path}, {png_path}")
 
 

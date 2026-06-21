@@ -294,43 +294,15 @@ class AdversarialEnvConfig:
     # Default 0.0 disables it.
     evasion_prob: float = 0.0
 
-    # Finite attacker budget (prevention model).
-    # The attacker has a finite pool of effort units. Each active-attacker
-    # step drains ``budget_step_cost``; each defender-forced de-escalation
-    # (reset to BENIGN) drains ``budget_reset_cost`` because the attacker must
-    # re-establish its foothold. If the budget is exhausted before IMPACT is
-    # reached, the attack fails and the episode terminates as a defender win
-    # (``outcome="prevented"``, ``compromised=False``). ``attacker_budget=None``
-    # disables the mechanic entirely, preserving the unbounded contract.
-    attacker_budget: Optional[int] = None
-    budget_step_cost: int = 1
-    # Extra budget drained when the defender pushes the attacker down one rung
-    # (a successful de-escalation). Re-establishing the lost ground is not free,
-    # but a single-rung pushdown is cheaper than the v2 full BENIGN reset (was
-    # 5). Paired with ``prevention_bonus`` so that "act correctly -> drain the
-    # attacker -> prevent early" is genuinely reward-optimal rather than a
-    # proportional-reward-farming trap.
-    budget_reset_cost: int = 2
-    # Budget-drain model. ``"hybrid"`` (default, legacy): every active-attacker
-    # step drains ``budget_step_cost`` regardless of the defender's action, so
-    # even mis-targeted over-forcing eventually exhausts the attacker. This makes
-    # prevention nearly independent of detector skill once the budget is small.
-    # ``"targeted"``: only correctly-targeted proportional force (the response
-    # that actually de-escalates the attacker) and natural attacker activity draw
-    # the budget down; disproportionately heavy, mis-targeted force (e.g. a blind
-    # detector spraying ISOLATE at RECON) stalls the attacker but does NOT exhaust
-    # its foothold and drains nothing. This restores a detector-skill signal at a
-    # finite operating budget and better reflects that indiscriminate force does
-    # not destroy an established intrusion.
-    budget_cost_model: str = "hybrid"
-    # Explicit terminal reward for a prevented attack (attacker budget exhausted
-    # before IMPACT). Calibrated to +50, mirroring the net reward of a correct
-    # IMPACT mitigation (-impact_penalty + defense_success_bonus = +50), so the
-    # security objective (prevention) and the reward signal are aligned. This
-    # closes the latent farming loophole where, with prevention_bonus=0,
-    # dragging the episode out to accumulate per-step proportional rewards would
-    # be more profitable than ending it early via prevention. The 0-vs-50
-    # contrast is itself a reward-mis-specification ablation cell.
+    # Explicit terminal reward for a prevented attack (attacker held below
+    # IMPACT for the entire horizon). Calibrated to +50, mirroring the net
+    # reward of a correct IMPACT mitigation (-impact_penalty +
+    # defense_success_bonus = +50), so the security objective (prevention) and
+    # the reward signal are aligned. This closes the latent farming loophole
+    # where, with prevention_bonus=0, dragging the episode out to accumulate
+    # per-step proportional rewards would be more profitable than ending it
+    # early via prevention. The 0-vs-50 contrast is itself a
+    # reward-mis-specification ablation cell.
     prevention_bonus: float = 50.0
 
     # Stage-prediction ablation (review 2.4.1)
@@ -377,7 +349,7 @@ class AdversarialEnvConfig:
     #   objective from the attacker dynamics and removes the privileged-shaping
     #   advantage of a supervised classifier. This is the primary deployment
     #   contract for the re-posed task.
-    reward_mode: str = "proportional"
+    reward_mode: str = "outcome"
 
     # Reward — terminal & extreme cases
     impact_penalty: float = 200.0
@@ -453,8 +425,8 @@ class AdversarialEnvConfig:
     # Prevention is earned by holding the attacker below IMPACT for the entire
     # horizon (awarded at truncation), not by draining a counter. This removes the
     # "any forcing policy prevents once the budget is small" degeneracy and the
-    # "B is cherry-picked" critique. Default False keeps the budget path.
-    proximity_coupled: bool = False
+    # "B is cherry-picked" critique.
+    proximity_coupled: bool = True
     # Floor on the proximity-scaled under-force escalation probability, as a
     # fraction of ``p_up``. At stage RECON (lambda=0.25) escalation probability is
     # p_up * (proximity_min_escalation + (1-proximity_min_escalation)*lambda);
@@ -480,8 +452,7 @@ class AdversarialEnvConfig:
         if canonical is None:
             valid = sorted(set(self._REWARD_MODE_ALIASES))
             raise ValueError(
-                f"Unknown reward_mode {self.reward_mode!r}; "
-                f"expected one of {valid}."
+                f"Unknown reward_mode {self.reward_mode!r}; " f"expected one of {valid}."
             )
         self.reward_mode = canonical
 
@@ -515,15 +486,15 @@ class AdversarialIoTEnv(gym.Env):
         Discrete(5): OBSERVE, LOG, RESTRICT, BLOCK, ISOLATE
 
     Example:
-        >>> env = AdversarialIoTEnv(generator_path, dataset_path)
+        >>> env = AdversarialIoTEnv(dataset_path)
         >>> obs, info = env.reset()
         >>> obs, reward, terminated, truncated, info = env.step(2)
 
     .. warning::
        **Direct construction contract (Step-3 F2 / Step-8 doc-fix).**
-       Calling ``AdversarialIoTEnv(generator_path, dataset_path, ...)``
+       Calling ``AdversarialIoTEnv(dataset_path, ...)``
        directly builds a non-split-aware ``RealizationEngine`` (the
-       constructor at L305-ish below instantiates ``RealizationEngine(
+       constructor below instantiates ``RealizationEngine(
        dataset_path)`` with no ``split_manifest`` / ``allowed_indices``
        argument). This means the engine samples from the *full* row
        pool — it does NOT honour the dataset-prep OOD-exclusion or
@@ -554,7 +525,6 @@ class AdversarialIoTEnv(gym.Env):
 
     def __init__(
         self,
-        generator_path: Union[str, Path],
         dataset_path: Union[str, Path],
         config: Optional[AdversarialEnvConfig] = None,
         render_mode: Optional[str] = None,
@@ -563,9 +533,6 @@ class AdversarialIoTEnv(gym.Env):
         """Initialize the Adversarial Environment.
 
         Args:
-            generator_path: Deprecated/ignored. Retained for backward
-                compatibility; attacker dynamics are now a first-order Markov
-                chain over kill-chain stages (see MarkovAttacker).
             dataset_path: Path to processed dataset for realization.
             config: Environment configuration.
             render_mode: Rendering mode (optional).
@@ -578,7 +545,6 @@ class AdversarialIoTEnv(gym.Env):
         self._device = device
 
         # Attacker dynamics: first-order Markov chain over kill-chain stages.
-        # generator_path is retained for backward compatibility but ignored.
         self._attacker = MarkovAttacker()
 
         # Load Realization Engine (for feature sampling)
@@ -626,9 +592,6 @@ class AdversarialIoTEnv(gym.Env):
         # FPR-penalty accumulator (review 2.2 / Direction 6)
         self._benign_steps: int = 0
         self._benign_blocks: int = 0
-        # Finite attacker budget (prevention model)
-        self._attacker_budget_remaining: Optional[int] = None
-        self._attacker_exhausted: bool = False
 
         logger.info(
             f"AdversarialIoTEnv initialized: "
@@ -678,8 +641,6 @@ class AdversarialIoTEnv(gym.Env):
         self._deescalation_bonus_paid = 0.0
         self._benign_steps = 0
         self._benign_blocks = 0
-        self._attacker_budget_remaining = self._config.attacker_budget
-        self._attacker_exhausted = False
 
         # Initialize attack sequence
         # Start with BENIGN or low-level attack
@@ -770,15 +731,6 @@ class AdversarialIoTEnv(gym.Env):
             else:
                 self._advance_attack()
                 outcome = "ongoing"
-                # Drain attacker budget for an active progression step. Only an
-                # attacker that is actually attacking (stage >= RECON) pays the
-                # step cost; a passive defender that leaves the attacker at
-                # BENIGN cannot win by attrition.
-                if (
-                    self._attacker_budget_remaining is not None
-                    and self._current_attack_stage >= KillChainStage.RECON.value
-                ):
-                    self._attacker_budget_remaining -= self._config.budget_step_cost
 
         # Lifecycle-floor clamp: real-world IMPACT requires time-to-execute.
         # Until the agent has had its grace period, the attacker is not allowed
@@ -840,23 +792,7 @@ class AdversarialIoTEnv(gym.Env):
             self._current_attack_stage == KillChainStage.IMPACT.value
             and self._step_count >= self._config.min_episode_length
         )
-        # Prevention: if the attacker has exhausted its finite budget before
-        # reaching IMPACT, the campaign fails -> defender win. This is checked
-        # *before* the IMPACT branch and after the grace clamp, and fires
-        # regardless of ``impact_is_terminal``. The tie-break (budget hits 0 on
-        # the same step IMPACT arrives) favours the attacker automatically:
-        # the ``stage < IMPACT`` guard sends that case to the IMPACT branch.
-        attacker_exhausted_now = (
-            self._attacker_budget_remaining is not None
-            and self._attacker_budget_remaining <= 0
-            and self._current_attack_stage < KillChainStage.IMPACT.value
-        )
-        if attacker_exhausted_now:
-            self._attacker_exhausted = True
-            reward += self._config.prevention_bonus
-            outcome = "prevented"
-            terminated = True
-        elif impact_arrived and self._config.impact_is_terminal:
+        if impact_arrived and self._config.impact_is_terminal:
             # environment-design frozen contract (default).
             # Apply the terminal IMPACT penalty inline. The kill chain has
             # consummated this step; we do *not* hand the agent a separate
@@ -899,7 +835,6 @@ class AdversarialIoTEnv(gym.Env):
             and self._current_attack_stage < KillChainStage.IMPACT.value
             and outcome not in ("prevented", "impact_mitigated", "impact_missed", "compromised")
         ):
-            self._attacker_exhausted = True
             reward += self._config.prevention_bonus
             outcome = "prevented"
 
@@ -973,7 +908,6 @@ class AdversarialIoTEnv(gym.Env):
         assert self._rng is not None  # invariant after reset
         stage = int(previous_stage)
         recommended = _recommended_action(stage)
-        gap = abs(action - recommended)
 
         # --- BENIGN: the attacker is dormant but has its *own* initiative to
         # begin the campaign. Onset to RECON happens autonomously with
@@ -982,8 +916,7 @@ class AdversarialIoTEnv(gym.Env):
         # (gap >= 2, i.e. RESTRICT/BLOCK/ISOLATE on benign traffic) does not
         # accelerate the kill chain here; it is simply wasteful (and penalised
         # by the benign guardrails in the reward). No de-escalation is possible
-        # below BENIGN. The onset step itself does not draw down the budget;
-        # the attacker only pays once it is actively climbing (stage >= RECON).
+        # below BENIGN.
         if stage == KillChainStage.BENIGN.value:
             # Multi-rung onset: the attacker may open the campaign at RECON or,
             # less often, directly at ACCESS (a mid-chain start). A single draw
@@ -1037,7 +970,6 @@ class AdversarialIoTEnv(gym.Env):
             if self._rng.random() < p_up_eff:
                 self._current_attack_stage = min(KillChainStage.IMPACT.value, stage + 1)
             self._attack_history.append(self._current_attack_stage)
-            self._drain_budget(self._config.budget_step_cost)
             return "ongoing"
 
         if d == 0:
@@ -1050,35 +982,16 @@ class AdversarialIoTEnv(gym.Env):
                 self._current_attack_stage = max(0, stage - 1)
                 self._attack_history.append(self._current_attack_stage)
                 self._defender_deescalations += 1
-                # Insistence is not free: re-establishing the lost rung drains
-                # extra budget on top of the per-step activity cost.
-                self._drain_budget(self._config.budget_step_cost + self._config.budget_reset_cost)
                 return "defended"
             self._attack_history.append(self._current_attack_stage)
-            self._drain_budget(self._config.budget_step_cost)
             return "ongoing"
 
         # d >= 1: over-force -> the attacker holds (stalled, not advanced).
-        # Under the "targeted" cost model, mis-targeted (disproportionately
-        # heavy) force does NOT exhaust the attacker's foothold: spraying
-        # ISOLATE at a low stage stalls but does not destroy the intrusion, so
-        # it drains no budget. Only correctly-targeted proportional force (the
-        # d == 0 branch above) draws the budget down toward prevention. Under
-        # the default "hybrid" model every active step costs the attacker, so
-        # over-forcing also drains the per-step activity cost (legacy behaviour).
+        # Mis-targeted (disproportionately heavy) force stalls the attacker but
+        # does not de-escalate it: spraying ISOLATE at a low stage holds the
+        # intrusion in place without pushing it down.
         self._attack_history.append(self._current_attack_stage)
-        over_force_cost = (
-            0
-            if self._config.budget_cost_model == "targeted"
-            else self._config.budget_step_cost
-        )
-        self._drain_budget(over_force_cost)
         return "ongoing"
-
-    def _drain_budget(self, amount: int) -> None:
-        """Drain ``amount`` units from the finite attacker budget, if enabled."""
-        if self._attacker_budget_remaining is not None:
-            self._attacker_budget_remaining -= amount
 
     def _capped_deescalation_bonus(self) -> float:
         """Return the reward for one successful in-game de-escalation.
@@ -1087,7 +1000,7 @@ class AdversarialIoTEnv(gym.Env):
         per-episode contribution at ``deescalation_bonus_cap`` (when set), so a
         policy cannot farm reward simply by racking up a large *count* of routine
         de-escalations. Once the cap is exhausted, further pushdowns earn 0 from
-        this term (they still drain the attacker's budget toward prevention).
+        this term.
         """
         bonus = self._config.reward_deescalation
         cap = self._config.deescalation_bonus_cap
@@ -1115,9 +1028,6 @@ class AdversarialIoTEnv(gym.Env):
         self._current_attack_stage = KillChainStage.BENIGN.value
         self._attack_history.append(self._current_attack_stage)
         self._defender_deescalations += 1
-        # The attacker must re-establish its foothold: drain extra budget.
-        if self._attacker_budget_remaining is not None:
-            self._attacker_budget_remaining -= self._config.budget_reset_cost
         return True
 
     def render(self) -> None:
@@ -1220,8 +1130,6 @@ class AdversarialIoTEnv(gym.Env):
             "first_attack_step": self._first_attack_step,
             "compromise_step": self._compromise_step,
             "defender_deescalations": self._defender_deescalations,
-            "attacker_budget_remaining": self._attacker_budget_remaining,
-            "attacker_exhausted": self._attacker_exhausted,
             "recommended_action": _recommended_action(self._current_attack_stage),
         }
 

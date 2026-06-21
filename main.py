@@ -79,13 +79,6 @@ Examples:
     )
 
     parser.add_argument(
-        "--generator-path",
-        type=str,
-        default=None,
-        help="Path to generator model directory or .pth file. Auto-detects latest if directory.",
-    )
-
-    parser.add_argument(
         "--rl-path", type=str, default="artifacts/rl", help="Path to RL model directory"
     )
 

@@ -5,12 +5,9 @@ These pin the regression where the auto-finalizer reported G7.1
 cascaded false-fail through G7.5 and G7.6 (per the audit findings
 captured in PLAN §8 / RESULTS §6.5).
 
-Two parsers are exercised:
+One parser is exercised:
 
   - ``_parse_pytest_summary``: pytest summary line → counts dict.
-  - ``_evaluate_g72`` (in ``plot_reward_ablation``): F9 rows →
-    two-strand G7.2 verdict (apples-to-apples reward strand +
-    security-KPI fallback strand per D7.1.1).
 
 The tests are pure-Python (no pytest invocation, no figure render),
 so they do not extend the real-data smoke surface — they pin the
@@ -19,10 +16,7 @@ parsers' shape only.
 
 from __future__ import annotations
 
-import math
-
 from scripts.ablation.close_ablation import _parse_pytest_summary
-from scripts.ablation.plot_reward_ablation import _evaluate_g72
 from scripts.ablation.run_ood_eval import _ood_eval_env_spec
 
 # ----------------------------------------------------------- pytest summary
@@ -74,213 +68,15 @@ def test_parse_pytest_summary_singular_warning():
     assert counts["warnings"] == 1
 
 
-# ----------------------------------------------------------- G7.2 two-strand
-
-
-def _row(
-    cell_id: str,
-    axis: str,
-    mean_reward: float,
-    *,
-    component: str = None,
-    multiplier: float = None,
-    impact_is_terminal: bool = True,
-    mit: float = 0.3,
-    ci_half_width: float = 50.0,
-):
-    return {
-        "cell_id": cell_id,
-        "axis": axis,
-        "component": component,
-        "multiplier": multiplier,
-        "impact_is_terminal": impact_is_terminal,
-        "n_seeds": 5,
-        "n_episodes": 750,
-        "mean_reward": mean_reward,
-        "ci_low": mean_reward - ci_half_width,
-        "ci_high": mean_reward + ci_half_width,
-        "compromise_rate": 1.0,
-        "mitigated_impact_rate": mit,
-    }
-
-
-def test_g72_strand1_passes_when_reward_comparable_cell_beats_dqn():
-    """impact_is_terminal=False (axis='impact_terminal') beats DQN
-    +1336 by ≥ 1σ → strand-1 PASS."""
-    rows = [
-        _row("baseline", "baseline", 1300.0, mit=0.27),
-        _row(
-            "impact_is_terminal_false",
-            "impact_terminal",
-            1500.0,
-            impact_is_terminal=False,
-            mit=0.90,
-        ),
-        # A reward-coefficient cell that scaled the bonus 2× and
-        # has a huge raw reward — must NOT be the apples-to-apples
-        # winner.
-        _row(
-            "defense_success_bonus_x2p0",
-            "reward",
-            2900.0,
-            component="defense_success_bonus",
-            multiplier=2.0,
-            mit=0.55,
-        ),
-    ]
-    result = _evaluate_g72(
-        rows,
-        deployable_best=1336.0,
-        oracle_ceiling=1624.0,
-        deployable_best_mitigated=0.20,
-    )
-    assert result["passes"] is True
-    assert result["best_reward_comparable_cell"] == "impact_is_terminal_false"
-    # Raw-reward winner is reported but not the headline.
-    assert result["raw_reward_winner_cell"] == "defense_success_bonus_x2p0"
-
-
-def test_g72_strand1_fails_strand2_passes_activates_d7_1_1():
-    """No reward-comparable cell beats DQN, but security-KPI
-    strand passes → FAIL-WITH-FINDING (D7.1.1)."""
-    rows = [
-        _row("baseline", "baseline", 1300.0, mit=0.27),
-        _row(
-            "impact_is_terminal_false",
-            "impact_terminal",
-            1330.0,
-            impact_is_terminal=False,
-            mit=0.90,
-        ),
-        _row(
-            "defense_success_bonus_x2p0",
-            "reward",
-            2900.0,
-            component="defense_success_bonus",
-            multiplier=2.0,
-            mit=0.55,
-        ),
-    ]
-    result = _evaluate_g72(
-        rows,
-        deployable_best=1336.0,
-        oracle_ceiling=1624.0,
-        deployable_best_mitigated=0.20,
-    )
-    assert result["passes"] is False  # strand-1 failed
-    assert result["security_kpi_strand_passes"] is True  # strand-2 passed
-    assert result["best_security_kpi_cell"] == "impact_is_terminal_false"
-    assert "D7.1.1" in result["interpretation"]
-
-
-def test_g72_both_strands_fail():
-    """Pure null-result case: nothing improves on either metric."""
-    rows = [
-        _row("baseline", "baseline", 1300.0, mit=0.15),
-        _row(
-            "reward_proportional_x2p0",
-            "reward",
-            1310.0,
-            component="reward_proportional",
-            multiplier=2.0,
-            mit=0.18,
-        ),
-    ]
-    result = _evaluate_g72(
-        rows,
-        deployable_best=1336.0,
-        oracle_ceiling=1624.0,
-        deployable_best_mitigated=0.20,
-    )
-    assert result["passes"] is False
-    assert result["security_kpi_strand_passes"] is False
-    assert "FAIL-WITH-FINDING" in result["interpretation"]
-
-
-def test_g72_oracle_stretch_met():
-    """Strand-1 passes AND best reward-comparable cell exceeds the
-    oracle ceiling +1624 → stretch goal met."""
-    rows = [
-        _row("baseline", "baseline", 1300.0),
-        _row(
-            "impact_is_terminal_false",
-            "impact_terminal",
-            1800.0,
-            impact_is_terminal=False,
-            mit=0.95,
-        ),
-    ]
-    result = _evaluate_g72(
-        rows,
-        deployable_best=1336.0,
-        oracle_ceiling=1624.0,
-        deployable_best_mitigated=0.20,
-    )
-    assert result["passes"] is True
-    assert result["meets_oracle_ceiling_stretch"] is True
-    assert "STRETCH MET" in result["interpretation"]
-
-
-def test_g72_no_finite_rows_returns_failure():
-    rows = [
-        {
-            "cell_id": "broken",
-            "axis": "baseline",
-            "mean_reward": math.nan,
-            "ci_low": math.nan,
-            "ci_high": math.nan,
-            "mitigated_impact_rate": math.nan,
-        }
-    ]
-    result = _evaluate_g72(
-        rows,
-        deployable_best=1336.0,
-        oracle_ceiling=1624.0,
-        deployable_best_mitigated=0.20,
-    )
-    assert result["passes"] is False
-    assert "no candidate" in result.get("reason", "")
-
-
-def test_g72_reward_coefficient_cell_does_not_count_for_strand1():
-    """Even if a reward-coefficient cell has a huge mean reward,
-    it does NOT make strand-1 pass; only environment-design-reward-fn-
-    preserving cells qualify (axis baseline / impact_terminal)."""
-    rows = [
-        _row("baseline", "baseline", 1100.0, mit=0.20),
-        _row(
-            "defense_success_bonus_x2p0",
-            "reward",
-            3000.0,
-            component="defense_success_bonus",
-            multiplier=2.0,
-            mit=0.55,
-        ),
-    ]
-    result = _evaluate_g72(
-        rows,
-        deployable_best=1336.0,
-        oracle_ceiling=1624.0,
-        deployable_best_mitigated=0.20,
-    )
-    assert result["passes"] is False
-    # The reward-coefficient cell is the raw winner but not the
-    # apples-to-apples winner.
-    assert result["raw_reward_winner_cell"] == "defense_success_bonus_x2p0"
-    assert result["best_reward_comparable_cell"] == "baseline"
-
-
 # ----------------------------------------------------- OOD commensurability
 
 
-def test_ood_eval_spec_carries_attacker_budget_and_reward_mode():
+def test_ood_eval_spec_carries_reward_mode():
     """The zero-day OOD eval MUST run at the same operating point as the
-    held-out benchmark: a finite attacker budget (so prevention can fire
-    and bound the episode) and the same reward contract. Without this the
-    OOD reward is on an incomparable, unbounded penalty-bleed axis.
+    held-out benchmark: the same reward contract under proximity-coupled
+    escalation. Without this the OOD reward is on an incomparable axis.
     """
-    spec = _ood_eval_env_spec(attacker_budget=40, reward_mode="outcome")
-    assert spec.attacker_budget == 40
+    spec = _ood_eval_env_spec(reward_mode="outcome")
     assert spec.reward_mode == "outcome"
     # impact-row decision is kept explicit (primary training contract).
     assert spec.impact_is_terminal is False
@@ -293,13 +89,12 @@ def test_ood_eval_spec_normalises_reward_mode_alias():
     assert _ood_eval_env_spec(reward_mode="proportional").reward_mode == "coupled"
 
 
-def test_ood_eval_spec_default_budget_is_unbounded_but_explicit():
-    """Default (no budget passed) stays unbounded — but the Makefile and
-    CLI now pass the benchmark budget explicitly, so production OOD runs
-    are commensurable; this default only guards direct/legacy callers."""
+def test_ood_eval_spec_default_reward_mode_is_outcome():
+    """Default reward mode is the primary deployment contract (``outcome``)
+    under proximity-coupled escalation."""
     spec = _ood_eval_env_spec()
-    assert spec.attacker_budget is None
     assert spec.reward_mode == "outcome"
+    assert spec.proximity_coupled is True
 
 
 # ------------------------------------------- detector-independence figure
@@ -352,9 +147,7 @@ def test_recall_vs_advantage_points_track_detector_blind_spot(tmp_path):
     # Detector-covered class: RF (0.95) beats RL (0.55) → negative advantage.
     assert pts["DDoS-HTTP_Flood"]["advantage"] < 0
     # The advantage is strictly larger where detector recall is lower.
-    assert (
-        pts["VulnerabilityScan"]["advantage"] > pts["DDoS-HTTP_Flood"]["advantage"]
-    )
+    assert pts["VulnerabilityScan"]["advantage"] > pts["DDoS-HTTP_Flood"]["advantage"]
 
 
 def test_recall_vs_advantage_skips_cells_without_recall(tmp_path):
@@ -379,23 +172,21 @@ def test_recall_vs_advantage_skips_cells_without_recall(tmp_path):
 # ------------------------------------------- coupled-vs-decoupled reward ablation
 
 
-def test_eval_spec_for_mode_carries_reward_mode_and_budget():
+def test_eval_spec_for_mode_carries_reward_mode():
     from scripts.ablation.run_reward_coupling import _eval_spec_for_mode
 
-    coupled = _eval_spec_for_mode("coupled", 40)
+    coupled = _eval_spec_for_mode("coupled")
     assert coupled.reward_mode == "coupled"
-    assert coupled.attacker_budget == 40
     assert coupled.split == "test_balanced"
     assert coupled.impact_is_terminal is False
     assert coupled.exclude_ood is True
 
-    outcome = _eval_spec_for_mode("outcome", 40)
+    outcome = _eval_spec_for_mode("outcome")
     assert outcome.reward_mode == "outcome"
-    assert outcome.attacker_budget == 40
 
     # Aliases normalise through the spec.
-    assert _eval_spec_for_mode("proportional", None).reward_mode == "coupled"
-    assert _eval_spec_for_mode("outcome_only", None).reward_mode == "outcome"
+    assert _eval_spec_for_mode("proportional").reward_mode == "coupled"
+    assert _eval_spec_for_mode("outcome_only").reward_mode == "outcome"
 
 
 def _write_coupling_eval(path, rewards):

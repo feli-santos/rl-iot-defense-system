@@ -1,4 +1,4 @@
-"""Split-aware env factories for blue-team RL training.
+"""Split-aware env factories for Blue-Team RL training.
 
 Two public functions:
 
@@ -9,10 +9,10 @@ Two public functions:
   the canonical vectorised interface.
 - :func:`make_eval_env` — same plumbing but pointed at a different
   split (caller-supplied via ``spec.split`` — typically
-  ``"val_balanced"`` for blue-team eval, ``"test_balanced"`` for
+  ``"val_balanced"`` for Blue-Team eval, ``"test_balanced"`` for
   benchmark / ablation evaluation) and *without* a ``Monitor`` log
-  file. Used both by SB3's eval rollouts and by blue-team's
-  :class:`PhaseFiveEvalCallback`. **Step-5 F4 / Step-8 doc-fix:**
+  file. Used both by SB3's eval rollouts and by Blue-Team's
+  :class:`EvalToJSONLCallback`. **Step-5 F4 / Step-8 doc-fix:**
   earlier docstrings claimed "default `val_balanced`"; the function
   imposes no default, the split is always caller-supplied via the
   ``spec: EnvConfigSerializable`` argument.
@@ -45,17 +45,17 @@ logger = logging.getLogger(__name__)
 def _build_env_config(spec: EnvConfigSerializable) -> AdversarialEnvConfig:
     """Translate a serialisable env spec into an :class:`AdversarialEnvConfig`.
 
-    blue-team forwarded only the lifecycle + sampling fields; reward
+    Blue-Team forwarded only the lifecycle + sampling fields; reward
     coefficients kept their environment-design frozen defaults. ablation (PLAN
     §3.1.2 / D7.3) forwards the **full** field set so the F9
     reward-component sweep can override individual coefficients
     per-cell. ``EnvConfigSerializable`` defaults match
     :class:`AdversarialEnvConfig` defaults, so when nothing is
     overridden the resulting env config is byte-for-byte identical
-    to the blue-team baseline.
+    to the Blue-Team baseline.
     """
     return AdversarialEnvConfig(
-        # Lifecycle + sampling (blue-team fields)
+        # Lifecycle + sampling (Blue-Team fields)
         max_steps=spec.max_steps,
         min_episode_length=spec.min_episode_length,
         p_defender_deescalation=spec.p_defender_deescalation,
@@ -77,11 +77,7 @@ def _build_env_config(spec: EnvConfigSerializable) -> AdversarialEnvConfig:
         retreat_prob=spec.retreat_prob,
         # Evasion-before-commit reactive attacker
         evasion_prob=spec.evasion_prob,
-        # Finite attacker budget (prevention model)
-        attacker_budget=spec.attacker_budget,
-        budget_step_cost=spec.budget_step_cost,
-        budget_reset_cost=spec.budget_reset_cost,
-        budget_cost_model=spec.budget_cost_model,
+        # Proximity-coupled prevention model
         prevention_bonus=spec.prevention_bonus,
         # Reward shaping (ablation F9 axes)
         action_cost_scale=spec.action_cost_scale,
@@ -112,7 +108,6 @@ def _build_env_config(spec: EnvConfigSerializable) -> AdversarialEnvConfig:
 def _build_env(
     *,
     spec: EnvConfigSerializable,
-    generator_path: str | Path,
     dataset_path: str | Path,
     splits_manifest: str | Path | None,
     seed: int | None,
@@ -126,7 +121,6 @@ def _build_env(
     """
     env_cfg = _build_env_config(spec)
     env = AdversarialIoTEnv(
-        generator_path=Path(generator_path),
         dataset_path=Path(dataset_path),
         config=env_cfg,
         device="cpu",
@@ -157,7 +151,6 @@ def _build_env(
 def make_train_env(
     *,
     spec: EnvConfigSerializable,
-    generator_path: str | Path,
     dataset_path: str | Path,
     splits_manifest: str | Path | None = None,
     seed: int | None = None,
@@ -167,7 +160,6 @@ def make_train_env(
 
     Args:
         spec: ``EnvConfigSerializable`` from ``BlueTeamRunConfig.env``.
-        generator_path: Path to ``artifacts/generator/phase2``.
         dataset_path: Path to ``data/processed/ciciot2023``.
         splits_manifest: Path to the dataset-prep ``splits/manifest.json``.
             ``None`` short-circuits the split restriction (synthetic tests).
@@ -176,7 +168,7 @@ def make_train_env(
             ``learn(...)``; both seeds are consumed.
         monitor_path: Optional CSV path for SB3's :class:`Monitor`. When
             ``None``, ``Monitor`` runs in non-recording mode; the
-            blue-team :class:`EpisodeJSONLCallback` is the canonical log.
+            Blue-Team :class:`EpisodeJSONLCallback` is the canonical log.
 
     Returns:
         :class:`DummyVecEnv` wrapping a single :class:`Monitor` env.
@@ -185,7 +177,6 @@ def make_train_env(
     def _factory() -> gym.Env:
         env = _build_env(
             spec=spec,
-            generator_path=generator_path,
             dataset_path=dataset_path,
             splits_manifest=splits_manifest,
             seed=seed,
@@ -202,7 +193,6 @@ def make_train_env(
 def make_eval_env(
     *,
     spec: EnvConfigSerializable,
-    generator_path: str | Path,
     dataset_path: str | Path,
     splits_manifest: str | Path | None = None,
     seed: int | None = None,
@@ -211,7 +201,6 @@ def make_eval_env(
     no Monitor CSV side-effect."""
     return make_train_env(
         spec=spec,
-        generator_path=generator_path,
         dataset_path=dataset_path,
         splits_manifest=splits_manifest,
         seed=seed,

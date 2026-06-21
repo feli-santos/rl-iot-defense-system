@@ -37,14 +37,14 @@ Layout::
             rf_acting/
                 eval_test.jsonl       # RF-Acting on test_balanced under <mode>
 
-Both modes are run at the SAME operating point (attacker_budget,
+Both modes are run at the SAME operating point (proximity_coupled,
 impact_is_terminal) so the only difference is the reward contract.
 
 Usage::
 
     python -m scripts.ablation.run_reward_coupling \\
         [--modes coupled outcome] [--algos dqn ppo a2c] \\
-        [--seeds 0 1 2 ...] [--attacker-budget 40] \\
+        [--seeds 0 1 2 ...] \\
         [--total-timesteps 1000000] [--parallel 10] [--smoke]
 """
 
@@ -112,27 +112,19 @@ def _resolve_checkpoint(run_root: Path) -> Path:
 # ----------------------------------------------------------------- RL per cell
 
 
-def _train_one_rl(
-    args: argparse.Namespace, mode: str, algo: str, seed: int
-) -> dict[str, Any]:
+def _train_one_rl(args: argparse.Namespace, mode: str, algo: str, seed: int) -> dict[str, Any]:
     """Spawn a single ``train_agent`` run under reward_mode=<mode>."""
     out_dir = Path(args.out_root) / mode / algo / f"seed_{seed}"
     out_dir.mkdir(parents=True, exist_ok=True)
     log_path = out_dir / "train.log"
 
     overrides: dict[str, Any] = {"reward_mode": mode}
-    if args.attacker_budget is not None:
-        overrides["attacker_budget"] = int(args.attacker_budget)
     # Partial-observability redesign regime (must match the eval spec for parity).
     overrides["aliasing_rate"] = float(getattr(args, "aliasing_rate", 0.0))
     overrides["session_coherent"] = bool(getattr(args, "session_coherent", False))
-    overrides["no_post_transition_leak"] = bool(
-        getattr(args, "no_post_transition_leak", False)
-    )
-    overrides["proximity_coupled"] = bool(getattr(args, "proximity_coupled", False))
-    overrides["proximity_min_escalation"] = float(
-        getattr(args, "proximity_min_escalation", 0.4)
-    )
+    overrides["no_post_transition_leak"] = bool(getattr(args, "no_post_transition_leak", False))
+    overrides["proximity_coupled"] = bool(getattr(args, "proximity_coupled", True))
+    overrides["proximity_min_escalation"] = float(getattr(args, "proximity_min_escalation", 0.4))
 
     cmd: list[str] = [
         sys.executable,
@@ -150,8 +142,6 @@ def _train_one_rl(
         str(args.n_eval_episodes),
         "--out-dir",
         str(out_dir),
-        "--generator-path",
-        args.generator_path,
         "--dataset-path",
         args.dataset_path,
         "--splits-manifest",
@@ -169,9 +159,7 @@ def _train_one_rl(
     logger.info("coupling mode=%s algo=%s seed=%d → %s", mode, algo, seed, out_dir)
     t0 = time.time()
     with log_path.open("w") as log_fh:
-        proc = subprocess.run(
-            cmd, cwd=_ROOT, stdout=log_fh, stderr=subprocess.STDOUT, check=False
-        )
+        proc = subprocess.run(cmd, cwd=_ROOT, stdout=log_fh, stderr=subprocess.STDOUT, check=False)
     wallclock = time.time() - t0
     ok = proc.returncode == 0
 
@@ -202,18 +190,17 @@ def _train_one_rl(
 
 def _eval_spec_for_mode(
     mode: str,
-    attacker_budget: int | None,
     *,
     aliasing_rate: float = 0.0,
     session_coherent: bool = False,
     no_post_transition_leak: bool = False,
-    proximity_coupled: bool = False,
+    proximity_coupled: bool = True,
     proximity_min_escalation: float = 0.4,
 ) -> EnvConfigSerializable:
     """Benchmark spec on test_balanced under the given reward contract.
 
     Mirrors the held-out benchmark operating point so coupling-ablation rewards
-    are commensurable with F5: same split, same budget, impact non-terminal.
+    are commensurable with F5: same split, impact non-terminal.
     The five partial-observability redesign fields MUST match the trained
     checkpoints' contract or the eval measures a different MDP.
     """
@@ -222,7 +209,6 @@ def _eval_spec_for_mode(
         exclude_ood=True,
         impact_is_terminal=False,
         reward_mode=mode,
-        attacker_budget=attacker_budget,
         aliasing_rate=aliasing_rate,
         session_coherent=session_coherent,
         no_post_transition_leak=no_post_transition_leak,
@@ -242,16 +228,14 @@ def _eval_rl_on_test(
     """Roll the best checkpoint on test_balanced under reward_mode=<mode>."""
     spec = _eval_spec_for_mode(
         mode,
-        args.attacker_budget,
         aliasing_rate=getattr(args, "aliasing_rate", 0.0),
         session_coherent=getattr(args, "session_coherent", False),
         no_post_transition_leak=getattr(args, "no_post_transition_leak", False),
-        proximity_coupled=getattr(args, "proximity_coupled", False),
+        proximity_coupled=getattr(args, "proximity_coupled", True),
         proximity_min_escalation=getattr(args, "proximity_min_escalation", 0.4),
     )
     env = make_eval_env(
         spec=spec,
-        generator_path=args.generator_path,
         dataset_path=args.dataset_path,
         splits_manifest=args.splits_manifest,
         seed=seed,
@@ -307,16 +291,14 @@ def _eval_rf_acting(args: argparse.Namespace, mode: str) -> dict[str, Any]:
 
     spec = _eval_spec_for_mode(
         mode,
-        args.attacker_budget,
         aliasing_rate=getattr(args, "aliasing_rate", 0.0),
         session_coherent=getattr(args, "session_coherent", False),
         no_post_transition_leak=getattr(args, "no_post_transition_leak", False),
-        proximity_coupled=getattr(args, "proximity_coupled", False),
+        proximity_coupled=getattr(args, "proximity_coupled", True),
         proximity_min_escalation=getattr(args, "proximity_min_escalation", 0.4),
     )
     env = make_eval_env(
         spec=spec,
-        generator_path=args.generator_path,
         dataset_path=args.dataset_path,
         splits_manifest=args.splits_manifest,
         seed=0,
@@ -381,12 +363,6 @@ def _build_argparser() -> argparse.ArgumentParser:
     p.add_argument("--modes", nargs="+", default=list(_DEFAULT_MODES))
     p.add_argument("--algos", nargs="+", default=list(_DEFAULT_ALGOS))
     p.add_argument("--seeds", nargs="+", type=int, default=[0, 1, 2, 3, 4, 5, 6, 7, 8, 9])
-    p.add_argument(
-        "--attacker-budget",
-        type=int,
-        default=None,
-        help="Finite intrusion budget (operating point). Match the benchmark.",
-    )
     # Partial-observability redesign regime (applied to BOTH train + eval specs).
     p.add_argument("--aliasing-rate", type=float, default=0.0)
     p.add_argument("--session-coherent", action="store_true")
@@ -399,7 +375,6 @@ def _build_argparser() -> argparse.ArgumentParser:
     p.add_argument("--n-deterministic-episodes", type=int, default=300)
     p.add_argument("--out-root", default="runs/ablation/reward_coupling")
     p.add_argument("--rf-path", default="artifacts/detector/random_forest.joblib")
-    p.add_argument("--generator-path", default="artifacts/generator/red_team")
     p.add_argument("--dataset-path", default="data/processed/ciciot2023")
     p.add_argument(
         "--splits-manifest",
@@ -413,9 +388,7 @@ def _build_argparser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> int:
     args = _build_argparser().parse_args(argv)
-    logging.basicConfig(
-        level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s"
-    )
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
     out_root = Path(args.out_root)
     out_root.mkdir(parents=True, exist_ok=True)
 
@@ -427,10 +400,7 @@ def main(argv: list[str] | None = None) -> int:
 
     # Build the RL training grid (mode × algo × seed).
     rl_grid = [
-        (mode, algo, seed)
-        for mode in args.modes
-        for algo in args.algos
-        for seed in args.seeds
+        (mode, algo, seed) for mode in args.modes for algo in args.algos for seed in args.seeds
     ]
     logger.info(
         "coupling ablation: %d modes × %d algos × %d seeds = %d RL runs + "

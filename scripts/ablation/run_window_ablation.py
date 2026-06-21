@@ -69,7 +69,6 @@ def _run_cell(
     total_timesteps: int,
     eval_freq: int,
     n_eval_episodes: int,
-    generator_path: str,
     dataset_path: str,
     splits_manifest: str,
     smoke: bool,
@@ -132,8 +131,6 @@ def _run_cell(
             }
         ),
     ]
-    if generator_path:
-        cmd += ["--generator-path", generator_path]
     if dataset_path:
         cmd += ["--dataset-path", dataset_path]
     if splits_manifest:
@@ -198,7 +195,6 @@ def run_sweep(
     total_timesteps: int,
     eval_freq: int,
     n_eval_episodes: int,
-    generator_path: str,
     dataset_path: str,
     splits_manifest: str,
     parallel: int,
@@ -225,7 +221,6 @@ def run_sweep(
                 total_timesteps=total_timesteps,
                 eval_freq=eval_freq,
                 n_eval_episodes=n_eval_episodes,
-                generator_path=generator_path,
                 dataset_path=dataset_path,
                 splits_manifest=splits_manifest,
                 smoke=smoke,
@@ -271,7 +266,6 @@ def main(argv: list | None = None) -> int:  # type: ignore[type-arg]
     p.add_argument("--total-timesteps", type=int, default=500_000)
     p.add_argument("--eval-freq", type=int, default=25_000)
     p.add_argument("--n-eval-episodes", type=int, default=30)
-    p.add_argument("--generator-path", default="artifacts/generator/red_team")
     p.add_argument("--dataset-path", default="data/processed/ciciot2023")
     p.add_argument(
         "--splits-manifest",
@@ -302,7 +296,6 @@ def main(argv: list | None = None) -> int:  # type: ignore[type-arg]
         total_timesteps=args.total_timesteps,
         eval_freq=args.eval_freq,
         n_eval_episodes=args.n_eval_episodes,
-        generator_path=args.generator_path,
         dataset_path=args.dataset_path,
         splits_manifest=args.splits_manifest,
         parallel=args.parallel,

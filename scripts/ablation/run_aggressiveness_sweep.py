@@ -131,8 +131,6 @@ def _train_ppo(
         str(args.n_eval_episodes),
         "--out-dir",
         str(out_dir),
-        "--generator-path",
-        args.generator_path,
         "--dataset-path",
         args.dataset_path,
         "--splits-manifest",
@@ -223,7 +221,6 @@ def _eval_ppo_on_test(
         )
     env = make_eval_env(
         spec=spec,
-        generator_path=args.generator_path,
         dataset_path=args.dataset_path,
         splits_manifest=args.splits_manifest,
         seed=seed,
@@ -293,7 +290,6 @@ def _roll_rule_baseline(
         )
     env = make_eval_env(
         spec=spec,
-        generator_path=args.generator_path,
         dataset_path=args.dataset_path,
         splits_manifest=args.splits_manifest,
         seed=0,
@@ -361,7 +357,6 @@ def _build_argparser() -> argparse.ArgumentParser:
         help="Episodes for the recommended-action rule per p.",
     )
     p.add_argument("--out-root", default="runs/ablation/aggressiveness")
-    p.add_argument("--generator-path", default="artifacts/generator/red_team")
     p.add_argument("--dataset-path", default="data/processed/ciciot2023")
     p.add_argument(
         "--splits-manifest",

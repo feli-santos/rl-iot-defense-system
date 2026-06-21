@@ -1,8 +1,8 @@
-"""blue-team run configuration dataclass.
+"""Blue-Team run configuration dataclass.
 
 A :class:`BlueTeamRunConfig` binds one ``(algo, seed, total_timesteps,
 …)`` tuple together with the env / eval config so a single run can be
-serialised to ``run_manifest.json`` and replayed verbatim. Every blue-team
+serialised to ``run_manifest.json`` and replayed verbatim. Every Blue-Team
 training script materialises a ``BlueTeamRunConfig`` first, then
 materialises the env and the model from it.
 
@@ -23,7 +23,7 @@ The manifest written at training time has this shape::
       "eval_env": {"split": "val_balanced", "exclude_ood": true,
                    "min_episode_length": 20, "max_steps": 100, ...},
       "algo_hparams": {...},
-      "paths": {"generator": "...", "dataset": "...",
+      "paths": {"dataset": "...",
                 "splits_manifest": "...",
                 "out_dir": "runs/ppo/seed_3"},
       "completed_at": "2026-04-30T15:42:11Z",
@@ -48,19 +48,19 @@ _SCHEMA_VERSION = "1.0"
 class EnvConfigSerializable:
     """Subset of :class:`AdversarialEnvConfig` that we serialise.
 
-    blue-team originally serialised only the lifecycle + sampling levers
+    Blue-Team originally serialised only the lifecycle + sampling levers
     (``min_episode_length``, ``max_steps``, ``window_size``,
     ``include_deltas``, ``p_defender_deescalation``) because the
     reward-shaping coefficients were *frozen* by the environment-design contract
-    and not blue-team levers.
+    and not Blue-Team levers.
 
     ablation (audit AF1 / D7.3 / PLAN §3.1.2) extends this to the full
     set of :class:`AdversarialEnvConfig` reward fields so that the F9
     reward-component sweep can override individual coefficients
     per-cell via ``train_agent.py --reward-overrides``. Every new field
     has a default that matches environment-design's frozen value, so existing
-    blue-team manifests deserialise unchanged and the default training
-    behaviour is byte-for-byte identical to blue-team.
+    Blue-Team manifests deserialise unchanged and the default training
+    behaviour is byte-for-byte identical to Blue-Team.
     """
 
     # Lifecycle + sampling (original blue-team fields)
@@ -85,22 +85,9 @@ class EnvConfigSerializable:
     # Evasion-before-commit reactive attacker (defender-action-coupled stall).
     evasion_prob: float = 0.0
 
-    # Finite attacker budget (prevention model). ``attacker_budget=None``
-    # preserves the unbounded contract (compromise_rate == 1.0); a finite
-    # budget drains by ``budget_step_cost`` per active progression step and
-    # ``budget_reset_cost`` per defender de-escalation, and an attacker that
-    # exhausts its budget before IMPACT is prevented.
-    attacker_budget: Optional[int] = None
-    budget_step_cost: int = 1
-    budget_reset_cost: int = 2
-    # budget_cost_model: "hybrid" (default, legacy) drains the per-step
-    # activity cost on every active attacker step, so any forcing policy -- even
-    # a blind detector spraying ISOLATE -- exhausts the budget and prevents,
-    # masking detector skill. "targeted" drains only under correctly-targeted
-    # proportional force (and the attacker's own activity); mis-targeted heavy
-    # force stalls the attacker but drains nothing, restoring a detector-skill
-    # signal at a budgeted operating point. Must match between train and eval.
-    budget_cost_model: str = "hybrid"
+    # Terminal reward for a prevented attack (attacker held below IMPACT for
+    # the entire horizon under proximity-coupled escalation). Must match
+    # between train and eval.
     prevention_bonus: float = 50.0
 
     # Tug-of-war dynamics (headline contract). The defender's signed force
@@ -188,7 +175,7 @@ class EnvConfigSerializable:
 
 @dataclass
 class BlueTeamRunConfig:
-    """Frozen configuration for one blue-team (algo, seed) run."""
+    """Frozen configuration for one Blue-Team (algo, seed) run."""
 
     algo: str
     seed: int
@@ -205,7 +192,6 @@ class BlueTeamRunConfig:
     early_stop_patience: int = 10
     early_stop_min_evals: int = 10
     out_dir: str = "runs/ppo/seed_0"
-    generator_path: str = "artifacts/generator/phase2"
     dataset_path: str = "data/processed/ciciot2023"
     splits_manifest: str = "data/processed/ciciot2023/splits/manifest.json"
     env: EnvConfigSerializable = field(default_factory=EnvConfigSerializable)
@@ -225,10 +211,6 @@ class BlueTeamRunConfig:
         "impact_is_terminal",
         "reward_mode",
         "tug_of_war",
-        "attacker_budget",
-        "budget_step_cost",
-        "budget_reset_cost",
-        "budget_cost_model",
         "p_onset",
         "p_onset_access",
         "p_down",
@@ -270,8 +252,9 @@ class BlueTeamRunConfig:
     def assert_train_eval_parity(self) -> None:
         """Fail loudly if train/eval disagree on any task-contract field.
 
-        Without this, a silent mismatch (e.g. training with ``attacker_budget=40``
-        but evaluating unbounded, or training ``coupled`` and evaluating
+        Without this, a silent mismatch (e.g. training with
+        ``proximity_coupled=True`` but evaluating with
+        ``proximity_coupled=False``, or training ``coupled`` and evaluating
         ``outcome``) would not error — the eval number would simply measure a
         different MDP. The eval manifest records these values but nothing else
         enforces that they match the training contract.
@@ -285,8 +268,7 @@ class BlueTeamRunConfig:
         if mismatches:
             raise ValueError(
                 "BlueTeamRunConfig: train/eval env contract mismatch — the eval "
-                "number would measure a different MDP than training:\n"
-                + "\n".join(mismatches)
+                "number would measure a different MDP than training:\n" + "\n".join(mismatches)
             )
 
     @property
@@ -318,7 +300,6 @@ class BlueTeamRunConfig:
             "eval_env": asdict(self.eval_env),
             "algo_hparams": dict(self.algo_hparams),
             "paths": {
-                "generator": self.generator_path,
                 "dataset": self.dataset_path,
                 "splits_manifest": self.splits_manifest,
                 "out_dir": self.out_dir,
@@ -381,7 +362,6 @@ class BlueTeamRunConfig:
             early_stop_patience=int(d.get("early_stop_patience", 10)),
             early_stop_min_evals=int(d.get("early_stop_min_evals", 10)),
             out_dir=str(paths.get("out_dir", "")),
-            generator_path=str(paths.get("generator", "")),
             dataset_path=str(paths.get("dataset", "")),
             splits_manifest=str(paths.get("splits_manifest", "")),
             env=env,

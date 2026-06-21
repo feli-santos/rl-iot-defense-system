@@ -107,7 +107,6 @@ class TestTrainEvalParity:
     @pytest.mark.parametrize(
         "field,train_val,eval_val",
         [
-            ("attacker_budget", 40, None),
             ("impact_is_terminal", False, True),
             ("reward_mode", "outcome", "coupled"),
             ("p_down", 0.90, 0.80),
@@ -129,9 +128,7 @@ class TestTrainEvalParity:
                 algo="ppo",
                 seed=0,
                 env=EnvConfigSerializable(split="train", **{field: train_val}),
-                eval_env=EnvConfigSerializable(
-                    split="val_balanced", **{field: eval_val}
-                ),
+                eval_env=EnvConfigSerializable(split="val_balanced", **{field: eval_val}),
             )
 
     def test_reward_mode_alias_difference_does_not_trip_parity(self) -> None:
@@ -141,19 +138,15 @@ class TestTrainEvalParity:
             algo="ppo",
             seed=0,
             env=EnvConfigSerializable(split="train", reward_mode="proportional"),
-            eval_env=EnvConfigSerializable(
-                split="val_balanced", reward_mode="coupled"
-            ),
+            eval_env=EnvConfigSerializable(split="val_balanced", reward_mode="coupled"),
         )
 
-    def test_matching_budget_and_mode_passes(self) -> None:
+    def test_matching_mode_passes(self) -> None:
         BlueTeamRunConfig(
             algo="ppo",
             seed=0,
-            env=EnvConfigSerializable(
-                split="train", attacker_budget=40, reward_mode="outcome"
-            ),
+            env=EnvConfigSerializable(split="train", reward_mode="outcome", proximity_coupled=True),
             eval_env=EnvConfigSerializable(
-                split="val_balanced", attacker_budget=40, reward_mode="outcome"
+                split="val_balanced", reward_mode="outcome", proximity_coupled=True
             ),
         )

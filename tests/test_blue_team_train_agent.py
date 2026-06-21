@@ -23,15 +23,8 @@ from src.blue_team.aggregation import read_episodes_jsonl
 
 
 @pytest.fixture
-def synthetic_paths(tmp_path: Path) -> tuple[Path, Path]:
-    """Tiny synthetic dataset for the smoke run.
-
-    ``gen_dir`` is an ignored generator-path directory (attacker is now a
-    first-order Markov chain).
-    """
-    gen_dir = tmp_path / "generator"
-    gen_dir.mkdir(parents=True)
-
+def synthetic_paths(tmp_path: Path) -> Path:
+    """Tiny synthetic dataset for the smoke run."""
     ds_dir = tmp_path / "dataset"
     ds_dir.mkdir(parents=True)
     rng = np.random.default_rng(42)
@@ -45,7 +38,7 @@ def synthetic_paths(tmp_path: Path) -> tuple[Path, Path]:
     (ds_dir / "state_indices.json").write_text(json.dumps(state_indices))
     joblib.dump(StandardScaler().fit(features), ds_dir / "scaler.joblib")
 
-    return gen_dir, ds_dir
+    return ds_dir
 
 
 # --------------------------------------------------------------- tests
@@ -55,7 +48,6 @@ class TestTrainAgentSmoke:
     def _build_cfg(
         self,
         *,
-        gen_dir: Path,
         ds_dir: Path,
         out_dir: Path,
         algo: str = "ppo",
@@ -85,7 +77,6 @@ class TestTrainAgentSmoke:
             eval_freq=100,
             n_eval_episodes=2,
             out_dir=str(out_dir),
-            generator_path=str(gen_dir),
             dataset_path=str(ds_dir),
             splits_manifest="",  # synthetic — no dataset-prep manifest
             env=env,
@@ -109,10 +100,9 @@ class TestTrainAgentSmoke:
     ) -> None:
         from scripts.blue_team.train_agent import train
 
-        gen_dir, ds_dir = synthetic_paths
+        ds_dir = synthetic_paths
         out_dir = tmp_path / "run"
         cfg = self._build_cfg(
-            gen_dir=gen_dir,
             ds_dir=ds_dir,
             out_dir=out_dir,
             total_timesteps=200,
@@ -153,10 +143,9 @@ class TestTrainAgentSmoke:
         config dataclass."""
         from scripts.blue_team.train_agent import train
 
-        gen_dir, ds_dir = synthetic_paths
+        ds_dir = synthetic_paths
         out_dir = tmp_path / "run"
         cfg = self._build_cfg(
-            gen_dir=gen_dir,
             ds_dir=ds_dir,
             out_dir=out_dir,
             total_timesteps=300,
@@ -192,10 +181,9 @@ class TestTrainAgentSmoke:
 
         from scripts.blue_team.train_agent import train
 
-        gen_dir, ds_dir = synthetic_paths
+        ds_dir = synthetic_paths
         out_dir = tmp_path / "run"
         cfg = self._build_cfg(
-            gen_dir=gen_dir,
             ds_dir=ds_dir,
             out_dir=out_dir,
             total_timesteps=64,

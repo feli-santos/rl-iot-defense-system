@@ -270,7 +270,6 @@ def build_run_config(args: argparse.Namespace) -> BlueTeamRunConfig:
         early_stop_patience=getattr(args, "early_stop_patience", 10),
         early_stop_min_evals=getattr(args, "early_stop_min_evals", 10),
         out_dir=out_dir,
-        generator_path=args.generator_path,
         dataset_path=args.dataset_path,
         splits_manifest=args.splits_manifest or "",
         env=env_spec,
@@ -302,14 +301,12 @@ def train(cfg: BlueTeamRunConfig, *, verbose: int = 0) -> dict[str, Any]:
 
     train_env = make_train_env(
         spec=cfg.env,
-        generator_path=cfg.generator_path,
         dataset_path=cfg.dataset_path,
         splits_manifest=splits_manifest,
         seed=cfg.seed,
     )
     eval_env = make_eval_env(
         spec=cfg.eval_env,
-        generator_path=cfg.generator_path,
         dataset_path=cfg.dataset_path,
         splits_manifest=splits_manifest,
         seed=cfg.seed + 10_000,  # disjoint RNG pool
@@ -362,7 +359,6 @@ def train(cfg: BlueTeamRunConfig, *, verbose: int = 0) -> dict[str, Any]:
     if cfg.early_stop:
         sb3_eval_env = make_eval_env(
             spec=cfg.eval_env,
-            generator_path=cfg.generator_path,
             dataset_path=cfg.dataset_path,
             splits_manifest=splits_manifest,
             seed=cfg.seed + 20_000,  # disjoint from train (seed) + eval (+10k)
@@ -478,11 +474,6 @@ def _build_argparser() -> argparse.ArgumentParser:
         "--out-dir",
         default=None,
         help="Output dir (default runs/<algo>/seed_<seed>).",
-    )
-    p.add_argument(
-        "--generator-path",
-        default="artifacts/generator/red_team",
-        help="Path to red-team generator artefact directory.",
     )
     p.add_argument(
         "--dataset-path",

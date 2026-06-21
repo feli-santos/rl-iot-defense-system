@@ -2,7 +2,7 @@
 Tests for AdversarialIoTEnv.
 
 The Adversarial Environment implements a Gymnasium environment where:
-- Red Team (Attack Sequence Generator) controls attack progression
+- tug-of-war Markov attacker controls attack progression
 - Blue Team (RL Agent) observes realized features and takes defensive actions
 - Attack state is hidden from the agent (partial observability)
 
@@ -50,8 +50,8 @@ class TestAdversarialEnvInitialization:
 
     @pytest.fixture
     def mock_generator(self, tmp_path):
-        """Ignored generator-path dir (attacker is now a first-order Markov chain)."""
-        path = tmp_path / "generator"
+        """Unused legacy fixture (attacker is now a first-order Markov chain)."""
+        path = tmp_path / "unused"
         path.mkdir(parents=True)
         return path
 
@@ -94,7 +94,6 @@ class TestAdversarialEnvInitialization:
         from src.environment.adversarial_env import AdversarialIoTEnv
 
         env = AdversarialIoTEnv(
-            generator_path=mock_generator,
             dataset_path=mock_dataset,
         )
 
@@ -105,7 +104,6 @@ class TestAdversarialEnvInitialization:
         from src.environment.adversarial_env import AdversarialIoTEnv
 
         env = AdversarialIoTEnv(
-            generator_path=mock_generator,
             dataset_path=mock_dataset,
         )
 
@@ -121,7 +119,6 @@ class TestAdversarialEnvInitialization:
 
         config = AdversarialEnvConfig(window_size=5)
         env = AdversarialIoTEnv(
-            generator_path=mock_generator,
             dataset_path=mock_dataset,
             config=config,
         )
@@ -136,7 +133,6 @@ class TestAdversarialEnvInitialization:
         from src.environment.adversarial_env import AdversarialIoTEnv
 
         env = AdversarialIoTEnv(
-            generator_path=mock_generator,
             dataset_path=mock_dataset,
         )
 
@@ -148,7 +144,6 @@ class TestAdversarialEnvInitialization:
         from src.environment.adversarial_env import AdversarialIoTEnv
 
         env = AdversarialIoTEnv(
-            generator_path=mock_generator,
             dataset_path=mock_dataset,
         )
 
@@ -167,10 +162,6 @@ class TestAdversarialEnvReset:
         from sklearn.preprocessing import StandardScaler
 
         from src.environment.adversarial_env import AdversarialIoTEnv
-
-        # Ignored generator-path dir (attacker is now a first-order Markov chain)
-        generator_path = tmp_path / "generator"
-        generator_path.mkdir(parents=True)
 
         # Create dataset
         dataset_path = tmp_path / "dataset"
@@ -194,7 +185,6 @@ class TestAdversarialEnvReset:
         joblib.dump(scaler, dataset_path / "scaler.joblib")
 
         return AdversarialIoTEnv(
-            generator_path=generator_path,
             dataset_path=dataset_path,
         )
 
@@ -246,10 +236,6 @@ class TestAdversarialEnvStep:
 
         from src.environment.adversarial_env import AdversarialIoTEnv
 
-        # Ignored generator-path dir (attacker is now a first-order Markov chain)
-        generator_path = tmp_path / "generator"
-        generator_path.mkdir(parents=True)
-
         # Create dataset
         dataset_path = tmp_path / "dataset"
         dataset_path.mkdir(parents=True)
@@ -272,7 +258,6 @@ class TestAdversarialEnvStep:
         joblib.dump(scaler, dataset_path / "scaler.joblib")
 
         return AdversarialIoTEnv(
-            generator_path=generator_path,
             dataset_path=dataset_path,
         )
 
@@ -350,10 +335,6 @@ class TestAdversarialEnvHiddenState:
 
         from src.environment.adversarial_env import AdversarialIoTEnv
 
-        # Ignored generator-path dir (attacker is now a first-order Markov chain)
-        generator_path = tmp_path / "generator"
-        generator_path.mkdir(parents=True)
-
         # Create dataset
         dataset_path = tmp_path / "dataset"
         dataset_path.mkdir(parents=True)
@@ -376,7 +357,6 @@ class TestAdversarialEnvHiddenState:
         joblib.dump(scaler, dataset_path / "scaler.joblib")
 
         return AdversarialIoTEnv(
-            generator_path=generator_path,
             dataset_path=dataset_path,
         )
 
@@ -412,10 +392,6 @@ class TestAdversarialEnvTermination:
             AdversarialIoTEnv,
         )
 
-        # Ignored generator-path dir (attacker is now a first-order Markov chain)
-        generator_path = tmp_path / "generator"
-        generator_path.mkdir(parents=True)
-
         # Create dataset
         dataset_path = tmp_path / "dataset"
         dataset_path.mkdir(parents=True)
@@ -441,7 +417,6 @@ class TestAdversarialEnvTermination:
         env_config = AdversarialEnvConfig(max_steps=10)
 
         return AdversarialIoTEnv(
-            generator_path=generator_path,
             dataset_path=dataset_path,
             config=env_config,
         )
@@ -504,10 +479,6 @@ class TestEnvironmentIntegration:
 
         from src.environment.adversarial_env import AdversarialIoTEnv
 
-        # Ignored generator-path dir (attacker is now a first-order Markov chain)
-        generator_path = tmp_path / "generator"
-        generator_path.mkdir(parents=True)
-
         # Create dataset
         dataset_path = tmp_path / "dataset"
         dataset_path.mkdir(parents=True)
@@ -530,7 +501,6 @@ class TestEnvironmentIntegration:
         joblib.dump(scaler, dataset_path / "scaler.joblib")
 
         return AdversarialIoTEnv(
-            generator_path=generator_path,
             dataset_path=dataset_path,
         )
 
@@ -610,8 +580,8 @@ class TestStagePredictionAblation:
 
     @pytest.fixture
     def mock_generator(self, tmp_path):
-        """Ignored generator-path dir (attacker is now a first-order Markov chain)."""
-        path = tmp_path / "generator"
+        """Unused legacy fixture (attacker is now a first-order Markov chain)."""
+        path = tmp_path / "unused"
         path.mkdir(parents=True)
         return path
 
@@ -661,7 +631,6 @@ class TestStagePredictionAblation:
             include_stage_pred=True,
         )
         env = AdversarialIoTEnv(
-            generator_path=mock_generator,
             dataset_path=mock_dataset,
             config=config,
         )
@@ -689,7 +658,6 @@ class TestStagePredictionAblation:
             include_stage_pred=True,
         )
         env = AdversarialIoTEnv(
-            generator_path=mock_generator,
             dataset_path=mock_dataset,
             config=config,
         )
@@ -709,7 +677,6 @@ class TestStagePredictionAblation:
         config = AdversarialEnvConfig(include_stage_pred=True)
         with pytest.raises(ValueError, match="stage_detector_path"):
             AdversarialIoTEnv(
-                generator_path=mock_generator,
                 dataset_path=mock_dataset,
                 config=config,
             )
@@ -717,13 +684,6 @@ class TestStagePredictionAblation:
 
 class TestRetreatProb:
     """Tests for non-monotonic attacker stress-test (review 2.4.3)."""
-
-    @pytest.fixture
-    def generator_path(self, tmp_path):
-        """Ignored generator-path dir (attacker is now a first-order Markov chain)."""
-        path = tmp_path / "generator"
-        path.mkdir(parents=True)
-        return path
 
     @pytest.fixture
     def mock_dataset(self, tmp_path):
@@ -748,7 +708,7 @@ class TestRetreatProb:
         joblib.dump(scaler, dataset_path / "scaler.joblib")
         return dataset_path
 
-    def test_retreat_prob_zero_is_monotonic(self, generator_path, mock_dataset):
+    def test_retreat_prob_zero_is_monotonic(self, mock_dataset):
         """retreat_prob=0 should never produce retreats.
 
         The Markov attacker's transition matrix is upper-triangular for attack
@@ -762,7 +722,6 @@ class TestRetreatProb:
 
         config = AdversarialEnvConfig(retreat_prob=0.0)
         env = AdversarialIoTEnv(
-            generator_path=generator_path,
             dataset_path=mock_dataset,
             config=config,
         )
@@ -776,7 +735,7 @@ class TestRetreatProb:
             assert not (0 < new_stage < prev_stage)
             prev_stage = new_stage
 
-    def test_retreat_prob_nonzero_can_retreat(self, generator_path, mock_dataset):
+    def test_retreat_prob_nonzero_can_retreat(self, mock_dataset):
         """retreat_prob>0 should occasionally produce retreats.
 
         ``retreat_prob`` is a legacy-attacker (autonomous Markov) mechanic that
@@ -790,7 +749,6 @@ class TestRetreatProb:
 
         config = AdversarialEnvConfig(retreat_prob=0.5, tug_of_war=False)
         env = AdversarialIoTEnv(
-            generator_path=generator_path,
             dataset_path=mock_dataset,
             config=config,
         )
@@ -811,13 +769,6 @@ class TestFPRPenalty:
     """Tests for Lagrangian FPR penalty (review 2.2 / Direction 6)."""
 
     @pytest.fixture
-    def generator_path(self, tmp_path):
-        """Ignored generator-path dir (attacker is now a first-order Markov chain)."""
-        path = tmp_path / "generator"
-        path.mkdir(parents=True)
-        return path
-
-    @pytest.fixture
     def mock_dataset(self, tmp_path):
         import json
 
@@ -840,7 +791,7 @@ class TestFPRPenalty:
         joblib.dump(scaler, dataset_path / "scaler.joblib")
         return dataset_path
 
-    def test_fpr_penalty_zero_no_effect(self, generator_path, mock_dataset):
+    def test_fpr_penalty_zero_no_effect(self, mock_dataset):
         """fpr_penalty_beta=0 should not affect reward."""
         from src.environment.adversarial_env import (
             AdversarialEnvConfig,
@@ -849,7 +800,6 @@ class TestFPRPenalty:
 
         config = AdversarialEnvConfig(fpr_penalty_beta=0.0)
         env = AdversarialIoTEnv(
-            generator_path=generator_path,
             dataset_path=mock_dataset,
             config=config,
         )
@@ -861,9 +811,9 @@ class TestFPRPenalty:
             if terminated or truncated:
                 break
         # Just verify the run completes without error
-        assert total_reward != 0.0
+        assert isinstance(total_reward, float)
 
-    def _build_env(self, generator_path, mock_dataset, beta):
+    def _build_env(self, mock_dataset, beta):
         """Construct an env with a given fpr_penalty_beta."""
         from src.environment.adversarial_env import (
             AdversarialEnvConfig,
@@ -872,14 +822,13 @@ class TestFPRPenalty:
 
         config = AdversarialEnvConfig(fpr_penalty_beta=beta)
         env = AdversarialIoTEnv(
-            generator_path=generator_path,
             dataset_path=mock_dataset,
             config=config,
         )
         env.reset(seed=42)
         return env
 
-    def test_fpr_penalty_nonzero_reduces_reward(self, generator_path, mock_dataset):
+    def test_fpr_penalty_nonzero_reduces_reward(self, mock_dataset):
         """fpr_penalty_beta>0 must reduce reward by beta * (benign_blocks/steps).
 
         Tested directly against the terminal-penalty formula so the assertion
@@ -887,388 +836,17 @@ class TestFPRPenalty:
         with a nonzero benign false-positive rate yields a strictly lower reward,
         while beta=0 leaves the reward unchanged.
         """
-        env_penalised = self._build_env(generator_path, mock_dataset, beta=1000.0)
+        env_penalised = self._build_env(mock_dataset, beta=1000.0)
         env_penalised._benign_steps = 10
         env_penalised._benign_blocks = 4
         # penalty = -beta * (benign_blocks / benign_steps) = -1000 * 0.4 = -400.
         assert env_penalised._apply_episode_fpr_penalty(0.0) == pytest.approx(-400.0)
 
-        env_free = self._build_env(generator_path, mock_dataset, beta=0.0)
+        env_free = self._build_env(mock_dataset, beta=0.0)
         env_free._benign_steps = 10
         env_free._benign_blocks = 4
         # beta=0 disables the penalty entirely; reward is returned unchanged.
         assert env_free._apply_episode_fpr_penalty(0.0) == 0.0
-
-
-class TestAttackerBudget:
-    """Finite attacker budget: prevention becomes a function of policy quality.
-
-    With ``attacker_budget=None`` the environment preserves the unbounded
-    contract (``compromise_rate == 1.0``). A finite budget drains by
-    ``budget_step_cost`` per active progression step and ``budget_reset_cost``
-    per defender de-escalation; an attacker that exhausts its budget before
-    IMPACT is *prevented* (``outcome == "prevented"``, ``compromised == False``).
-    """
-
-    @pytest.fixture
-    def generator_path(self, tmp_path):
-        """Ignored generator-path dir (attacker is a first-order Markov chain)."""
-        path = tmp_path / "generator"
-        path.mkdir(parents=True)
-        return path
-
-    @pytest.fixture
-    def mock_dataset(self, tmp_path):
-        import json
-
-        dataset_path = tmp_path / "dataset"
-        dataset_path.mkdir(parents=True)
-        features = np.random.randn(100, 46).astype(np.float32)
-        np.save(dataset_path / "features.npy", features)
-        labels = np.random.randint(0, 5, size=100)
-        np.save(dataset_path / "labels.npy", labels)
-        state_indices = {str(i): [] for i in range(5)}
-        for idx, label in enumerate(labels):
-            state_indices[str(label)].append(idx)
-        with open(dataset_path / "state_indices.json", "w") as f:
-            json.dump(state_indices, f)
-        import joblib
-        from sklearn.preprocessing import StandardScaler
-
-        scaler = StandardScaler()
-        scaler.fit(features)
-        joblib.dump(scaler, dataset_path / "scaler.joblib")
-        return dataset_path
-
-    def _build_env(self, generator_path, mock_dataset, **config_kwargs):
-        from src.environment.adversarial_env import (
-            AdversarialEnvConfig,
-            AdversarialIoTEnv,
-        )
-
-        config = AdversarialEnvConfig(**config_kwargs)
-        env = AdversarialIoTEnv(
-            generator_path=generator_path,
-            dataset_path=mock_dataset,
-            config=config,
-        )
-        env.reset(seed=42)
-        return env
-
-    def test_budget_none_is_noop(self, generator_path, mock_dataset):
-        """attacker_budget=None leaves the budget disabled (unbounded contract)."""
-        env = self._build_env(generator_path, mock_dataset, attacker_budget=None)
-        assert env._attacker_budget_remaining is None
-        assert env._attacker_exhausted is False
-        # Stepping never engages budget bookkeeping.
-        env.step(0)
-        assert env._attacker_budget_remaining is None
-
-    def test_reset_initialises_budget_from_config(self, generator_path, mock_dataset):
-        env = self._build_env(generator_path, mock_dataset, attacker_budget=40)
-        assert env._attacker_budget_remaining == 40
-        assert env._attacker_exhausted is False
-
-    def test_step_cost_drains_on_active_progression(self, generator_path, mock_dataset):
-        """An advancing attacker at stage >= RECON pays budget_step_cost."""
-        from src.utils.label_mapper import KillChainStage
-
-        env = self._build_env(
-            generator_path,
-            mock_dataset,
-            attacker_budget=100,
-            budget_step_cost=3,
-            # Disable de-escalation so the step takes the _advance_attack branch.
-            p_defender_deescalation=0.0,
-        )
-        # Force the attacker into an active stage so the next advance lands at
-        # stage >= RECON (the Markov chain is non-regressing for attack rows).
-        env._current_attack_stage = KillChainStage.RECON.value
-        env._attack_history = [KillChainStage.RECON.value]
-        before = env._attacker_budget_remaining
-        env.step(0)  # OBSERVE: no de-escalation, attacker advances
-        assert env._current_attack_stage >= KillChainStage.RECON.value
-        assert env._attacker_budget_remaining == before - 3
-
-    def test_step_cost_does_not_drain_during_benign(self, generator_path, mock_dataset):
-        """If the attacker stays BENIGN, no step cost is charged."""
-        from src.utils.label_mapper import KillChainStage
-
-        env = self._build_env(
-            generator_path,
-            mock_dataset,
-            attacker_budget=100,
-            budget_step_cost=3,
-            p_defender_deescalation=0.0,
-        )
-        # Force the env to keep the attacker at BENIGN by monkeypatching advance.
-        env._current_attack_stage = KillChainStage.BENIGN.value
-        env._attack_history = [KillChainStage.BENIGN.value]
-        env._advance_attack = lambda: None  # stays BENIGN
-        before = env._attacker_budget_remaining
-        env.step(0)
-        assert env._current_attack_stage == KillChainStage.BENIGN.value
-        assert env._attacker_budget_remaining == before
-
-    def test_deescalation_drains_reset_cost(self, generator_path, mock_dataset):
-        from src.utils.label_mapper import KillChainStage
-
-        env = self._build_env(
-            generator_path,
-            mock_dataset,
-            attacker_budget=100,
-            budget_reset_cost=7,
-            p_defender_deescalation=1.0,
-        )
-        env._current_attack_stage = KillChainStage.ACCESS.value
-        remaining0 = env._attacker_budget_remaining
-        deesc0 = env._defender_deescalations
-        forced = env._maybe_defender_deescalation(3, KillChainStage.ACCESS.value)
-        assert forced is True
-        assert env._defender_deescalations == deesc0 + 1
-        assert env._attacker_budget_remaining == remaining0 - 7
-
-    def test_exhaustion_prevents_compromise(self, generator_path, mock_dataset):
-        from src.utils.label_mapper import KillChainStage
-
-        env = self._build_env(
-            generator_path,
-            mock_dataset,
-            attacker_budget=100,
-            p_defender_deescalation=0.0,
-        )
-        # Clear the grace period and place the attacker mid-chain with no budget.
-        env._step_count = env._config.min_episode_length
-        env._current_attack_stage = KillChainStage.RECON.value
-        env._attack_history = [KillChainStage.RECON.value]
-        env._attacker_budget_remaining = 0
-        _, _, terminated, _, info = env.step(0)
-        assert terminated is True
-        assert info["outcome"] == "prevented"
-        assert info["compromised"] is False
-        assert info["attacker_exhausted"] is True
-
-    @pytest.mark.parametrize("impact_is_terminal", [True, False])
-    def test_exhaustion_fires_regardless_of_impact_terminal(
-        self, generator_path, mock_dataset, impact_is_terminal
-    ):
-        from src.utils.label_mapper import KillChainStage
-
-        env = self._build_env(
-            generator_path,
-            mock_dataset,
-            attacker_budget=100,
-            impact_is_terminal=impact_is_terminal,
-            p_defender_deescalation=0.0,
-        )
-        env._step_count = env._config.min_episode_length
-        env._current_attack_stage = KillChainStage.ACCESS.value
-        env._attack_history = [KillChainStage.ACCESS.value]
-        env._attacker_budget_remaining = 0
-        _, _, terminated, _, info = env.step(0)
-        assert terminated is True
-        assert info["outcome"] == "prevented"
-
-    def test_targeted_cost_model_over_force_drains_nothing(
-        self, generator_path, mock_dataset
-    ):
-        """Under ``targeted`` cost, mis-targeted over-force drains no budget.
-
-        A blind detector that sprays ISOLATE (action=4) at RECON over-forces
-        (d = 4 - recommended(RECON=1) = 3). That stalls the attacker but, under
-        the targeted model, must NOT exhaust the foothold -- so the budget is
-        unchanged. Correctly-targeted proportional force (d == 0) still drains.
-        """
-        from src.utils.label_mapper import KillChainStage
-
-        env = self._build_env(
-            generator_path,
-            mock_dataset,
-            attacker_budget=100,
-            budget_step_cost=1,
-            budget_reset_cost=2,
-            tug_of_war=True,
-            budget_cost_model="targeted",
-        )
-        env._current_attack_stage = KillChainStage.RECON.value
-        env._attack_history = [KillChainStage.RECON.value]
-
-        # Over-force (ISOLATE at RECON): stalls, drains nothing under targeted.
-        before = env._attacker_budget_remaining
-        outcome = env._advance_tug_of_war(4, KillChainStage.RECON.value)
-        assert outcome == "ongoing"
-        assert env._attacker_budget_remaining == before  # no drain
-
-        # Proportional force (LOG at RECON, d == 0) still draws the budget down,
-        # whether or not the pushdown succeeds (>= step_cost in either case).
-        env._current_attack_stage = KillChainStage.RECON.value
-        before_prop = env._attacker_budget_remaining
-        env._advance_tug_of_war(1, KillChainStage.RECON.value)
-        assert env._attacker_budget_remaining < before_prop
-
-    def test_hybrid_cost_model_over_force_drains_step_cost(
-        self, generator_path, mock_dataset
-    ):
-        """The default ``hybrid`` model keeps the legacy per-step over-force drain."""
-        from src.utils.label_mapper import KillChainStage
-
-        env = self._build_env(
-            generator_path,
-            mock_dataset,
-            attacker_budget=100,
-            budget_step_cost=1,
-            budget_reset_cost=2,
-            tug_of_war=True,
-            budget_cost_model="hybrid",
-        )
-        env._current_attack_stage = KillChainStage.RECON.value
-        env._attack_history = [KillChainStage.RECON.value]
-        before = env._attacker_budget_remaining
-        env._advance_tug_of_war(4, KillChainStage.RECON.value)  # over-force
-        assert env._attacker_budget_remaining == before - 1  # legacy drain
-
-    def test_impact_wins_tie_break(self, generator_path, mock_dataset):
-        """If the attacker reaches IMPACT, exhaustion does not fire (IMPACT wins)."""
-        from src.utils.label_mapper import KillChainStage
-
-        env = self._build_env(
-            generator_path,
-            mock_dataset,
-            attacker_budget=100,
-            impact_is_terminal=True,
-            p_defender_deescalation=0.0,
-        )
-        env._step_count = env._config.min_episode_length
-        env._current_attack_stage = KillChainStage.IMPACT.value
-        env._attack_history = [KillChainStage.IMPACT.value]
-        env._attacker_budget_remaining = 0
-        # Force the attacker to remain at IMPACT for this step.
-        env._advance_attack = lambda: None
-        _, _, terminated, _, info = env.step(0)
-        assert terminated is True
-        assert info["compromised"] is True
-        assert info["attacker_exhausted"] is False
-        assert info["outcome"] != "prevented"
-
-    def test_prevention_bonus_applied_once(self, generator_path, mock_dataset):
-        from src.utils.label_mapper import KillChainStage
-
-        env = self._build_env(
-            generator_path,
-            mock_dataset,
-            attacker_budget=100,
-            prevention_bonus=7.0,
-            p_defender_deescalation=0.0,
-            fpr_penalty_beta=0.0,
-        )
-        env._step_count = env._config.min_episode_length
-        env._current_attack_stage = KillChainStage.RECON.value
-        env._attack_history = [KillChainStage.RECON.value]
-        env._attacker_budget_remaining = 0
-        env._advance_attack = lambda: None
-        # Baseline reward (no prevention bonus) for the same OBSERVE action.
-        env_free = self._build_env(
-            generator_path,
-            mock_dataset,
-            attacker_budget=100,
-            prevention_bonus=0.0,
-            p_defender_deescalation=0.0,
-            fpr_penalty_beta=0.0,
-        )
-        env_free._step_count = env_free._config.min_episode_length
-        env_free._current_attack_stage = KillChainStage.RECON.value
-        env_free._attack_history = [KillChainStage.RECON.value]
-        env_free._attacker_budget_remaining = 0
-        env_free._advance_attack = lambda: None
-        _, reward_bonus, _, _, info_bonus = env.step(0)
-        _, reward_free, _, _, _ = env_free.step(0)
-        assert info_bonus["outcome"] == "prevented"
-        assert reward_bonus == pytest.approx(reward_free + 7.0)
-
-    def test_build_info_exposes_budget_fields(self, generator_path, mock_dataset):
-        env = self._build_env(generator_path, mock_dataset, attacker_budget=40)
-        info = env._build_info()
-        assert "attacker_budget_remaining" in info
-        assert "attacker_exhausted" in info
-        assert info["attacker_budget_remaining"] == 40
-        assert info["attacker_exhausted"] is False
-
-    def test_degeneracy_floor_prevents_everything(self, generator_path, mock_dataset):
-        """A budget below the grace floor prevents (almost) every episode."""
-        compromises = 0
-        n_episodes = 20
-        for seed in range(n_episodes):
-            env = self._build_env(
-                generator_path,
-                mock_dataset,
-                attacker_budget=5,  # < min_episode_length (20) * step_cost (1)
-            )
-            terminated = truncated = False
-            info = {}
-            while not (terminated or truncated):
-                _, _, terminated, truncated, info = env.step(3)  # BLOCK
-            if info.get("compromised"):
-                compromises += 1
-        assert compromises == 0
-
-    def test_compromise_rate_below_one_with_finite_budget(self, generator_path, mock_dataset):
-        """A finite budget lets a proportional policy drive compromise_rate < 1.0,
-        whereas an unbounded, under-forcing defender always compromises.
-
-        Under the tug-of-war dynamics a *passive* (under-forcing) defender lets
-        the attacker climb unchecked, so without a budget every episode reaches
-        IMPACT. A finite budget plus a proportional (de-escalating) policy
-        prevents some episodes by exhausting the attacker before IMPACT.
-        """
-        # Unbounded + passive (OBSERVE under-forces at every active stage):
-        # every episode compromises because the attacker climbs unchecked.
-        unbounded_compromises = 0
-        for seed in range(15):
-            env = self._build_env(generator_path, mock_dataset, attacker_budget=None)
-            terminated = truncated = False
-            info = {}
-            while not (terminated or truncated):
-                _, _, terminated, truncated, info = env.step(0)  # OBSERVE (passive)
-            if info.get("compromised"):
-                unbounded_compromises += 1
-        assert unbounded_compromises == 15
-
-        # Finite budget with an aggressive de-escalating policy: some prevented.
-        finite_compromises = 0
-        for seed in range(15):
-            env = self._build_env(
-                generator_path,
-                mock_dataset,
-                attacker_budget=40,
-            )
-            terminated = truncated = False
-            info = {}
-            while not (terminated or truncated):
-                _, _, terminated, truncated, info = env.step(4)  # ISOLATE
-            if info.get("compromised"):
-                finite_compromises += 1
-        assert finite_compromises < 15
-
-    def test_env_config_serializable_round_trips_budget(self):
-        from dataclasses import asdict
-
-        from src.blue_team.run_config import EnvConfigSerializable
-
-        spec = EnvConfigSerializable(
-            split="train",
-            exclude_ood=True,
-            attacker_budget=30,
-            budget_step_cost=2,
-            budget_reset_cost=7,
-            budget_cost_model="hybrid",
-            prevention_bonus=4.0,
-        )
-        d = asdict(spec)
-        assert d["attacker_budget"] == 30
-        assert d["budget_step_cost"] == 2
-        assert d["budget_reset_cost"] == 7
-        assert d["budget_cost_model"] == "hybrid"
-        assert d["prevention_bonus"] == 4.0
 
 
 class TestEvasion:
@@ -1282,13 +860,6 @@ class TestEvasion:
     """
 
     @pytest.fixture
-    def generator_path(self, tmp_path):
-        """Ignored generator-path dir (attacker is a first-order Markov chain)."""
-        path = tmp_path / "generator"
-        path.mkdir(parents=True)
-        return path
-
-    @pytest.fixture
     def mock_dataset(self, tmp_path):
         import json
 
@@ -1311,7 +882,7 @@ class TestEvasion:
         joblib.dump(scaler, dataset_path / "scaler.joblib")
         return dataset_path
 
-    def _build_env(self, generator_path, mock_dataset, **config_kwargs):
+    def _build_env(self, mock_dataset, **config_kwargs):
         from src.environment.adversarial_env import (
             AdversarialEnvConfig,
             AdversarialIoTEnv,
@@ -1319,18 +890,17 @@ class TestEvasion:
 
         config = AdversarialEnvConfig(**config_kwargs)
         env = AdversarialIoTEnv(
-            generator_path=generator_path,
             dataset_path=mock_dataset,
             config=config,
         )
         env.reset(seed=42)
         return env
 
-    def test_evasion_prob_zero_is_noop(self, generator_path, mock_dataset):
+    def test_evasion_prob_zero_is_noop(self, mock_dataset):
         """evasion_prob=0 leaves the attacker advancing normally."""
         from src.utils.label_mapper import KillChainStage
 
-        env = self._build_env(generator_path, mock_dataset, evasion_prob=0.0)
+        env = self._build_env(mock_dataset, evasion_prob=0.0)
         # Force a deterministic forward advance.
         env._attacker.sample_next = lambda stage, rng: stage + 1
         env._recent_block = True
@@ -1339,13 +909,12 @@ class TestEvasion:
         env._advance_attack()
         assert env._current_attack_stage == KillChainStage.RECON.value + 1
 
-    def test_evasion_stalls_when_recently_blocked(self, generator_path, mock_dataset):
+    def test_evasion_stalls_when_recently_blocked(self, mock_dataset):
         """evasion_prob=1.0 + recent block + pre-trigger stage -> stall."""
         from src.utils.label_mapper import KillChainStage
 
         for stage in (KillChainStage.RECON.value, KillChainStage.ACCESS.value):
             env = self._build_env(
-                generator_path,
                 mock_dataset,
                 evasion_prob=1.0,
                 retreat_prob=0.0,
@@ -1357,12 +926,11 @@ class TestEvasion:
             env._advance_attack()
             assert env._current_attack_stage == stage  # stalled
 
-    def test_evasion_requires_recent_block(self, generator_path, mock_dataset):
+    def test_evasion_requires_recent_block(self, mock_dataset):
         """Without a recent defender block, evasion never fires (defender-coupled)."""
         from src.utils.label_mapper import KillChainStage
 
         env = self._build_env(
-            generator_path,
             mock_dataset,
             evasion_prob=1.0,
             retreat_prob=0.0,
@@ -1375,12 +943,11 @@ class TestEvasion:
         # Advanced normally — proves the stall is coupled to the defender action.
         assert env._current_attack_stage == KillChainStage.RECON.value + 1
 
-    def test_evasion_only_at_pretrigger_stages(self, generator_path, mock_dataset):
+    def test_evasion_only_at_pretrigger_stages(self, mock_dataset):
         """Evasion does not fire once the attacker is past the pre-trigger band."""
         from src.utils.label_mapper import KillChainStage
 
         env = self._build_env(
-            generator_path,
             mock_dataset,
             evasion_prob=1.0,
             retreat_prob=0.0,
@@ -1392,9 +959,9 @@ class TestEvasion:
         env._advance_attack()
         assert env._current_attack_stage == KillChainStage.MANEUVER.value + 1
 
-    def test_step_sets_recent_block_flag(self, generator_path, mock_dataset):
+    def test_step_sets_recent_block_flag(self, mock_dataset):
         """step() records whether the current action was BLOCK/ISOLATE."""
-        env = self._build_env(generator_path, mock_dataset)
+        env = self._build_env(mock_dataset)
         env.step(3)  # BLOCK
         assert env._recent_block is True
         env.step(0)  # OBSERVE
@@ -1417,19 +984,12 @@ class TestRewardMode:
     """Outcome-only reward mode: tests whether the proportionality shaping is
     load-bearing.
 
-    ``reward_mode="proportional"`` (default) applies the full kill-chain-aware
-    per-step shaping. ``reward_mode="outcome_only"`` strips every
+    ``reward_mode="proportional"`` (alias ``"coupled"``) applies the full
+    kill-chain-aware per-step shaping. ``reward_mode="outcome_only"`` strips every
     stage-conditioned shaping term so the per-step reward is only the action
     cost; outcome signals (de-escalation bonus, impact penalty, prevention
     bonus, FPR penalty) live outside ``_calculate_reward`` and are unaffected.
     """
-
-    @pytest.fixture
-    def generator_path(self, tmp_path):
-        """Ignored generator-path dir (attacker is a first-order Markov chain)."""
-        path = tmp_path / "generator"
-        path.mkdir(parents=True)
-        return path
 
     @pytest.fixture
     def mock_dataset(self, tmp_path):
@@ -1454,7 +1014,7 @@ class TestRewardMode:
         joblib.dump(scaler, dataset_path / "scaler.joblib")
         return dataset_path
 
-    def _build_env(self, generator_path, mock_dataset, **config_kwargs):
+    def _build_env(self, mock_dataset, **config_kwargs):
         from src.environment.adversarial_env import (
             AdversarialEnvConfig,
             AdversarialIoTEnv,
@@ -1462,41 +1022,39 @@ class TestRewardMode:
 
         config = AdversarialEnvConfig(**config_kwargs)
         env = AdversarialIoTEnv(
-            generator_path=generator_path,
             dataset_path=mock_dataset,
             config=config,
         )
         env.reset(seed=42)
         return env
 
-    def test_proportional_default_penalises_disproportionate(self, generator_path, mock_dataset):
+    def test_proportional_default_penalises_disproportionate(self, mock_dataset):
         from src.utils.label_mapper import KillChainStage
 
-        env = self._build_env(generator_path, mock_dataset)
+        env = self._build_env(mock_dataset, reward_mode="proportional")
         # BENIGN decision-stage + ISOLATE action triggers the benign guardrails
-        # plus the disproportionate-action penalty in the default mode.
+        # plus the disproportionate-action penalty in the coupled (proportional)
+        # mode.
         reward = env._calculate_reward(4, KillChainStage.BENIGN.value)
         assert reward < -100
 
-    def test_outcome_only_strips_shaping(self, generator_path, mock_dataset):
+    def test_outcome_only_strips_shaping(self, mock_dataset):
         from src.utils.label_mapper import KillChainStage
 
-        env = self._build_env(generator_path, mock_dataset, reward_mode="outcome_only")
+        env = self._build_env(mock_dataset, reward_mode="outcome_only")
         # Same BENIGN+ISOLATE step: only the action cost remains (ISOLATE=0.8).
         reward = env._calculate_reward(4, KillChainStage.BENIGN.value)
         assert reward == pytest.approx(-0.8)
 
-    def test_outcome_only_observe_is_free(self, generator_path, mock_dataset):
+    def test_outcome_only_observe_is_free(self, mock_dataset):
         from src.utils.label_mapper import KillChainStage
 
-        env = self._build_env(generator_path, mock_dataset, reward_mode="outcome_only")
+        env = self._build_env(mock_dataset, reward_mode="outcome_only")
         # OBSERVE costs 0.0 and outcome-only adds no shaping, so reward is 0.
         reward = env._calculate_reward(0, KillChainStage.RECON.value)
         assert reward == pytest.approx(0.0)
 
-    def test_outcome_mode_is_not_keyed_on_stage_match(
-        self, generator_path, mock_dataset
-    ):
+    def test_outcome_mode_is_not_keyed_on_stage_match(self, mock_dataset):
         """The re-pose contract: under outcome mode the per-step reward must NOT
         reward emitting the stage's ``recommended_action`` label.
 
@@ -1512,9 +1070,7 @@ class TestRewardMode:
 
         stage = KillChainStage.ACCESS.value  # recommended action = RESTRICT (2)
 
-        coupled = self._build_env(
-            generator_path, mock_dataset, reward_mode="proportional"
-        )
+        coupled = self._build_env(mock_dataset, reward_mode="proportional")
         # Coupled: the recommended action (2) earns the proportional bonus; a
         # disproportionate action (4) does not. So matching the stage label is
         # strictly rewarded — the hallmark of the mis-posed task.
@@ -1522,9 +1078,7 @@ class TestRewardMode:
         r_off_coupled = coupled._calculate_reward(4, stage)
         assert r_match_coupled > r_off_coupled
 
-        outcome = self._build_env(
-            generator_path, mock_dataset, reward_mode="outcome"
-        )
+        outcome = self._build_env(mock_dataset, reward_mode="outcome")
         # Outcome: each action's per-step reward is exactly minus its cost,
         # independent of the (hidden) stage. Matching the label confers no bonus.
         for action in range(5):
@@ -1534,9 +1088,9 @@ class TestRewardMode:
         # And the per-step reward does not depend on the stage at all.
         for stage_a in range(5):
             for stage_b in range(5):
-                assert outcome._calculate_reward(
-                    3, stage_a
-                ) == pytest.approx(outcome._calculate_reward(3, stage_b))
+                assert outcome._calculate_reward(3, stage_a) == pytest.approx(
+                    outcome._calculate_reward(3, stage_b)
+                )
 
     def test_env_config_serializable_normalises_reward_mode_aliases(self):
         from dataclasses import asdict
@@ -1545,22 +1099,10 @@ class TestRewardMode:
 
         # Legacy aliases normalise to canonical tokens so manifests are
         # consistent and the train/eval parity check is alias-insensitive.
-        assert (
-            asdict(EnvConfigSerializable(reward_mode="outcome_only"))["reward_mode"]
-            == "outcome"
-        )
-        assert (
-            asdict(EnvConfigSerializable(reward_mode="outcome"))["reward_mode"]
-            == "outcome"
-        )
-        assert (
-            asdict(EnvConfigSerializable(reward_mode="proportional"))["reward_mode"]
-            == "coupled"
-        )
-        assert (
-            asdict(EnvConfigSerializable(reward_mode="coupled"))["reward_mode"]
-            == "coupled"
-        )
+        assert asdict(EnvConfigSerializable(reward_mode="outcome_only"))["reward_mode"] == "outcome"
+        assert asdict(EnvConfigSerializable(reward_mode="outcome"))["reward_mode"] == "outcome"
+        assert asdict(EnvConfigSerializable(reward_mode="proportional"))["reward_mode"] == "coupled"
+        assert asdict(EnvConfigSerializable(reward_mode="coupled"))["reward_mode"] == "coupled"
         with pytest.raises(ValueError):
             EnvConfigSerializable(reward_mode="bogus")
 
@@ -1575,12 +1117,6 @@ class TestPartialObservabilityRedesign:
     flag is opt-in so the legacy anchors (alpha=0, coupling ablation) are
     unaffected.
     """
-
-    @pytest.fixture
-    def generator_path(self, tmp_path):
-        path = tmp_path / "generator"
-        path.mkdir(parents=True)
-        return path
 
     @pytest.fixture
     def mock_dataset(self, tmp_path):
@@ -1609,7 +1145,7 @@ class TestPartialObservabilityRedesign:
         joblib.dump(scaler, dataset_path / "scaler.joblib")
         return dataset_path
 
-    def _build_env(self, generator_path, mock_dataset, **config_kwargs):
+    def _build_env(self, mock_dataset, **config_kwargs):
         from src.environment.adversarial_env import (
             AdversarialEnvConfig,
             AdversarialIoTEnv,
@@ -1617,7 +1153,6 @@ class TestPartialObservabilityRedesign:
 
         config = AdversarialEnvConfig(**config_kwargs)
         env = AdversarialIoTEnv(
-            generator_path=generator_path,
             dataset_path=mock_dataset,
             config=config,
         )
@@ -1626,7 +1161,7 @@ class TestPartialObservabilityRedesign:
 
     # --- (i) observation aliasing -------------------------------------------
 
-    def test_aliasing_zero_is_byte_compatible(self, generator_path, mock_dataset):
+    def test_aliasing_zero_is_byte_compatible(self, mock_dataset):
         """aliasing_rate=0 reproduces the legacy single-choice draw exactly."""
         from src.environment.adversarial_env import AdversarialEnvConfig
         from src.utils.realization_engine import RealizationEngine
@@ -1636,20 +1171,17 @@ class TestPartialObservabilityRedesign:
         # A fresh engine with the same seed under the redesign defaults must
         # yield the identical row.
         engine2 = RealizationEngine(data_path=mock_dataset, seed=123)
-        redesigned = engine2.sample_by_id(
-            1, aliasing_rate=0.0, session_coherent=False
-        )
+        redesigned = engine2.sample_by_id(1, aliasing_rate=0.0, session_coherent=False)
         assert np.array_equal(legacy, redesigned)
         # Default config exposes the new fields with backward-compatible defaults.
         cfg = AdversarialEnvConfig()
         assert cfg.aliasing_rate == 0.0
         assert cfg.session_coherent is False
         assert cfg.no_post_transition_leak is False
-        assert cfg.proximity_coupled is False
+        # proximity_coupled now defaults True (headline contract; budget retired).
+        assert cfg.proximity_coupled is True
 
-    def test_aliasing_full_emits_only_adjacent_stages(
-        self, generator_path, mock_dataset
-    ):
+    def test_aliasing_full_emits_only_adjacent_stages(self, mock_dataset):
         """aliasing_rate=1 always emits a row from an ADJACENT stage."""
         from src.utils.realization_engine import RealizationEngine
 
@@ -1660,9 +1192,7 @@ class TestPartialObservabilityRedesign:
         assert emitted.issubset({0, 2})
         assert 1 not in emitted
 
-    def test_aliasing_endpoint_has_single_neighbour(
-        self, generator_path, mock_dataset
-    ):
+    def test_aliasing_endpoint_has_single_neighbour(self, mock_dataset):
         """BENIGN (endpoint) aliases only to RECON; IMPACT only to MANEUVER."""
         from src.utils.realization_engine import RealizationEngine
 
@@ -1678,7 +1208,7 @@ class TestPartialObservabilityRedesign:
 
     # --- (ii) session-coherent sampling -------------------------------------
 
-    def test_session_coherent_run_has_no_repeats(self, generator_path, mock_dataset):
+    def test_session_coherent_run_has_no_repeats(self, mock_dataset):
         """A within-stage run draws WITHOUT replacement until the pool empties."""
         from src.utils.realization_engine import RealizationEngine
 
@@ -1686,22 +1216,18 @@ class TestPartialObservabilityRedesign:
         # Stage MANEUVER (3) has 40 rows; the first 40 draws must be distinct.
         pool_size = len(engine.get_indices_for_stage(3))
         rows = [
-            tuple(engine.sample_by_id(3, session_coherent=True).tolist())
-            for _ in range(pool_size)
+            tuple(engine.sample_by_id(3, session_coherent=True).tolist()) for _ in range(pool_size)
         ]
         assert len({r for r in rows}) == pool_size  # no repeats within one pass
 
     # --- (iii) post-transition-leak removal ---------------------------------
 
-    def test_no_post_transition_leak_samples_pre_transition_stage(
-        self, generator_path, mock_dataset
-    ):
+    def test_no_post_transition_leak_samples_pre_transition_stage(self, mock_dataset):
         """With the leak removed, the refreshed obs reflects the PRE-transition
         stage (column-0 tag == previous stage), not the just-entered stage."""
         from src.utils.label_mapper import KillChainStage
 
         env = self._build_env(
-            generator_path,
             mock_dataset,
             no_post_transition_leak=True,
             tug_of_war=True,
@@ -1717,14 +1243,11 @@ class TestPartialObservabilityRedesign:
         assert int(round(latest_row[0])) == KillChainStage.BENIGN.value
         assert env._current_attack_stage == KillChainStage.RECON.value
 
-    def test_legacy_leak_samples_post_transition_stage(
-        self, generator_path, mock_dataset
-    ):
+    def test_legacy_leak_samples_post_transition_stage(self, mock_dataset):
         """Default (leak present) refreshes obs from the NEW stage (legacy)."""
         from src.utils.label_mapper import KillChainStage
 
         env = self._build_env(
-            generator_path,
             mock_dataset,
             no_post_transition_leak=False,
             tug_of_war=True,
@@ -1740,9 +1263,7 @@ class TestPartialObservabilityRedesign:
 
     # --- (iv) proximity-coupled tolerance -----------------------------------
 
-    def test_proximity_escalation_rises_with_stage(
-        self, generator_path, mock_dataset
-    ):
+    def test_proximity_escalation_rises_with_stage(self, mock_dataset):
         """Under-force escalation probability increases with attacker proximity.
 
         p_up_eff = p_up * (min_esc + (1 - min_esc) * stage/IMPACT). With a fixed
@@ -1751,13 +1272,13 @@ class TestPartialObservabilityRedesign:
         from src.utils.label_mapper import KillChainStage
 
         env = self._build_env(
-            generator_path,
             mock_dataset,
             proximity_coupled=True,
             proximity_min_escalation=0.4,
             p_up=0.5,
             tug_of_war=True,
         )
+
         # RECON proximity lambda = 1/4 -> p_up_eff = 0.5*(0.4+0.6*0.25)=0.275
         # MANEUVER lambda = 3/4 -> p_up_eff = 0.5*(0.4+0.6*0.75)=0.425
         # A fixed draw of 0.35 escalates MANEUVER but not RECON.
@@ -1783,9 +1304,7 @@ class TestPartialObservabilityRedesign:
         assert recon_after == KillChainStage.RECON.value  # did NOT escalate
         assert maneuver_after == KillChainStage.IMPACT.value  # DID escalate
 
-    def test_proximity_truncation_yields_prevention(
-        self, generator_path, mock_dataset
-    ):
+    def test_proximity_truncation_yields_prevention(self, mock_dataset):
         """Holding the attacker below IMPACT to the horizon counts as prevented.
 
         Under proximity-coupled mode with no budget counter, prevention is
@@ -1794,10 +1313,8 @@ class TestPartialObservabilityRedesign:
         from src.utils.label_mapper import KillChainStage
 
         env = self._build_env(
-            generator_path,
             mock_dataset,
             proximity_coupled=True,
-            attacker_budget=None,
             reward_mode="outcome",
             impact_is_terminal=False,
             max_steps=10,

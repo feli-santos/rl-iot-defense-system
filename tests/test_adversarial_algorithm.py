@@ -21,10 +21,6 @@ class TestAlgorithmFactory:
 
         from src.environment.adversarial_env import AdversarialIoTEnv
 
-        # Ignored generator-path dir (attacker is now a first-order Markov chain)
-        generator_path = tmp_path / "generator"
-        generator_path.mkdir(parents=True)
-
         # Create dataset
         dataset_path = tmp_path / "dataset"
         dataset_path.mkdir(parents=True)
@@ -47,7 +43,6 @@ class TestAlgorithmFactory:
         joblib.dump(scaler, dataset_path / "scaler.joblib")
 
         return AdversarialIoTEnv(
-            generator_path=generator_path,
             dataset_path=dataset_path,
         )
 
@@ -154,10 +149,6 @@ class TestAdversarialAlgorithm:
 
         from src.environment.adversarial_env import AdversarialIoTEnv
 
-        # Ignored generator-path dir (attacker is now a first-order Markov chain)
-        generator_path = tmp_path / "generator"
-        generator_path.mkdir(parents=True)
-
         # Create dataset
         dataset_path = tmp_path / "dataset"
         dataset_path.mkdir(parents=True)
@@ -180,7 +171,6 @@ class TestAdversarialAlgorithm:
         joblib.dump(scaler, dataset_path / "scaler.joblib")
 
         return AdversarialIoTEnv(
-            generator_path=generator_path,
             dataset_path=dataset_path,
         )
 

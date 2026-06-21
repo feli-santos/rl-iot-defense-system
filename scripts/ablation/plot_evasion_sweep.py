@@ -3,8 +3,8 @@
 Reads ``runs/ablation/evasion/ppo_e<e>/seed_<k>/eval_test.jsonl`` (produced
 by ``scripts.ablation.run_evasion_sweep``) and renders how a PPO defender —
 *trained and evaluated against an evasive attacker* — fares as the evasion
-coupling strengthens, all at the locked ``attacker_budget=40`` and the
-primary ``impact_is_terminal=False`` contract:
+coupling strengthens, all under the primary ``impact_is_terminal=False``
+contract:
 
   x-axis:  evasion_prob ∈ {0.0, 0.25, 0.5, 0.75}
   y-axis:  mean episodic reward on test_balanced (95 % bootstrap CI)
@@ -315,7 +315,6 @@ def main(argv: list[str] | None = None) -> int:
         "schema_version": "1.0",
         "phase": 7,
         "figure": "F17",
-        "attacker_budget": 40,
         "evasion_values": list(args.evasion_values),
         "rows": rows,
         "gates": {"G7.10": g710},
@@ -350,7 +349,7 @@ def main(argv: list[str] | None = None) -> int:
             "timesteps) trained and evaluated against an *evasive* attacker "
             "as a function of `evasion_prob` (the probability the attacker "
             "stalls in place at RECON/ACCESS when the defender has recently "
-            "applied force), at the locked `attacker_budget=40`. Shaded band: "
+            "applied force). Shaded band: "
             "95 % bootstrap CI. The `evasion_prob=0` cell is the standard "
             "Markov-attacker reference. (PLAN §3.1.6; D7.10.)\n"
         )
