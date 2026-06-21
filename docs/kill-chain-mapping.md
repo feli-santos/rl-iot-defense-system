@@ -73,13 +73,13 @@ is reproduced for archival completeness in `docs/dataset_card.md` §3;
 
 ### Stage 1 — RECON
 - `Recon-PortScan`
-- `Recon-OSScan`
+- `Recon-OSScan` *(held out as OOD)*
 - `Recon-HostDiscovery`
 - `Recon-PingSweep`
-- `VulnerabilityScan` *(held out as OOD; never seen during training)*
+- `VulnerabilityScan` *(held out as OOD; RF detector blind spot, recall ≈ 0.001)*
 
 ### Stage 2 — ACCESS
-- `SqlInjection`
+- `SqlInjection` *(held out as OOD)*
 - `CommandInjection`
 - `XSS` *(held out as OOD)*
 - `Backdoor_Malware`
@@ -89,7 +89,7 @@ is reproduced for archival completeness in `docs/dataset_card.md` §3;
 
 ### Stage 3 — MANEUVER
 - `MITM-ArpSpoofing`
-- `DNS_Spoofing`
+- `DNS_Spoofing` *(held out as OOD)*
 - `Mirai-greeth_flood`
 - `Mirai-greip_flood`
 - `Mirai-udpplain` *(held out as OOD)*
@@ -104,17 +104,19 @@ is reproduced for archival completeness in `docs/dataset_card.md` §3;
 - `DDoS-SynonymousIP_Flood`
 - `DDoS-ICMP_Fragmentation`
 - `DDoS-UDP_Fragmentation`
-- `DDoS-ACK_Fragmentation`
+- `DDoS-ACK_Fragmentation` *(held out as OOD)*
 - `DDoS-HTTP_Flood` *(held out as OOD)*
-- `DDoS-SlowLoris`
+- `DDoS-SlowLoris` *(held out as OOD)*
 - `DoS-UDP_Flood`
 - `DoS-TCP_Flood`
-- `DoS-SYN_Flood`
+- `DoS-SYN_Flood` *(held out as OOD)*
 - `DoS-HTTP_Flood`
 
-**Total: 34 labels across 5 stages.** Four classes are reserved as
-held-out OOD (one per attack stage; see `dataset_card.md` §5 for the
-sizing rationale).
+**Total: 34 labels across 5 stages.** Ten classes are reserved as
+held-out OOD for zero-day evaluation — two per upper attack stage
+(RECON, ACCESS, MANEUVER) and four for IMPACT — spanning the detector's
+recall spectrum from near-perfect to the `VulnerabilityScan` structural
+blind spot. See `dataset_card.md` §5 for the sizing rationale.
 
 ## 4 — Per-class rationale for non-trivial assignments
 

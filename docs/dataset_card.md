@@ -19,7 +19,7 @@
 | Master split seed            | **42**                                                         |
 | Train / val / test ratios    | **0.7 / 0.1 / 0.2** (stratified by stage)                      |
 | Balanced eval splits         | val 200/stage (1 000 rows), test 1 000/stage (5 000 rows)      |
-| OOD-attack splits (held-out) | 4 classes (3 × 12 121 + XSS 3 846 = 40 209 rows), one per attack stage |
+| OOD-attack splits (held-out) | 10 classes (106 059 rows): 2 per upper stage (RECON/ACCESS/MANEUVER) + 4 IMPACT |
 
 The processed snapshot is the result of `main.py --mode process-data`
 (commit `pre-mentor-restart`) applied to the **full 169-file CICIoT2023
@@ -139,10 +139,10 @@ train/val/test. The 442 237 total is therefore split as:
 
 | Partition            | Rows      | Notes |
 |----------------------|----------:|-------|
-| **train** (≈70 % of in-distribution pool) | ≈281 420 | stratified on the 5 kill-chain stages, in-distribution only |
-| **val**   (≈10 %)                          |  ≈40 202 | stratified |
-| **test**  (≈20 %)                          |  ≈80 414 | stratified |
-| **ood_attack** (held out from training)    |   40 209 | union of the 4 OOD classes; never seen during any training phase |
+| **train** (≈70 % of in-distribution pool) | 235 324 | stratified on the 5 kill-chain stages, in-distribution only |
+| **val**   (≈10 %)                          |  33 617 | stratified |
+| **test**  (≈20 %)                          |  67 237 | stratified |
+| **ood_attack** (held out from training)    | 106 059 | union of the 10 OOD classes; never seen during any training phase |
 | **all**                                    |  442 237 | `train ⊔ val ⊔ test ⊔ ood_attack` |
 
 These are the sizes printed by the Phase-4 fix commit message; the canonical
@@ -173,22 +173,33 @@ per-stage decision matrices.
 
 ### OOD-attack splits
 
-Four CICIoT2023 classes are reserved as OOD held-outs — the model never
-sees these labels during *any* training phase, but they are evaluated in
-Phase 7 to test generalization:
+Ten CICIoT2023 classes are reserved as OOD held-outs — the model never
+sees these labels during *any* training phase, but they are evaluated
+as zero-day attacks to test generalization. We hold out two classes per
+upper stage (RECON, ACCESS, MANEUVER) and four for IMPACT, spanning the
+detector's recall spectrum from near-perfect to the `VulnerabilityScan`
+structural blind spot:
 
-| Class                 | Stage    | Rows   | % of stage |
-|-----------------------|----------|-------:|-----------:|
-| `VulnerabilityScan`   | RECON    | 12 121 |    23.9 %  |
-| `XSS`                 | ACCESS   |  3 846 |    10.4 %  |
-| `Mirai-udpplain`      | MANEUVER | 12 121 |    20.0 %  |
-| `DDoS-HTTP_Flood`     | IMPACT   | 12 121 |     6.3 %  |
+| Class                     | Stage    | Rows   |
+|---------------------------|----------|-------:|
+| `VulnerabilityScan`       | RECON    | 12 121 |
+| `Recon-OSScan`            | RECON    | 12 121 |
+| `XSS`                     | ACCESS   |  3 846 |
+| `SqlInjection`            | ACCESS   |  5 245 |
+| `Mirai-udpplain`          | MANEUVER | 12 121 |
+| `DNS_Spoofing`            | MANEUVER | 12 121 |
+| `DDoS-HTTP_Flood`         | IMPACT   | 12 121 |
+| `DoS-SYN_Flood`           | IMPACT   | 12 121 |
+| `DDoS-SlowLoris`          | IMPACT   | 12 121 |
+| `DDoS-ACK_Fragmentation`  | IMPACT   | 12 121 |
+| **Total**                 |          | 106 059 |
 
-> The ACCESS choice is deliberately small. `DictionaryBruteForce` (12 121,
-> 32.8 % of ACCESS rows) was rejected because removing it would starve the
-> ACCESS classifier of training data; `XSS` is large enough (3 846 rows
-> ≈ Mirai-class size) for a meaningful held-out experiment yet costs only
-> ~10 % of stage data.
+> The held-out set is sized to preserve training signal: each upper stage
+> retains ≥3 in-distribution classes and the post-holdout training pool
+> keeps ≥18k rows per stage (RECON 18 553, ACCESS 19 501, MANEUVER 25 454,
+> IMPACT 101 816). The ACCESS held-outs (`XSS`, `SqlInjection`) are
+> deliberately the smaller ACCESS classes so the in-distribution ACCESS
+> classifier is not starved.
 
 > **Disjointness from train/val/test is structural, not run-time.**
 > `build_split_indices.py:258-283` computes the OOD-class indices from

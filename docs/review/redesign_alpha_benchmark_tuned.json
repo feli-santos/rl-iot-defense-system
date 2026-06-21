@@ -1,0 +1,214 @@
+{
+  "alpha_00": {
+    "alpha": 0.0,
+    "policies": {
+      "ppo": {
+        "mean": 131.3,
+        "ci_low": 119.0,
+        "ci_high": 142.3,
+        "n": 300
+      },
+      "dqn": {
+        "mean": 63.2,
+        "ci_low": 45.4,
+        "ci_high": 80.4,
+        "n": 300
+      },
+      "a2c": {
+        "mean": 50.5,
+        "ci_low": 29.8,
+        "ci_high": 69.3,
+        "n": 300
+      },
+      "rf_acting": {
+        "mean": 134.8,
+        "ci_low": 124.7,
+        "ci_high": 144.5,
+        "n": 300
+      },
+      "recommended_action": {
+        "mean": 194.8,
+        "ci_low": 194.7,
+        "ci_high": 194.9,
+        "n": 300
+      },
+      "always_block": {
+        "mean": 0.0,
+        "ci_low": 0.0,
+        "ci_high": 0.0,
+        "n": 300
+      },
+      "always_observe": {
+        "mean": -350.0,
+        "ci_low": -350.0,
+        "ci_high": -350.0,
+        "n": 300
+      },
+      "random": {
+        "mean": -99.9,
+        "ci_low": -118.9,
+        "ci_high": -80.2,
+        "n": 300
+      }
+    }
+  },
+  "alpha_02": {
+    "alpha": 0.2,
+    "policies": {
+      "ppo": {
+        "mean": 123.3,
+        "ci_low": 110.4,
+        "ci_high": 135.3,
+        "n": 300
+      },
+      "dqn": {
+        "mean": 56.0,
+        "ci_low": 35.8,
+        "ci_high": 74.9,
+        "n": 300
+      },
+      "a2c": {
+        "mean": 13.4,
+        "ci_low": -8.0,
+        "ci_high": 37.1,
+        "n": 300
+      },
+      "rf_acting": {
+        "mean": 118.1,
+        "ci_low": 106.2,
+        "ci_high": 129.5,
+        "n": 300
+      },
+      "recommended_action": {
+        "mean": 194.9,
+        "ci_low": 194.8,
+        "ci_high": 195.0,
+        "n": 300
+      },
+      "always_block": {
+        "mean": 0.0,
+        "ci_low": 0.0,
+        "ci_high": 0.0,
+        "n": 300
+      },
+      "always_observe": {
+        "mean": -350.0,
+        "ci_low": -350.0,
+        "ci_high": -350.0,
+        "n": 300
+      },
+      "random": {
+        "mean": -100.5,
+        "ci_low": -122.4,
+        "ci_high": -80.5,
+        "n": 300
+      }
+    }
+  },
+  "alpha_04": {
+    "alpha": 0.4,
+    "policies": {
+      "ppo": {
+        "mean": 123.3,
+        "ci_low": 111.3,
+        "ci_high": 135.2,
+        "n": 300
+      },
+      "dqn": {
+        "mean": 40.9,
+        "ci_low": 21.4,
+        "ci_high": 60.4,
+        "n": 300
+      },
+      "a2c": {
+        "mean": -18.1,
+        "ci_low": -40.6,
+        "ci_high": 3.6,
+        "n": 300
+      },
+      "rf_acting": {
+        "mean": 97.4,
+        "ci_low": 82.6,
+        "ci_high": 111.0,
+        "n": 300
+      },
+      "recommended_action": {
+        "mean": 194.8,
+        "ci_low": 194.7,
+        "ci_high": 194.9,
+        "n": 300
+      },
+      "always_block": {
+        "mean": 0.0,
+        "ci_low": 0.0,
+        "ci_high": 0.0,
+        "n": 300
+      },
+      "always_observe": {
+        "mean": -350.0,
+        "ci_low": -350.0,
+        "ci_high": -350.0,
+        "n": 300
+      },
+      "random": {
+        "mean": -98.0,
+        "ci_low": -119.4,
+        "ci_high": -75.4,
+        "n": 300
+      }
+    }
+  },
+  "alpha_06": {
+    "alpha": 0.6,
+    "policies": {
+      "ppo": {
+        "mean": 117.4,
+        "ci_low": 104.5,
+        "ci_high": 131.4,
+        "n": 300
+      },
+      "dqn": {
+        "mean": 26.6,
+        "ci_low": 5.0,
+        "ci_high": 45.6,
+        "n": 300
+      },
+      "a2c": {
+        "mean": -1.2,
+        "ci_low": -23.4,
+        "ci_high": 22.8,
+        "n": 300
+      },
+      "rf_acting": {
+        "mean": 67.7,
+        "ci_low": 52.3,
+        "ci_high": 81.3,
+        "n": 300
+      },
+      "recommended_action": {
+        "mean": 194.9,
+        "ci_low": 194.8,
+        "ci_high": 195.0,
+        "n": 300
+      },
+      "always_block": {
+        "mean": 0.0,
+        "ci_low": 0.0,
+        "ci_high": 0.0,
+        "n": 300
+      },
+      "always_observe": {
+        "mean": -350.0,
+        "ci_low": -350.0,
+        "ci_high": -350.0,
+        "n": 300
+      },
+      "random": {
+        "mean": -76.1,
+        "ci_low": -97.4,
+        "ci_high": -55.5,
+        "n": 300
+      }
+    }
+  }
+}
