@@ -2,7 +2,7 @@
 Training Manager
 
 Orchestrates training experiments with MLflow tracking and artifact management.
-Provides unified interface for LSTM and RL training workflows.
+Provides a unified interface for Blue-Team RL training workflows.
 """
 
 import logging
@@ -14,7 +14,6 @@ from typing import Any, Optional, Union
 
 import matplotlib.pyplot as plt
 import mlflow
-import mlflow.pytorch
 import numpy as np
 import torch
 from stable_baselines3.common.base_class import BaseAlgorithm
@@ -83,7 +82,9 @@ class MLflowCallback(BaseCallback):
             )
 
             if self.verbose > 0:
-                print("📊 MLflow callback initialized - comprehensive RL metrics logging enabled")
+                logger.info(
+                    "MLflow callback initialized - comprehensive RL metrics logging enabled"
+                )
 
         except Exception as e:
             logger.warning(f"Failed to log training start: {e}")
@@ -409,14 +410,17 @@ class MLflowCallback(BaseCallback):
             mlflow.log_metrics(metrics, step=self.num_timesteps)
 
             if self.verbose > 1:
-                print(
-                    f"📊 Logged {len(metrics)} comprehensive metrics at timestep {self.num_timesteps}"
+                logger.info(
+                    "Logged %d comprehensive metrics at timestep %d",
+                    len(metrics),
+                    self.num_timesteps,
                 )
-                print(
-                    f"   • Episode reward (recent): {metrics.get('rewards/episode_mean_recent', 0):.3f}"
+                logger.info(
+                    "Episode reward (recent): %.3f",
+                    metrics.get("rewards/episode_mean_recent", 0),
                 )
-                print(f"   • Episodes completed: {self.episode_count}")
-                print(f"   • FPS: {metrics.get('performance/fps', 0):.1f}")
+                logger.info("Episodes completed: %d", self.episode_count)
+                logger.info("FPS: %.1f", metrics.get("performance/fps", 0))
 
         except Exception as e:
             logger.warning(f"Failed to log comprehensive metrics: {e}")
@@ -463,11 +467,12 @@ class MLflowCallback(BaseCallback):
             mlflow.log_metrics(final_metrics, step=self.num_timesteps)
 
             if self.verbose > 0:
-                print(f"✅ Training completed - logged {len(self.episode_rewards)} episodes")
-                print(f"   • Final mean reward: {final_metrics.get('final/mean_reward', 0):.3f}")
-                print(f"   • Best episode reward: {final_metrics.get('final/best_reward', 0):.3f}")
-                print(
-                    f"   • Total improvement: {final_metrics.get('final/total_improvement', 0):.3f}"
+                logger.info("Training completed - logged %d episodes", len(self.episode_rewards))
+                logger.info("Final mean reward: %.3f", final_metrics.get("final/mean_reward", 0))
+                logger.info("Best episode reward: %.3f", final_metrics.get("final/best_reward", 0))
+                logger.info(
+                    "Total improvement: %.3f",
+                    final_metrics.get("final/total_improvement", 0),
                 )
 
         except Exception as e:
@@ -478,7 +483,7 @@ class TrainingManager:
     """
     Manages training experiments with comprehensive tracking and artifact storage.
 
-    Provides unified interface for both LSTM and RL training with MLflow integration,
+    Provides a unified interface for Blue-Team RL training with MLflow integration,
     automatic checkpointing, and detailed performance monitoring.
     """
 
@@ -695,13 +700,18 @@ class TrainingManager:
             # Train the algorithm
             start_time = datetime.now()
 
-            print(
-                f"🚀 Training {algorithm.__class__.__name__} for {total_timesteps:,} timesteps..."
+            logger.info(
+                "Training %s for %s timesteps...",
+                algorithm.__class__.__name__,
+                f"{total_timesteps:,}",
             )
-            print(
-                f"📊 Comprehensive metrics will be logged every {mlflow_callback.log_freq:,} timesteps"
+            logger.info(
+                "Comprehensive metrics will be logged every %s timesteps",
+                f"{mlflow_callback.log_freq:,}",
             )
-            print("📈 Tracking: rewards, losses, episode lengths, action distribution, performance")
+            logger.info(
+                "Tracking: rewards, losses, episode lengths, action distribution, performance"
+            )
 
             algorithm.learn(total_timesteps=total_timesteps, callback=callbacks, progress_bar=True)
 
@@ -787,17 +797,17 @@ class TrainingManager:
 
                 self.log_metrics(final_metrics)
 
-            print("✅ Training completed successfully!")
-            print(f"   • Episodes trained: {mlflow_callback.episode_count}")
-            print(f"   • Episodes with rewards logged: {len(mlflow_callback.episode_rewards)}")
-            print(f"   • Training time: {training_time:.1f}s")
+            logger.info("Training completed successfully!")
+            logger.info("Episodes trained: %d", mlflow_callback.episode_count)
+            logger.info("Episodes with rewards logged: %d", len(mlflow_callback.episode_rewards))
+            logger.info("Training time: %.1fs", training_time)
             if training_curve_path:
-                print(f"   • Reward curve saved to: {training_curve_path}")
+                logger.info("Reward curve saved to: %s", training_curve_path)
             if mlflow_callback.episode_rewards:
-                print(f"   • Final reward: {np.mean(mlflow_callback.episode_rewards[-10:]):.3f}")
-                print(f"   • Best episode: {np.max(mlflow_callback.episode_rewards):.3f}")
+                logger.info("Final reward: %.3f", np.mean(mlflow_callback.episode_rewards[-10:]))
+                logger.info("Best episode: %.3f", np.max(mlflow_callback.episode_rewards))
 
-            logger.info(f"Training completed successfully in {training_time:.2f}s")
+            logger.info("Training completed successfully in %.2fs", training_time)
             return results
 
         except Exception as e:
@@ -838,7 +848,7 @@ class TrainingManager:
 
         fig, ax = plt.subplots(figsize=(10, 6))
         ax.plot(timesteps, recent_mean_rewards, label="Mean Reward (recent episodes)", linewidth=2)
-        ax.set_title("Blue Team PPO Training Reward Curve")
+        ax.set_title(f"Blue-Team {self.algorithm.__class__.__name__} Training Reward Curve")
         ax.set_xlabel("Timesteps")
         ax.set_ylabel("Episode Reward")
         ax.grid(True, alpha=0.3)
@@ -846,9 +856,6 @@ class TrainingManager:
 
         run_curve_path = self.plots_path / "rl_training_curve.png"
         fig.savefig(run_curve_path, dpi=300, bbox_inches="tight")
-
-        root_curve_path = Path.cwd() / "rl_training_curve.png"
-        fig.savefig(root_curve_path, dpi=300, bbox_inches="tight")
         plt.close(fig)
 
         if self.current_run:
@@ -857,7 +864,7 @@ class TrainingManager:
             except Exception as exc:
                 logger.warning(f"Failed to log reward curve artifact to MLflow: {exc}")
 
-        return root_curve_path
+        return run_curve_path
 
     def evaluate_algorithm(
         self, algorithm: BaseAlgorithm, n_episodes: int = 20, deterministic: bool = True
@@ -967,25 +974,6 @@ class TrainingManager:
                 "error": str(e),
             }
 
-    def log_model(self, model: torch.nn.Module, name: str) -> None:
-        """
-        Log PyTorch model to MLflow
-
-        Args:
-            model: PyTorch model to log
-            name: Name for the model artifact
-        """
-        if not self.current_run:
-            logger.warning("No active MLflow run for model logging")
-            return
-
-        try:
-            mlflow.pytorch.log_model(model, name)
-            logger.info(f"Logged model: {name}")
-
-        except Exception as e:
-            logger.error(f"Failed to log model {name}: {e}")
-
     def log_figure(self, figure: plt.Figure, name: str) -> None:
         """
         Log matplotlib figure to MLflow and save locally
@@ -1010,65 +998,6 @@ class TrainingManager:
 
         except Exception as e:
             logger.error(f"Failed to log figure {name}: {e}")
-
-    def plot_training_curves(
-        self,
-        train_metrics: dict[str, list[float]],
-        val_metrics: dict[str, list[float]],
-        title: str = "Training Curves",
-    ) -> plt.Figure:
-        """
-        Plot training curves
-
-        Args:
-            train_metrics: Dictionary of training metrics over time
-            val_metrics: Dictionary of validation metrics over time
-            title: Plot title
-
-        Returns:
-            Matplotlib figure
-        """
-        fig, axes = plt.subplots(2, 2, figsize=(15, 10))
-        fig.suptitle(title, fontsize=16)
-
-        # Plot reward curves
-        if "reward" in train_metrics:
-            axes[0, 0].plot(train_metrics["reward"], label="Training", alpha=0.7)
-        if "reward" in val_metrics:
-            axes[0, 0].plot(val_metrics["reward"], label="Validation", alpha=0.7)
-        axes[0, 0].set_title("Reward")
-        axes[0, 0].set_xlabel("Episode")
-        axes[0, 0].set_ylabel("Reward")
-        axes[0, 0].legend()
-        axes[0, 0].grid(True, alpha=0.3)
-
-        # Plot loss curves (if available)
-        if "loss" in train_metrics:
-            axes[0, 1].plot(train_metrics["loss"], label="Training Loss", alpha=0.7)
-        axes[0, 1].set_title("Loss")
-        axes[0, 1].set_xlabel("Episode")
-        axes[0, 1].set_ylabel("Loss")
-        axes[0, 1].legend()
-        axes[0, 1].grid(True, alpha=0.3)
-
-        # Plot episode length
-        if "episode_length" in train_metrics:
-            axes[1, 0].plot(train_metrics["episode_length"], alpha=0.7)
-        axes[1, 0].set_title("Episode Length")
-        axes[1, 0].set_xlabel("Episode")
-        axes[1, 0].set_ylabel("Steps")
-        axes[1, 0].grid(True, alpha=0.3)
-
-        # Plot exploration rate (if available)
-        if "exploration_rate" in train_metrics:
-            axes[1, 1].plot(train_metrics["exploration_rate"], alpha=0.7)
-        axes[1, 1].set_title("Exploration Rate")
-        axes[1, 1].set_xlabel("Episode")
-        axes[1, 1].set_ylabel("Epsilon")
-        axes[1, 1].grid(True, alpha=0.3)
-
-        plt.tight_layout()
-        return fig
 
     def save_best_model(
         self,

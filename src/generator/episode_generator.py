@@ -1,53 +1,29 @@
 """
-Episode Generator for Attack Sequence Training.
+Episode Generator (LEGACY reference implementation).
 
 This module generates synthetic attack episodes following Kill Chain
-grammar rules. Episodes are integer sequences
-representing attack progression through Kill Chain stages.
+grammar rules. Episodes are integer sequences representing attack
+progression through Kill Chain stages.
 
 Grammar Rules:
 1. Progression: P(S_{t+1} > S_t) > 0 (attacks escalate)
 2. Persistence: P(S_{t+1} = S_t) > 0 (attacks may sustain)
 3. Reset: S_{t+1} = 0 only via external intervention (not within episode)
 
-Episodes are used to train the Attack Sequence Generator (LSTM)
-as a next-token predictor.
+LEGACY: the live adversarial loop uses :class:`MarkovAttacker`. This
+generator is retained only as the canonical reference whose transition
+matrix MarkovAttacker mirrors exactly (see the parity test in
+``tests/test_markov_attacker.py``). It is not on the training path.
 """
 
-import json
 import logging
 import math
 from dataclasses import dataclass
-from pathlib import Path
 from typing import Optional
 
 import numpy as np
 
 logger = logging.getLogger(__name__)
-
-
-# -----------------------------------------------------------------------------
-# Public, stateless helpers (no class instance required)
-# -----------------------------------------------------------------------------
-
-
-def stage_distribution_from_split_manifest(
-    splits_manifest_path: Path, split_name: str = "train"
-) -> dict[int, int]:
-    """Load the per-stage row counts for *split_name* from the splits manifest.
-
-    The dataset-prep manifest at ``data/processed/ciciot2023/splits/manifest.json``
-    records stage counts for every split (``all``, ``train``, ``val``, etc.).
-    Loading the prior from there means the Red Team is *guaranteed* to be
-    trained on a stage distribution that matches the train split exactly,
-    with no leakage from val / test / OOD.
-    """
-    with Path(splits_manifest_path).open("r") as fp:
-        manifest = json.load(fp)
-    if "stage_counts" not in manifest or split_name not in manifest["stage_counts"]:
-        raise KeyError(f"split '{split_name}' not found in stage_counts of {splits_manifest_path}")
-    raw = manifest["stage_counts"][split_name]
-    return {int(k): int(v) for k, v in raw.items()}
 
 
 @dataclass
@@ -451,7 +427,7 @@ class EpisodeGenerator:
         episodes: list[list[int]],
         sequence_length: int,
     ) -> tuple[list[list[int]], list[int]]:
-        """Convert episodes to input-target pairs for LSTM training.
+        """Convert episodes to input-target pairs for next-token training.
 
         Creates sliding window sequences where the target is the
         next token after each sequence (next-token prediction).

@@ -1,1 +1,1 @@
-# Generator package for Attack Sequence Generation
+# Kill-chain attacker generator package

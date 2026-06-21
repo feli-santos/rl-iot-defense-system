@@ -5,10 +5,9 @@ samples the next kill-chain stage from a fixed first-order transition matrix.
 
 The transition matrix is built to mirror
 :meth:`src.generator.episode_generator.EpisodeGenerator._build_transition_matrix`
-*exactly*, so the adversarial dynamics seen by the defender are unchanged from
-the earlier LSTM-based generator (which was itself a high-fidelity imitator of
-this same hand-built kill-chain grammar). Using the matrix directly removes the
-need to train, version, and hash a neural checkpoint while preserving behaviour.
+*exactly*, so the adversarial dynamics seen by the defender match the
+hand-built kill-chain grammar. Using the matrix directly keeps the attacker
+fully reproducible with no learned checkpoint to train, version, or hash.
 
 Kill-chain grammar (stages ``0 BENIGN, 1 RECON, 2 ACCESS, 3 MANEUVER, 4 IMPACT``):
 

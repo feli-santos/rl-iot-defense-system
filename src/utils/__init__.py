@@ -5,7 +5,6 @@ This package provides:
 - Label Mapper: Maps CICIoT2023 labels to Kill Chain stages
 - Realization Engine: Samples features from processed dataset
 - Dataset Processor: Processes raw CICIoT2023 data
-- Config Loader: Loads YAML configuration
 """
 
 from src.utils.label_mapper import (

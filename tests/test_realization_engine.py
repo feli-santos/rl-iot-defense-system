@@ -175,20 +175,3 @@ class TestRealizationEngineStats:
     def test_num_samples_property(self, engine: RealizationEngine) -> None:
         """Should report total number of samples."""
         assert engine.num_samples == 500  # 5 stages * 100 samples each
-
-    def test_stage_distribution(self, engine: RealizationEngine) -> None:
-        """Should report distribution of samples across stages."""
-        distribution = engine.get_stage_distribution()
-
-        assert len(distribution) == 5
-        assert sum(distribution.values()) == engine.num_samples
-
-    def test_get_random_stage_weighted(self, engine: RealizationEngine) -> None:
-        """Should sample random stage weighted by sample counts."""
-        stages = [engine.get_random_stage_weighted() for _ in range(100)]
-
-        # All stages should be valid
-        assert all(0 <= s <= 4 for s in stages)
-
-        # Should see variety
-        assert len(set(stages)) > 1

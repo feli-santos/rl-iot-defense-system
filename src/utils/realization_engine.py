@@ -11,13 +11,12 @@ The engine:
 2. Samples feature vectors matching the current Kill Chain stage
 3. Returns normalized feature vectors as environment observations
 
-environment-design split-aware sampling
-----------------------------
+Split-aware sampling
+--------------------
 The engine supports an optional ``allowed_indices`` argument and a
 :meth:`RealizationEngine.from_split_manifest` factory. When restricted to
 the *train* split (and excluding OOD attack classes), the engine guarantees
-that no row used during RL training is ever evaluated in ablation. See
-``docs/results/environment/PLAN.md`` §B4 for the rationale.
+that no row used during RL training is ever evaluated in ablation.
 """
 
 import json
@@ -74,7 +73,7 @@ class RealizationEngine:
                 row indices. Per-stage indices are intersected with this
                 set; any stage whose intersection is empty raises
                 ``ValueError`` at sample time. The default ``None`` means
-                "all rows", reproducing the pre-environment-design behaviour.
+                "all rows", reproducing the pre-split-aware behaviour.
 
         Raises:
             FileNotFoundError: If required files are missing.
@@ -101,7 +100,7 @@ class RealizationEngine:
         )
 
     # =========================================================================
-    # environment-design split-aware factories
+    # Split-aware factories
     # =========================================================================
 
     @classmethod
@@ -308,9 +307,7 @@ class RealizationEngine:
         single valid neighbour. Only stages present in ``_state_indices`` are
         eligible, so a held-out neighbour stage is skipped.
         """
-        candidates = [
-            s for s in (stage_id - 1, stage_id + 1) if s in self._state_indices
-        ]
+        candidates = [s for s in (stage_id - 1, stage_id + 1) if s in self._state_indices]
         if not candidates:
             return stage_id
         return int(self._rng.choice(candidates))
@@ -429,50 +426,3 @@ class RealizationEngine:
             Dictionary mapping stage IDs to sample counts.
         """
         return self._stage_counts.copy()
-
-    def get_stage_distribution(self) -> dict[int, int]:
-        """Get distribution of samples across stages.
-
-        Returns:
-            Dictionary mapping stage IDs to sample counts.
-        """
-        return self._stage_counts.copy()
-
-    # =========================================================================
-    # Utility Methods
-    # =========================================================================
-
-    def get_random_stage_weighted(self) -> int:
-        """Sample a random stage weighted by sample counts.
-
-        Stages with more samples are more likely to be selected.
-        Useful for training data augmentation.
-
-        Returns:
-            Integer stage ID (0-4).
-        """
-        stages = list(self._stage_counts.keys())
-        weights = [self._stage_counts[s] / self._total_samples for s in stages]
-
-        return int(self._rng.choice(stages, p=weights))
-
-    def get_features_for_indices(
-        self,
-        indices: list[int],
-        normalize: bool = True,
-    ) -> np.ndarray:
-        """Get features for specific dataset indices.
-
-        Args:
-            indices: List of row indices.
-            normalize: Whether to return normalized features.
-
-        Returns:
-            Feature matrix of shape (len(indices), num_features).
-        """
-        features = (
-            self._raw_features
-            if not normalize and self._raw_features is not None
-            else self._features
-        )
-        return features[indices].copy()

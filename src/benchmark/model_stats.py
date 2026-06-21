@@ -1,13 +1,12 @@
 """Compute FLOPs, MACs, parameter count, and on-disk size for SB3 policy networks.
 
-This module addresses thesis review issue C13: the IoT-resource motivation
-requires reporting model efficiency metrics (FLOPs/MACs, memory footprint)
-alongside inference latency. It is wired into Phase-6 evaluation to emit
-``results/benchmark/model_stats.json``.
+The IoT-resource motivation requires reporting model efficiency metrics
+(FLOPs/MACs, memory footprint) alongside inference latency. It is wired into
+held-out benchmark evaluation to emit ``results/benchmark/model_stats.json``.
 
 Usage::
 
-    from src.benchmark.model_stats import get_model_stats, get_detector_stats
+    from src.benchmark.model_stats import get_model_stats, get_file_stats
     stats = get_model_stats(model, obs_dim=290)
     # -> {"algo": "dqn", "params": 6789, "macs": 12345, "size_mb": 0.08}
 

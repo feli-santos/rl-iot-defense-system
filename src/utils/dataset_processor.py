@@ -1,8 +1,8 @@
 """
 CICIoT2023 Dataset Processor
 
-Processes raw CICIoT2023 dataset for Attack Sequence Generator training
-and Adversarial Environment integration.
+Processes raw CICIoT2023 dataset for the Markov attacker and
+Adversarial Environment integration.
 
 Key outputs:
 - features.npy: Normalized feature matrix for RealizationEngine
@@ -22,7 +22,7 @@ import joblib
 import numpy as np
 import pandas as pd
 from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import LabelEncoder, StandardScaler
+from sklearn.preprocessing import StandardScaler
 
 from src.utils.label_mapper import AbstractStateLabelMapper
 
@@ -67,7 +67,7 @@ class CICIoTProcessor:
     Features:
     - Configurable data splits from config file
     - Comprehensive preprocessing with scaling and encoding
-    - Sequence generation for LSTM training
+    - Split-aware feature matrices for the adversarial environment
     - Artifact saving for reproducible training
     """
 
@@ -78,9 +78,7 @@ class CICIoTProcessor:
 
         # Preprocessing artifacts
         self.scaler: Optional[StandardScaler] = None
-        self.label_encoder: Optional[LabelEncoder] = None
         self.feature_columns: list[str] = []
-        self.class_names: list[str] = []
         self.sampling_info: dict[str, Any] = {}
         self.feature_selection_info: dict[str, Any] = {
             "enabled": bool(getattr(config, "feature_selection", False)),
@@ -97,78 +95,6 @@ class CICIoTProcessor:
             f"Initialized CICIoT processor with splits: "
             f"train={config.train_split}, val={config.val_split}, test={config.test_split}"
         )
-
-    def process_dataset(self) -> dict[str, Any]:
-        """
-        Process the complete CICIoT2023 dataset with configurable splits.
-
-        Returns:
-            Processing results dictionary
-        """
-        logger.info("Starting CICIoT2023 dataset processing...")
-
-        try:
-            # Load raw data
-            raw_data = self._load_raw_data()
-            logger.info(f"Loaded {len(raw_data):,} raw samples")
-
-            # Sample data if needed
-            raw_data = self._sample_raw_data(raw_data)
-            logger.info(f"Sampled to {len(raw_data):,} samples")
-
-            # Split BEFORE feature selection / scaling to prevent leakage
-            target_column = raw_data.columns[-1]
-            train_raw, val_raw, test_raw = self._split_by_target(raw_data, target_column)
-
-            # Build shared label encoder from sampled data labels for robust transforms
-            self.label_encoder = LabelEncoder()
-            self.label_encoder.fit(raw_data[target_column].astype(str))
-            self.class_names = self.label_encoder.classes_.tolist()
-
-            train_data = self._preprocess_split(train_raw, target_column, fit_transformers=True)
-            val_data = self._preprocess_split(val_raw, target_column, fit_transformers=False)
-            test_data = self._preprocess_split(test_raw, target_column, fit_transformers=False)
-
-            logger.info(
-                "Preprocessed split shapes - Train: %s, Val: %s, Test: %s",
-                train_data.shape,
-                val_data.shape,
-                test_data.shape,
-            )
-
-            # Generate sequences for LSTM
-            train_sequences = self._generate_sequences(train_data)
-            val_sequences = self._generate_sequences(val_data)
-            test_sequences = self._generate_sequences(test_data)
-
-            # Save processed data
-            self._save_processed_data(train_sequences, val_sequences, test_sequences)
-
-            # Save preprocessing artifacts
-            self._save_artifacts()
-
-            results = {
-                "total_samples": len(raw_data),
-                "train_samples": len(train_sequences[0]),
-                "val_samples": len(val_sequences[0]),
-                "test_samples": len(test_sequences[0]),
-                "feature_count": len(self.feature_columns),
-                "class_count": len(self.class_names),
-                "sequence_length": self.config.sequence_length,
-                "splits": {
-                    "train": self.config.train_split,
-                    "val": self.config.val_split,
-                    "test": self.config.test_split,
-                },
-                "sampling": self.sampling_info,
-            }
-
-            logger.info("Dataset processing completed successfully")
-            return results
-
-        except Exception as e:
-            logger.error(f"Dataset processing failed: {e}")
-            raise
 
     def _load_raw_data(self) -> pd.DataFrame:
         """Load raw CICIoT2023 dataset from CSV files."""
@@ -202,58 +128,6 @@ class CICIoTProcessor:
         # Combine all dataframes
         combined_data = pd.concat(dataframes, ignore_index=True)
         return combined_data
-
-    def _preprocess_split(
-        self,
-        split_data: pd.DataFrame,
-        target_column: str,
-        fit_transformers: bool,
-    ) -> pd.DataFrame:
-        """Preprocess a split with train-only-fitted transformers.
-
-        Args:
-            split_data: DataFrame containing features + target column.
-            target_column: Target column name.
-            fit_transformers: Whether to fit feature selection/scaler on this split.
-
-        Returns:
-            Processed DataFrame with scaled features and encoded target.
-        """
-        split_data = split_data.dropna().copy()
-        feature_columns = [col for col in split_data.columns if col != target_column]
-
-        X = split_data[feature_columns].copy()
-        y = split_data[target_column].astype(str).copy()
-
-        categorical_columns = X.select_dtypes(include=["object"]).columns
-        for col in categorical_columns:
-            X[col] = X[col].astype("category").cat.codes
-
-        X = self._clean_numerical_data(X)
-
-        if fit_transformers:
-            if self.config.feature_selection:
-                X = self._apply_feature_selection(X)
-            self.feature_columns = X.columns.tolist()
-            self.scaler = StandardScaler()
-            X_scaled = self.scaler.fit_transform(X)
-        else:
-            if not self.feature_columns:
-                raise ValueError("Feature columns not initialized from training split")
-            if self.scaler is None:
-                raise ValueError("Scaler not initialized from training split")
-            X = X[self.feature_columns]
-            X_scaled = self.scaler.transform(X)
-
-        if self.label_encoder is None:
-            raise ValueError("Label encoder not initialized")
-        y_encoded = self.label_encoder.transform(y)
-
-        processed_data = pd.DataFrame(
-            X_scaled, columns=self.feature_columns, index=split_data.index
-        )
-        processed_data["target"] = y_encoded
-        return processed_data
 
     def _clean_numerical_data(self, X: pd.DataFrame) -> pd.DataFrame:
         """Clean inf and NaN values from numerical data.
@@ -444,61 +318,6 @@ class CICIoTProcessor:
 
         return keep_features
 
-    def _apply_class_balancing(
-        self, X: pd.DataFrame, y: np.ndarray
-    ) -> tuple[pd.DataFrame, np.ndarray]:
-        """Apply class balancing for severe imbalance."""
-        from imblearn.over_sampling import SMOTE
-        from imblearn.pipeline import Pipeline
-        from imblearn.under_sampling import RandomUnderSampler
-
-        # Use SMOTE + RandomUnderSampler for severe imbalance
-        over = SMOTE(
-            sampling_strategy=0.1, random_state=self.config.random_state
-        )  # Oversample to 10%
-        under = RandomUnderSampler(
-            sampling_strategy=0.5, random_state=self.config.random_state
-        )  # Undersample to 50%
-
-        pipeline = Pipeline(steps=[("over", over), ("under", under)])
-        X_balanced, y_balanced = pipeline.fit_resample(X, y)
-
-        return pd.DataFrame(X_balanced, columns=X.columns), y_balanced
-
-    def _split_data(self, data: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
-        """Split data into train/validation/test sets with configurable ratios."""
-        logger.info(
-            f"Splitting data: train={self.config.train_split}, "
-            f"val={self.config.val_split}, test={self.config.test_split}"
-        )
-
-        # First split: separate test set
-        test_size = self.config.test_split
-        temp_data, test_data = train_test_split(
-            data,
-            test_size=test_size,
-            random_state=self.config.random_state,
-            stratify=data["target"],
-        )
-
-        # Second split: separate train and validation from remaining data
-        val_size_adjusted = self.config.val_split / (
-            self.config.train_split + self.config.val_split
-        )
-        train_data, val_data = train_test_split(
-            temp_data,
-            test_size=val_size_adjusted,
-            random_state=self.config.random_state,
-            stratify=temp_data["target"],
-        )
-
-        logger.info(
-            f"Split sizes - Train: {len(train_data):,}, "
-            f"Val: {len(val_data):,}, Test: {len(test_data):,}"
-        )
-
-        return train_data, val_data, test_data
-
     def _split_by_target(
         self,
         data: pd.DataFrame,
@@ -679,119 +498,6 @@ class CICIoTProcessor:
             "sampled_label_counts": sampled_counts,
         }
         return sampled
-
-    def _generate_sequences(self, data: pd.DataFrame) -> tuple[np.ndarray, np.ndarray]:
-        """Generate sequences for LSTM training."""
-        features = data[self.feature_columns].values
-        targets = data["target"].values
-
-        sequences = []
-        sequence_targets = []
-
-        for i in range(len(features) - self.config.sequence_length + 1):
-            sequence = features[i : i + self.config.sequence_length]
-            target = targets[i + self.config.sequence_length - 1]
-
-            sequences.append(sequence)
-            sequence_targets.append(target)
-
-        return np.array(sequences), np.array(sequence_targets)
-
-    def _save_processed_data(
-        self,
-        train_sequences: tuple[np.ndarray, np.ndarray],
-        val_sequences: tuple[np.ndarray, np.ndarray],
-        test_sequences: tuple[np.ndarray, np.ndarray],
-    ) -> None:
-        """Save processed sequences to disk."""
-        logger.info("Saving processed data...")
-
-        # Save training data
-        np.save(self.output_path / "train_sequences.npy", train_sequences[0])
-        np.save(self.output_path / "train_targets.npy", train_sequences[1])
-
-        # Save validation data
-        np.save(self.output_path / "val_sequences.npy", val_sequences[0])
-        np.save(self.output_path / "val_targets.npy", val_sequences[1])
-
-        # Save test data
-        np.save(self.output_path / "test_sequences.npy", test_sequences[0])
-        np.save(self.output_path / "test_targets.npy", test_sequences[1])
-
-        logger.info(f"Processed data saved to {self.output_path}")
-
-    def _save_artifacts(self) -> None:
-        """Save preprocessing artifacts for reproducible training."""
-        logger.info("Saving preprocessing artifacts...")
-
-        # Save scaler
-        if self.scaler:
-            joblib.dump(self.scaler, self.output_path / "scaler.joblib")
-
-        # Save label encoder
-        if self.label_encoder:
-            joblib.dump(self.label_encoder, self.output_path / "label_encoder.joblib")
-
-        # Save metadata
-        metadata = {
-            "feature_columns": self.feature_columns,
-            "class_names": self.class_names,
-            "sequence_length": self.config.sequence_length,
-            "splits": {
-                "train": self.config.train_split,
-                "val": self.config.val_split,
-                "test": self.config.test_split,
-            },
-        }
-
-        with open(self.output_path / "metadata.json", "w") as f:
-            json.dump(metadata, f, indent=2)
-
-        logger.info("Preprocessing artifacts saved")
-
-    def _stratified_sample_for_env(self, raw_data: pd.DataFrame) -> pd.DataFrame:
-        """Sample with per-stage floors to prevent minority stage starvation.
-
-        Takes at least ``min_samples_per_stage`` rows from each Kill Chain stage
-        before filling the remaining budget proportionally from the rest of the
-        dataset.  This guarantees the RL RealizationEngine has a meaningful pool
-        of rows for every stage, including ACCESS which is otherwise ~0.08 %.
-        """
-        label_col = raw_data.columns[-1]
-        mapper = AbstractStateLabelMapper()
-        min_floor = getattr(self.config, "min_samples_per_stage", 2000)
-        target_n = self.config.sample_size
-        rng_state = self.config.random_state
-
-        stage_ids = (
-            raw_data[label_col]
-            .astype(str)
-            .map(lambda lbl: mapper.get_stage_id_safe(lbl, default=0))
-        )
-
-        sampled_parts: list[pd.DataFrame] = []
-        used_indices: set = set()
-
-        # Floor pass: guarantee min_floor rows per stage
-        for sid in range(5):
-            group = raw_data[stage_ids == sid]
-            n_take = min(min_floor, len(group))
-            taken = group.sample(n=n_take, random_state=rng_state)
-            sampled_parts.append(taken)
-            used_indices.update(taken.index)
-
-        current_n = sum(len(p) for p in sampled_parts)
-        remaining = target_n - current_n
-
-        # Fill remaining budget from rows not yet selected
-        if remaining > 0:
-            residual = raw_data.drop(index=list(used_indices))
-            n_extra = min(remaining, len(residual))
-            if n_extra > 0:
-                sampled_parts.append(residual.sample(n=n_extra, random_state=rng_state))
-
-        result = pd.concat(sampled_parts)
-        return result.sample(frac=1, random_state=rng_state).reset_index(drop=True)
 
     def process_for_adversarial_env(self) -> dict[str, Any]:
         """
