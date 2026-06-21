@@ -13,7 +13,6 @@ from typing import Any
 
 import numpy as np
 import pytest
-import torch
 
 # =============================================================================
 # Kill Chain Stage Constants
@@ -93,160 +92,9 @@ def num_stages() -> int:
     return NUM_STAGES
 
 
-@pytest.fixture
-def kill_chain_stages() -> dict[int, str]:
-    """Kill Chain stage ID to name mapping."""
-    return KILL_CHAIN_STAGES.copy()
-
-
-@pytest.fixture
-def ciciot_label_mapping() -> dict[str, int]:
-    """CICIoT2023 label to Kill Chain stage mapping."""
-    return CICIOT_TO_STAGE_MAPPING.copy()
-
-
-@pytest.fixture
-def stage_to_labels() -> dict[int, list[str]]:
-    """Reverse mapping: stage ID to list of CICIoT2023 labels."""
-    result: dict[int, list[str]] = {i: [] for i in range(NUM_STAGES)}
-    for label, stage in CICIOT_TO_STAGE_MAPPING.items():
-        result[stage].append(label)
-    return result
-
-
-# =============================================================================
-# Fixtures: Sample Data
-# =============================================================================
-
-
-@pytest.fixture
-def sample_feature_vector(num_features: int) -> np.ndarray:
-    """Single sample feature vector (normalized)."""
-    np.random.seed(42)
-    return np.random.randn(num_features).astype(np.float32)
-
-
-@pytest.fixture
-def sample_feature_batch(num_features: int) -> np.ndarray:
-    """Batch of sample feature vectors (32 samples)."""
-    np.random.seed(42)
-    return np.random.randn(32, num_features).astype(np.float32)
-
-
-@pytest.fixture
-def sample_attack_sequence() -> list[int]:
-    """Sample attack sequence following kill chain grammar.
-
-    Pattern: BENIGN -> RECON -> ACCESS -> IMPACT (escalation with persistence)
-    """
-    return [0, 0, 1, 1, 1, 2, 2, 3, 4, 4]
-
-
-@pytest.fixture
-def sample_episode_batch() -> list[list[int]]:
-    """Batch of sample attack episodes."""
-    return [
-        [0, 0, 1, 1, 2, 4],  # Quick escalation
-        [0, 1, 1, 1, 1, 2, 2, 3, 4],  # Slow escalation with persistence
-        [0, 0, 0, 0, 0, 0],  # All benign
-        [0, 1, 2, 3, 4, 4, 4],  # Direct progression
-        [0, 0, 1, 2, 2, 2, 4],  # Skip maneuver
-    ]
-
-
-# =============================================================================
-# Fixtures: Generator Configuration
-# =============================================================================
-
-
-@pytest.fixture
-def generator_config() -> dict[str, Any]:
-    """Configuration for Attack Sequence Generator."""
-    return {
-        "num_stages": NUM_STAGES,
-        "embedding_dim": 32,
-        "hidden_size": 64,
-        "num_layers": 2,
-        "dropout": 0.1,
-        "temperature": 1.0,
-        "sequence_length": 10,
-    }
-
-
-@pytest.fixture
-def episode_generation_config() -> dict[str, Any]:
-    """Configuration for Episode Generator."""
-    return {
-        "num_episodes": 1000,
-        "min_length": 5,
-        "max_length": 30,
-        "progression_weight": 0.6,
-        "persistence_weight": 0.3,
-        "skip_weight": 0.1,
-    }
-
-
-# =============================================================================
-# Fixtures: Environment Configuration
-# =============================================================================
-
-
-@pytest.fixture
-def environment_config() -> dict[str, Any]:
-    """Configuration for Adversarial IoT Environment."""
-    return {
-        "num_features": 46,
-        "action_costs": {
-            "monitor": 0.0,
-            "mitigate": 0.1,
-            "block": 0.3,
-            "isolate": 0.6,
-        },
-        "damage_scale": 0.5,  # λ parameter
-        "success_reward": 10.0,  # R_win
-        "false_positive_penalty": 2.0,
-        "episode_length": 100,
-        "history_length": 10,
-    }
-
-
-@pytest.fixture
-def action_effectiveness() -> dict[int, int]:
-    """Action effectiveness levels (action_id -> max stage it can counter).
-
-    Per Force Continuum design:
-    - MONITOR (0): Fails against any attack (effectiveness 0)
-    - MITIGATE (1): Effective against RECON only (effectiveness 1)
-    - BLOCK (2): Effective against ACCESS/MANEUVER (effectiveness 3)
-    - ISOLATE (3): Effective against all (effectiveness 4)
-    """
-    return {
-        0: 0,  # MONITOR - ineffective
-        1: 1,  # MITIGATE - counters RECON
-        2: 3,  # BLOCK - counters up to MANEUVER
-        3: 4,  # ISOLATE - counters all
-    }
-
-
 # =============================================================================
 # Fixtures: Temporary Paths
 # =============================================================================
-
-
-@pytest.fixture
-def temp_artifacts_dir(tmp_path: Path) -> Path:
-    """Temporary directory for test artifacts."""
-    artifacts = tmp_path / "artifacts"
-    artifacts.mkdir(parents=True, exist_ok=True)
-    return artifacts
-
-
-@pytest.fixture
-def temp_generator_dir(temp_artifacts_dir: Path) -> Path:
-    """Temporary directory for generator artifacts."""
-    generator_dir = temp_artifacts_dir / "generator"
-    generator_dir.mkdir(parents=True, exist_ok=True)
-    return generator_dir
 
 
 @pytest.fixture
@@ -330,18 +178,3 @@ def mock_dataset(temp_data_dir: Path, num_features: int) -> dict[str, Any]:
         "state_indices": state_indices,
         "metadata": metadata,
     }
-
-
-# =============================================================================
-# Fixtures: PyTorch Device
-# =============================================================================
-
-
-@pytest.fixture
-def device() -> torch.device:
-    """Get available PyTorch device."""
-    if torch.cuda.is_available():
-        return torch.device("cuda")
-    elif torch.backends.mps.is_available():
-        return torch.device("mps")
-    return torch.device("cpu")
