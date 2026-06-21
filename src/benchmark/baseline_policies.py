@@ -119,16 +119,16 @@ def recommended_action_policy(
 ) -> int:
     """The IoTWarden hand-crafted rule baseline.
 
-    Reads ``info["recommended_action"]`` from the Phase-3 env, which is
+    Reads ``info["recommended_action"]`` from the Adversarial Environment, which is
     the locked per-stage proportional mapping
     ``{BENIGN→OBSERVE, RECON→LOG, ACCESS→RESTRICT, MANEUVER→BLOCK,
     IMPACT→ISOLATE}``. This is exactly the rule-based comparator that
-    Phase-5 G5.2 measured the trained RL trio against (the floor was
+    Blue-Team Training G5.2 measured the trained RL trio against (the floor was
     +50; trained agents reach +1300..+1350).
 
     Raises:
         KeyError: if ``info`` is missing ``recommended_action``. The
-            Phase-3 env always emits it; absence indicates a stub env
+            Adversarial Environment always emits it; absence indicates a stub env
             and should fail loudly.
     """
     return int(info["recommended_action"])
@@ -137,11 +137,11 @@ def recommended_action_policy(
 # ------------------------------------------------------------------- RF baseline
 
 
-# The Phase-3 recommended_action mapping, replicated here so RFActingPolicy
-# does NOT need a live env info dict — it works off the predicted stage
-# alone. Kept in lock-step with src/environment/adversarial_env.py's
+# The Adversarial Environment recommended_action mapping, replicated here so
+# RFActingPolicy does NOT need a live env info dict — it works off the predicted
+# stage alone. Kept in lock-step with src/environment/adversarial_env.py's
 # `_recommended_action`; if that mapping ever changes, this constant must
-# move with it (and a Phase-3.1 test will catch the drift).
+# move with it (and an Adversarial Environment test will catch the drift).
 _RECOMMENDED_BY_STAGE: dict[int, int] = {
     0: 0,  # BENIGN   → OBSERVE
     1: 1,  # RECON    → LOG
@@ -157,22 +157,22 @@ class RFActingPolicy:
     Tests the thesis claim that *learned* RL beats *supervised stage
     classifier composed with rules*: at each step we extract the raw
     features of the **most recent observation row** from the env's flat
-    obs vector, ask the Phase-4 RandomForest to predict the kill-chain
+    obs vector, ask the Stage Detector RandomForest to predict the kill-chain
     stage, and return the recommended action for that stage.
 
     Args:
-        rf: A fitted ``RandomForestClassifier`` (the Phase-4
+        rf: A fitted ``RandomForestClassifier`` (the Stage Detector
             ``artifacts/detector/random_forest.joblib``) **or** a path
             to one. The model must expose ``predict(X)`` returning
             integer stage labels in ``[0, 4]``.
-        num_features: The Phase-3 env's number of raw features per step
+        num_features: The Adversarial Environment's number of raw features per step
             (``29`` for the production CICIoT2023 split).
-        window_size: The Phase-3 env's window size (``5`` by default).
+        window_size: The Adversarial Environment's window size (``5`` by default).
         include_deltas: Whether the obs vector also carries first-order
             deltas appended along the feature axis. ``True`` is the
-            Phase-5 default and matches the production env spec.
+            Blue-Team Training default and matches the production env spec.
 
-    Notes on the obs slicing (must mirror the Phase-3 env):
+    Notes on the obs slicing (must mirror the Adversarial Environment):
 
         ``_build_observation`` stacks the window into shape ``(W, F)``
         and, when ``include_deltas`` is True, concatenates a ``(W, F)``
@@ -264,7 +264,7 @@ class SB3PolicyAdapter:
     Args:
         model: A loaded SB3 model (e.g., ``DQN.load(path)``).
         deterministic: Forwarded to ``model.predict``. Set ``True`` for
-            the Phase-6 eval rollouts (D6.3) so seed-to-seed variance
+            the Held-Out Benchmark eval rollouts (D6.3) so seed-to-seed variance
             comes from the env, not the policy's exploration noise.
     """
 

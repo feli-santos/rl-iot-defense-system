@@ -90,12 +90,12 @@ def render(runs_root: Path, out_dir: Path) -> dict[str, Any]:
     rows = sorted(runs.values(), key=lambda r: r["algo"])
     md_path = out_dir / "T1_hparams.md"
     md = (
-        "# T1 — blue-team Per-Algorithm Hyperparameters\n\n"
+        "# T1 — Blue-Team Per-Algorithm Hyperparameters\n\n"
         f"Generated from {sum(len(r['seeds']) for r in rows)} runs across "
         f"{len(rows)} algorithms (seeds: "
         f"{sorted({s for r in rows for s in r['seeds']})}).\n\n"
-        "All values are PLAN §8 D5.4 defaults. Phase 8 may revisit\n"
-        "hyperparameters; blue-team reports them as a frozen reference.\n\n"
+        "All values are PLAN §8 D5.4 defaults. Ablation & Robustness may revisit\n"
+        "hyperparameters; Blue-Team Training reports them as a frozen reference.\n\n"
     )
     md += _table(rows)
     md_path.write_text(md)

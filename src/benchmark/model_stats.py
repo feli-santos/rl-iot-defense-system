@@ -82,7 +82,7 @@ def get_model_stats(
         model: A loaded SB3 model (DQN, PPO, or A2C).
         obs_dim: Observation dimension of the environment
             (e.g., 290 = window_size × num_features × 2 for the
-            Phase-3 production env with deltas).
+            Adversarial Environment production env with deltas).
         algo: Algorithm name for labelling in the output dict.
 
     Returns:

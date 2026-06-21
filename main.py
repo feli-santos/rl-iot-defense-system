@@ -9,7 +9,7 @@ Main entry point for the adversarial RL defense system. This system uses:
 Modes:
 - process-data: Prepare CICIoT2023 dataset for adversarial environment
 
-For blue-team training, benchmark evaluation and ablation sweeps, use the
+For Blue-Team training, benchmark evaluation and ablation sweeps, use the
 canonical Makefile targets: ``make blue-team``, ``make benchmark-eval``,
 ``make ablation-ood-eval``, or the scripts directly.
 """
@@ -50,7 +50,7 @@ Examples:
   # Process raw CICIoT2023 dataset
   python main.py --mode process-data
 
-  # For blue-team training, benchmark/ablation evaluation, use the Makefile:
+  # For Blue-Team training, benchmark/ablation evaluation, use the Makefile:
   #   make blue-team
   #   make benchmark-eval
   #   make ablation-ood-eval

@@ -167,7 +167,7 @@ class AdversarialEnvConfig:
     """Configuration for the Adversarial Environment.
 
     See ``docs/results/environment/PLAN.md`` for the rationale behind every reward
-    constant. Most fields are tunable in Phase 8 (sensitivity ablation); the
+    constant. Most fields are tunable in Ablation & Robustness (sensitivity ablation); the
     defaults below are the values used to lock the environment-design exit gates.
 
     Lifecycle attributes
@@ -185,7 +185,7 @@ class AdversarialEnvConfig:
         is currently at ACCESS or above, the env resets the attack to BENIGN
         on the next step with this probability. The remaining probability
         leaves the Markov attacker in charge as usual. ``0.6`` is the default;
-        Phase 8 sweeps this value.
+        Ablation & Robustness sweeps this value.
 
     Reward attributes
     -----------------
@@ -204,7 +204,7 @@ class AdversarialEnvConfig:
         (OBSERVE/LOG).
     penalty_overreact_benign, penalty_block_benign, penalty_block_recon:
         Asymmetric penalties for cocked-trigger policies. Kept from v1
-        because Phase 0 confirmed they meaningfully suppress the
+        because preliminary calibration confirmed they meaningfully suppress the
         "always-BLOCK" degenerate strategy.
     defense_success_bonus:
         Earned (a) on the IMPACT step when the agent picks BLOCK/ISOLATE,
@@ -498,7 +498,7 @@ class AdversarialIoTEnv(gym.Env):
        dataset_path)`` with no ``split_manifest`` / ``allowed_indices``
        argument). This means the engine samples from the *full* row
        pool — it does NOT honour the dataset-prep OOD-exclusion or
-       ``split="train"`` invariants Phases 4–7 depend on.
+        ``split="train"`` invariants the Stage Detector through Ablation & Robustness depend on.
 
        **Production callers must use one of**:
 
@@ -508,7 +508,7 @@ class AdversarialIoTEnv(gym.Env):
          engine``); or
        - ``src.blue_team.env_factory.make_eval_env(...)`` (caller
          supplies the eval split — typically ``"val_balanced"`` for
-         blue-team eval or ``"test_balanced"`` for benchmark / ablation).
+          Blue-Team eval or ``"test_balanced"`` for benchmark / ablation).
 
        Direct ``AdversarialIoTEnv(...)`` construction is reserved for
        synthetic-data unit tests (see ``tests/test_adversarial_env.py``)

@@ -1,4 +1,4 @@
-"""Phase-6 benchmark CLI scripts.
+"""Held-Out Benchmark CLI scripts.
 
 Each module under this package is a standalone entrypoint:
 

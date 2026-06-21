@@ -274,7 +274,7 @@ def main(argv: list | None = None) -> int:  # type: ignore[type-arg]
     p.add_argument(
         "--phase5-primary-root",
         default="runs/blue_team_primary",
-        help="Root of the primary blue-team training runs (for scale=1.0 reuse).",
+        help="Root of the primary Blue-Team training runs (for scale=1.0 reuse).",
     )
     p.add_argument("--smoke", action="store_true")
     args = p.parse_args(argv)

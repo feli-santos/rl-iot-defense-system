@@ -178,7 +178,7 @@ def main(argv: list[str] | None = None) -> int:
 
     grid = [(a, s) for a in args.algos for s in args.seeds]
     logger.info(
-        "blue-team sweep: %d runs (%s) x (%s) on %d worker(s)",
+        "Blue-Team sweep: %d runs (%s) x (%s) on %d worker(s)",
         len(grid),
         args.algos,
         args.seeds,
@@ -215,7 +215,7 @@ def main(argv: list[str] | None = None) -> int:
     sweep_manifest_path.write_text(json.dumps(sweep_manifest, indent=2))
 
     logger.info(
-        "blue-team sweep done: %d ok / %d failed in %.1fs; manifest -> %s",
+        "Blue-Team sweep done: %d ok / %d failed in %.1fs; manifest -> %s",
         sweep_manifest["n_ok"],
         sweep_manifest["n_failed"],
         sweep_manifest["wallclock_seconds"],

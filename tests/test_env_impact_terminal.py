@@ -114,18 +114,18 @@ def _force_into_impact(
     Returns the ``(obs, reward, terminated, truncated, info)`` tuple from
     that step. The agent's action on the IMPACT-arrival step is
     ``action_into_impact`` — relevant only for the
-    ``impact_is_terminal=True`` Phase-3 frozen branch (in the False
+    ``impact_is_terminal=True`` Adversarial Environment frozen branch (in the False
     branch, the IMPACT-arrival action does NOT trigger the terminal
     reward shape, only the next step does).
 
     Implementation: monkey-patch ``_advance_attack`` from the very first
-    step so the LSTM is never consulted; the patched advance keeps the
+    step so the attacker is never consulted; the patched advance keeps the
     env at BENIGN throughout the warmup (so the lifecycle clamp never
     sees an IMPACT transition to clamp), then on the *target* step
     flips to IMPACT. We also set the env's stage to MANEUVER right
     before the target step so the IMPACT inline-terminal branch's
     ``decision_stage`` is MANEUVER (not BENIGN), matching the
-    "natural" MANEUVER → IMPACT transition that Phase-3's reward
+    "natural" MANEUVER → IMPACT transition that the Adversarial Environment's reward
     formula was designed for.
     """
     obs, info = env.reset(seed=seed)
@@ -181,7 +181,7 @@ class TestImpactIsTerminalDefault:
         assert cfg.impact_is_terminal is True, (
             "Default impact_is_terminal must be True to preserve the "
             "environment-design frozen contract. Changing the default would "
-            "invalidate blue-team and benchmark trained checkpoints."
+            "invalidate Blue-Team and benchmark trained checkpoints."
         )
 
     def test_default_terminates_at_impact_arrival(self, env_factory):

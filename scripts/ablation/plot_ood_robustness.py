@@ -15,7 +15,7 @@ in :mod:`scripts.benchmark.build_summary_table`, and emits:
   script writes a placeholder).
 - ``F15_manifest.json`` — SHA-256 hash chain over every input JSONL,
   the upstream ablation ``eval_manifest.json``, the benchmark
-  ``eval_manifest.json``, and the blue-team ``sweep_manifest.json``.
+  ``eval_manifest.json``, and the Blue-Team ``sweep_manifest.json``.
 
 Gate evaluation:
 
@@ -442,20 +442,18 @@ def _compute_per_class_rf_recall(
         import joblib
     except Exception:  # noqa: BLE001
         logger.warning("joblib unavailable — skipping per-class RF recall.")
-        return {c: None for c in ood_classes}
+        return dict.fromkeys(ood_classes)
 
     if not Path(rf_path).exists():
         logger.warning("RF detector not found at %s — skipping recall.", rf_path)
-        return {c: None for c in ood_classes}
+        return dict.fromkeys(ood_classes)
 
     features_path = dataset_dir / "features.npy"
     labels_path = dataset_dir / "labels.npy"
     splits_dir = dataset_dir / "splits" / "ood_attack"
     if not (features_path.exists() and labels_path.exists() and splits_dir.exists()):
-        logger.warning(
-            "dataset artefacts missing under %s — skipping recall.", dataset_dir
-        )
-        return {c: None for c in ood_classes}
+        logger.warning("dataset artefacts missing under %s — skipping recall.", dataset_dir)
+        return dict.fromkeys(ood_classes)
 
     rf = joblib.load(rf_path)
     # NB: features.npy is ALREADY the normalised feature matrix the RF was

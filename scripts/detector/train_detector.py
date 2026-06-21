@@ -16,7 +16,7 @@ Pipeline (deterministic given --seed):
        - docs/results/stage-detector/F11_summary.json
        - docs/results/stage-detector/manifest.json (hash chain)
        - artifacts/detector/{stage_detector.pt, random_forest.joblib}
-         (consumed by blue-team+)
+          (consumed by Blue-Team Training+)
 
 Usage
 -----

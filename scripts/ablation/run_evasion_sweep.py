@@ -196,7 +196,7 @@ def _eval_ppo_on_test(
         spec = EnvConfigSerializable(**manifest["eval_env"])
         spec.split = "test_balanced"
         # Belt-and-braces: ensure the eval cell carries evasion even
-        # if the manifest round-trip dropped it (caveat C10 metadata gap).
+        # if the manifest round-trip dropped it (metadata-gap guard).
         spec.evasion_prob = e
         spec.impact_is_terminal = False
     else:

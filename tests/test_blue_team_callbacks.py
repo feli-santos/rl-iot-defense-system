@@ -1,4 +1,4 @@
-"""Tests for the Phase-5 EpisodeJSONLCallback (3.2.1)."""
+"""Tests for the Blue-Team Training EpisodeJSONLCallback (3.2.1)."""
 
 from __future__ import annotations
 
@@ -220,7 +220,7 @@ class TestEpisodeJSONLCallback:
     ) -> None:
         h = _CallbackHarness(callback)
         # Episode that compromises: env reports IMPACT (stage=4) on
-        # the final step plus the Phase-3 MTTC fields.
+        # the final step plus the Adversarial Environment MTTC fields.
         _run_episode(
             h,
             actions=[0, 0, 0],

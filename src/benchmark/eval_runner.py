@@ -1,19 +1,19 @@
-"""Phase-6 generic policy roll-out harness (PLAN §3.1.2).
+"""Held-Out Benchmark generic policy roll-out harness (PLAN §3.1.2).
 
-:func:`run_policy` is the Phase-6 analogue of Phase-5's
+:func:`run_policy` is the Held-Out Benchmark analogue of Blue-Team Training's
 :class:`EvalToJSONLCallback._run_eval_block`. It rolls any
 :class:`Policy` on a vectorised env for ``n_episodes`` complete
 episodes, emitting:
 
 1. A schema-**v1.0** ``episodes.jsonl`` (same dataclass as
-   :class:`src.blue_team.callbacks.EpisodeRecord`) so Phase-5's
-   ``aggregation.py`` reads Phase-6 outputs unchanged.
+   :class:`src.blue_team.callbacks.EpisodeRecord`) so Blue-Team Training's
+   ``aggregation.py`` reads the Held-Out Benchmark outputs unchanged.
 2. An optional sidecar ``latency.jsonl`` with one row per step
    (``{"step_idx", "duration_ns"}``) — opt-in via ``latency_path``.
    Per D6.4 we deliberately do **not** extend EpisodeRecord with a
    latency field; schema v1.0 stays frozen.
 
-The rollout assumes a single-env :class:`DummyVecEnv` (Phase-5's
+The rollout assumes a single-env :class:`DummyVecEnv` (Blue-Team Training's
 default — see ``env_factory.make_eval_env``). ``n_envs > 1`` is
 unsupported here and would produce ambiguous per-step latency rows;
 use multiple sequential calls instead.
@@ -42,7 +42,7 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class LatencyRecord:
-    """One row of the sidecar ``latency.jsonl`` (Phase-6, PLAN §3.1.3).
+    """One row of the sidecar ``latency.jsonl`` (Held-Out Benchmark, PLAN §3.1.3).
 
     Per-step records are intentionally minimal: an episode-bounding
     ``episode_idx`` plus the in-episode ``step_idx`` so plotters can
@@ -81,7 +81,7 @@ def run_policy(
         policy: Anything that satisfies the
             ``(obs: np.ndarray, info: Dict) -> int`` Protocol.
         env: A single-env ``DummyVecEnv`` (or any VecEnv with
-            ``num_envs == 1``). Phase-5's
+            ``num_envs == 1``). Blue-Team Training's
             :func:`src.blue_team.env_factory.make_eval_env` is the
             canonical producer.
         n_episodes: Number of complete episodes to roll. The rollout
@@ -90,9 +90,9 @@ def run_policy(
         jsonl_path: Output path for the EpisodeRecord-v1.0 JSONL.
             Parent directory is created if missing. **Overwritten** —
             callers that want append semantics must rotate paths
-            themselves (matches Phase-5 behaviour).
+            themselves (matches Blue-Team Training behaviour).
         run_id: Stable identifier echoed in every record (e.g.
-            ``"random_seed_2"`` or ``"ppo_seed_3_test"``). Phase-6's
+            ``"random_seed_2"`` or ``"ppo_seed_3_test"``). The Held-Out Benchmark's
             convention is ``"<policy_name>_seed_<k>_test"``.
         policy_name: Free-form label (e.g. ``"random"``, ``"ppo"``,
             ``"rf_acting"``). Echoed in latency records and used by F5
@@ -113,7 +113,7 @@ def run_policy(
             Reproducibility is delivered by *caller-side* env-construction
             seeding — see ``scripts.benchmark.run_test_eval`` which
             constructs each per-run env with an explicit seed via
-            ``make_eval_env(spec=..., seed=seed)``. Phase-6 numbers
+            ``make_eval_env(spec=..., seed=seed)``. Held-Out Benchmark numbers
             are deterministic on a given checkpoint × split because
             the agent runs ``deterministic=True`` and the random
             baseline is seeded externally; this parameter does not
@@ -228,7 +228,7 @@ def run_policy(
 def _squeeze(obs: Any) -> np.ndarray:
     """Return ``obs`` with a leading 1-batch dim removed if present.
 
-    Phase-5's DummyVecEnv emits ``(1, obs_dim)``; baselines like
+    Blue-Team Training's DummyVecEnv emits ``(1, obs_dim)``; baselines like
     :func:`recommended_action_policy` ignore the obs entirely, but
     :class:`RFActingPolicy` needs the 1-D vector. SB3 models
     re-add the batch dim themselves inside :class:`SB3PolicyAdapter`,
@@ -280,11 +280,11 @@ def _emit_episode(
     """Write one EpisodeRecord-v1.0 line to ``fh``.
 
     ``num_timesteps`` is the cumulative step count *across* episodes in
-    this run — Phase-5 used the SB3 global step counter; here we use
+    this run — Blue-Team Training used the SB3 global step counter; here we use
     the analogous "step number since the rollout started" so the
-    Phase-5 :func:`bin_by_timesteps` aggregator still produces sensible
-    bucket assignments if the rollout JSONL is fed through it (Phase 6
-    aggregations don't bin by timestep, but the schema invariant
+    Blue-Team Training :func:`bin_by_timesteps` aggregator still produces sensible
+    bucket assignments if the rollout JSONL is fed through it (the Held-Out
+    Benchmark aggregations don't bin by timestep, but the schema invariant
     matters).
     """
     # On done, SB3 DummyVecEnv packs the pre-reset (terminal) info under
@@ -311,7 +311,7 @@ def _emit_episode(
     record = EpisodeRecord(
         schema_version=_SCHEMA_VERSION,
         run_id=run_id,
-        # Phase-6 EpisodeRecord still carries `algo` because the
+        # Held-Out Benchmark EpisodeRecord still carries `algo` because the
         # aggregator reads it — for non-RL baselines we put the policy
         # name there. The F5 plotter groups by policy_name (matching
         # `run_id` parsing), so this stays consistent.
@@ -336,7 +336,7 @@ def _emit_episode(
 
 
 def _algo_field_from_run_id(run_id: str) -> str:
-    """Extract the algo / policy field from a Phase-6 run_id.
+    """Extract the algo / policy field from a Held-Out Benchmark run_id.
 
     Convention (PLAN §3.1.4): ``"<policy_name>_seed_<k>_test"`` or
     ``"<policy_name>_seed_<k>"``. The first underscore-token before
@@ -347,7 +347,7 @@ def _algo_field_from_run_id(run_id: str) -> str:
 
 
 def _seed_field_from_run_id(run_id: str) -> int:
-    """Extract the integer seed from a Phase-6 run_id; 0 if absent."""
+    """Extract the integer seed from a Held-Out Benchmark run_id; 0 if absent."""
     parts = run_id.split("_seed_", 1)
     if len(parts) != 2:
         return 0

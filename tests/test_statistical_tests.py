@@ -1,4 +1,4 @@
-"""Smoke tests for scripts.benchmark.run_statistical_tests (thesis review C4).
+"""Smoke tests for scripts.benchmark.run_statistical_tests.
 
 These tests verify that the statistical test machinery works correctly on
 synthetic data, without requiring actual benchmark run outputs. They check:

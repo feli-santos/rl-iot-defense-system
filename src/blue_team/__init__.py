@@ -1,16 +1,16 @@
-"""Phase-5 Blue Team training infrastructure.
+"""Blue-Team Training infrastructure.
 
 Public API:
 
 - :class:`EpisodeJSONLCallback` — SB3 callback that flushes one JSON
-  line per terminated/truncated episode, capturing Phase-3 telemetry
+  line per terminated/truncated episode, capturing Adversarial Environment telemetry
   (MTTC, compromised, defender_deescalations, action histogram).
 - :class:`BlueTeamRunConfig` — dataclass binding for a single
   ``(algo, seed, total_timesteps, ...)`` run; serialises to / from a
   ``run_manifest.json``.
 - :func:`make_train_env` / :func:`make_eval_env` — split-aware
   environment factories that wire :class:`AdversarialIoTEnv` up to a
-  :class:`RealizationEngine` restricted to a Phase-1 split.
+  :class:`RealizationEngine` restricted to a Dataset/Split stage split.
 - :mod:`src.blue_team.aggregation` — reading + smoothing + bootstrap-CI
   helpers consumed by ``scripts/blue_team/plot_*.py``.
 

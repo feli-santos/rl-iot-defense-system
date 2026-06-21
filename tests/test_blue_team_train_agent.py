@@ -176,7 +176,7 @@ class TestTrainAgentSmoke:
         self, synthetic_paths: tuple[Path, Path], tmp_path: Path
     ) -> None:
         """Same-as :func:`test_save_load_model` regression in
-        :class:`TestAdversarialAlgorithm`, but for the blue-team entrypoint."""
+        :class:`TestAdversarialAlgorithm`, but for the Blue-Team entrypoint."""
         from stable_baselines3 import PPO
 
         from scripts.blue_team.train_agent import train

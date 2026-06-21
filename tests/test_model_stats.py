@@ -1,4 +1,4 @@
-"""Tests for src.benchmark.model_stats (thesis review issue C13)."""
+"""Tests for src.benchmark.model_stats (held-out benchmark model statistics)."""
 
 from __future__ import annotations
 

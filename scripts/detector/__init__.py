@@ -1,1 +1,1 @@
-"""Phase-4 detector training scripts."""
+"""Stage Detector training scripts."""

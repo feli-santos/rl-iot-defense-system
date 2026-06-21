@@ -1,4 +1,4 @@
-"""Tests for the Phase-6 baseline policies (PLAN §3.3, C2)."""
+"""Tests for the Held-Out Benchmark baseline policies (PLAN §3.3)."""
 
 from __future__ import annotations
 
@@ -54,7 +54,7 @@ class TestConstantPolicies:
 class TestRecommendedActionPolicy:
     @pytest.mark.parametrize("stage,expected", list(_RECOMMENDED_BY_STAGE.items()))
     def test_passes_through_info_field(self, stage: int, expected: int) -> None:
-        # The Phase-3 env writes recommended_action; the policy is a
+        # The Adversarial Environment writes recommended_action; the policy is a
         # one-line look-up. Pinning the *exact* mapping here doubles as
         # a regression guard against drift in adversarial_env.py.
         info = {"recommended_action": expected, "attack_stage": stage}

@@ -1,4 +1,4 @@
-"""benchmark statistical significance tests (thesis review issue C4).
+"""benchmark statistical significance tests.
 
 Loads per-seed episodic reward arrays from benchmark JSONL outputs and runs:
 
@@ -6,7 +6,7 @@ Loads per-seed episodic reward arrays from benchmark JSONL outputs and runs:
 2. Welch's t-test for independent-samples comparisons.
 3. Effect sizes (Cohen's d).
 
-Key comparisons (per consolidated review C4):
+Key comparisons (per consolidated review):
   a) DQN vs PPO on test_balanced (unpaired — different env seeds)
   b) DQN vs A2C on test_balanced
   c) Best DRL (DQN) vs RF-Acting
@@ -330,7 +330,7 @@ def run_tests(
 
 def _build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
-        description="benchmark statistical significance tests (C4).",
+        description="benchmark statistical significance tests.",
     )
     p.add_argument("--benchmark-root", default="runs/benchmark")
     p.add_argument(

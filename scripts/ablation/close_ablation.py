@@ -13,12 +13,12 @@ Usage::
 Outputs:
 
 - ``G7_scoreboard.json``  — canonical per-gate threshold + value +
-  status + finding-id, mirroring the Phase-6 ``G6_scoreboard.json``
+  status + finding-id, mirroring the Held-Out Benchmark ``G6_scoreboard.json``
   shape.
-- ``RESULTS.md``           — Phase-7 results doc with §1–§9 sections
+- ``RESULTS.md``           — Ablation & Robustness results doc with §1–§9 sections
   populated from the live numbers (placeholder narrative for the
   agent or user to flesh out before locking).
-- ``CHANGELOG.md`` (root), *if present*, gets a Phase-7 ``[Unreleased]``
+- ``CHANGELOG.md`` (root), *if present*, gets an Ablation & Robustness ``[Unreleased]``
   block prepended with the gate scoreboard + headline. The project no
   longer keeps a CHANGELOG, so this step is skipped when the file is absent.
 
@@ -30,7 +30,7 @@ Gates evaluated:
 | G7.2 | F9 | ``F9_summary.json#gates.G7.2`` |
 | G7.3 | F10 | ``F10_summary.json#gates.G7.3`` |
 | G7.4 | F12 | ``F12_summary.json#gates.G7.4`` |
-| G7.5 | manual | always PASS as long as Phase-3 frozen tests pass |
+| G7.5 | manual | always PASS as long as the Adversarial Environment frozen tests pass |
 | G7.6 | tests | always PASS as long as full pytest is green |
 | G7.7 | manifests | checks F9/F10/F12/F15 manifest.json files exist |
 | G7.8 | F15 | ``F15_summary.json#gates.G7.8`` (audit-AF1) |
@@ -232,7 +232,7 @@ def _evaluate_gates(
         gates.append(
             {
                 "id": "G7.2",
-                "threshold": "F9 best reward-comparable cell mean test reward > Phase-6 DQN +1336 by ≥1σ (apples-to-apples; reward-coefficient cells fall back to security-KPI strand per D7.1.1)",
+                "threshold": "F9 best reward-comparable cell mean test reward > Held-Out Benchmark DQN +1336 by ≥1σ (apples-to-apples; reward-coefficient cells fall back to security-KPI strand per D7.1.1)",
                 "value": value_str,
                 "passes": bool(g72.get("passes")),
                 "kind": "f9",
@@ -318,7 +318,7 @@ def _evaluate_gates(
     gates.append(
         {
             "id": "G7.6",
-            "threshold": "No regression on environment-design/detector/blue-team/benchmark frozen tests overall",
+            "threshold": "No regression on environment-design/detector/Blue-Team/benchmark frozen tests overall",
             "passes": pyt_ok,
             "value": "G7.1 carries this through",
             "kind": "regression",
@@ -461,7 +461,7 @@ _STATUS_FAIL = "FAIL"
 _STATUS_SKIP = "SKIP"
 # Per-gate (gate_id → finding_id) override table for G7.x. Keeps the
 # free-text `interpretation` field readable while ensuring the
-# scoreboard exposes the same finding_id Phase-6 ships natively
+# scoreboard exposes the same finding_id the Held-Out Benchmark ships natively
 # (see docs/results/benchmark/benchmark_acceptance.json::gates.G6.2).
 # Step-8 task #2 (07_HANDOFF.md §5 F3) acceptance: jq '.gates[].status'
 # returns enum members and finding_id is present where status is
@@ -475,7 +475,7 @@ _GATE_FINDING_ID: dict[str, str] = {
 
 def _resolve_status_finding(gate: dict[str, Any]) -> dict[str, Any]:
     """Map the gate's `passes`+`interpretation`+`audit_finding` triple
-    into a Phase-6-native ``(status, finding_id)`` pair.
+    into a Held-Out-Benchmark-native ``(status, finding_id)`` pair.
 
     Rules (in order of precedence):
 
@@ -705,7 +705,7 @@ Source of record: `G7_scoreboard.json` next to this file.
 | **F12** (Tier 2) | `F12_pareto.png` + `F12_summary.json` | 2-D scatter on (availability_cost, security_gain) with Pareto frontier; reads F9 + F10 + benchmark outputs. |
 | **F15** (Tier 1, audit-AF1) | `F15_ood_robustness.png` + `F15_summary.json` | 4 OOD class × 8 policy grouped bar chart with bootstrap CIs. |
 | Captions | `F9_caption.md`, `F10_caption.md`, `F12_caption.md`, `F15_caption.md` | Thesis-paper captions per figure. |
-| Manifests | `F9_manifest.json` … `F15_manifest.json` | SHA-256 hash chain over input JSONLs + Phase-5 sweep manifest + Phase-6 eval manifest + git SHA at production time. |
+| Manifests | `F9_manifest.json` … `F15_manifest.json` | SHA-256 hash chain over input JSONLs + Blue-Team Training sweep manifest + Held-Out Benchmark eval manifest + git SHA at production time. |
 | Scoreboard | `G7_scoreboard.json` | Per-gate threshold + value + status + finding-id. |
 | Run artefacts (gitignored) | `runs/ablation/{{ood,reward_sweep,aggressiveness}}/.../eval_test.jsonl` | The schema-v1.0 input data for every figure. |
 
@@ -790,8 +790,8 @@ gitignored; all derived figures + summaries + manifests live under
 
 ## 9 — Test count history
 
-Dataset prep 254 → Dataset prep 266 → Red-team 283 → Env design 296 → Detector 329
-→ Blue-team 376 → Benchmark 420 → **Ablation 442** (+22 from C3 + C4).
+Dataset prep 254 → Dataset prep 266 → Markov Attacker 283 → Env design 296 → Detector 329
+→ Blue-Team 376 → Benchmark 420 → **Ablation 442**.
 """
 
     path = out_dir / "RESULTS.md"
@@ -845,7 +845,7 @@ Tally: **{n_pass} PASS / {n_fail} FAIL-WITH-FINDING** across G7.1–G7.10.
     existing = changelog.read_text()
     new_text = block + "\n" + existing
     changelog.write_text(new_text)
-    logger.info("prepended Phase-7 block to %s", changelog)
+    logger.info("prepended Ablation & Robustness block to %s", changelog)
     return changelog
 
 

@@ -1,10 +1,10 @@
-"""ablation ablation: ``--reward-overrides`` + ``--p-defender-deescalation``
+"""Ablation & Robustness: ``--reward-overrides`` + ``--p-defender-deescalation``
 + ``--impact-is-terminal`` plumbing in ``scripts.blue_team.train_agent``.
 
 PLAN §3.1.2 / D7.3. Pins the per-field override mechanism that the F9
 reward-component sweep uses to fan out one ``train_agent.py`` invocation
 per cell. Default behaviour (no overrides) is byte-for-byte identical to
-blue-team; this test file is what enforces that invariant going forward.
+Blue-Team Training; this test file is what enforces that invariant going forward.
 
 Synthetic-only — no real-data dependency. Tests only the CLI parsing +
 override plumbing into ``EnvConfigSerializable``; the actual training
@@ -43,7 +43,7 @@ class TestApplyEnvOverrides:
             "Default behaviour (no overrides) must be byte-for-byte "
             "identical to the input spec — this is what guarantees "
             "ablation retraining without --reward-overrides matches "
-            "blue-team behaviour."
+            "Blue-Team behaviour."
         )
 
     def test_reward_overrides_dict_applied(self) -> None:
@@ -124,17 +124,17 @@ class TestBuildRunConfigOverrides:
         return ["--algo", "ppo", "--seed", "0", "--splits-manifest", ""]
 
     def test_no_overrides_matches_phase5_baseline(self) -> None:
-        """No flags → env spec uses blue-team defaults verbatim.
+        """No flags → env spec uses Blue-Team defaults verbatim.
 
-        This is the **invariant that lets blue-team trained checkpoints
+        This is the **invariant that lets Blue-Team trained checkpoints
         and ablation untrained-cell checkpoints be compared apples-to-
-        apples**. If this test ever flips, blue-team numbers and ablation
+        apples**. If this test ever flips, Blue-Team numbers and ablation
         baselines are no longer directly comparable.
         """
         args = _parse(self._base_argv())
         cfg = build_run_config(args)
 
-        # Every reward field at the environment-design / blue-team default.
+        # Every reward field at the environment-design / Blue-Team default.
         assert cfg.env.defense_success_bonus == 250.0
         assert cfg.env.penalty_missed_impact == 150.0
         assert cfg.env.reward_proportional == 5.0
@@ -246,7 +246,7 @@ class TestBackwardCompatibility:
     new reward-shaping fields) must still round-trip cleanly."""
 
     def test_old_manifest_deserialises_with_defaults(self, tmp_path: Path) -> None:
-        """A blue-team-era manifest (only the original 7 env fields) must
+        """A Blue-Team-era manifest (only the original 7 env fields) must
         deserialise into a config whose new fields are at default."""
         from src.blue_team import BlueTeamRunConfig
 
@@ -293,7 +293,7 @@ class TestBackwardCompatibility:
         # Pre-ablation fields preserved.
         assert cfg.env.p_defender_deescalation == 0.6
         # New ablation fields default to AdversarialEnvConfig defaults
-        # (== environment-design frozen contract). This is what makes blue-team
+        # (== environment-design frozen contract). This is what makes Blue-Team
         # checkpoints loadable + comparable under ablation evaluation.
         assert cfg.env.defense_success_bonus == 250.0
         assert cfg.env.penalty_missed_impact == 150.0

@@ -1,4 +1,4 @@
-"""blue-team exit-gate evaluator.
+"""Blue-Team exit-gate evaluator.
 
 Reads ``runs/blue_team/`` + ``F3_summary.json`` + ``F4_summary.json`` and
 emits a per-gate scoreboard ``docs/results/blue-team-training/G5_scoreboard.json``
@@ -92,7 +92,7 @@ def _select_best_algo(per_algo: dict[str, Any]) -> str:
        implementation tie-breaks by highest MTTC: see the sort key
        ``(-mean_reward, -mean_mttc)`` below. The triple disagreement
        between docstring / PLAN / code never fired in practice (the
-       blue-team mean-reward gaps are ≥ 25 points, far larger than
+        Blue-Team mean-reward gaps are ≥ 25 points, far larger than
        any plausible reward-tie band), but the docstring is now
        authoritative and matches the code byte-for-byte. PLAN §8 D5.11
        is preserved verbatim as the audit-trail record of
@@ -262,7 +262,7 @@ def evaluate(runs_root: Path, out_dir: Path, fraction: float = 0.10) -> dict[str
     logger.info("wrote %s", score_path)
 
     # Pretty print to stdout. Reads `status` (benchmark-native schema).
-    print("=== blue-team gate scoreboard ===")
+    print("=== Blue-Team gate scoreboard ===")
     _MARK = {
         "PASS": "PASS",
         "PASS-WITH-FINDING": "PASS+",
@@ -296,7 +296,7 @@ def evaluate(runs_root: Path, out_dir: Path, fraction: float = 0.10) -> dict[str
 
 
 def main(argv: list[str] | None = None) -> int:
-    p = argparse.ArgumentParser(description="blue-team gate evaluator.")
+    p = argparse.ArgumentParser(description="Blue-Team gate evaluator.")
     p.add_argument("--runs-root", required=True)
     p.add_argument("--out-dir", default="docs/results/blue-team-training")
     p.add_argument("--fraction", type=float, default=0.10)

@@ -1,10 +1,10 @@
-"""Benchmark eval-manifest provenance (caveat C10 regression guard).
+"""Benchmark eval-manifest provenance regression guard.
 
 The benchmark ``eval_manifest.json`` ``eval_env`` block is built from the
 *actual* eval spec used for the rollouts. Previously it was hand-rolled from a
 field-omitting eval_env block and enumerated only seven fields, so
 ``evasion_prob`` / ``impact_is_terminal`` / ``proximity_coupled`` were absent
-from the manifest even when set — the C10 metadata gap. These tests lock the
+from the manifest even when set — the metadata gap. These tests lock the
 fix: the manifest must faithfully record the full field set the eval actually
 ran with.
 """
@@ -31,14 +31,14 @@ class TestEvalEnvSpecProvenance:
         assert d["impact_is_terminal"] is False
 
     def test_manifest_fields_are_complete(self) -> None:
-        """asdict() must expose the full field set (incl. the C10 trio).
+        """asdict() must expose the full field set (incl. the metadata-gap trio).
 
         Guards against a future regression that re-introduces a hand-rolled,
         field-omitting eval_env block.
         """
         d = dataclasses.asdict(_eval_env_spec())
         for field in ("evasion_prob", "impact_is_terminal", "proximity_coupled"):
-            assert field in d, f"C10: manifest eval_env must include {field!r}"
+            assert field in d, f"manifest eval_env must include {field!r}"
 
     def test_default_reward_mode_is_outcome(self) -> None:
         """The benchmark eval contract defaults to the deployment reward mode."""

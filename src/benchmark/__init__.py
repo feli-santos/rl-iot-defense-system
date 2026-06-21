@@ -1,17 +1,17 @@
-"""Phase-6 RL Algorithm Benchmark — public package surface.
+"""Held-Out Benchmark RL Algorithm Benchmark — public package surface.
 
-The benchmark package consumes the **frozen Phase-5 checkpoints** at
+The benchmark package consumes the **frozen Blue-Team Training checkpoints** at
 ``runs/phase5/<algo>/seed_<k>/model.zip`` and rolls them — together with
 a fixed set of non-RL baselines — on the held-out ``test_balanced``
 split, emitting JSONL files in the same v1.0 schema as
 :class:`src.blue_team.callbacks.EpisodeJSONLCallback` so all downstream
-aggregation utilities (Phase-5's ``aggregation.py``) work unmodified.
+aggregation utilities (Blue-Team Training's ``aggregation.py``) work unmodified.
 
 Public symbols (PLAN §3.1):
 
 - :func:`random_policy`, :func:`always_observe`, :func:`always_block`,
   :func:`recommended_action_policy` — closed-form non-RL baselines.
-- :class:`RFActingPolicy` — Phase-4 RandomForest stage classifier
+- :class:`RFActingPolicy` — Stage Detector RandomForest stage classifier
   composed with the recommended-action mapping (D6.5).
 - :class:`SB3PolicyAdapter` — wraps a stable-baselines3 ``BaseAlgorithm``
   to expose the ``(obs, info) -> int`` Policy protocol.
@@ -21,7 +21,7 @@ Public symbols (PLAN §3.1):
 - :func:`measure_inference_latency` — standalone CDF-ready latency
   benchmark for F7.
 
-Phase 6 deliberately re-uses ``EpisodeRecord`` from
+The Held-Out Benchmark deliberately re-uses ``EpisodeRecord`` from
 :mod:`src.blue_team.callbacks`; we do **not** redefine the schema here
 (D6.4 — schema v1.0 stays frozen).
 """

@@ -54,7 +54,7 @@ logger = logging.getLogger(__name__)
 _PYTHON = sys.executable
 _TRAIN_MODULE = "scripts.blue_team.train_agent"
 
-_PRIMARY_WINDOW_SIZE = 5  # matches blue-team default
+_PRIMARY_WINDOW_SIZE = 5  # matches Blue-Team default
 
 
 def _window_to_tag(w: int) -> str:
@@ -275,7 +275,7 @@ def main(argv: list | None = None) -> int:  # type: ignore[type-arg]
     p.add_argument(
         "--phase5-primary-root",
         default="runs/blue_team_primary",
-        help="Root of the primary blue-team runs (for window_size=5 reuse).",
+        help="Root of the primary Blue-Team runs (for window_size=5 reuse).",
     )
     p.add_argument("--smoke", action="store_true")
     args = p.parse_args(argv)

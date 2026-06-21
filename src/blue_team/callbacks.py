@@ -1,4 +1,4 @@
-"""SB3 callbacks for blue-team Blue-Team training.
+"""SB3 callbacks for Blue-Team Training.
 
 The single point of integration with stable-baselines3 is
 :class:`EpisodeJSONLCallback`, which writes one JSON line per terminated
@@ -39,7 +39,7 @@ callback's ``_on_training_start`` hook.
 
 Note that SB3 may run ``n_envs > 1`` (when wrapped in a VecEnv); the
 callback iterates over each sub-env's ``infos[i]`` / ``dones[i]`` and
-maintains one accumulator per sub-env. blue-team only uses a single
+maintains one accumulator per sub-env. Blue-Team Training only uses a single
 DummyVecEnv (one env), but the implementation is correct for the
 multi-env case so the same callback survives ablation.
 """
@@ -60,7 +60,7 @@ from src.utils.label_mapper import KillChainStage
 logger = logging.getLogger(__name__)
 
 
-# blue-team callback schema version. Bump whenever a field is added,
+# Blue-Team Training callback schema version. Bump whenever a field is added,
 # removed, or renamed; aggregation.read_episodes_jsonl asserts on this
 # so silent schema drift cannot poison the F3/F4 figures.
 _SCHEMA_VERSION = "1.0"

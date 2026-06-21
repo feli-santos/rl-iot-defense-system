@@ -1,4 +1,4 @@
-"""blue-team single (algo, seed) training entrypoint.
+"""Blue-Team single (algo, seed) training entrypoint.
 
 PLAN §3.1.6.
 
@@ -13,7 +13,7 @@ Usage:
 
 The ``--smoke`` flag drops the run to 50 K timesteps with eval every
 10 K — useful for the smoke test in ``tests/test_blue_team_train_agent.py``
-and for the blue-team step 5.4 audit (run a smoke before committing the
+and for the Blue-Team step 5.4 audit (run a smoke before committing the
 full sweep).
 
 Outputs (per run):
@@ -71,8 +71,8 @@ from src.blue_team import (  # noqa: E402
 logger = logging.getLogger("scripts.blue_team.train_agent")
 
 
-# Default per-algo hyperparameters locked in PLAN §8 D5.4. Phase 8
-# may sweep these, but blue-team ships exactly these values.
+# Default per-algo hyperparameters locked in PLAN §8 D5.4. Ablation &
+# Robustness may sweep these, but Blue-Team Training ships exactly these values.
 DEFAULT_HPARAMS: dict[str, dict[str, Any]] = {
     "ppo": {
         "learning_rate": 3e-4,
@@ -230,7 +230,7 @@ def build_run_config(args: argparse.Namespace) -> BlueTeamRunConfig:
 
     # ablation §3.1.2 / D7.3: apply per-field overrides from
     # --reward-overrides / --p-defender-deescalation / --impact-is-terminal.
-    # Defaults preserve byte-for-byte blue-team behaviour.
+    # Defaults preserve byte-for-byte Blue-Team behaviour.
     reward_overrides_obj: dict[str, Any] | None = None
     if getattr(args, "reward_overrides", None):
         reward_overrides_obj = json.loads(args.reward_overrides)
@@ -447,9 +447,7 @@ def _count_jsonl_lines(path: Path) -> int:
 
 
 def _build_argparser() -> argparse.ArgumentParser:
-    p = argparse.ArgumentParser(
-        description="blue-team single (algo, seed) RL Blue-Team training run."
-    )
+    p = argparse.ArgumentParser(description="Blue-Team single (algo, seed) RL training run.")
     p.add_argument("--algo", required=True, choices=("ppo", "dqn", "a2c"))
     p.add_argument("--seed", type=int, required=True)
     p.add_argument(
@@ -519,7 +517,7 @@ def _build_argparser() -> argparse.ArgumentParser:
         choices=(0, 1, 2),
         help="SB3 verbosity (0/1/2).",
     )
-    # ----- ablation §3.1.2 / D7.3 overrides (default off; preserve blue-team) -----
+    # ----- ablation §3.1.2 / D7.3 overrides (default off; preserve Blue-Team) -----
     p.add_argument(
         "--reward-overrides",
         type=str,
@@ -528,7 +526,7 @@ def _build_argparser() -> argparse.ArgumentParser:
             "JSON object overriding individual EnvConfigSerializable fields "
             "(reward coefficients, lifecycle, impact_is_terminal). Example: "
             "'{\"defense_success_bonus\": 500}'. Applied to BOTH training "
-            "and eval env specs. Default None preserves blue-team behaviour."
+            "and eval env specs. Default None preserves Blue-Team behaviour."
         ),
     )
     p.add_argument(
@@ -539,7 +537,7 @@ def _build_argparser() -> argparse.ArgumentParser:
             "Override AdversarialEnvConfig.p_defender_deescalation. "
             "Convenience knob for the F10 attack-aggressiveness sweep "
             "(takes precedence over the same field in --reward-overrides "
-            "if both are supplied). Default None preserves blue-team 0.6."
+            "if both are supplied). Default None preserves Blue-Team 0.6."
         ),
     )
     p.add_argument(

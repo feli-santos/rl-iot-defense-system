@@ -1,6 +1,6 @@
-"""Inference-latency micro-benchmark for Phase 6 (PLAN §3.1.3).
+"""Inference-latency micro-benchmark for the Held-Out Benchmark (PLAN §3.1.3).
 
-The Phase-6 F7 figure compares per-step inference cost across the eight
+The Held-Out Benchmark F7 figure compares per-step inference cost across the eight
 policies. Real wall-time measurements are noisy on commodity hardware,
 so this module follows three principles:
 

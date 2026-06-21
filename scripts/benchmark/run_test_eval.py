@@ -1,6 +1,6 @@
-"""benchmark test-split evaluation sweeper (PLAN §3.1.4, C3).
+"""benchmark test-split evaluation sweeper (PLAN §3.1.4).
 
-Rolls every blue-team trained checkpoint and every non-RL baseline on the
+Rolls every Blue-Team trained checkpoint and every non-RL baseline on the
 **held-out ``test_balanced`` split** (D6.2) and writes:
 
 - ``runs/benchmark/<policy>/seed_<k>/eval_test.jsonl``  — schema-v1.0
@@ -8,7 +8,7 @@ Rolls every blue-team trained checkpoint and every non-RL baseline on the
 - ``runs/benchmark/<policy>/seed_<k>/latency.jsonl``    — sidecar per-step
   inference duration in nanoseconds (used by F7).
 - ``runs/benchmark/eval_manifest.json`` — top-level manifest with
-  SHA-256 hashes of every blue-team checkpoint, the RF model, the
+  SHA-256 hashes of every Blue-Team checkpoint, the RF model, the
   scaler, the splits manifest, plus the git SHA at production time.
   This is the input artefact every benchmark figure manifest will hash
   by reference (G6.7 / D6.9).
@@ -34,7 +34,7 @@ Per D6.3 the default sweep is:
 Total: ~1200 episodes, expected wallclock < 10 minutes on Apple silicon
 CPU with the production env (max_steps=100).
 
-The sweeper deliberately does NOT use subprocesses (cf. blue-team's
+The sweeper deliberately does NOT use subprocesses (cf. Blue-Team Training's
 ``run_phase5.py``): we do not need clean PyTorch state per run because
 no training happens, and a single-process sweep produces hashable
 ``runs/benchmark/eval_manifest.json`` in one atomic write.
@@ -118,7 +118,7 @@ def _git_sha() -> str:
 def _load_sb3_model(algo: str, model_path: Path, env: Any) -> Any:
     """Dispatch ``DQN/PPO/A2C.load(model_path, env=env)``.
 
-    blue-team saves with the matching algo's ``.save()``; loading must
+    Blue-Team Training saves with the matching algo's ``.save()``; loading must
     round-trip with the same class. Importing inside the function
     keeps stable_baselines3 out of the module-import cost when
     callers only want the baseline-policy entrypoints.
@@ -278,7 +278,7 @@ def _build_eval_env(args: argparse.Namespace, seed: int | None = None) -> Any:
 
 def _build_argparser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
-        description="benchmark RL benchmark — roll trained blue-team checkpoints "
+        description="benchmark RL benchmark — roll trained Blue-Team checkpoints "
         "and non-RL baselines on test_balanced.",
     )
     p.add_argument("--algos", nargs="+", default=["dqn", "ppo", "a2c"])
@@ -298,7 +298,7 @@ def _build_argparser() -> argparse.ArgumentParser:
     p.add_argument(
         "--phase5-runs-root",
         default="runs/blue_team",
-        help="Where the trained blue-team model.zip files live.",
+        help="Where the trained Blue-Team model.zip files live.",
     )
     p.add_argument("--out-root", default="runs/benchmark")
     p.add_argument(
@@ -368,7 +368,7 @@ def _build_argparser() -> argparse.ArgumentParser:
     p.add_argument(
         "--skip-trained",
         action="store_true",
-        help="Skip the blue-team trained checkpoints. Useful for iterating on baselines only.",
+        help="Skip the Blue-Team trained checkpoints. Useful for iterating on baselines only.",
     )
     p.add_argument(
         "--smoke", action="store_true", help="Smoke mode: 1 algo × 1 seed × 2 ep, 2 ep / baseline."
@@ -385,7 +385,7 @@ def _roll_trained(
     algo: str,
     seed: int,
 ) -> dict[str, Any]:
-    """Roll one blue-team (algo, seed) checkpoint on test_balanced.
+    """Roll one Blue-Team (algo, seed) checkpoint on test_balanced.
 
     The function is the inner loop's worker; it owns env construction
     and tear-down so a per-run failure can never leak resources.
@@ -402,7 +402,7 @@ def _roll_trained(
     run_id = f"{algo}_seed_{seed}_test"
 
     if not model_path.exists():
-        msg = f"missing blue-team checkpoint at {model_path}"
+        msg = f"missing Blue-Team checkpoint at {model_path}"
         logger.error(msg)
         return {
             "kind": "trained",
@@ -652,7 +652,7 @@ def main(argv: list[str] | None = None) -> int:
                     results[-1].get("wallclock_seconds", 0.0),
                 )
     else:
-        logger.info("--skip-trained set; skipping blue-team checkpoints")
+        logger.info("--skip-trained set; skipping Blue-Team checkpoints")
 
     # ---- baselines ----
     for name in args.baselines:
@@ -697,7 +697,7 @@ def main(argv: list[str] | None = None) -> int:
             "scaler": _sha256(scaler_path),
             "rf_model": _sha256(rf_path),
         },
-        # C10 fix: serialise the *actual* eval spec used, via asdict() so every
+        # serialise the *actual* eval spec used, via asdict() so every
         # EnvConfigSerializable field — evasion_prob, impact_is_terminal,
         # proximity_coupled, … — is faithfully recorded.
         "eval_env": dataclasses.asdict(_eval_env_spec_from_args(args)),

@@ -1,7 +1,7 @@
-"""Tests for src.benchmark.eval_runner.run_policy (PLAN §3.3, C2).
+"""Tests for src.benchmark.eval_runner.run_policy (PLAN §3.3).
 
 The harness here is a tiny stub VecEnv that emits scripted episodes —
-real Phase-3 env rollouts would require the full Phase-1/2 artefact
+real Adversarial Environment rollouts would require the full Dataset/Split artefact
 chain, which the tests file is forbidden from depending on. The stub
 is structurally identical to SB3's DummyVecEnv-with-Monitor contract:
 
@@ -11,7 +11,7 @@ is structurally identical to SB3's DummyVecEnv-with-Monitor contract:
   is ``True`` and ``infos[0]`` carries
   ``{"episode": {"r", "l"}, "compromised", "mttc_steps",
     "defender_deescalations", "outcome", "attack_stage"}`` exactly as
-  SB3's Monitor + the Phase-3 env would.
+    SB3's Monitor + the Adversarial Environment would.
 - After autoreset, ``obs`` is the post-reset obs of the next episode
   (caller-transparent).
 """
@@ -74,7 +74,7 @@ class _StubVecEnv:
     # ----------------- VecEnv API ----------------- #
 
     def reset(self) -> np.ndarray:
-        # Phase-6's run_policy calls reset() at episode 0 only;
+        # the Held-Out Benchmark's run_policy calls reset() at episode 0 only;
         # subsequent episodes start from the autoreset obs returned by
         # the previous step(). Ensure idempotency: if called mid-rollout
         # we silently restart from the current cursor.
@@ -172,7 +172,7 @@ class TestRunPolicy:
         assert stats["n_episodes_written"] == 2
         assert stats["n_steps_total"] == 3 + 4
         assert stats["n_latency_rows"] == 0
-        # The on-disk JSONL must round-trip through Phase-5's
+        # The on-disk JSONL must round-trip through Blue-Team Training's
         # aggregation reader without complaint — proves schema-v1.0
         # compliance (G6.7 / D6.4).
         records = read_episodes_jsonl(out)

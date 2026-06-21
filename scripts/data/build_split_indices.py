@@ -19,7 +19,7 @@ deterministic. Balanced splits draw a fixed number of samples per stage with
 the same seed.
 
 The hash manifest records SHA-256 digests for every input artifact and every
-output index file, anchoring downstream phases (Red Team training, RL
+output index file, anchoring downstream stages (Markov attacker training, RL
 training, benchmarking) to an immutable data state.
 
 Usage
@@ -75,19 +75,19 @@ DEFAULT_TEST_BALANCED_PER_STAGE = 1000
 # classes and >=26k training rows to avoid starving any stage.
 DEFAULT_OOD_CLASSES = (
     # RECON
-    "VulnerabilityScan",        # RECON    (RF detector blind spot, recall ~0.001)
-    "Recon-OSScan",             # RECON
+    "VulnerabilityScan",  # RECON    (RF detector blind spot, recall ~0.001)
+    "Recon-OSScan",  # RECON
     # ACCESS
-    "XSS",                      # ACCESS
-    "SqlInjection",             # ACCESS
+    "XSS",  # ACCESS
+    "SqlInjection",  # ACCESS
     # MANEUVER
-    "Mirai-udpplain",           # MANEUVER
-    "DNS_Spoofing",             # MANEUVER
+    "Mirai-udpplain",  # MANEUVER
+    "DNS_Spoofing",  # MANEUVER
     # IMPACT
-    "DDoS-HTTP_Flood",          # IMPACT
-    "DoS-SYN_Flood",            # IMPACT
-    "DDoS-SlowLoris",           # IMPACT
-    "DDoS-ACK_Fragmentation",   # IMPACT
+    "DDoS-HTTP_Flood",  # IMPACT
+    "DoS-SYN_Flood",  # IMPACT
+    "DDoS-SlowLoris",  # IMPACT
+    "DDoS-ACK_Fragmentation",  # IMPACT
 )
 
 
@@ -106,6 +106,7 @@ class BuilderConfig:
 # -----------------------------------------------------------------------------
 # Helpers
 # -----------------------------------------------------------------------------
+
 
 def _sha256(path: Path, chunk_size: int = 1 << 20) -> str:
     """Compute the SHA-256 of a file."""
@@ -200,9 +201,7 @@ def _ood_attack_indices(
     return out
 
 
-def _string_to_stage_ids(
-    string_labels: np.ndarray, mapper: AbstractStateLabelMapper
-) -> np.ndarray:
+def _string_to_stage_ids(string_labels: np.ndarray, mapper: AbstractStateLabelMapper) -> np.ndarray:
     """Vectorize-map string CICIoT labels to integer Kill Chain stage IDs."""
     # Build a lookup over the *unique* label vocabulary present in the data.
     unique = np.unique(string_labels)
@@ -230,6 +229,7 @@ def _string_to_stage_ids(
 # -----------------------------------------------------------------------------
 # Main builder
 # -----------------------------------------------------------------------------
+
 
 def build_splits(cfg: BuilderConfig) -> dict:
     """Build all split indices and the hash manifest."""
@@ -311,7 +311,9 @@ def build_splits(cfg: BuilderConfig) -> dict:
     test_idx = in_dist_idx[rel_test]
     LOG.info(
         "Stratified split: train=%d, val=%d, test=%d (sum=%d)",
-        train_idx.size, val_idx.size, test_idx.size,
+        train_idx.size,
+        val_idx.size,
+        test_idx.size,
         train_idx.size + val_idx.size + test_idx.size,
     )
 
@@ -408,8 +410,11 @@ def build_splits(cfg: BuilderConfig) -> dict:
 # CLI
 # -----------------------------------------------------------------------------
 
+
 def _parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
-    p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    p = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     p.add_argument(
         "--processed-dir",
         type=Path,
@@ -453,7 +458,9 @@ def main(argv: Optional[list[str]] = None) -> int:
         ood_attack_classes=tuple(args.ood_classes),
     )
     manifest = build_splits(cfg)
-    print(json.dumps({k: v for k, v in manifest.items() if k != "outputs"}, indent=2, sort_keys=True))
+    print(
+        json.dumps({k: v for k, v in manifest.items() if k != "outputs"}, indent=2, sort_keys=True)
+    )
     return 0
 
 

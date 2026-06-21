@@ -1,4 +1,4 @@
-"""Pure-Python aggregation utilities for blue-team figures.
+"""Pure-Python aggregation utilities for Blue-Team figures.
 
 Reading and aggregating ``episodes.jsonl`` and ``eval.jsonl`` is split
 out of the plot scripts because

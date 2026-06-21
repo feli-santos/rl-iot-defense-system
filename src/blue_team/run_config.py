@@ -63,7 +63,7 @@ class EnvConfigSerializable:
     behaviour is byte-for-byte identical to Blue-Team.
     """
 
-    # Lifecycle + sampling (original blue-team fields)
+    # Lifecycle + sampling (original Blue-Team fields)
     split: str = "train"
     exclude_ood: bool = True
     min_episode_length: int = 20

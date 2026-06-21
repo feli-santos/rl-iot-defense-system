@@ -66,7 +66,7 @@ def _render_numbers() -> str:
 
     lines = [
         f"% Auto-generated from {FALPHA} and {FCOUPLING} -- do not hand-edit.",
-        f"% Regenerate with: PYTHONPATH=. .venv/bin/python -m scripts.thesis.render_tables",
+        "% Regenerate with: PYTHONPATH=. .venv/bin/python -m scripts.thesis.render_tables",
     ]
 
     # Headline agent + seed count (PPO is the sole headline RL agent).
@@ -96,7 +96,9 @@ def _render_numbers() -> str:
     lines.append(_newcmd("HeadlineAlpha", "0.4"))
     lines.append(_newcmd("AnchorPPO", "%+0.1f" % per_alpha["0.0"]["ppo"]["mean"]))
     lines.append(_newcmd("AnchorRF", "%+0.1f" % per_alpha["0.0"]["rf_acting"]["mean"]))
-    lines.append(_newcmd("OracleCeiling", "%+0.1f" % per_alpha["0.0"]["recommended_action"]["mean"]))
+    lines.append(
+        _newcmd("OracleCeiling", "%+0.1f" % per_alpha["0.0"]["recommended_action"]["mean"])
+    )
 
     # Coupled-vs-outcome ablation gaps (RF-Acting minus best RL; negative => RL wins).
     gc = fc["gap_coupled"]
@@ -106,10 +108,16 @@ def _render_numbers() -> str:
     lines.append(_newcmd("CouplingBestCoupled", fc["per_mode"]["coupled"]["best_algo"].upper()))
     lines.append(_newcmd("CouplingBestOutcome", fc["per_mode"]["outcome"]["best_algo"].upper()))
     lines.append(
-        _newcmd("CouplingDQNCoupled", "%+0.1f" % fc["per_mode"]["coupled"]["per_algo"]["dqn"]["mean_reward"])
+        _newcmd(
+            "CouplingDQNCoupled",
+            "%+0.1f" % fc["per_mode"]["coupled"]["per_algo"]["dqn"]["mean_reward"],
+        )
     )
     lines.append(
-        _newcmd("CouplingDQNOutcome", "%+0.1f" % fc["per_mode"]["outcome"]["per_algo"]["dqn"]["mean_reward"])
+        _newcmd(
+            "CouplingDQNOutcome",
+            "%+0.1f" % fc["per_mode"]["outcome"]["per_algo"]["dqn"]["mean_reward"],
+        )
     )
 
     # Test count (sidecar JSON; canonical pytest count).

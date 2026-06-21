@@ -12,7 +12,7 @@ supervised RF stage detector has 0.001 recall on ``VulnerabilityScan``;
 F15 quantifies how much of that blind spot the trained RL policy
 recovers.
 
-**No retraining**. F15 reuses the frozen blue-team trained checkpoints
+**No retraining**. F15 reuses the frozen Blue-Team trained checkpoints
 (D7.6) and the benchmark ``eval_runner`` harness unchanged. Only the
 RealizationEngine constraint changes per outer loop.
 
@@ -360,7 +360,7 @@ def _build_argparser() -> argparse.ArgumentParser:
     p.add_argument(
         "--phase5-runs",
         default="runs/blue_team",
-        help="Where the trained blue-team model.zip files live.",
+        help="Where the trained Blue-Team model.zip files live.",
     )
     p.add_argument("--out-root", default="runs/ablation/ood")
     p.add_argument("--dataset-path", default="data/processed/ciciot2023")
@@ -453,7 +453,7 @@ def _roll_rl(
     run_id = f"f15_{ood_class}_{algo}_seed_{seed}"
 
     if not model_path.exists():
-        msg = f"missing blue-team checkpoint at {model_path}"
+        msg = f"missing Blue-Team checkpoint at {model_path}"
         logger.error(msg)
         return {
             "kind": "trained",
@@ -719,7 +719,7 @@ def main(argv: list[str] | None = None) -> int:
             else:
                 logger.warning("unknown policy %r; skipping", policy_name)
 
-    # ---- F15 manifest (D7.7: hash-pin the upstream blue-team + benchmark manifests) ----
+    # ---- F15 manifest (D7.7: hash-pin the upstream Blue-Team + benchmark manifests) ----
     splits_manifest = Path(args.splits_manifest)
     scaler_path = Path(args.dataset_path) / "scaler.joblib"
     rf_path = Path(args.rf_path)

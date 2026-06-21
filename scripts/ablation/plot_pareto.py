@@ -407,7 +407,7 @@ def _build_argparser() -> argparse.ArgumentParser:
     p.add_argument(
         "--phase5-sweep-manifest",
         default="runs/blue_team/sweep_manifest.json",
-        help="blue-team sweep_manifest.json (warm-start trained checkpoints).",
+        help="Blue-Team sweep_manifest.json (warm-start trained checkpoints).",
     )
     p.add_argument(
         "--phase1-splits-manifest",

@@ -1,4 +1,4 @@
-"""Phase-4 ``src/detector/`` regression tests.
+"""Stage Detector ``src/detector/`` regression tests.
 
 One test file rather than four because the four modules are intentionally
 small and tightly coupled. The synthetic-toy fixtures (29-D Gaussian
