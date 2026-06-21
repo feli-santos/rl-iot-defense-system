@@ -1,15 +1,15 @@
 {
   "schema_version": "1.0",
   "figure": "F16",
-  "git_sha": "df47695e579739043073a9a4a58c3c94e60e29b9",
+  "git_sha": "cf1ebc75c99902405a38230b9dad200087fdfb23",
   "outputs": {
     "png": "docs/results/ablation/F16_budget_sweep.png",
     "json": "docs/results/ablation/F16_summary.json"
   },
   "inputs": {
     "budget_sweep_json": {
-      "path": "docs/results/ablation/budget_sweep.json",
-      "sha256": "d49e5660f3e118de989356035e6aeef972a50dc5fad5977ac050a03b71763267"
+      "path": "docs/review/budget_calibration.json",
+      "sha256": "8107e66861158810541180584de0cf26f06c19b5b9dbb8e270d0edd98102b37f"
     }
   }
 }

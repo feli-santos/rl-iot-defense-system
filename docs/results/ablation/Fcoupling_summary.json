@@ -1,0 +1,75 @@
+{
+  "kind": "reward_coupling_summary",
+  "modes": [
+    "coupled",
+    "outcome"
+  ],
+  "algos": [
+    "dqn",
+    "ppo",
+    "a2c"
+  ],
+  "per_mode": {
+    "coupled": {
+      "mode": "coupled",
+      "per_algo": {
+        "dqn": {
+          "mean_reward": 226.18223333333333,
+          "ci_low": 217.51906249999996,
+          "ci_high": 235.09700416666666,
+          "n_episodes": 3000
+        },
+        "ppo": {
+          "mean_reward": 162.3906,
+          "ci_low": 154.44869333333332,
+          "ci_high": 170.5181,
+          "n_episodes": 3000
+        },
+        "a2c": {
+          "mean_reward": 160.9655,
+          "ci_low": 152.92449083333335,
+          "ci_high": 170.33963583333335,
+          "n_episodes": 3000
+        }
+      },
+      "best_algo": "dqn",
+      "best_rl_reward": 226.18223333333333,
+      "rf_acting_reward": 163.1163333333333,
+      "rf_acting_ci_low": 146.46959166666667,
+      "rf_acting_ci_high": 181.47617499999998,
+      "rf_minus_rl_gap": -63.06590000000003
+    },
+    "outcome": {
+      "mode": "outcome",
+      "per_algo": {
+        "dqn": {
+          "mean_reward": -8.610233333333332,
+          "ci_low": -15.19989333333333,
+          "ci_high": -1.718366666666666,
+          "n_episodes": 3000
+        },
+        "ppo": {
+          "mean_reward": 126.17403333333333,
+          "ci_low": 122.25632333333333,
+          "ci_high": 129.79940750000003,
+          "n_episodes": 3000
+        },
+        "a2c": {
+          "mean_reward": 4.845433333333333,
+          "ci_low": -2.1521583333333334,
+          "ci_high": 11.515815833333331,
+          "n_episodes": 3000
+        }
+      },
+      "best_algo": "ppo",
+      "best_rl_reward": 126.17403333333333,
+      "rf_acting_reward": 83.05766666666666,
+      "rf_acting_ci_low": 69.71582500000001,
+      "rf_acting_ci_high": 97.80373333333334,
+      "rf_minus_rl_gap": -43.116366666666664
+    }
+  },
+  "gap_coupled": -63.06590000000003,
+  "gap_outcome": -43.116366666666664,
+  "gap_reduction": -19.949533333333363
+}

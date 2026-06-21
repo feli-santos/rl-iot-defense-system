@@ -1,0 +1,12 @@
+{
+  "schema_version": "1.0",
+  "kind": "reward_coupling_plot_manifest",
+  "git_sha": "cf1ebc75c99902405a38230b9dad200087fdfb23",
+  "inputs": {
+    "sweep_manifest": "1b15be27553525458bf9e257d78d958e069871612d86ad63c70e2f4eed32fb85"
+  },
+  "outputs": {
+    "summary_json": "50e05f63047dad77bbfb660eece401776e9f85e9a2a7a5046e67de3f3ab91f72",
+    "reward_gap_png": "9644dfe23115525dd3d3bb0d29587fdda2ff644ad743cb5c7d8e9ed198527b5f"
+  }
+}

@@ -316,50 +316,51 @@
   "gates": {
     "G7.4": {
       "passes": true,
+      "witness": "recommended_action",
       "per_policy": {
         "random": {
-          "peak_budget": 30,
-          "peak_prevention": 0.38,
+          "best_budget": 30,
+          "best_prevention": 0.38,
           "smallest_finite_prevention": 0.005,
           "largest_finite_prevention": 0.005,
           "unbounded_prevention": 0.0,
-          "interior_peak": true,
-          "peak_dominates": true,
-          "pivot": true
+          "reaches_prevention": false,
+          "collapses_unbounded": true,
+          "pivot": false
         },
         "always_observe": {
-          "peak_budget": 20,
-          "peak_prevention": 0.01,
+          "best_budget": 20,
+          "best_prevention": 0.01,
           "smallest_finite_prevention": 0.0,
           "largest_finite_prevention": 0.0,
           "unbounded_prevention": 0.0,
-          "interior_peak": true,
-          "peak_dominates": false,
+          "reaches_prevention": false,
+          "collapses_unbounded": false,
           "pivot": false
         },
         "always_block": {
-          "peak_budget": 20,
-          "peak_prevention": 1.0,
+          "best_budget": 20,
+          "best_prevention": 1.0,
           "smallest_finite_prevention": 0.0,
           "largest_finite_prevention": 1.0,
           "unbounded_prevention": 0.0,
-          "interior_peak": true,
-          "peak_dominates": false,
-          "pivot": false
+          "reaches_prevention": true,
+          "collapses_unbounded": true,
+          "pivot": true
         },
         "recommended_action": {
-          "peak_budget": 40,
-          "peak_prevention": 1.0,
+          "best_budget": 40,
+          "best_prevention": 1.0,
           "smallest_finite_prevention": 0.02,
           "largest_finite_prevention": 0.99,
           "unbounded_prevention": 0.0,
-          "interior_peak": true,
-          "peak_dominates": false,
-          "pivot": false
+          "reaches_prevention": true,
+          "collapses_unbounded": true,
+          "pivot": true
         }
       },
-      "interpretation": "PASS: at least one fixed policy exhibits the prevention pivot \u2014 prevention_post_grace peaks at an interior (finite, non-extreme) attacker budget and decays toward 0 at both the tiny-budget (grace-clamped) and unbounded (\u221e) extremes, confirming that a calibrated finite attacker budget is what makes prevention defender-attributable."
+      "interpretation": "PASS: the skilled witness (recommended_action) sustains high prevention across the finite-budget regime and collapses to prevention\u22480 under an unbounded attacker \u2014 confirming that a finite attacker budget is what makes prevention defender-attributable. The chosen operating budget sits on the rising limb of this curve, where defender skill separates policies (strong witness high, passive/weak policies low), not on the saturated plateau."
     }
   },
-  "headline": "PASS: at least one fixed policy exhibits the prevention pivot \u2014 prevention_post_grace peaks at an interior (finite, non-extreme) attacker budget and decays toward 0 at both the tiny-budget (grace-clamped) and unbounded (\u221e) extremes, confirming that a calibrated finite attacker budget is what makes prevention defender-attributable."
+  "headline": "PASS: the skilled witness (recommended_action) sustains high prevention across the finite-budget regime and collapses to prevention\u22480 under an unbounded attacker \u2014 confirming that a finite attacker budget is what makes prevention defender-attributable. The chosen operating budget sits on the rising limb of this curve, where defender skill separates policies (strong witness high, passive/weak policies low), not on the saturated plateau."
 }

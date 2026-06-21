@@ -1,5 +1,5 @@
 {
-  "num_tests": 428,
+  "num_tests": 473,
   "note": "Canonical pytest count. Update this file when the test suite count changes (make test; update num_tests here).",
-  "generated_at": "2026-06-10"
+  "generated_at": "2026-06-19"
 }
