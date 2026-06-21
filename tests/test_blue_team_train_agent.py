@@ -144,6 +144,45 @@ class TestTrainAgentSmoke:
         assert manifest["n_episodes_train"] >= 1
         assert manifest["wallclock_seconds"] > 0
 
+    def test_early_stop_writes_best_checkpoint_and_manifest(
+        self, synthetic_paths: tuple[Path, Path], tmp_path: Path
+    ) -> None:
+        """WS3: with early-stop enabled the run must emit ``best_model.zip``
+        (the canonical checkpoint for downstream eval) and record the
+        early-stop telemetry in the manifest, round-tripping through the
+        config dataclass."""
+        from scripts.blue_team.train_agent import train
+
+        gen_dir, ds_dir = synthetic_paths
+        out_dir = tmp_path / "run"
+        cfg = self._build_cfg(
+            gen_dir=gen_dir,
+            ds_dir=ds_dir,
+            out_dir=out_dir,
+            total_timesteps=300,
+        )
+        cfg.early_stop = True
+        cfg.early_stop_patience = 2
+        cfg.early_stop_min_evals = 1
+        train(cfg, verbose=0)
+
+        # Best-eval checkpoint is what benchmark/OOD load.
+        assert (out_dir / "best_model.zip").exists()
+        assert (out_dir / "model.zip").exists()
+
+        manifest = json.loads((out_dir / "run_manifest.json").read_text())
+        assert "early_stopped" in manifest
+        assert "actual_timesteps" in manifest
+        # SB3 finishes the in-flight rollout, so actual can exceed the cap by
+        # up to one n_steps batch; just assert it is recorded and positive.
+        assert manifest["actual_timesteps"] > 0
+        assert manifest["best_model_path"].endswith("best_model.zip")
+
+        loaded = BlueTeamRunConfig.from_manifest(out_dir / "run_manifest.json")
+        assert loaded.early_stop is True
+        assert loaded.early_stop_patience == 2
+        assert loaded.early_stop_min_evals == 1
+
     def test_saved_model_round_trips_to_same_prediction(
         self, synthetic_paths: tuple[Path, Path], tmp_path: Path
     ) -> None:

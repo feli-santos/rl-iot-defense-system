@@ -94,3 +94,66 @@ class TestBlueTeamRunConfig:
         assert not path.with_suffix(".json.tmp").exists()
         # And it should parse as valid JSON.
         json.loads(path.read_text())
+
+
+class TestTrainEvalParity:
+    """The eval number must measure the same MDP the agent trained on."""
+
+    def test_default_config_passes_parity(self) -> None:
+        # Default eval split differs from train split but every contract field
+        # matches — construction must succeed.
+        BlueTeamRunConfig(algo="ppo", seed=0)
+
+    @pytest.mark.parametrize(
+        "field,train_val,eval_val",
+        [
+            ("attacker_budget", 40, None),
+            ("impact_is_terminal", False, True),
+            ("reward_mode", "outcome", "coupled"),
+            ("p_down", 0.90, 0.80),
+            ("action_cost_scale", 1.0, 2.0),
+            ("max_steps", 100, 50),
+            # Partial-observability redesign contract fields: a train/eval
+            # mismatch on any of these means the agent is evaluated on a
+            # different MDP than it trained on.
+            ("aliasing_rate", 0.4, 0.0),
+            ("session_coherent", True, False),
+            ("no_post_transition_leak", True, False),
+            ("proximity_coupled", True, False),
+            ("proximity_min_escalation", 0.4, 0.6),
+        ],
+    )
+    def test_contract_mismatch_raises(self, field, train_val, eval_val) -> None:
+        with pytest.raises(ValueError, match="contract mismatch"):
+            BlueTeamRunConfig(
+                algo="ppo",
+                seed=0,
+                env=EnvConfigSerializable(split="train", **{field: train_val}),
+                eval_env=EnvConfigSerializable(
+                    split="val_balanced", **{field: eval_val}
+                ),
+            )
+
+    def test_reward_mode_alias_difference_does_not_trip_parity(self) -> None:
+        # "proportional" and "coupled" are the same contract after
+        # normalisation, so this must NOT raise.
+        BlueTeamRunConfig(
+            algo="ppo",
+            seed=0,
+            env=EnvConfigSerializable(split="train", reward_mode="proportional"),
+            eval_env=EnvConfigSerializable(
+                split="val_balanced", reward_mode="coupled"
+            ),
+        )
+
+    def test_matching_budget_and_mode_passes(self) -> None:
+        BlueTeamRunConfig(
+            algo="ppo",
+            seed=0,
+            env=EnvConfigSerializable(
+                split="train", attacker_budget=40, reward_mode="outcome"
+            ),
+            eval_env=EnvConfigSerializable(
+                split="val_balanced", attacker_budget=40, reward_mode="outcome"
+            ),
+        )

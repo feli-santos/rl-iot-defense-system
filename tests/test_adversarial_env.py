@@ -1069,6 +1069,64 @@ class TestAttackerBudget:
         assert terminated is True
         assert info["outcome"] == "prevented"
 
+    def test_targeted_cost_model_over_force_drains_nothing(
+        self, generator_path, mock_dataset
+    ):
+        """Under ``targeted`` cost, mis-targeted over-force drains no budget.
+
+        A blind detector that sprays ISOLATE (action=4) at RECON over-forces
+        (d = 4 - recommended(RECON=1) = 3). That stalls the attacker but, under
+        the targeted model, must NOT exhaust the foothold -- so the budget is
+        unchanged. Correctly-targeted proportional force (d == 0) still drains.
+        """
+        from src.utils.label_mapper import KillChainStage
+
+        env = self._build_env(
+            generator_path,
+            mock_dataset,
+            attacker_budget=100,
+            budget_step_cost=1,
+            budget_reset_cost=2,
+            tug_of_war=True,
+            budget_cost_model="targeted",
+        )
+        env._current_attack_stage = KillChainStage.RECON.value
+        env._attack_history = [KillChainStage.RECON.value]
+
+        # Over-force (ISOLATE at RECON): stalls, drains nothing under targeted.
+        before = env._attacker_budget_remaining
+        outcome = env._advance_tug_of_war(4, KillChainStage.RECON.value)
+        assert outcome == "ongoing"
+        assert env._attacker_budget_remaining == before  # no drain
+
+        # Proportional force (LOG at RECON, d == 0) still draws the budget down,
+        # whether or not the pushdown succeeds (>= step_cost in either case).
+        env._current_attack_stage = KillChainStage.RECON.value
+        before_prop = env._attacker_budget_remaining
+        env._advance_tug_of_war(1, KillChainStage.RECON.value)
+        assert env._attacker_budget_remaining < before_prop
+
+    def test_hybrid_cost_model_over_force_drains_step_cost(
+        self, generator_path, mock_dataset
+    ):
+        """The default ``hybrid`` model keeps the legacy per-step over-force drain."""
+        from src.utils.label_mapper import KillChainStage
+
+        env = self._build_env(
+            generator_path,
+            mock_dataset,
+            attacker_budget=100,
+            budget_step_cost=1,
+            budget_reset_cost=2,
+            tug_of_war=True,
+            budget_cost_model="hybrid",
+        )
+        env._current_attack_stage = KillChainStage.RECON.value
+        env._attack_history = [KillChainStage.RECON.value]
+        before = env._attacker_budget_remaining
+        env._advance_tug_of_war(4, KillChainStage.RECON.value)  # over-force
+        assert env._attacker_budget_remaining == before - 1  # legacy drain
+
     def test_impact_wins_tie_break(self, generator_path, mock_dataset):
         """If the attacker reaches IMPACT, exhaustion does not fire (IMPACT wins)."""
         from src.utils.label_mapper import KillChainStage
@@ -1436,14 +1494,322 @@ class TestRewardMode:
         reward = env._calculate_reward(0, KillChainStage.RECON.value)
         assert reward == pytest.approx(0.0)
 
-    def test_env_config_serializable_round_trips_reward_mode(self):
+    def test_outcome_mode_is_not_keyed_on_stage_match(
+        self, generator_path, mock_dataset
+    ):
+        """The re-pose contract: under outcome mode the per-step reward must NOT
+        reward emitting the stage's ``recommended_action`` label.
+
+        This is the direct test of the de-coupling. Under the coupled contract,
+        playing the recommended action for a stage earns the proportionality
+        bonus, so two different actions yield different rewards. Under the
+        outcome contract the per-step reward is the action cost alone, so the
+        only difference between two actions is their cost — never a bonus for
+        matching the hidden stage's label.
+        """
+        from src.environment.adversarial_env import get_action_cost
+        from src.utils.label_mapper import KillChainStage
+
+        stage = KillChainStage.ACCESS.value  # recommended action = RESTRICT (2)
+
+        coupled = self._build_env(
+            generator_path, mock_dataset, reward_mode="proportional"
+        )
+        # Coupled: the recommended action (2) earns the proportional bonus; a
+        # disproportionate action (4) does not. So matching the stage label is
+        # strictly rewarded — the hallmark of the mis-posed task.
+        r_match_coupled = coupled._calculate_reward(2, stage)
+        r_off_coupled = coupled._calculate_reward(4, stage)
+        assert r_match_coupled > r_off_coupled
+
+        outcome = self._build_env(
+            generator_path, mock_dataset, reward_mode="outcome"
+        )
+        # Outcome: each action's per-step reward is exactly minus its cost,
+        # independent of the (hidden) stage. Matching the label confers no bonus.
+        for action in range(5):
+            assert outcome._calculate_reward(action, stage) == pytest.approx(
+                -get_action_cost(action)
+            )
+        # And the per-step reward does not depend on the stage at all.
+        for stage_a in range(5):
+            for stage_b in range(5):
+                assert outcome._calculate_reward(
+                    3, stage_a
+                ) == pytest.approx(outcome._calculate_reward(3, stage_b))
+
+    def test_env_config_serializable_normalises_reward_mode_aliases(self):
         from dataclasses import asdict
 
         from src.blue_team.run_config import EnvConfigSerializable
 
-        spec = EnvConfigSerializable(
-            split="train",
-            exclude_ood=True,
-            reward_mode="outcome_only",
+        # Legacy aliases normalise to canonical tokens so manifests are
+        # consistent and the train/eval parity check is alias-insensitive.
+        assert (
+            asdict(EnvConfigSerializable(reward_mode="outcome_only"))["reward_mode"]
+            == "outcome"
         )
-        assert asdict(spec)["reward_mode"] == "outcome_only"
+        assert (
+            asdict(EnvConfigSerializable(reward_mode="outcome"))["reward_mode"]
+            == "outcome"
+        )
+        assert (
+            asdict(EnvConfigSerializable(reward_mode="proportional"))["reward_mode"]
+            == "coupled"
+        )
+        assert (
+            asdict(EnvConfigSerializable(reward_mode="coupled"))["reward_mode"]
+            == "coupled"
+        )
+        with pytest.raises(ValueError):
+            EnvConfigSerializable(reward_mode="bogus")
+
+
+class TestPartialObservabilityRedesign:
+    """Sequential-POMDP redesign: observation aliasing, session-coherent
+    sampling, post-transition-leak removal, and proximity-coupled tolerance.
+
+    The defaults (``aliasing_rate=0.0``, ``session_coherent=False``,
+    ``no_post_transition_leak=False``, ``proximity_coupled=False``) reproduce
+    the legacy fully-observable, budget-driven environment byte-for-byte; each
+    flag is opt-in so the legacy anchors (alpha=0, coupling ablation) are
+    unaffected.
+    """
+
+    @pytest.fixture
+    def generator_path(self, tmp_path):
+        path = tmp_path / "generator"
+        path.mkdir(parents=True)
+        return path
+
+    @pytest.fixture
+    def mock_dataset(self, tmp_path):
+        import json
+
+        dataset_path = tmp_path / "dataset"
+        dataset_path.mkdir(parents=True)
+        # Make each stage's rows linearly separable by stage so the emitted
+        # stage of a sampled row is recoverable in tests: row feature[0] == stage.
+        rng = np.random.default_rng(0)
+        labels = np.repeat(np.arange(5), 40)  # 200 rows, 40 per stage
+        features = rng.standard_normal((labels.size, 46)).astype(np.float32)
+        features[:, 0] = labels.astype(np.float32)  # stage tag in column 0
+        np.save(dataset_path / "features.npy", features)
+        np.save(dataset_path / "labels.npy", labels)
+        state_indices = {str(i): [] for i in range(5)}
+        for idx, label in enumerate(labels):
+            state_indices[str(int(label))].append(int(idx))
+        with open(dataset_path / "state_indices.json", "w") as f:
+            json.dump(state_indices, f)
+        import joblib
+        from sklearn.preprocessing import StandardScaler
+
+        scaler = StandardScaler()
+        scaler.fit(features)
+        joblib.dump(scaler, dataset_path / "scaler.joblib")
+        return dataset_path
+
+    def _build_env(self, generator_path, mock_dataset, **config_kwargs):
+        from src.environment.adversarial_env import (
+            AdversarialEnvConfig,
+            AdversarialIoTEnv,
+        )
+
+        config = AdversarialEnvConfig(**config_kwargs)
+        env = AdversarialIoTEnv(
+            generator_path=generator_path,
+            dataset_path=mock_dataset,
+            config=config,
+        )
+        env.reset(seed=7)
+        return env
+
+    # --- (i) observation aliasing -------------------------------------------
+
+    def test_aliasing_zero_is_byte_compatible(self, generator_path, mock_dataset):
+        """aliasing_rate=0 reproduces the legacy single-choice draw exactly."""
+        from src.environment.adversarial_env import AdversarialEnvConfig
+        from src.utils.realization_engine import RealizationEngine
+
+        engine = RealizationEngine(data_path=mock_dataset, seed=123)
+        legacy = engine.sample_by_id(1)
+        # A fresh engine with the same seed under the redesign defaults must
+        # yield the identical row.
+        engine2 = RealizationEngine(data_path=mock_dataset, seed=123)
+        redesigned = engine2.sample_by_id(
+            1, aliasing_rate=0.0, session_coherent=False
+        )
+        assert np.array_equal(legacy, redesigned)
+        # Default config exposes the new fields with backward-compatible defaults.
+        cfg = AdversarialEnvConfig()
+        assert cfg.aliasing_rate == 0.0
+        assert cfg.session_coherent is False
+        assert cfg.no_post_transition_leak is False
+        assert cfg.proximity_coupled is False
+
+    def test_aliasing_full_emits_only_adjacent_stages(
+        self, generator_path, mock_dataset
+    ):
+        """aliasing_rate=1 always emits a row from an ADJACENT stage."""
+        from src.utils.realization_engine import RealizationEngine
+
+        engine = RealizationEngine(data_path=mock_dataset, seed=5)
+        # RECON (stage 1) has neighbours {BENIGN=0, ACCESS=2}. With alpha=1 the
+        # emitted row's stage tag (column 0) must always be 0 or 2, never 1.
+        emitted = {int(round(engine.sample_by_id(1, aliasing_rate=1.0)[0])) for _ in range(60)}
+        assert emitted.issubset({0, 2})
+        assert 1 not in emitted
+
+    def test_aliasing_endpoint_has_single_neighbour(
+        self, generator_path, mock_dataset
+    ):
+        """BENIGN (endpoint) aliases only to RECON; IMPACT only to MANEUVER."""
+        from src.utils.realization_engine import RealizationEngine
+
+        engine = RealizationEngine(data_path=mock_dataset, seed=9)
+        benign_emitted = {
+            int(round(engine.sample_by_id(0, aliasing_rate=1.0)[0])) for _ in range(40)
+        }
+        assert benign_emitted == {1}
+        impact_emitted = {
+            int(round(engine.sample_by_id(4, aliasing_rate=1.0)[0])) for _ in range(40)
+        }
+        assert impact_emitted == {3}
+
+    # --- (ii) session-coherent sampling -------------------------------------
+
+    def test_session_coherent_run_has_no_repeats(self, generator_path, mock_dataset):
+        """A within-stage run draws WITHOUT replacement until the pool empties."""
+        from src.utils.realization_engine import RealizationEngine
+
+        engine = RealizationEngine(data_path=mock_dataset, seed=11)
+        # Stage MANEUVER (3) has 40 rows; the first 40 draws must be distinct.
+        pool_size = len(engine.get_indices_for_stage(3))
+        rows = [
+            tuple(engine.sample_by_id(3, session_coherent=True).tolist())
+            for _ in range(pool_size)
+        ]
+        assert len({r for r in rows}) == pool_size  # no repeats within one pass
+
+    # --- (iii) post-transition-leak removal ---------------------------------
+
+    def test_no_post_transition_leak_samples_pre_transition_stage(
+        self, generator_path, mock_dataset
+    ):
+        """With the leak removed, the refreshed obs reflects the PRE-transition
+        stage (column-0 tag == previous stage), not the just-entered stage."""
+        from src.utils.label_mapper import KillChainStage
+
+        env = self._build_env(
+            generator_path,
+            mock_dataset,
+            no_post_transition_leak=True,
+            tug_of_war=True,
+            p_onset=1.0,  # BENIGN deterministically onsets to RECON this step
+            include_deltas=False,
+        )
+        # Start at BENIGN; after step the attacker moves to RECON, but the
+        # refreshed observation row must still carry the BENIGN (=0) stage tag.
+        env._current_attack_stage = KillChainStage.BENIGN.value
+        env._attack_history = [KillChainStage.BENIGN.value]
+        obs, *_ = env.step(0)
+        latest_row = env._observation_window[-1]
+        assert int(round(latest_row[0])) == KillChainStage.BENIGN.value
+        assert env._current_attack_stage == KillChainStage.RECON.value
+
+    def test_legacy_leak_samples_post_transition_stage(
+        self, generator_path, mock_dataset
+    ):
+        """Default (leak present) refreshes obs from the NEW stage (legacy)."""
+        from src.utils.label_mapper import KillChainStage
+
+        env = self._build_env(
+            generator_path,
+            mock_dataset,
+            no_post_transition_leak=False,
+            tug_of_war=True,
+            p_onset=1.0,
+            include_deltas=False,
+        )
+        env._current_attack_stage = KillChainStage.BENIGN.value
+        env._attack_history = [KillChainStage.BENIGN.value]
+        env.step(0)
+        latest_row = env._observation_window[-1]
+        assert int(round(latest_row[0])) == KillChainStage.RECON.value
+        assert env._current_attack_stage == KillChainStage.RECON.value
+
+    # --- (iv) proximity-coupled tolerance -----------------------------------
+
+    def test_proximity_escalation_rises_with_stage(
+        self, generator_path, mock_dataset
+    ):
+        """Under-force escalation probability increases with attacker proximity.
+
+        p_up_eff = p_up * (min_esc + (1 - min_esc) * stage/IMPACT). With a fixed
+        rng draw, a deeper stage must escalate where a shallower one would not.
+        """
+        from src.utils.label_mapper import KillChainStage
+
+        env = self._build_env(
+            generator_path,
+            mock_dataset,
+            proximity_coupled=True,
+            proximity_min_escalation=0.4,
+            p_up=0.5,
+            tug_of_war=True,
+        )
+        # RECON proximity lambda = 1/4 -> p_up_eff = 0.5*(0.4+0.6*0.25)=0.275
+        # MANEUVER lambda = 3/4 -> p_up_eff = 0.5*(0.4+0.6*0.75)=0.425
+        # A fixed draw of 0.35 escalates MANEUVER but not RECON.
+        class _FixedRng:
+            def __init__(self, value):
+                self._value = value
+
+            def random(self):
+                return self._value
+
+        env._rng = _FixedRng(0.35)
+
+        env._current_attack_stage = KillChainStage.RECON.value
+        env._attack_history = [KillChainStage.RECON.value]
+        env._advance_tug_of_war(0, KillChainStage.RECON.value)  # under-force
+        recon_after = env._current_attack_stage
+
+        env._current_attack_stage = KillChainStage.MANEUVER.value
+        env._attack_history = [KillChainStage.MANEUVER.value]
+        env._advance_tug_of_war(0, KillChainStage.MANEUVER.value)  # under-force
+        maneuver_after = env._current_attack_stage
+
+        assert recon_after == KillChainStage.RECON.value  # did NOT escalate
+        assert maneuver_after == KillChainStage.IMPACT.value  # DID escalate
+
+    def test_proximity_truncation_yields_prevention(
+        self, generator_path, mock_dataset
+    ):
+        """Holding the attacker below IMPACT to the horizon counts as prevented.
+
+        Under proximity-coupled mode with no budget counter, prevention is
+        awarded at truncation when the attacker is still below IMPACT.
+        """
+        from src.utils.label_mapper import KillChainStage
+
+        env = self._build_env(
+            generator_path,
+            mock_dataset,
+            proximity_coupled=True,
+            attacker_budget=None,
+            reward_mode="outcome",
+            impact_is_terminal=False,
+            max_steps=10,
+            prevention_bonus=5.0,
+        )
+        # Place the attacker mid-chain on the final step; truncation should fire
+        # the proximity-prevention branch (stage < IMPACT).
+        env._step_count = env._config.max_steps - 1
+        env._current_attack_stage = KillChainStage.RECON.value
+        env._attack_history = [KillChainStage.RECON.value]
+        # Over-force to hold the stage (no escalation, no de-escalation past 0).
+        _, _, terminated, truncated, info = env.step(4)
+        assert truncated is True
+        assert info["outcome"] == "prevented"
+        assert info["compromised"] is False
