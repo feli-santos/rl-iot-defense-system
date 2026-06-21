@@ -4,27 +4,28 @@ title: "RL IoT Defense System: Adversarial Reinforcement Learning for
 message: >-
   If you use this software, please cite it using the metadata below.
 type: software
-version: "0.1.0"
-date-released: "2026-05-04"
+version: "0.2.0"
+date-released: "2026-06-21"
 authors:
   - given-names: Felipe
     family-names: Santos
-    affiliation: "MSc Thesis"
+    affiliation: "MSc Thesis, UNICAMP/FEEC"
 abstract: >-
   An adversarial reinforcement learning framework for IoT network defense over
-  the CICIoT2023 dataset. The system pairs an LSTM-based attack sequence
-  generator (Red Team) with RL defense agents (Blue Team) that learn graduated
-  force-continuum policies. Inspired by IoTWarden (Alam et al., 2024), this
-  project extends the original work with realistic feature observations, a
-  five-level force continuum, and a kill-chain abstraction grounded in real
-  CICIoT2023 traffic.
+  the CICIoT2023 dataset. A reactive tug-of-war attacker walks the kill chain
+  under proximity-coupled escalation, and a windowed PPO defender learns
+  graduated force-continuum policies under genuine partial observability
+  (observation aliasing, session-coherent sampling). The defender never
+  observes the true kill-chain stage, making the task a real sequential
+  inference problem rather than a disguised per-flow classification.
 keywords:
   - reinforcement-learning
   - intrusion-detection
   - iot-security
   - kill-chain
   - adversarial-rl
-  - lstm
+  - partial-observability
+  - ppo
   - ciciot2023
 license: MIT
 repository-code: "https://github.com/feli-santos/rl-iot-defense-system"

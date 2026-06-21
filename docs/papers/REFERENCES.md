@@ -1,23 +1,48 @@
 # Reference Papers
 
-This directory previously contained PDF copies of the referenced papers.
-Binary PDFs have been removed from the repository to reduce Git history bloat.
-Please access papers via their official DOIs or open-access links below.
+This directory previously contained PDF copies of referenced papers. Binary
+PDFs have been removed from the repository. Access papers via the DOIs/links
+below. BibTeX entries are in [`tex/thesis.bib`](../../tex/thesis.bib).
 
-## Papers Referenced in the Thesis
+## Core dataset and inspiration
 
-| # | Title | Authors | Venue | Year | DOI / Link |
-|---|-------|---------|-------|------|-----------|
-| 1 | A Survey for Deep Reinforcement Learning Based Network Intrusion Detection | — | — | — | Search on IEEE Xplore / Google Scholar |
-| 2 | CICIoT2023: A Real-Time Dataset and Benchmark for Large-Scale Attacks in IoT Environment | Neto et al. | Sensors (MDPI) | 2023 | https://doi.org/10.3390/s23135941 |
-| 3 | Deep Reinforcement Learning for Internet of Things: A Comprehensive Survey | — | IEEE Communications Surveys & Tutorials | — | Search on IEEE Xplore |
-| 4 | Deep Reinforcement Learning for Intrusion Detection in IoT: A Survey | — | — | — | Search on IEEE Xplore / Google Scholar |
-| 5 | Enhancing IoT Intelligence: A Transformer-based Reinforcement Learning Methodology | — | — | — | Search on IEEE Xplore / Google Scholar |
-| 6 | HoneyIoT: Adaptive High-Interaction Honeypot for IoT Devices Through Reinforcement Learning | — | ACM CCS | — | Search on ACM DL |
-| 7 | IoTWarden: A Deep Reinforcement Learning Based Real-time Defense System to Mitigate Trigger-action IoT Attacks | — | — | — | Search on IEEE Xplore / Google Scholar |
-| 8 | Reinforcement Learning for IoT Security: A Comprehensive Survey | — | IEEE Internet of Things Journal | — | Search on IEEE Xplore |
-| 9 | Intrusion Detection System for Industrial Internet of Things Based on Deep Reinforcement Learning | Tharewal et al. | Wireless Communications and Mobile Computing | 2022 | https://doi.org/10.1155/2022/8669738 |
+| Title | Authors | Venue | Year | DOI / Link |
+|-------|---------|-------|------|-----------|
+| CICIoT2023: A Real-Time Dataset and Benchmark for Large-Scale Attacks in IoT Environment | Neto et al. | Sensors (MDPI) | 2023 | https://doi.org/10.3390/s23135941 |
+| IoTWarden: A Deep Reinforcement Learning Based Real-time Defense System to Mitigate Trigger-action IoT Attacks | Alam, Jahan & Wang | arXiv | 2024 | https://arxiv.org/abs/2401.08141 |
 
-## Citation Keys
-The corresponding BibTeX entries are in `tex/references.bib`.
-All citations in the thesis are managed through `\cite{}` commands referencing that file.
+## DRL for IoT / network security surveys
+
+| Title | Authors | Venue | Year | DOI / Link |
+|-------|---------|-------|------|-----------|
+| A Survey for Deep Reinforcement Learning Based Network Intrusion Detection | Yang et al. | arXiv | 2024 | https://arxiv.org/abs/2410.07612 |
+| Deep Reinforcement Learning for Internet of Things: A Comprehensive Survey | Chen et al. | IEEE COMST | 2021 | https://doi.org/10.1109/COMST.2021.3073036 |
+| Deep Reinforcement Learning for Intrusion Detection in IoT: A Survey | Gueriani et al. | IC2EM | 2023 | https://arxiv.org/abs/2405.20038 |
+| Reinforcement Learning for IoT Security: A Comprehensive Survey | Uprety & Rawat | IEEE IoT-J | 2021 | https://doi.org/10.1109/JIOT.2020.3040957 |
+| Reinforcement-Learning-Based Intrusion Detection in Communication Networks: A Review | Kheddar et al. | IEEE COMST | 2024 | https://doi.org/10.1109/COMST.2024.3494912 |
+
+## Related systems
+
+| Title | Authors | Venue | Year | DOI / Link |
+|-------|---------|-------|------|-----------|
+| HoneyIoT: Adaptive High-Interaction Honeypot for IoT Devices Through RL | Guan et al. | ACM WiSec | 2023 | https://doi.org/10.1145/3558482.3590195 |
+| Federated Deep RL for Traffic Monitoring in SDN-Based IoT Networks | Nguyen et al. | IEEE TCCN | 2021 | https://doi.org/10.1109/TCCN.2021.3117326 |
+| Intrusion Detection System for Industrial IoT Based on Deep RL | Tharewal et al. | WCMC | 2022 | https://doi.org/10.1155/2022/9023719 |
+
+## Foundational RL / DRL
+
+| Title | Authors | Venue | Year | DOI / Link |
+|-------|---------|-------|------|-----------|
+| Reinforcement Learning: An Introduction (2nd ed.) | Sutton & Barto | MIT Press | 2018 | — |
+| Human-level control through deep reinforcement learning | Mnih et al. | Nature | 2015 | https://doi.org/10.1038/nature14236 |
+| Asynchronous Methods for Deep Reinforcement Learning (A2C) | Mnih et al. | ICML | 2016 | — |
+| Proximal Policy Optimization Algorithms (PPO) | Schulman et al. | arXiv | 2017 | https://arxiv.org/abs/1707.06347 |
+| Stable-Baselines3: Reliable RL Implementations | Raffin et al. | JMLR | 2021 | — |
+| Gymnasium: A Standard Interface for RL Environments | Towers et al. | arXiv | 2023 | https://arxiv.org/abs/2407.17032 |
+
+## AI safety and reward specification
+
+| Title | Authors | Venue | Year | DOI / Link |
+|-------|---------|-------|------|-----------|
+| Concrete Problems in AI Safety | Amodei et al. | arXiv | 2016 | https://arxiv.org/abs/1606.06565 |
+| Model Cards for Model Reporting | Mitchell et al. | FAT* | 2019 | https://doi.org/10.1145/3287560.3287596 |

@@ -1,1 +1,0 @@
-**F16 — Prevention vs attacker budget.** Defender-attributable prevention rate (post-grace) on `test_balanced` for fixed baseline policies as a function of the finite attacker budget (∞ = unbounded control). Stronger/more-aggressive policies lift the curve at small budgets and every policy collapses toward the unbounded control — the prevention pivot. (PLAN §3.1.6.)

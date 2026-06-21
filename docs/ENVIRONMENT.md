@@ -1,24 +1,36 @@
 # Environment
 
-`AdversarialIoTEnv` (`src/environment/adversarial_env.py`) — a Gymnasium POMDP where
-a Blue-Team agent defends against a fixed 5x5 Markov attacker walking the Cyber Kill
-Chain under a finite intrusion budget.
+`AdversarialIoTEnv` (`src/environment/adversarial_env.py`) — a Gymnasium POMDP
+where a Blue-Team agent defends against a reactive tug-of-war attacker walking
+the Cyber Kill Chain under proximity-coupled escalation (no fixed intrusion
+budget).
 
 ## Observation
 
 - Sliding window of `window_size=5` per-stage feature rows, each 29 CICIoT2023
-  features -> `(5, 29)`.
-- First-order deltas appended along the feature axis (`include_deltas=True`) ->
+  features → `(5, 29)`.
+- First-order deltas appended along the feature axis (`include_deltas=True`) →
   `(5, 58)`; flattened to **float32**.
-- **`obs_dim = window_size * num_features * 2 = 5 * 29 * 2 = 290`** (`__init__` L422).
+- **`obs_dim = window_size * num_features * 2 = 5 * 29 * 2 = 290`**.
 - Optional `include_stage_pred` appends a one-hot stage prediction from a frozen
   detector (size `num_actions`).
-- `observation_space = Box(-inf, +inf, (290,), float32)` (L428).
+- `observation_space = Box(-inf, +inf, (290,), float32)`.
+
+**Session-coherent sampling.** The realization engine draws contiguous
+same-stage runs (a session proxy) rather than i.i.d. rows. CICIoT2023 ships
+pre-aggregated flow records with no recoverable session key, so session
+coherence is a modelling abstraction.
+
+**Observation aliasing (rate α).** With probability α a step emits a feature
+row from a stage **adjacent** to the true one (clamped at the BENIGN and IMPACT
+endpoints), so adjacent stages overlap in feature space and no single row
+identifies the stage. This is the mechanism that turns the task into a genuine
+sequential-inference problem rather than a disguised per-flow classification.
 
 ## Actions (force continuum)
 
-`action_space = Discrete(5)`. There is **no enum** — actions are index-based parallel
-lists (`ACTION_NAMES` L61, `ACTION_COSTS` L69).
+`action_space = Discrete(5)`. Actions are index-based parallel lists
+(`ACTION_NAMES`, `ACTION_COSTS`).
 
 | idx | action | cost | recommended for stage |
 |---|---|---|---|
@@ -28,86 +40,69 @@ lists (`ACTION_NAMES` L61, `ACTION_COSTS` L69).
 | 3 | BLOCK | 0.5 | MANEUVER |
 | 4 | ISOLATE | 0.8 | IMPACT |
 
-> **RESTRICT is a first-class proportional action (tug-of-war).** Under the tug-of-war
-> dynamics a *proportionate* action (`|action - recommended| == 0`) de-escalates the
-> attacker one stage w.p. `p_down=0.90`, so RESTRICT at ACCESS is non-dominated. ISOLATE
-> is strictly stronger than BLOCK (`p_down_isolate=0.98` vs `p_down=0.90`), giving a real
-> RESTRICT < BLOCK < ISOLATE force gradient. (The old "THROTTLE dominated action" caveat
-> is obsolete: it described the pre-redesign de-escalation rule that only fired for
-> `action >= BLOCK`.)
+A proportionate action (`|action - recommended| == 0`) de-escalates the
+attacker one stage w.p. `p_down=0.90` (`p_down_isolate=0.98` for ISOLATE),
+giving a real RESTRICT < BLOCK < ISOLATE force gradient.
 
 ## Kill-chain stages
 
-`KillChainStage(IntEnum)` (`src/utils/label_mapper.py:19`): `BENIGN=0, RECON=1,
+`KillChainStage(IntEnum)` (`src/utils/label_mapper.py`): `BENIGN=0, RECON=1,
 ACCESS=2, MANEUVER=3, IMPACT=4`. `_RECOMMENDED_ACTION_BY_STAGE = [0,1,2,3,4]`.
 
-## Reactive tug-of-war attacker (headline)
+## Reactive tug-of-war attacker
 
-The headline attacker is **reactive and strictly sequential** (`tug_of_war=True`,
-`skip_weight=0`). Two mechanisms (`_advance_tug_of_war`):
+Two mechanisms (`_advance_tug_of_war`):
 
-- **Autonomous onset from BENIGN** (no defender dependence, no budget drain): single
-  roll — `p_onset=0.35` -> RECON, `p_onset_access=0.10` -> ACCESS (mid-chain start),
-  else dormant. No skip-ahead onset (this is why always-block is a beatable, costly
-  baseline rather than leaky).
+- **Autonomous onset from BENIGN** (no defender dependence): single roll —
+  `p_onset=0.35` → RECON, `p_onset_access=0.10` → ACCESS (mid-chain start),
+  else dormant.
 - **Tug-of-war once active** (RECON..MANEUVER), on the signed force gap
   `d = action - recommended(stage)`:
-  - `d <= -1` (under-force): attacker **escalates** one stage w.p. `p_up=0.90`, else holds.
-  - `d == 0` (proportional): attacker **de-escalates** one stage w.p. `p_down=0.90`
-    (`p_down_isolate=0.98` for ISOLATE), else holds.
+  - `d <= -1` (under-force): attacker **escalates** one stage w.p. `p_up_eff`,
+    else holds. The escalation probability is proximity-coupled:
+    `p_up_eff = p_up * (sigma_min + (1-sigma_min) * lambda)`, where
+    `lambda = stage/4` and `sigma_min = 0.4`.
+  - `d == 0` (proportional): attacker **de-escalates** one stage w.p.
+    `p_down=0.90` (`p_down_isolate=0.98` for ISOLATE), else holds.
   - `d >= 1` (over-force): attacker **holds** (penalised as disproportionate).
-- IMPACT is **absorbing**; the attacker never regresses autonomously — all de-escalation
-  is defender-driven.
-- The legacy autonomous-Markov path (`_advance_attack`, skip distribution,
-  `_maybe_defender_deescalation`, `evasion_prob`, `retreat_prob`) is retained **only**
-  on the `tug_of_war=False` / `skip_weight>0` ablation path.
+- IMPACT is **absorbing**; the attacker never regresses autonomously.
 
-## Step lifecycle (`step` L526)
+## Prevention model
 
-1. Reward at the decision-time stage: `_calculate_reward(action, prev_stage)`.
-2. Progression: `_advance_tug_of_war(action, prev_stage)` (signed rule above). A
-   proportionate push-back drains `budget_step_cost + budget_reset_cost` and grants a
-   capped `reward_deescalation`; any active step drains `budget_step_cost`.
-3. **Grace clamp**: any IMPACT before `min_episode_length=20` is downgraded to MANEUVER
-   (early "preventions" are not defender-attributable; prevention-rate is reported
-   conditioned on `step >= min_episode_length`).
+Prevention = holding the attacker below IMPACT for the full episode horizon.
+There is no finite intrusion budget to drain; the proximity-coupled escalation
+rule replaces it. A prevented episode earns `+prevention_bonus = 50`.
 
-## Finite attacker budget (prevention model)
+## Grace clamp
 
-- Drains: `budget_step_cost=1` per active progression step (only when `stage >= RECON`);
-  an additional `budget_reset_cost=2` per defender-forced de-escalation.
-- **Exhaustion-before-IMPACT => prevented** (L639): if budget `<= 0` and `stage < IMPACT`,
-  the episode terminates with `+prevention_bonus`, outcome `"prevented"` — checked
-  **before** the IMPACT branch, fires **regardless of `impact_is_terminal`**.
-  Tie-break favors the attacker (budget hitting 0 on the same step IMPACT arrives lets
-  IMPACT win).
+Any IMPACT before `min_episode_length=20` is downgraded to MANEUVER (early
+"preventions" are not defender-attributable).
 
-## Termination matrix (L626-677)
+## Reward
 
-- `attacker_exhausted_now` -> prevented, terminate.
-- elif `impact_arrived` (stage==IMPACT and step>=20) AND `impact_is_terminal` -> inline
-  terminal reward (`-impact_penalty`; `action>=3` => `+defense_success_bonus`
-  "impact_mitigated"; `action<=1` => `-penalty_missed_impact` "impact_missed"; else
-  "compromised").
-- else `terminated=False` — with `impact_is_terminal=False` (primary contract), IMPACT
-  does not terminate; the agent gets an explicit IMPACT-row decision next step via
-  `_step_at_impact` L689.
-- `truncated = step >= max_steps`.
+Two reward contracts:
 
-## Reward (`_calculate_reward` L860)
+- **`outcome`** (primary deployment contract): the per-step reward is **only**
+  the action cost; every stage-conditioned shaping term is stripped. The
+  learning signal comes exclusively from realised outcomes: the terminal
+  prevention bonus, the IMPACT penalty, and the action cost. This de-couples
+  the objective from the per-step `recommended_action(stage)` label, removing
+  the privileged-shaping advantage of a supervised classifier.
+- **`coupled`** (reward-shaping ablation cell): the per-step reward includes a
+  proportionality term keyed on `d = action - recommended_action(stage)` — the
+  same quantity that drives the attacker's tug-of-war transition. Under this
+  contract the value-maximising policy reduces to "infer the stage, emit the
+  matching action", i.e. a 5-way stage classifier.
 
-1. action cost (L891).
-2. `reward_mode='outcome_only'` ablation returns after the action cost (L896) —
-   strips all stage-conditioned shaping.
-3. Asymmetric guardrails (L899): `penalty_overreact_benign=50`, `penalty_block_benign=100`,
-   `penalty_block_recon=50`, `penalty_missed_impact=150`.
-4. Benign-passive bonus `+reward_benign_passive=10` (L912).
-5. Proportionality core (L915): `|action - recommended| <= 1` => `+reward_proportional=5`
-   else `-penalty_disproportionate=5`.
+Reward components (per-step, under `coupled`):
+1. Action cost (always applied).
+2. Proportionality bonus `+reward_proportional=5` if `|action - recommended| <= 1`,
+   else `−penalty_disproportionate=5`.
+3. Asymmetric guardrails: `penalty_overreact_benign=50`, `penalty_block_benign=100`,
+   `penalty_block_recon=50`.
+4. Benign-passive bonus `+reward_benign_passive=10`.
 
-Outcome / tug-of-war signals applied in `step`/`_step_at_impact`:
-`defense_success_bonus=250` (terminal-IMPACT survival only), `impact_penalty=200`,
-`prevention_bonus=50` (budget exhausted before IMPACT), `reward_deescalation=15`
-(per proportionate push-back, capped 150/ep), `proportional_bonus_cap=100/ep`. The
-proportionality and de-escalation caps remove the reward-farming loopholes that the
-redesign fixed.
+Outcome signals applied in `step`/`_step_at_impact`:
+`prevention_bonus=50` (prevented), `impact_penalty=200` (compromised),
+`defense_success_bonus=250` (terminal-IMPACT survival), `reward_deescalation=15`
+(per proportionate push-back, capped 150/ep), `proportional_bonus_cap=100/ep`.
