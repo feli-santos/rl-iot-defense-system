@@ -22,11 +22,8 @@ What it checks (per step, in order):
 - Detector: ``docs/results/stage-detector/manifest.json`` ↔ on-disk
   outputs. Inputs (features.npy etc.) are gitignored; if missing,
   the harness skips them with a warning rather than failing.
-- Benchmark: ``docs/results/benchmark/F[5-8]_manifest.json`` —
-  per-figure manifest each pins ``runs/benchmark/eval_manifest.json``
-  by SHA. The run-side artefact is gitignored; if missing, the
-  harness skips the upstream-pin check with a warning.
-- Ablation: ``docs/results/ablation/F[9,10,12,15]_manifest.json``
+- Ablation: ``docs/results/ablation/F[10,12,15,17]_manifest.json``
+  plus ``Falpha_manifest.json`` / ``Fcoupling_manifest.json``
   ↔ on-disk outputs (PNG + summary JSON). Upstream pins
   (``blue_team_sweep_manifest`` / ``benchmark_eval_manifest`` /
   ``dataset_splits_manifest``) checked against on-disk if present;
@@ -85,21 +82,19 @@ def _sha256(path: Path) -> str | None:
 _TARGETS: list[tuple[str, Path, bool]] = [
     ("dataset", _ROOT / "docs/results/dataset/manifest.json", True),
     ("detector", _ROOT / "docs/results/stage-detector/manifest.json", True),
-    ("benchmark/F5", _ROOT / "docs/results/benchmark/F5_manifest.json", True),
-    ("benchmark/F6", _ROOT / "docs/results/benchmark/F6_manifest.json", True),
-    ("benchmark/F7", _ROOT / "docs/results/benchmark/F7_manifest.json", True),
-    ("benchmark/F8", _ROOT / "docs/results/benchmark/F8_manifest.json", True),
-    ("ablation/F9", _ROOT / "docs/results/ablation/F9_manifest.json", True),
     ("ablation/F10", _ROOT / "docs/results/ablation/F10_manifest.json", True),
     ("ablation/F12", _ROOT / "docs/results/ablation/F12_manifest.json", True),
     ("ablation/F15", _ROOT / "docs/results/ablation/F15_manifest.json", True),
+    ("ablation/F17", _ROOT / "docs/results/ablation/F17_manifest.json", True),
+    ("ablation/Falpha", _ROOT / "docs/results/ablation/Falpha_manifest.json", True),
+    ("ablation/Fcoupling", _ROOT / "docs/results/ablation/Fcoupling_manifest.json", True),
 ]
 
 _SCOREBOARDS: list[tuple[str, Path]] = [
     ("G4", _ROOT / "docs/results/stage-detector/detector_acceptance.json"),
     ("G5", _ROOT / "docs/results/blue-team-training/G5_scoreboard.json"),
     # G6 (benchmark) has no standalone scoreboard JSON — its acceptance is
-    # captured by the F5/F6/F7/F8 manifest hash-chains above.
+    # captured by the Falpha manifest hash-chain above.
     ("G7", _ROOT / "docs/results/ablation/G7_scoreboard.json"),
 ]
 
@@ -111,7 +106,7 @@ def _walk_pin_entries(node: Any, prefix: str = "") -> list[tuple[str, dict[str, 
     """Recursively find every ``{path, sha256}`` dict-record in a manifest tree.
 
     Manifests use a few different shapes:
-    - dataset/red_team/detector ``inputs`` is ``{relpath: sha256_hex}``.
+    - dataset/detector ``inputs`` is ``{relpath: sha256_hex}``.
     - benchmark/ablation ``inputs`` is ``{key: {path, sha256}}`` for upstream
       manifests, plus a flat ``{relpath: sha256}`` map for per-JSONL
       inputs (``eval_jsonls_sha256`` / ``eval_jsonl_sha256``).

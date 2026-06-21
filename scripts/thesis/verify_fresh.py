@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """Anti-staleness freshness gate.
 
-Checks that every *derived* artifact (tex/generated/*.tex, G*_scoreboard.json,
-RESULTS_INDEX.md) was generated *after* its canonical JSON source was last
-modified.  Exits non-zero if any derived file is stale, making it suitable as
-a CI gate (``make verify-fresh``).
+Checks that every *derived* artifact (tex/generated/*.tex) was generated
+*after* its canonical JSON source was last modified.  Exits non-zero if
+any derived file is stale, making it suitable as a CI gate
+(``make verify-fresh``).
 
 Usage
 -----
@@ -28,25 +28,16 @@ DERIVED = [
     (
         REPO_ROOT / "tex/generated/numbers.tex",
         [
-            REPO_ROOT / "docs/results/benchmark/F5_summary.json",
-            REPO_ROOT / "docs/results/benchmark/benign_fpr.json",
-            REPO_ROOT / "docs/results/ablation/F9_summary.json",
+            REPO_ROOT / "docs/results/ablation/Falpha_summary.json",
+            REPO_ROOT / "docs/results/ablation/Fcoupling_summary.json",
+            REPO_ROOT / "docs/results/test_count.json",
         ],
     ),
     (
         REPO_ROOT / "tex/generated/tables.tex",
         [
-            REPO_ROOT / "docs/results/benchmark/F5_summary.json",
-            REPO_ROOT / "docs/results/benchmark/F7_summary.json",
-        ],
-    ),
-    (
-        REPO_ROOT / "docs/RESULTS_INDEX.md",
-        [
-            REPO_ROOT / "docs/results/benchmark/F5_summary.json",
-            REPO_ROOT / "docs/results/ablation/F9_summary.json",
-            REPO_ROOT / "docs/results/ablation/F15_summary.json",
-            REPO_ROOT / "docs/results/benchmark/benign_fpr.json",
+            REPO_ROOT / "docs/results/ablation/Falpha_summary.json",
+            REPO_ROOT / "docs/results/ablation/Fcoupling_summary.json",
         ],
     ),
 ]

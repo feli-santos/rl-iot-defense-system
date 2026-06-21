@@ -58,68 +58,98 @@ def _mtime_str(p: Path) -> str:
 
 
 def _section_benchmark() -> str:
-    f5 = _load(RESULTS_DIR / "benchmark/F5_summary.json")
-    fpr = _load(RESULTS_DIR / "benchmark/benign_fpr.json")
-    man = _load(RESULTS_DIR / "benchmark/F5_manifest.json")
+    falpha = _load(RESULTS_DIR / "ablation/Falpha_summary.json")
+    man = _load(RESULTS_DIR / "ablation/Falpha_manifest.json")
+    src = RESULTS_DIR / "ablation/Falpha_summary.json"
 
     lines = ["## 06 Held-Out Benchmark\n"]
     lines.append(
-        f"**Source:** `docs/results/benchmark/F5_summary.json`  \n"
+        f"**Source:** `docs/results/ablation/Falpha_summary.json` (alpha=0 point)  \n"
         f"**git SHA:** {_git_sha(man)}  \n"
-        f"**File mtime:** {_mtime_str(RESULTS_DIR / 'benchmark/F5_summary.json')}  \n"
+        f"**File mtime:** {_mtime_str(src)}  \n"
     )
 
-    if f5:
-        rows = f5.get("rows", [])
-        # Build canonical table
-        lines.append("\n| Policy | Mean Reward | CI 95% | n_eps | n_seeds | MIT-rate | FPR |\n")
-        lines.append("|--------|-------------|--------|-------|---------|----------|-----|\n")
-        policies_fpr: dict = {}
-        if fpr:
-            policies_fpr = fpr.get("policies", fpr)
-        for r in rows:
-            pol = r["policy"]
-            fpr_val = "—"
-            if pol in policies_fpr:
-                d = policies_fpr[pol]
-                fpr_val = f"{d['benign_fpr']:.2%}" if isinstance(d, dict) else f"{d:.2%}"
+    if falpha:
+        per_alpha = falpha.get("per_alpha", {})
+        cell = per_alpha.get("0.0", {})
+        if cell:
             lines.append(
-                f"| {pol} | {r['mean_reward']:+.1f} | "
-                f"[{r['mean_reward_ci_low']:+.1f}, {r['mean_reward_ci_high']:+.1f}] | "
-                f"{r['n_episodes']} | {r.get('n_seeds','—')} | "
-                f"{r.get('mitigated_impact_rate',0):.3f} | {fpr_val} |\n"
+                "\n| Policy | Mean Reward | CI 95% | n_eps | n_seeds |\n"
+                "|--------|-------------|--------|-------|---------|\n"
             )
+            for pol in ("ppo", "dqn", "a2c", "rf_acting", "recommended_action"):
+                r = cell.get(pol)
+                if not r:
+                    continue
+                lines.append(
+                    f"| {pol} | {r['mean']:+.1f} | "
+                    f"[{r['ci_low']:+.1f}, {r['ci_high']:+.1f}] | "
+                    f"{r.get('n', '—')} | {r.get('n_seeds', '—')} |\n"
+                )
     return "".join(lines)
 
 
 def _section_ablation() -> str:
-    f9 = _load(RESULTS_DIR / "ablation/F9_summary.json")
+    falpha = _load(RESULTS_DIR / "ablation/Falpha_summary.json")
+    fcoupling = _load(RESULTS_DIR / "ablation/Fcoupling_summary.json")
     f15 = _load(RESULTS_DIR / "ablation/F15_summary.json")
-    man9 = _load(RESULTS_DIR / "ablation/F9_manifest.json")
+    man_alpha = _load(RESULTS_DIR / "ablation/Falpha_manifest.json")
+    man_coup = _load(RESULTS_DIR / "ablation/Fcoupling_manifest.json")
     man15 = _load(RESULTS_DIR / "ablation/F15_manifest.json")
 
     lines = ["## 07 Ablation & OOD Robustness\n"]
     lines.append(
-        f"**F9 source:** `docs/results/ablation/F9_summary.json`  \n"
-        f"**F9 git SHA:** {_git_sha(man9)}  \n"
-        f"**F9 mtime:** {_mtime_str(RESULTS_DIR / 'ablation/F9_summary.json')}  \n\n"
+        f"**Falpha source:** `docs/results/ablation/Falpha_summary.json`  \n"
+        f"**Falpha git SHA:** {_git_sha(man_alpha)}  \n"
+        f"**Falpha mtime:** {_mtime_str(RESULTS_DIR / 'ablation/Falpha_summary.json')}  \n\n"
+        f"**Fcoupling source:** `docs/results/ablation/Fcoupling_summary.json`  \n"
+        f"**Fcoupling git SHA:** {_git_sha(man_coup)}  \n"
+        f"**Fcoupling mtime:** {_mtime_str(RESULTS_DIR / 'ablation/Fcoupling_summary.json')}  \n\n"
         f"**F15 source:** `docs/results/ablation/F15_summary.json`  \n"
         f"**F15 git SHA:** {_git_sha(man15)}  \n"
         f"**F15 mtime:** {_mtime_str(RESULTS_DIR / 'ablation/F15_summary.json')}  \n"
     )
 
-    if f9:
-        rows = f9.get("rows", [])
-        if rows:
-            lines.append("\n### Reward-coefficient ablation (F9)\n")
-            lines.append("| cell_id | impact_is_terminal | mean_reward | CI | MIT-rate |\n")
-            lines.append("|---------|-------------------|-------------|-----|----------|\n")
-            for r in rows:
+    if falpha:
+        per_alpha = falpha.get("per_alpha", {})
+        if per_alpha:
+            lines.append("\n### Observation-aliasing alpha-curve (Falpha)\n")
+            lines.append("| alpha | PPO [CI] | DQN | A2C | RF-Acting [CI] | Oracle |\n")
+            lines.append("|-------|----------|-----|-----|----------------|--------|\n")
+            for akey in ("0.0", "0.2", "0.4", "0.6"):
+                c = per_alpha.get(akey, {})
+                if not c:
+                    continue
+                ppo = c.get("ppo", {})
+                dqn = c.get("dqn", {})
+                a2c = c.get("a2c", {})
+                rf = c.get("rf_acting", {})
+                orc = c.get("recommended_action", {})
                 lines.append(
-                    f"| {r['cell_id']} | {r['impact_is_terminal']} | "
-                    f"{r['mean_reward']:+.1f} | "
-                    f"[{r['ci_low']:+.1f}, {r['ci_high']:+.1f}] | "
-                    f"{r.get('mitigated_impact_rate',0):.3f} |\n"
+                    f"| {akey} | {ppo.get('mean', 0):+.1f} "
+                    f"[{ppo.get('ci_low', 0):+.1f}, {ppo.get('ci_high', 0):+.1f}] | "
+                    f"{dqn.get('mean', 0):+.1f} | {a2c.get('mean', 0):+.1f} | "
+                    f"{rf.get('mean', 0):+.1f} "
+                    f"[{rf.get('ci_low', 0):+.1f}, {rf.get('ci_high', 0):+.1f}] | "
+                    f"{orc.get('mean', 0):+.1f} |\n"
+                )
+
+    if fcoupling:
+        per_mode = fcoupling.get("per_mode", {})
+        if per_mode:
+            lines.append("\n### Reward-coupling ablation (Fcoupling)\n")
+            lines.append("| mode | best RL | best RL reward | RF-Acting [CI] | RF-minus-RL gap |\n")
+            lines.append("|------|---------|----------------|----------------|-----------------|\n")
+            for mode in ("coupled", "outcome"):
+                m = per_mode.get(mode, {})
+                if not m:
+                    continue
+                lines.append(
+                    f"| {mode.capitalize()} | {m.get('best_algo', '—').upper()} | "
+                    f"{m.get('best_rl_reward', 0):+.1f} | "
+                    f"{m.get('rf_acting_reward', 0):+.1f} "
+                    f"[{m.get('rf_acting_ci_low', 0):+.1f}, {m.get('rf_acting_ci_high', 0):+.1f}] | "
+                    f"{m.get('rf_minus_rl_gap', 0):+.1f} |\n"
                 )
 
     if f15:
@@ -135,6 +165,15 @@ def _section_ablation() -> str:
                     f"[{r.get('ci_low',r['mean_reward']):+.1f}, "
                     f"{r.get('ci_high',r['mean_reward']):+.1f}] |\n"
                 )
+
+    # F15b: recall-vs-advantage figure (PNG only; no summary/manifest JSON shipped).
+    f15b_png = RESULTS_DIR / "ablation/F15b_recall_vs_advantage.png"
+    if f15b_png.exists():
+        lines.append("\n### Recall vs. advantage (F15b)\n")
+        lines.append(
+            f"**Figure:** `docs/results/ablation/F15b_recall_vs_advantage.png`  \n"
+            f"**File mtime:** {_mtime_str(f15b_png)}  \n"
+        )
 
     return "".join(lines)
 

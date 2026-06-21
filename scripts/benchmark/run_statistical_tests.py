@@ -10,7 +10,6 @@ Key comparisons (per consolidated review C4):
   a) DQN vs PPO on test_balanced (unpaired — different env seeds)
   b) DQN vs A2C on test_balanced
   c) Best DRL (DQN) vs RF-Acting
-  d) impact_is_terminal=True vs False (reads F9 ablation data if present)
 
 Outputs:
   - ``results/benchmark/statistical_tests.json``
@@ -19,7 +18,7 @@ Outputs:
 Usage::
 
     python -m scripts.benchmark.run_statistical_tests \\
-        [--phase6-root runs/benchmark] \\
+        [--benchmark-root runs/benchmark] \\
         [--out-path results/benchmark/statistical_tests.json] \\
         [--alpha 0.05]
 """
@@ -209,7 +208,6 @@ def run_tests(
     benchmark_root: Path,
     seeds: list[int],
     alpha: float = 0.05,
-    ablation_path: Path | None = None,
 ) -> dict[str, Any]:
     """Run all statistical tests and return the results dict."""
 
@@ -296,24 +294,6 @@ def run_tests(
             )
         )
 
-    # Comparison d: impact_is_terminal=True vs False (from F9 ablation data)
-    if ablation_path is not None and ablation_path.exists():
-        try:
-            abl_data = json.loads(ablation_path.read_text())
-            true_rewards = np.array(abl_data.get("terminal_true_rewards", []), dtype=float)
-            false_rewards = np.array(abl_data.get("terminal_false_rewards", []), dtype=float)
-            if len(true_rewards) >= 2 and len(false_rewards) >= 2:
-                comparisons.append(
-                    _welch_test(
-                        false_rewards,
-                        true_rewards,
-                        label="impact_is_terminal=False vs True (F9 ablation)",
-                        alpha=alpha,
-                    )
-                )
-        except Exception as exc:  # noqa: BLE001
-            logger.warning("Could not load F9 ablation data: %s", exc)
-
     # Summary per-algorithm bootstrap CIs
     ci_summary: dict[str, Any] = {}
     for algo, rewards in algo_rewards.items():
@@ -352,7 +332,7 @@ def _build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         description="benchmark statistical significance tests (C4).",
     )
-    p.add_argument("--phase6-root", default="runs/benchmark")
+    p.add_argument("--benchmark-root", default="runs/benchmark")
     p.add_argument(
         "--seeds",
         nargs="+",
@@ -364,12 +344,6 @@ def _build_parser() -> argparse.ArgumentParser:
     p.add_argument(
         "--out-path",
         default="results/benchmark/statistical_tests.json",
-    )
-    p.add_argument(
-        "--ablation-path",
-        default=None,
-        help="Optional path to F9 ablation JSON containing "
-        "'terminal_true_rewards' and 'terminal_false_rewards' arrays.",
     )
     p.add_argument("--verbose", type=int, default=1)
     return p
@@ -386,13 +360,10 @@ def main(argv=None) -> int:
     out_path = Path(args.out_path)
     out_path.parent.mkdir(parents=True, exist_ok=True)
 
-    ablation_path = Path(args.ablation_path) if args.ablation_path else None
-
     results = run_tests(
         benchmark_root=benchmark_root,
         seeds=args.seeds,
         alpha=args.alpha,
-        ablation_path=ablation_path,
     )
 
     out_path.write_text(json.dumps(results, indent=2))
