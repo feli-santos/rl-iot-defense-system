@@ -20,6 +20,14 @@ from typing import Any, Optional, Union
 import gymnasium as gym
 from stable_baselines3 import A2C, DQN, PPO
 
+try:  # sb3-contrib is an optional dependency; only needed for the recurrent agent.
+    from sb3_contrib import RecurrentPPO
+
+    _HAS_RECURRENT_PPO = True
+except ImportError:  # pragma: no cover - exercised only on installs without sb3-contrib
+    RecurrentPPO = None  # type: ignore[assignment,misc]
+    _HAS_RECURRENT_PPO = False
+
 logger = logging.getLogger(__name__)
 
 # Type alias for SB3 algorithms
@@ -109,6 +117,8 @@ class AdversarialAlgorithm:
         "ppo": PPO,
         "a2c": A2C,
     }
+    if _HAS_RECURRENT_PPO:
+        ALGORITHMS["recurrent_ppo"] = RecurrentPPO
 
     def __init__(
         self,
@@ -190,6 +200,37 @@ class AdversarialAlgorithm:
                 tensorboard_log=self._config.tensorboard_log,
             )
 
+        elif self._config.algorithm_type == "recurrent_ppo":
+            if not _HAS_RECURRENT_PPO:
+                raise ImportError(
+                    "recurrent_ppo requires sb3-contrib; install it with "
+                    "`pip install sb3-contrib`."
+                )
+            # The recurrent agent maintains an LSTM belief state over the hidden
+            # kill-chain stage. n_steps must span at least one episode horizon so
+            # back-propagation-through-time sees full trajectories; default to the
+            # configured n_steps but never below the 128-step floor.
+            policy = (
+                self._config.policy
+                if self._config.policy.endswith("LstmPolicy")
+                else "MlpLstmPolicy"
+            )
+            model = alg_class(
+                policy,
+                env,
+                learning_rate=lr,
+                n_steps=max(self._config.n_steps, 128),
+                batch_size=self._config.batch_size,
+                n_epochs=self._config.n_epochs,
+                gamma=self._config.gamma,
+                gae_lambda=self._config.gae_lambda,
+                ent_coef=self._config.ent_coef,
+                vf_coef=self._config.vf_coef,
+                max_grad_norm=self._config.max_grad_norm,
+                verbose=self._config.verbose,
+                tensorboard_log=self._config.tensorboard_log,
+            )
+
         elif self._config.algorithm_type == "a2c":
             model = alg_class(
                 self._config.policy,
@@ -205,7 +246,13 @@ class AdversarialAlgorithm:
                 tensorboard_log=self._config.tensorboard_log,
             )
 
-        logger.info(f"Created {self.algorithm_name} model with MlpPolicy")
+        else:
+            raise ValueError(
+                f"Unknown algorithm_type {self._config.algorithm_type!r}; "
+                f"expected one of {sorted(self.ALGORITHMS)}."
+            )
+
+        logger.info(f"Created {self.algorithm_name} model")
         return model
 
     def train(

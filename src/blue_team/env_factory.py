@@ -100,6 +100,12 @@ def _build_env_config(spec: EnvConfigSerializable) -> AdversarialEnvConfig:
         penalty_block_recon=spec.penalty_block_recon,
         # Lagrangian FPR penalty (review 2.2 / Direction 6)
         fpr_penalty_beta=spec.fpr_penalty_beta,
+        # Partial-observability redesign (sequential POMDP)
+        aliasing_rate=spec.aliasing_rate,
+        session_coherent=spec.session_coherent,
+        no_post_transition_leak=spec.no_post_transition_leak,
+        proximity_coupled=spec.proximity_coupled,
+        proximity_min_escalation=spec.proximity_min_escalation,
     )
 
 

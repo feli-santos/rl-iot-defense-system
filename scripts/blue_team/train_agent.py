@@ -49,7 +49,11 @@ if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
 import torch  # noqa: E402
-from stable_baselines3.common.callbacks import CallbackList  # noqa: E402
+from stable_baselines3.common.callbacks import (  # noqa: E402
+    CallbackList,
+    EvalCallback,
+    StopTrainingOnNoModelImprovement,
+)
 
 from src.algorithms.adversarial_algorithm import (  # noqa: E402
     AdversarialAlgorithm,
@@ -81,24 +85,49 @@ DEFAULT_HPARAMS: dict[str, dict[str, Any]] = {
         "vf_coef": 0.5,
         "max_grad_norm": 0.5,
     },
+    # DQN tuned for the sparse outcome-reward, long-horizon (100-step)
+    # regime: a larger replay buffer, slower target updates, lower
+    # learning rate, and longer exploration schedule reduce the eval-
+    # reward instability seen with the SB3 defaults.
     "dqn": {
-        "learning_rate": 1e-3,
-        "buffer_size": 50_000,
-        "learning_starts": 1_000,
-        "batch_size": 32,
+        "learning_rate": 5e-4,
+        "buffer_size": 200_000,
+        "learning_starts": 5_000,
+        "batch_size": 64,
         "tau": 1.0,
         "gamma": 0.99,
-        "target_update_interval": 1_000,
-        "exploration_fraction": 0.1,
+        "target_update_interval": 5_000,
+        "exploration_fraction": 0.2,
         "exploration_initial_eps": 1.0,
         "exploration_final_eps": 0.05,
     },
+    # A2C tuned for the long credit-assignment horizon: the SB3 default
+    # n_steps=5 is far too myopic for a 100-step episode with sparse
+    # terminal (outcome) reward, so the rollout length is raised to span
+    # roughly two episodes and GAE + entropy are enabled for stability.
     "a2c": {
         "learning_rate": 7e-4,
-        "n_steps": 5,
+        "n_steps": 256,
         "gamma": 0.99,
-        "gae_lambda": 1.0,
-        "ent_coef": 0.0,
+        "gae_lambda": 0.95,
+        "ent_coef": 0.01,
+        "vf_coef": 0.5,
+        "max_grad_norm": 0.5,
+    },
+    # Recurrent (LSTM) headline agent for the partial-observability
+    # redesign: an MlpLstmPolicy maintains a belief state over the
+    # hidden kill-chain stage, which a memoryless feedforward agent
+    # (or a per-flow supervised classifier) cannot. n_steps must span
+    # at least one episode horizon (max_steps=100) for clean BPTT; the
+    # factory enforces n_steps>=128.
+    "recurrent_ppo": {
+        "learning_rate": 3e-4,
+        "n_steps": 128,
+        "batch_size": 64,
+        "n_epochs": 10,
+        "gamma": 0.99,
+        "gae_lambda": 0.95,
+        "ent_coef": 0.01,
         "vf_coef": 0.5,
         "max_grad_norm": 0.5,
     },
@@ -244,12 +273,19 @@ def build_run_config(args: argparse.Namespace) -> BlueTeamRunConfig:
 
     out_dir = args.out_dir or f"runs/{args.algo}/seed_{args.seed}"
 
+    # Smoke runs disable early-stop so the tiny grid runs deterministically
+    # to its cap; full runs honour the CLI flags.
+    early_stop = (not args.smoke) and getattr(args, "early_stop", True)
+
     return BlueTeamRunConfig(
         algo=args.algo,
         seed=args.seed,
         total_timesteps=total_timesteps,
         eval_freq=eval_freq,
         n_eval_episodes=n_eval_episodes,
+        early_stop=early_stop,
+        early_stop_patience=getattr(args, "early_stop_patience", 10),
+        early_stop_min_evals=getattr(args, "early_stop_min_evals", 10),
         out_dir=out_dir,
         generator_path=args.generator_path,
         dataset_path=args.dataset_path,
@@ -331,7 +367,42 @@ def train(cfg: BlueTeamRunConfig, *, verbose: int = 0) -> dict[str, Any]:
         n_eval_episodes=cfg.n_eval_episodes,
         deterministic=True,
     )
-    cb = CallbackList([cb_train, cb_eval])
+    callbacks: list[Any] = [cb_train, cb_eval]
+
+    # Best-checkpoint + early-stop on the eval-reward plateau. SB3's
+    # EvalCallback needs its OWN VecEnv (it resets/steps it during the eval
+    # block), so we build a third env here with a disjoint seed pool. It
+    # writes ``best_model.zip`` whenever the mean eval reward improves; the
+    # benchmark + OOD harnesses load that checkpoint, so a slow-converging
+    # algorithm is never penalised for the fixed ``total_timesteps`` cap.
+    sb3_eval_env = None
+    if cfg.early_stop:
+        sb3_eval_env = make_eval_env(
+            spec=cfg.eval_env,
+            generator_path=cfg.generator_path,
+            dataset_path=cfg.dataset_path,
+            splits_manifest=splits_manifest,
+            seed=cfg.seed + 20_000,  # disjoint from train (seed) + eval (+10k)
+        )
+        stop_cb = StopTrainingOnNoModelImprovement(
+            max_no_improvement_evals=cfg.early_stop_patience,
+            min_evals=cfg.early_stop_min_evals,
+            verbose=verbose,
+        )
+        sb3_eval_cb = EvalCallback(
+            sb3_eval_env,
+            best_model_save_path=str(out_dir),
+            log_path=None,
+            eval_freq=cfg.eval_freq,
+            n_eval_episodes=cfg.n_eval_episodes,
+            deterministic=True,
+            render=False,
+            callback_after_eval=stop_cb,
+            verbose=verbose,
+        )
+        callbacks.append(sb3_eval_cb)
+
+    cb = CallbackList(callbacks)
 
     t0 = time.time()
     model.learn(
@@ -341,9 +412,16 @@ def train(cfg: BlueTeamRunConfig, *, verbose: int = 0) -> dict[str, Any]:
     )
     wallclock = time.time() - t0
 
-    # Persist the model + manifest.
+    # Persist the last model + manifest. ``best_model.zip`` (written by the
+    # EvalCallback) is the canonical checkpoint for downstream eval; we keep
+    # ``model.zip`` (the last model) for back-compat and diagnostics. If
+    # early-stop never wrote a best checkpoint (e.g. it stopped before the
+    # first eval), fall back to the last model so downstream never breaks.
     model_path = out_dir / "model.zip"
     model.save(str(model_path))
+    best_model_path = out_dir / "best_model.zip"
+    if not best_model_path.exists():
+        model.save(str(best_model_path))
 
     n_train_episodes = _count_jsonl_lines(train_jsonl)
     n_eval_episodes = _count_jsonl_lines(eval_jsonl)
@@ -354,11 +432,16 @@ def train(cfg: BlueTeamRunConfig, *, verbose: int = 0) -> dict[str, Any]:
         "n_episodes_train": n_train_episodes,
         "n_episodes_eval": n_eval_episodes,
         "git_sha": _git_sha(),
+        "early_stopped": bool(cfg.early_stop and model.num_timesteps < cfg.total_timesteps),
+        "actual_timesteps": int(model.num_timesteps),
+        "best_model_path": str(best_model_path),
     }
     cfg.write_manifest(manifest_path, **extra)
 
     train_env.close()
     eval_env.close()
+    if sb3_eval_env is not None:
+        sb3_eval_env.close()
 
     logger.info(
         "phase-5 train done: wallclock=%.1fs episodes_train=%d episodes_eval=%d",
@@ -388,7 +471,7 @@ def _build_argparser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         description="blue-team single (algo, seed) RL Blue-Team training run."
     )
-    p.add_argument("--algo", required=True, choices=("ppo", "dqn", "a2c"))
+    p.add_argument("--algo", required=True, choices=("ppo", "dqn", "a2c", "recurrent_ppo"))
     p.add_argument("--seed", type=int, required=True)
     p.add_argument(
         "--total-timesteps",
@@ -435,6 +518,25 @@ def _build_argparser() -> argparse.ArgumentParser:
         "--smoke",
         action="store_true",
         help="Reduce to 5K timesteps + tiny eval grid; for quick smoke runs.",
+    )
+    p.add_argument(
+        "--no-early-stop",
+        dest="early_stop",
+        action="store_false",
+        help="Disable eval-plateau early-stopping (train the full cap).",
+    )
+    p.set_defaults(early_stop=True)
+    p.add_argument(
+        "--early-stop-patience",
+        type=int,
+        default=10,
+        help="Stop after N consecutive evals with no eval-reward improvement.",
+    )
+    p.add_argument(
+        "--early-stop-min-evals",
+        type=int,
+        default=10,
+        help="Never early-stop before this many evals have run.",
     )
     p.add_argument(
         "--verbose",

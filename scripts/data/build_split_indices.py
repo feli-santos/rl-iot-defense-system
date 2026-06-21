@@ -65,16 +65,29 @@ NUM_STAGES = 5
 DEFAULT_RATIOS = (0.7, 0.1, 0.2)  # train, val, test (stratified)
 DEFAULT_VAL_BALANCED_PER_STAGE = 200
 DEFAULT_TEST_BALANCED_PER_STAGE = 1000
-# Held-out CICIoT2023 classes for OOD evaluation. Chosen to span all four
-# attack stages while preserving the per-stage training distribution. We
-# deliberately pick a *small* class for ACCESS (XSS, ~10 % of stage rows)
-# rather than the largest (DictionaryBruteForce, ~33 %) to avoid starving
-# the LSTM of ACCESS training data.
+# Held-out CICIoT2023 classes for zero-day (OOD) evaluation. We hold out two
+# classes per upper kill-chain stage (RECON, ACCESS, MANEUVER) and four for
+# IMPACT, spanning the detector's recall spectrum from near-perfect to the
+# VulnerabilityScan structural blind spot (recall ~0.001). These rows are
+# removed from the data BEFORE the stratified train/val/test split, so they
+# never appear in training, the detector, or the in-distribution benchmark --
+# the correct zero-day protocol. Each upper stage retains >=3 in-distribution
+# classes and >=26k training rows to avoid starving any stage.
 DEFAULT_OOD_CLASSES = (
-    "DDoS-HTTP_Flood",   # IMPACT  (~6 % of IMPACT rows)
-    "Mirai-udpplain",    # MANEUVER (~20 % of MANEUVER rows)
-    "XSS",               # ACCESS   (~10 % of ACCESS rows)
-    "VulnerabilityScan", # RECON   (~24 % of RECON rows)
+    # RECON
+    "VulnerabilityScan",        # RECON    (RF detector blind spot, recall ~0.001)
+    "Recon-OSScan",             # RECON
+    # ACCESS
+    "XSS",                      # ACCESS
+    "SqlInjection",             # ACCESS
+    # MANEUVER
+    "Mirai-udpplain",           # MANEUVER
+    "DNS_Spoofing",             # MANEUVER
+    # IMPACT
+    "DDoS-HTTP_Flood",          # IMPACT
+    "DoS-SYN_Flood",            # IMPACT
+    "DDoS-SlowLoris",           # IMPACT
+    "DDoS-ACK_Fragmentation",   # IMPACT
 )
 
 

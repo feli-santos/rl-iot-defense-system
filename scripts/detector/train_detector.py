@@ -62,10 +62,19 @@ logger = logging.getLogger(__name__)
 # Used to compute G4.4 per-class recall; these classes are NEVER in the
 # train / val / test splits.
 _OOD_EXPECTED_STAGE: dict[str, int] = {
-    "DDoS-HTTP_Flood": 4,  # IMPACT
-    "Mirai-udpplain": 3,  # MANEUVER (canonical, per src/utils/label_mapper.py)
-    "VulnerabilityScan": 1,  # RECON
+    # Ten held-out zero-day classes (two per upper stage + four IMPACT),
+    # spanning the detector recall spectrum. Canonical stages per
+    # src/utils/label_mapper.py / docs/kill-chain-mapping.md.
+    "VulnerabilityScan": 1,  # RECON  (detector blind spot)
+    "Recon-OSScan": 1,  # RECON
     "XSS": 2,  # ACCESS
+    "SqlInjection": 2,  # ACCESS
+    "Mirai-udpplain": 3,  # MANEUVER
+    "DNS_Spoofing": 3,  # MANEUVER
+    "DDoS-HTTP_Flood": 4,  # IMPACT
+    "DoS-SYN_Flood": 4,  # IMPACT
+    "DDoS-SlowLoris": 4,  # IMPACT
+    "DDoS-ACK_Fragmentation": 4,  # IMPACT
 }
 
 
@@ -475,8 +484,12 @@ def main(argv: list[str] | None = None) -> int:
         )
 
     # ---- 5. OOD evaluation (G4.4).
+    # Report recall for BOTH the production MLP detector (gate metric) and the
+    # RandomForest (consumed by the RF-Acting baseline) so the recall-vs-advantage
+    # figure can read per-class RF recall straight from this provenance manifest.
     logger.info("Evaluating OOD classes ...")
     ood_results: dict[str, OODEvaluation] = {}
+    ood_rf_recall: dict[str, float] = {}
     for cls, expected_stage in _OOD_EXPECTED_STAGE.items():
         idx = ood_class_to_idx[cls]
         X_ood = np.ascontiguousarray(X[idx], dtype=np.float32)
@@ -484,11 +497,14 @@ def main(argv: list[str] | None = None) -> int:
         ood_results[cls] = evaluate_ood_class(
             attack_class=cls, expected_stage=expected_stage, y_pred=y_pred
         )
+        y_pred_rf = rf.predict(X_ood).astype(np.int64)
+        ood_rf_recall[cls] = float(np.mean(y_pred_rf == expected_stage))
         logger.info(
-            "  %-22s  expected=%s  recall=%.3f  n=%d",
+            "  %-22s  expected=%s  recall[MLP]=%.3f  recall[RF]=%.3f  n=%d",
             cls,
             STAGE_NAMES[expected_stage],
             ood_results[cls].recall,
+            ood_rf_recall[cls],
             ood_results[cls].n_samples,
         )
 
@@ -557,6 +573,7 @@ def main(argv: list[str] | None = None) -> int:
             },
         },
         "ood_evaluation": {k: v.to_dict() for k, v in ood_results.items()},
+        "ood_rf_recall": {k: round(v, 6) for k, v in ood_rf_recall.items()},
         "inference_latency_ms_per_sample": round(inference_ms, 4),
         "gates": gates,
     }
