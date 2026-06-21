@@ -1,12 +1,18 @@
 #!/usr/bin/env python3
-"""JSON → LaTeX fragment generator (anti-drift tooling).
+"""JSON -> LaTeX fragment generator (anti-drift tooling).
 
-Reads canonical summary JSONs under ``docs/results/`` and emits:
-  - ``tex/generated/numbers.tex``   : ``\newcommand`` macros for headline numbers
-  - ``tex/generated/tables.tex``    : ``\input{}``-able table bodies
+Reads the canonical redesign summary JSONs under ``docs/results/`` and emits:
+  - ``tex/generated/numbers.tex``   : ``\\newcommand`` macros for headline numbers
+  - ``tex/generated/tables.tex``    : ``\\input{}``-able table bodies
 
-Intended to be re-run after every data regeneration so prose numbers are
-always mechanically derived from the canonical JSON source of truth.
+Source of truth for the partially-observable redesign:
+  - ``docs/results/ablation/Falpha_summary.json``    : observation-aliasing sweep
+  - ``docs/results/ablation/Fcoupling_summary.json`` : coupled-vs-outcome ablation
+
+Intended to be re-run after every data regeneration so prose numbers are always
+mechanically derived from the canonical JSON source of truth. LaTeX control
+sequences must be all-letters after the backslash, so alpha levels are spelled
+out (``\\AlphaZeroPPO`` etc.).
 """
 
 from __future__ import annotations
@@ -19,11 +25,18 @@ from pathlib import Path
 # Paths (canonical data)
 # ---------------------------------------------------------------------------
 
-F5 = Path("docs/results/benchmark/F5_summary.json")
-F7 = Path("docs/results/benchmark/F7_summary.json")
-F9 = Path("docs/results/ablation/F9_summary.json")
-G6 = Path("docs/results/benchmark/benchmark_acceptance.json")
-BENIGN_FPR = Path("docs/results/benchmark/benign_fpr.json")
+FALPHA = Path("docs/results/ablation/Falpha_summary.json")
+FCOUPLING = Path("docs/results/ablation/Fcoupling_summary.json")
+TEST_COUNT = Path("docs/results/test_count.json")
+
+# Spelled-out alpha keys (LaTeX macro names cannot contain digits or dots).
+_ALPHA_WORD = {
+    "0.0": "Zero",
+    "0.2": "Two",
+    "0.4": "Four",
+    "0.6": "Six",
+}
+
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -36,25 +49,8 @@ def _load(path: Path) -> dict:
     return json.loads(path.read_text())
 
 
-def _find_row(rows: list[dict], policy: str) -> dict:
-    for r in rows:
-        if r["policy"] == policy:
-            return r
-    raise KeyError(f"Policy '{policy}' not found in benchmark summary")
-
-
-def _best_deployable_rl(rows: list[dict]) -> dict:
-    exclude = {
-        "recommended_action",
-        "rf_acting",
-        "random",
-        "always_block",
-        "always_observe",
-    }
-    candidates = [r for r in rows if r["policy"] not in exclude]
-    if not candidates:
-        raise RuntimeError("No deployable RL agents found in F5 summary")
-    return max(candidates, key=lambda r: r["mean_reward"])
+def _newcmd(name: str, value: str) -> str:
+    return r"\newcommand{\%s}{%s}" % (name, value)
 
 
 # ---------------------------------------------------------------------------
@@ -63,91 +59,65 @@ def _best_deployable_rl(rows: list[dict]) -> dict:
 
 
 def _render_numbers() -> str:
-    f5 = _load(F5)
-    rows = f5["rows"]
-    best = _best_deployable_rl(rows)
-    oracle = _find_row(rows, "recommended_action")
-    rf = _find_row(rows, "rf_acting")
-
-    capture_pct = best["mean_reward"] / oracle["mean_reward"] * 100
-    latency_ratio = rf["p50_inference_latency_ms"] / best["p50_inference_latency_ms"]
+    fa = _load(FALPHA)
+    fc = _load(FCOUPLING)
+    per_alpha = fa["per_alpha"]
+    crossover = {c["alpha"]: c for c in fa["crossover"]["per_alpha"]}
 
     lines = [
-        f"% Auto-generated from {F5} (benchmark) and {F9} (ablation) — do not hand-edit",
-        r"\newcommand{\BestAgentName}{" + best["policy"].upper() + "}",
-        r"\newcommand{\BestAgentReward}{%+0.1f}" % best["mean_reward"],
-        r"\newcommand{\BestAgentCILow}{%+0.1f}" % best["mean_reward_ci_low"],
-        r"\newcommand{\BestAgentCIHigh}{%+0.1f}" % best["mean_reward_ci_high"],
-        r"\newcommand{\OracleCeiling}{%+0.1f}" % oracle["mean_reward"],
-        r"\newcommand{\OracleCILow}{%+0.1f}" % oracle["mean_reward_ci_low"],
-        r"\newcommand{\OracleCIHigh}{%+0.1f}" % oracle["mean_reward_ci_high"],
-        r"\newcommand{\OracleCapturePct}{%0.1f}" % capture_pct,
-        r"\newcommand{\LatencyRatio}{%0.1f}" % latency_ratio,
-        r"\newcommand{\RFReward}{%+0.1f}" % rf["mean_reward"],
-        r"\newcommand{\RFLatency}{%0.3f}" % rf["p50_inference_latency_ms"],
-        r"\newcommand{\BestAgentLatency}{%0.3f}" % best["p50_inference_latency_ms"],
+        f"% Auto-generated from {FALPHA} and {FCOUPLING} -- do not hand-edit.",
+        f"% Regenerate with: PYTHONPATH=. .venv/bin/python -m scripts.thesis.render_tables",
     ]
 
-    # Seed count (read from n_seeds of the best agent)
-    lines.append(r"\newcommand{\NumSeeds}{%d}" % best.get("n_seeds", 5))
+    # Headline agent + seed count (PPO is the sole headline RL agent).
+    n_seeds = per_alpha["0.0"]["ppo"].get("n_seeds", 10)
+    lines.append(_newcmd("BestAgentName", "PPO"))
+    lines.append(_newcmd("NumSeeds", "%d" % n_seeds))
 
-    # Test count — read from a sidecar JSON if present, else fall back to hardcoded value
-    _test_count_file = Path("docs/results/test_count.json")
-    if _test_count_file.exists():
-        _tc = json.loads(_test_count_file.read_text())
-        _num_tests = _tc.get("num_tests", 432)
+    # Per-alpha reward macros for PPO (headline), tuned RF-Acting, and the oracle
+    # ceiling, plus the PPO-minus-RF crossover gap and its significance verdict.
+    for akey, word in _ALPHA_WORD.items():
+        cell = per_alpha[akey]
+        ppo = cell["ppo"]
+        rf = cell["rf_acting"]
+        orc = cell["recommended_action"]
+        lines.append(_newcmd(f"Alpha{word}PPO", "%+0.1f" % ppo["mean"]))
+        lines.append(_newcmd(f"Alpha{word}PPOCILow", "%+0.1f" % ppo["ci_low"]))
+        lines.append(_newcmd(f"Alpha{word}PPOCIHigh", "%+0.1f" % ppo["ci_high"]))
+        lines.append(_newcmd(f"Alpha{word}RF", "%+0.1f" % rf["mean"]))
+        lines.append(_newcmd(f"Alpha{word}Oracle", "%+0.1f" % orc["mean"]))
+        cr = crossover[float(akey)]
+        lines.append(_newcmd(f"Alpha{word}Gap", "%+0.1f" % cr["ppo_minus_rf"]))
+        sig = "significant" if cr["verdict"] == "ppo_significant" else "overlapping"
+        lines.append(_newcmd(f"Alpha{word}Verdict", sig))
+
+    # Convenience aliases for the headline anchor (alpha=0) and operating point
+    # (alpha=0.4, where the PPO advantage first becomes significant).
+    lines.append(_newcmd("HeadlineAlpha", "0.4"))
+    lines.append(_newcmd("AnchorPPO", "%+0.1f" % per_alpha["0.0"]["ppo"]["mean"]))
+    lines.append(_newcmd("AnchorRF", "%+0.1f" % per_alpha["0.0"]["rf_acting"]["mean"]))
+    lines.append(_newcmd("OracleCeiling", "%+0.1f" % per_alpha["0.0"]["recommended_action"]["mean"]))
+
+    # Coupled-vs-outcome ablation gaps (RF-Acting minus best RL; negative => RL wins).
+    gc = fc["gap_coupled"]
+    go = fc["gap_outcome"]
+    lines.append(_newcmd("CouplingGapCoupled", "%+0.1f" % gc))
+    lines.append(_newcmd("CouplingGapOutcome", "%+0.1f" % go))
+    lines.append(_newcmd("CouplingBestCoupled", fc["per_mode"]["coupled"]["best_algo"].upper()))
+    lines.append(_newcmd("CouplingBestOutcome", fc["per_mode"]["outcome"]["best_algo"].upper()))
+    lines.append(
+        _newcmd("CouplingDQNCoupled", "%+0.1f" % fc["per_mode"]["coupled"]["per_algo"]["dqn"]["mean_reward"])
+    )
+    lines.append(
+        _newcmd("CouplingDQNOutcome", "%+0.1f" % fc["per_mode"]["outcome"]["per_algo"]["dqn"]["mean_reward"])
+    )
+
+    # Test count (sidecar JSON; canonical pytest count).
+    if TEST_COUNT.exists():
+        num_tests = json.loads(TEST_COUNT.read_text()).get("num_tests", 473)
     else:
-        _num_tests = 432  # canonical value; update when pytest count changes
-    lines.append(r"\newcommand{\NumTests}{%d}" % _num_tests)
-
-    # FPR numbers
-    if BENIGN_FPR.exists():
-        fpr = _load(BENIGN_FPR)
-        policies_fpr = fpr.get("policies", fpr)
-        for policy, data in policies_fpr.items():
-            # Make LaTeX-safe command name: remove hyphens/underscores; replace
-            # digits with spelled-out letters (LaTeX control sequences must be
-            # all-letter after the backslash — digits terminate the name).
-            _digit_map = {
-                "0": "z",
-                "1": "o",
-                "2": "t",
-                "3": "r",
-                "4": "f",
-                "5": "v",
-                "6": "s",
-                "7": "e",
-                "8": "g",
-                "9": "n",
-            }
-            safe = policy.replace("-", "").replace("_", "")
-            safe = "".join(_digit_map[c] if c in _digit_map else c for c in safe)
-            val = data["benign_fpr"] if isinstance(data, dict) else data
-            lines.append(r"\newcommand{\FPR" + safe + "}{%0.3f}" % val)
-            # Percentage variant for prose (e.g. \FPRppoPct -> "8.7").
-            lines.append(r"\newcommand{\FPR" + safe + "Pct}{%0.1f}" % (val * 100))
-
-    # F9 structural fix — F9_summary.json uses key "rows" (list of cell dicts)
-    if F9.exists():
-        f9 = _load(F9)
-        structural = None
-        # Primary path: iterate "rows" list (canonical key in F9_summary.json)
-        for cell in f9.get("rows", []):
-            if cell.get("impact_is_terminal") is False:
-                structural = cell
-                break
-        # Legacy fallback: old key name "cells"
-        if structural is None:
-            for cell in f9.get("cells", []):
-                if cell.get("impact_is_terminal") is False:
-                    structural = cell
-                    break
-        if structural:
-            lines.append(r"\newcommand{\FnineStructuralReward}{%+0.1f}" % structural["mean_reward"])
-            lines.append(
-                r"\newcommand{\FnineStructuralMitRate}{%0.3f}"
-                % structural.get("mitigated_impact_rate", 0.0)
-            )
+        num_tests = 473
+    lines.append(_newcmd("NumTests", "%d" % num_tests))
 
     return "\n".join(lines) + "\n"
 
@@ -157,84 +127,51 @@ def _render_numbers() -> str:
 # ---------------------------------------------------------------------------
 
 
-def _fmt_reward(r: float) -> str:
-    return f"${r:+.1f}$"
+def _render_alpha_table() -> str:
+    """Reward vs. observation-aliasing rate, one row per alpha level.
 
-
-def _fmt_ci(low: float, high: float) -> str:
-    return f"$[{low:+.1f}, {high:+.1f}]$"
-
-
-def _render_benchmark_table() -> str:
-    f5 = _load(F5)
-    rows = f5["rows"]
-    # Order: oracle, RF, best RL, other RL, random, always-block, always-observe
-    order = [
-        "recommended_action",
-        "rf_acting",
-        "dqn",
-        "ppo",
-        "a2c",
-        "random",
-        "always_block",
-        "always_observe",
-    ]
+    Columns: alpha & PPO [CI] & DQN & A2C & RF-Acting [CI] & Oracle.
+    """
+    fa = _load(FALPHA)
+    per_alpha = fa["per_alpha"]
     body: list[str] = []
-    for policy in order:
-        try:
-            r = _find_row(rows, policy)
-        except KeyError:
-            continue
-        name = {
-            "recommended_action": "Recommended-Action (oracle)",
-            "rf_acting": "RF-Acting",
-            "dqn": "DQN",
-            "ppo": "PPO",
-            "a2c": "A2C",
-            "random": "Random",
-            "always_block": "Always-BLOCK",
-            "always_observe": "Always-OBSERVE",
-        }.get(policy, policy)
+    for akey in ("0.0", "0.2", "0.4", "0.6"):
+        c = per_alpha[akey]
+        ppo, dqn, a2c = c["ppo"], c["dqn"], c["a2c"]
+        rf, orc = c["rf_acting"], c["recommended_action"]
         body.append(
-            f"  {name} & {_fmt_reward(r['mean_reward'])} & "
-            f"{_fmt_ci(r['mean_reward_ci_low'], r['mean_reward_ci_high'])} & "
-            f"{r['n_episodes']} & {r['compromise_rate']:.3f} & "
-            f"{r['prevention_rate']:.3f} \\\\"
+            f"  {akey} & ${ppo['mean']:+.1f}$ $[{ppo['ci_low']:+.1f}, {ppo['ci_high']:+.1f}]$ & "
+            f"${dqn['mean']:+.1f}$ & ${a2c['mean']:+.1f}$ & "
+            f"${rf['mean']:+.1f}$ $[{rf['ci_low']:+.1f}, {rf['ci_high']:+.1f}]$ & "
+            f"${orc['mean']:+.1f}$ \\\\"
         )
     return "\n".join(body)
 
 
-def _render_latency_table() -> str:
-    f5 = _load(F5)
-    rows = f5["rows"]
+def _render_coupling_table() -> str:
+    """Coupled-vs-outcome reward ablation: best RL vs. RF-Acting per mode."""
+    fc = _load(FCOUPLING)
     body: list[str] = []
-    for r in rows:
-        name = {
-            "recommended_action": "Oracle (ref.)",
-            "rf_acting": "RF-Acting",
-            "dqn": "DQN",
-            "ppo": "PPO",
-            "a2c": "A2C",
-            "random": "Random",
-            "always_block": "Always-BLOCK",
-            "always_observe": "Always-OBSERVE",
-        }.get(r["policy"], r["policy"])
+    for mode in ("coupled", "outcome"):
+        m = fc["per_mode"][mode]
+        best = m["best_algo"].upper()
         body.append(
-            f"  {name} & {_fmt_reward(r['mean_reward'])} & "
-            f"{r['p50_inference_latency_ms']:.3f} & "
-            f"{r['p95_inference_latency_ms']:.3f} \\\\"
+            f"  {mode.capitalize()} & {best} & ${m['best_rl_reward']:+.1f}$ & "
+            f"${m['rf_acting_reward']:+.1f}$ "
+            f"$[{m['rf_acting_ci_low']:+.1f}, {m['rf_acting_ci_high']:+.1f}]$ & "
+            f"${m['rf_minus_rl_gap']:+.1f}$ \\\\"
         )
     return "\n".join(body)
 
 
 def _render_tables() -> str:
     lines = [
-        r"% Auto-generated from docs/results/**/*.json — do not hand-edit",
-        r"\newcommand{\BenchmarkTableBody}{%",
-        _render_benchmark_table(),
+        r"% Auto-generated from docs/results/ablation/*.json -- do not hand-edit.",
+        r"\newcommand{\AlphaCurveTableBody}{%",
+        _render_alpha_table(),
         r"}%",
-        r"\newcommand{\LatencyTableBody}{%",
-        _render_latency_table(),
+        r"\newcommand{\CouplingTableBody}{%",
+        _render_coupling_table(),
         r"}%",
     ]
     return "\n".join(lines) + "\n"
