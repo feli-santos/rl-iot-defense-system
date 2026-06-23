@@ -16,54 +16,54 @@
       "p": 0.0,
       "n_seeds": 10,
       "n_episodes": 300,
-      "mean_reward": -111.05266666666668,
-      "ci_low": -117.06606666666667,
-      "ci_high": -105.16962500000001
+      "mean_reward": 24.476,
+      "ci_low": 12.672341666666666,
+      "ci_high": 35.43785833333334
     },
     {
       "kind": "ppo",
       "p": 0.2,
       "n_seeds": 10,
       "n_episodes": 300,
-      "mean_reward": -22.373333333333335,
-      "ci_low": -43.01076666666666,
-      "ci_high": -1.002141666666671
+      "mean_reward": 42.63733333333334,
+      "ci_low": 33.950008333333344,
+      "ci_high": 50.754808333333315
     },
     {
       "kind": "ppo",
       "p": 0.4,
       "n_seeds": 10,
       "n_episodes": 300,
-      "mean_reward": 62.47399999999999,
-      "ci_low": 40.29445833333334,
-      "ci_high": 83.91563333333333
+      "mean_reward": 69.61666666666666,
+      "ci_low": 55.049908333333335,
+      "ci_high": 83.09921666666668
     },
     {
       "kind": "ppo",
       "p": 0.6,
       "n_seeds": 10,
       "n_episodes": 300,
-      "mean_reward": 89.60033333333332,
-      "ci_low": 67.10624166666666,
-      "ci_high": 112.67575833333332
+      "mean_reward": 90.404,
+      "ci_low": 65.71761666666667,
+      "ci_high": 109.43366666666665
     },
     {
       "kind": "ppo",
       "p": 0.8,
       "n_seeds": 10,
       "n_episodes": 300,
-      "mean_reward": 114.59966666666668,
-      "ci_low": 69.75016666666666,
-      "ci_high": 154.58246666666662
+      "mean_reward": 111.82966666666665,
+      "ci_low": 96.525075,
+      "ci_high": 127.96832499999995
     },
     {
       "kind": "ppo",
       "p": 1.0,
       "n_seeds": 10,
       "n_episodes": 300,
-      "mean_reward": 145.398,
-      "ci_low": 116.01059166666668,
-      "ci_high": 173.40968333333333
+      "mean_reward": 119.93,
+      "ci_low": 107.12114166666667,
+      "ci_high": 131.09925833333332
     }
   ],
   "rule_rows": [
@@ -72,61 +72,61 @@
       "p": 0.0,
       "n_seeds": 1,
       "n_episodes": 150,
-      "mean_reward": 110.08266666666668,
-      "ci_low": 107.00796666666669,
-      "ci_high": 113.19711666666667
+      "mean_reward": 34.330666666666666,
+      "ci_low": 32.92585,
+      "ci_high": 35.770700000000005
     },
     {
       "kind": "rule",
       "p": 0.2,
       "n_seeds": 1,
       "n_episodes": 150,
-      "mean_reward": 529.228,
-      "ci_low": 518.9793333333333,
-      "ci_high": 540.1434833333333
+      "mean_reward": 189.13066666666666,
+      "ci_low": 187.81931666666668,
+      "ci_high": 189.9780833333333
     },
     {
       "kind": "rule",
       "p": 0.4,
       "n_seeds": 1,
       "n_episodes": 150,
-      "mean_reward": 671.4146666666667,
-      "ci_low": 661.7512833333333,
-      "ci_high": 680.5939
+      "mean_reward": 192.24866666666665,
+      "ci_low": 192.01393333333334,
+      "ci_high": 192.4746666666667
     },
     {
       "kind": "rule",
       "p": 0.6,
       "n_seeds": 1,
       "n_episodes": 150,
-      "mean_reward": 770.6426666666666,
-      "ci_low": 762.5652333333334,
-      "ci_high": 778.7163833333334
+      "mean_reward": 193.45533333333336,
+      "ci_low": 193.27196666666669,
+      "ci_high": 193.63336666666666
     },
     {
       "kind": "rule",
       "p": 0.8,
       "n_seeds": 1,
       "n_episodes": 150,
-      "mean_reward": 847.4573333333334,
-      "ci_low": 841.0204666666667,
-      "ci_high": 854.0079833333333
+      "mean_reward": 194.42733333333334,
+      "ci_low": 194.28665,
+      "ci_high": 194.56868333333333
     },
     {
       "kind": "rule",
       "p": 1.0,
       "n_seeds": 1,
       "n_episodes": 150,
-      "mean_reward": 892.622,
-      "ci_low": 886.8893333333333,
-      "ci_high": 898.6535333333333
+      "mean_reward": 195.32866666666666,
+      "ci_low": 195.21731666666668,
+      "ci_high": 195.44466666666665
     }
   ],
   "gates": {
     "G7.3": {
       "passes": true,
       "ppo_p0_lt_p06_strict": true,
-      "ppo_reason": "p=0.0 CI=(-117.1, -105.2); p=0.6 CI=(67.1, 112.7)",
+      "ppo_reason": "p=0.0 CI=(12.7, 35.4); p=0.6 CI=(65.7, 109.4)",
       "rule_monotone_non_decreasing": true,
       "interpretation": "PASS: PPO benefits from a more lenient environment (higher p_down \u21d2 higher reward) by \u2265 1\u03c3 between p_down=0.0 and p_down=0.6, and the rule curve is monotone non-decreasing in p_down \u2014 the value function shifts with environment difficulty as expected (conceptually aligned with IoTWarden Fig. 6)."
     }

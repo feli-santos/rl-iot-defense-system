@@ -8,7 +8,7 @@ with IoTWarden Fig. 6, Bhattacharjee et al., 2023):
   x-axis:  p_down ∈ {0.0, 0.2, 0.4, 0.6, 0.8, 1.0}
            (lower = harsher environment: a correct defender action is
             less likely to push the attacker back down the kill chain)
-  y-axis:  mean episodic reward on test_balanced
+  y-axis:  mean episodic reward on test_balanced (locked outcome contract)
   curves:  trained PPO (across seeds) + recommended-action oracle rule
 
 Outputs:
@@ -211,45 +211,57 @@ def _render(
     rule_rows: list[dict[str, Any]],
     out_path: Path,
 ) -> None:
-    import matplotlib
+    from scripts._plot_style import ACCENT, apply_house_style, save_figure
 
-    matplotlib.use("Agg")
+    apply_house_style()
     import matplotlib.pyplot as plt
 
     ppo_rows = sorted(ppo_rows, key=lambda r: r["p"])
     rule_rows = sorted(rule_rows, key=lambda r: r["p"])
 
-    fig, ax = plt.subplots(figsize=(8.5, 5.0))
+    fig, ax = plt.subplots(figsize=(7.0, 4.6))
 
-    def _plot(rows, color, label):
+    def _plot(rows, color, label, *, lw=2.4, zorder=5, ls="-"):
         xs = [r["p"] for r in rows]
         means = [r["mean_reward"] for r in rows]
         lo = [r["ci_low"] for r in rows]
         hi = [r["ci_high"] for r in rows]
-        ax.plot(xs, means, "o-", color=color, label=label, linewidth=1.8)
-        ax.fill_between(xs, lo, hi, alpha=0.18, color=color)
+        ax.plot(
+            xs,
+            means,
+            marker="o",
+            color=color,
+            label=label,
+            linewidth=lw,
+            linestyle=ls,
+            zorder=zorder,
+        )
+        ax.fill_between(xs, lo, hi, alpha=0.18, color=color, zorder=zorder - 2)
 
     if ppo_rows:
-        _plot(ppo_rows, "#2563eb", "PPO (5 seeds, 250K timesteps)")
+        n_seeds = max((int(r.get("n_seeds", 0)) for r in ppo_rows), default=0)
+        ppo_lbl = f"PPO (windowed RL, {n_seeds} seeds)" if n_seeds else "PPO (windowed RL)"
+        _plot(ppo_rows, ACCENT["primary"], ppo_lbl)
     if rule_rows:
-        _plot(rule_rows, "#dc2626", "Recommended-Action oracle rule (1 seed × 150 ep)")
+        _plot(
+            rule_rows,
+            ACCENT["neutral"],
+            "Oracle (recommended-action, full obs.)",
+            lw=1.6,
+            zorder=3,
+            ls="--",
+        )
 
-    ax.set_xlabel(
-        "p_down (tug-of-war de-escalation success rate ⇒ environment leniency)",
-        fontsize=10,
-    )
-    ax.set_ylabel("Mean episodic reward on test_balanced (95 % bootstrap CI)", fontsize=10)
-    ax.set_title(
-        "F10 — Sensitivity to environment difficulty (p_down sweep; "
-        "conceptually aligned with IoTWarden Fig. 6)",
-        fontsize=11,
-    )
+    ax.axhline(0.0, color=ACCENT["muted"], lw=0.8, ls=":")
+    ax.set_xlabel(r"De-escalation success $p_{\mathrm{down}}$ (lower = harsher environment)")
+    ax.set_ylabel("Mean episodic reward on test_balanced")
+    ax.set_title("Defender sensitivity to environment difficulty")
     ax.grid(True, linestyle=":", alpha=0.4)
-    ax.legend(loc="lower right", fontsize=9, framealpha=0.95)
+    ax.legend(loc="lower right", framealpha=0.95)
     ax.set_xticks([0.0, 0.2, 0.4, 0.6, 0.8, 1.0])
 
     fig.tight_layout()
-    fig.savefig(out_path, dpi=200, bbox_inches="tight")
+    save_figure(fig, out_path)
     plt.close(fig)
 
 
@@ -303,8 +315,10 @@ def main(argv: list[str] | None = None) -> int:
 
     out_dir = Path(args.out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
-    png_path = out_dir / "F10_aggressiveness.png"
-    _render(ppo_rows, rule_rows, png_path)
+    fig_base = out_dir / "F10_aggressiveness"
+    _render(ppo_rows, rule_rows, fig_base)
+    png_path = fig_base.with_suffix(".png")
+    pdf_path = fig_base.with_suffix(".pdf")
 
     g73 = _evaluate_g73(ppo_rows, rule_rows)
     summary = {
@@ -325,6 +339,8 @@ def main(argv: list[str] | None = None) -> int:
         "figure": "F10",
         "git_sha": _git_sha(),
         "outputs": {
+            "pdf": str(pdf_path),
+            "pdf_sha256": _sha256(pdf_path),
             "png": str(png_path),
             "json": str(out_dir / "F10_summary.json"),
         },
@@ -352,16 +368,17 @@ def main(argv: list[str] | None = None) -> int:
     }
     (out_dir / "F10_manifest.json").write_text(json.dumps(manifest, indent=2))
 
+    n_seeds_ppo = max((int(r.get("n_seeds", 0)) for r in ppo_rows), default=0)
     caption_path = out_dir / "F10_caption.md"
     caption_path.write_text(
         "**F10 — Sensitivity to environment difficulty.** Mean episodic "
-        "reward on `test_balanced` for trained PPO (blue, seeds × 250K "
-        "timesteps) and the recommended-action oracle rule (red, 1 "
-        "seed × 150 episodes) as a function of the tug-of-war de-escalation "
-        "success probability `p_down` (lower = harsher environment, where a "
-        "correct defender action is less likely to push the attacker back "
-        "down the kill chain). Shaded bands: 95 % bootstrap CIs. "
-        "Conceptually aligned with IoTWarden Fig. 6. (PLAN §3.1.5; D7.2.)\n"
+        "reward on `test_balanced` under the locked outcome reward contract "
+        f"for trained PPO (green, {n_seeds_ppo} seeds) and the "
+        "recommended-action oracle (grey, full observability) as a function "
+        "of the tug-of-war de-escalation success probability `p_down` "
+        "(lower = harsher environment, where a correct defender action is "
+        "less likely to push the attacker back down the kill chain). Shaded "
+        "bands: 95 % bootstrap CIs. (PLAN §3.1.5; D7.2.)\n"
     )
 
     logger.info(

@@ -34,6 +34,20 @@ What it checks (per step, in order):
 Acceptance (R1 PASS): every check returns OK or SKIP-with-rationale;
 no entry returns FAIL. The exit code is 0 iff no FAIL entries.
 
+SKIP taxonomy (expected, non-FAIL):
+
+- Detector input pins are bare relpaths (``features.npy``,
+  ``splits/train.idx.npy``) relative to the processed snapshot; they
+  are resolved against ``data/processed/ciciot2023/`` and verified
+  when that gitignored snapshot is materialised, else SKIP.
+- ``Falpha`` / ``Fcoupling`` inputs use *symbolic keys*
+  (``eval_manifest_alpha_00``, ``sweep_manifest``) rather than
+  filesystem paths, and reference gitignored per-seed run manifests
+  under ``runs/``. They carry no resolvable path and therefore always
+  SKIP; the corresponding figure values are independently re-checked
+  by the F10/F12/F15 chains, whose seed-level eval JSONLs *are* pinned
+  by path.
+
 Wallclock budget: ~5 seconds on a fresh checkout.
 """
 
@@ -154,8 +168,20 @@ def _walk_pin_entries(node: Any, prefix: str = "") -> list[tuple[str, dict[str, 
 # superseded by a newer SHA on disk. Each entry references the
 # Step-N mentor-review finding that documented the divergence and
 # the resolution narrative.
-_KNOWN_DIVERGENCES: dict[str, dict[str, str]] = {
+_KNOWN_DIVERGENCES: dict[tuple[str, str, str], dict[str, str]] = {
     # (label, path_str, recorded_sha) -> {actual_sha, finding_id, note}
+    #
+    # The CICIoT2023 splits manifest embeds a non-deterministic
+    # ``generated_at`` wall-clock timestamp, so its SHA is *expected* to
+    # drift on every regeneration even though the split content (seed 42,
+    # ratios 0.7/0.1/0.2, leakage-free OOD) is fully reproducible. The
+    # docs/results/dataset/manifest.json pin is re-baselined to the current
+    # machine-local generation; any further drift on another machine is a
+    # benign timestamp difference. The split *content* is verified by the
+    # internally-consistent split-index output SHAs inside the manifest, and
+    # by the labels.npy pin in the same docs manifest (which is content-only
+    # and stays OK). On a fresh clone data/processed/ is absent and the
+    # check SKIPs.
     (
         "dataset",
         "data/processed/ciciot2023/splits/manifest.json",
@@ -200,8 +226,19 @@ def _check_manifest(label: str, manifest_path: Path) -> tuple[int, int, int, int
         # Try absolute first; fall back to repo-relative.
         p = Path(path_str)
         if not p.is_absolute():
-            # First try repo-rel; then try manifest-dir-rel.
-            for candidate in (_ROOT / path_str, manifest_path.parent / path_str):
+            # Candidate roots, in priority order:
+            #   1. repo-relative (dataset/benchmark/ablation pins use full
+            #      repo-relative paths);
+            #   2. manifest-dir-relative;
+            #   3. the processed-dataset root — the detector manifest stores
+            #      bare relpaths (``features.npy``, ``splits/train.idx.npy``)
+            #      that are conventionally relative to the processed snapshot.
+            candidates = (
+                _ROOT / path_str,
+                manifest_path.parent / path_str,
+                _ROOT / "data/processed/ciciot2023" / path_str,
+            )
+            for candidate in candidates:
                 if candidate.exists():
                     p = candidate
                     break

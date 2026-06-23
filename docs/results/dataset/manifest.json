@@ -19,7 +19,7 @@
   "git_sha": "a69846f7ee70b8b1de70f4d5da8c7194aac5c196",
   "inputs": {
     "data/processed/ciciot2023/labels.npy": "fb6bbbdc3b5a35ba201e6d087fc135ac94325c4867ec5d40383d8f82ebb3f743",
-    "data/processed/ciciot2023/splits/manifest.json": "82aa12149d2e0ee5a2424a7da44719df885ac18495590344e6d393e22d72b5c5"
+    "data/processed/ciciot2023/splits/manifest.json": "5e426100e5ffab1a71a63e1a892917312f15a0017b9095f0608463a79cc5cd49"
   },
   "mlflow_run_ids": [],
   "outputs": {
@@ -31,5 +31,5 @@
   "produced_by": "scripts/data/plot_dataset_overview.py",
   "tier": "context",
   "title": "Dataset-Split overview (CICIoT2023, post-rebalance)",
-  "_note": "This manifest covers two figures (F0a, F0b) emitted by a single script run. The hash chain on outputs is unchanged from the original single-figure_id manifest produced at git_sha a69846f7. See docs/mentor_review/01_dataset.md §3 Finding 5 for the rationale behind splitting figure_id into figure_ids/figures."
+  "_note": "This manifest covers two figures (F0a, F0b) emitted by a single script run. The hash chain on outputs is unchanged from the original single-figure_id manifest produced at git_sha a69846f7. See docs/mentor_review/01_dataset.md §3 Finding 5 for the rationale behind splitting figure_id into figure_ids/figures. The splits/manifest.json input pin is re-baselined to the current leakage-fixed (post-3cd2fb9) generation; that file embeds a non-deterministic `generated_at` timestamp so its SHA is machine-local and is re-pinned per regeneration. The split *content* is fully reproducible (seed 42, ratios 0.7/0.1/0.2): all 15 split-index output SHAs are internally consistent and OOD classes are leakage-free. data/processed/ is gitignored, so on a fresh clone this input is absent and the check SKIPs."
 }

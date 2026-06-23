@@ -87,6 +87,12 @@ detector: derive-stages  ## Detector: train MLP + RF, emit F11 (~3-5 min).
 	$(PYTHON) -m scripts.detector.train_detector \
 	    --processed-dir $(DATA) --seed $(SEED)
 
+.PHONY: detector-figure
+detector-figure:  ## Detector: re-plot per_stage_recall (Fig 4.3) from F11_summary.json (no retrain).
+	$(PYTHON) -m scripts.detector.plot_per_stage_recall \
+	    --summary docs/results/stage-detector/F11_summary.json \
+	    --out-dir docs/results/stage-detector
+
 # -----------------------------------------------------------------------------
 # Blue Team — DQN/PPO/A2C × 10 seeds + F3/F4/T1
 # -----------------------------------------------------------------------------
@@ -125,6 +131,7 @@ blue-team-figures:  ## Blue-team: render F3, F4, T1 from runs/blue_team/.
 	    --out-dir docs/results/blue-team-training
 	$(PYTHON) -m scripts.blue_team.plot_action_dist \
 	    --runs-root $(BLUE_TEAM_RUNS_ROOT) \
+	    --force-algo ppo \
 	    --out-dir docs/results/blue-team-training
 	$(PYTHON) -m scripts.blue_team.dump_hparams \
 	    --runs-root $(BLUE_TEAM_RUNS_ROOT) \
@@ -181,9 +188,9 @@ ABLATION_OOD_N_DET_EPISODES ?= 300
 ABLATION_OOD_REWARD_MODE ?= outcome
 
 .PHONY: ablation-ood-smoke
-ablation-ood-smoke:  ## Ablation F15 smoke: 1 OOD class × 2 policies × 1 seed × 2 ep (~10 s).
+ablation-ood-smoke:  ## Ablation F15 smoke: 1 OOD class × 2 policies × 1 seed × 2 ep (~10 s). Writes to throwaway dir, never canonical.
 	$(PYTHON) -m scripts.ablation.run_ood_eval \
-	    --smoke --out-root $(ABLATION_OOD_RUNS_ROOT)
+	    --smoke --out-root runs/ablation/_smoke/ood
 
 .PHONY: ablation-ood-eval
 ablation-ood-eval:  ## Ablation: zero-day OOD eval, 10 held-out classes × 8 policies (~2 h CPU).
@@ -244,9 +251,9 @@ ABLATION_AGGR_RUNS_ROOT ?= runs/ablation/aggressiveness
 ABLATION_AGGR_TIMESTEPS ?= 250000
 
 .PHONY: ablation-aggressiveness-smoke
-ablation-aggressiveness-smoke:  ## Ablation F10 smoke: 2 p values × 1 seed × 5K (~30 s).
+ablation-aggressiveness-smoke:  ## Ablation F10 smoke: 2 p values × 1 seed × 5K (~30 s). Writes to throwaway dir, never canonical.
 	$(PYTHON) -m scripts.ablation.run_aggressiveness_sweep \
-	    --smoke --out-root $(ABLATION_AGGR_RUNS_ROOT)
+	    --smoke --out-root runs/ablation/_smoke/aggressiveness
 
 .PHONY: ablation-aggressiveness-sweep
 ablation-aggressiveness-sweep:  ## Ablation F10: PPO × 6 p values × 10 seeds + oracle rule (~1.5 h CPU).
@@ -266,6 +273,33 @@ ablation-aggressiveness-figure:  ## Ablation: render F10 from runs/ablation/aggr
 .PHONY: ablation-aggressiveness
 ablation-aggressiveness: ablation-aggressiveness-sweep ablation-aggressiveness-figure  ## Ablation F10: full sweep + figure.
 
+# F17 — Evasive-attacker sweep (on-contract outcome reward; locked overrides in runner)
+ABLATION_EVASION_RUNS_ROOT ?= runs/ablation/evasion
+ABLATION_EVASION_TIMESTEPS ?= 1500000
+
+.PHONY: ablation-evasion-smoke
+ablation-evasion-smoke:  ## Ablation F17 smoke: 2 evasion values × 1 seed × 5K (~30 s). Writes to throwaway dir, never canonical.
+	$(PYTHON) -m scripts.ablation.run_evasion_sweep \
+	    --smoke --out-root runs/ablation/_smoke/evasion
+
+.PHONY: ablation-evasion-sweep
+ablation-evasion-sweep:  ## Ablation F17: PPO × 4 evasion values × 10 seeds (~1 h CPU).
+	$(PYTHON) -m scripts.ablation.run_evasion_sweep \
+	    --seeds $(BLUE_TEAM_SEEDS) \
+	    --total-timesteps $(ABLATION_EVASION_TIMESTEPS) \
+	    --out-root $(ABLATION_EVASION_RUNS_ROOT) \
+	    --parallel $(ABLATION_PARALLEL) \
+	    --continue-on-failure
+
+.PHONY: ablation-evasion-figure
+ablation-evasion-figure:  ## Ablation: render F17 from runs/ablation/evasion/.
+	$(PYTHON) -m scripts.ablation.plot_evasion_sweep \
+	    --runs-root $(ABLATION_EVASION_RUNS_ROOT) \
+	    --out-dir $(ABLATION_OUT_DIR)
+
+.PHONY: ablation-evasion
+ablation-evasion: ablation-evasion-sweep ablation-evasion-figure  ## Ablation F17: full sweep + figure.
+
 # F12 — Security-vs-availability Pareto (plotter-only; reads F10 + benchmark)
 .PHONY: ablation-pareto
 ablation-pareto:  ## Ablation F12: render Pareto plot from F10 + benchmark outputs.
@@ -282,10 +316,10 @@ ablation-close:  ## Ablation: assemble G7 scoreboard + RESULTS.md skeleton.
 
 # Top-level ablation chains
 .PHONY: ablation-figures
-ablation-figures: ablation-ood-figure ablation-aggressiveness-figure ablation-pareto  ## Ablation: render F10/F12/F15 from existing runs/ablation/.
+ablation-figures: ablation-ood-figure ablation-aggressiveness-figure ablation-evasion-figure ablation-pareto  ## Ablation: render F10/F12/F15/F17 from existing runs/ablation/.
 
 .PHONY: ablation
-ablation: ablation-ood ablation-aggressiveness ablation-pareto  ## Ablation: full F10 + F12 + F15 (~7.5 h CPU walk-away).
+ablation: ablation-ood ablation-aggressiveness ablation-evasion ablation-pareto  ## Ablation: full F10 + F12 + F15 + F17 (~8.5 h CPU walk-away).
 
 .PHONY: train-rl
 train-rl:  ## Train a single RL agent (override ALGO=ppo|dqn|a2c).
@@ -326,11 +360,13 @@ export-figure-pdfs:  ## Wrap docs/results/**/F*.png into same-named F*.pdf (rast
 .PHONY: sync-figures
 sync-figures: export-figure-pdfs  ## Export PDFs then copy them from docs/results/ → tex/figs/
 	@echo "Syncing figures ..."
+	@cp docs/results/stage-detector/per_stage_recall.pdf tex/figs/ 2>/dev/null || true
 	@cp docs/results/blue-team-training/F3_*.pdf tex/figs/ 2>/dev/null || true
 	@cp docs/results/blue-team-training/F4_*.pdf tex/figs/ 2>/dev/null || true
 	@cp docs/results/ablation/F10_*.pdf tex/figs/ 2>/dev/null || true
 	@cp docs/results/ablation/F12_*.pdf tex/figs/ 2>/dev/null || true
 	@cp docs/results/ablation/F15_*.pdf tex/figs/ 2>/dev/null || true
+	@cp docs/results/ablation/F15b_recall_vs_advantage.png tex/figs/ 2>/dev/null || true
 	@cp docs/results/ablation/F17_*.pdf tex/figs/ 2>/dev/null || true
 	@echo "Done."
 

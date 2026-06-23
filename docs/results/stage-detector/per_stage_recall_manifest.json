@@ -1,0 +1,12 @@
+{
+  "version": "1.0",
+  "figure": "per_stage_recall",
+  "produced_by": "scripts/detector/plot_per_stage_recall.py",
+  "inputs": {
+    "F11_summary.json": "7c12a2bc8248efa01c590f8e3d68bbde81593ed19d296819ea9d9bfce6c5ecdf"
+  },
+  "outputs": {
+    "per_stage_recall.pdf": "66d5409b8c256ada591092f4c3d38b1cfa9d230414009ba28249420465635f4f",
+    "per_stage_recall.png": "e0c312aff50b06a918fc56a16bbd3f4e864d1fab2c443f139d8c45d89aafa35b"
+  }
+}

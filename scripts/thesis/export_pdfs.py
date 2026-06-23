@@ -1,20 +1,20 @@
 #!/usr/bin/env python3
-"""Export committed F-named figure PNGs to same-named PDFs for thesis staging.
+"""Export F-named figure PNGs to same-named PDFs for thesis staging.
 
-The figure plotters under ``scripts/`` all emit ``.png`` rasters into
-``docs/results/<area>/``. The thesis (``tex/``) consumes ``.pdf`` figures via
-``make sync-figures``. This script bridges the two by wrapping each committed
-``docs/results/**/F*.png`` into a same-named ``F*.pdf`` — a single raster image
-embedded at native resolution on a correctly-sized PDF page (aspect and DPI
-preserved). No plotter is modified.
+This script is a *fallback* bridge for figures whose plotter emits a ``.png``
+but no vector ``.pdf``. The redesigned plotters under ``scripts/`` write a true
+vector ``.pdf`` next to their ``.png`` (via ``scripts._plot_style.save_figure``);
+those vector PDFs are journal-quality and MUST NOT be clobbered by a raster
+wrap. Therefore this script only raster-wraps a PNG when **no sibling PDF
+exists at all** — a genuine vector PDF, once present, is always preserved.
 
-Only ``F*``-prefixed PNGs are exported; legacy-named PNGs (kept transiently for
-back-compat) are ignored so the PDF set is the canonical F-named one.
+Only ``F*``-prefixed PNGs are considered; legacy-named PNGs are ignored so the
+PDF set is the canonical F-named one.
 
 Usage
 -----
     python scripts/thesis/export_pdfs.py
-    python scripts/thesis/export_pdfs.py --check   # exit 1 if any PDF missing/stale
+    python scripts/thesis/export_pdfs.py --check   # exit 1 if any PDF missing
     make export-figure-pdfs
 """
 
@@ -39,8 +39,13 @@ def _find_pngs() -> list[Path]:
     return sorted(RESULTS_DIR.glob("*/F*.png"))
 
 
-def _is_stale(png: Path, pdf: Path) -> bool:
-    return (not pdf.exists()) or (png.stat().st_mtime > pdf.stat().st_mtime)
+def _needs_wrap(png: Path, pdf: Path) -> bool:
+    """Only wrap when there is no sibling PDF at all.
+
+    A sibling PDF is treated as a plotter-emitted vector figure and is always
+    preserved (never overwritten by a raster wrap), regardless of mtime.
+    """
+    return not pdf.exists()
 
 
 def _png_to_pdf(png: Path, pdf: Path) -> None:
@@ -70,30 +75,31 @@ def main(argv: list[str] | None = None) -> int:
         print("export_pdfs: no docs/results/*/F*.png figures found.")
         return 0
 
-    stale: list[Path] = []
+    missing: list[Path] = []
     written: list[Path] = []
     for png in pngs:
         pdf = png.with_suffix(".pdf")
         if args.check:
-            if _is_stale(png, pdf):
-                stale.append(pdf)
+            if _needs_wrap(png, pdf):
+                missing.append(pdf)
             continue
-        if _is_stale(png, pdf):
+        if _needs_wrap(png, pdf):
             _png_to_pdf(png, pdf)
             written.append(pdf)
 
     if args.check:
-        if stale:
-            print(f"export_pdfs --check: {len(stale)} stale/missing PDF(s):")
-            for p in stale:
-                print(f"  STALE: {p.relative_to(REPO_ROOT)}")
+        if missing:
+            print(f"export_pdfs --check: {len(missing)} missing PDF(s):")
+            for p in missing:
+                print(f"  MISSING: {p.relative_to(REPO_ROOT)}")
             return 1
-        print(f"export_pdfs --check: all {len(pngs)} F-named PDFs up-to-date.")
+        print(f"export_pdfs --check: all {len(pngs)} F-named PNGs have a sibling PDF.")
         return 0
 
     print(
-        f"export_pdfs: wrote {len(written)} PDF(s); "
-        f"{len(pngs) - len(written)} already fresh ({len(pngs)} F-named PNGs total)."
+        f"export_pdfs: raster-wrapped {len(written)} PNG(s) lacking a PDF; "
+        f"{len(pngs) - len(written)} already had a (vector) PDF "
+        f"({len(pngs)} F-named PNGs total)."
     )
     return 0
 

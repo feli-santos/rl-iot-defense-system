@@ -324,10 +324,16 @@ def _render(
     ood_classes: list[str],
     out_path: Path,
 ) -> None:
-    """4-panel grouped bar chart (one panel per OOD class)."""
-    import matplotlib
+    """Per-class grouped bar chart of PREVENTION RATE (one panel per OOD class).
 
-    matplotlib.use("Agg")
+    The security metric is the prevention rate (fraction of episodes in which
+    the attacker is held below the impact stage for the full horizon), matching
+    the thesis F15 narrative. Raw episodic reward is dominated by accumulated
+    step penalties on long episodes and is NOT plotted here.
+    """
+    from scripts._plot_style import ACCENT, apply_house_style, policy_style, save_figure
+
+    apply_house_style()
     import matplotlib.pyplot as plt
 
     by_class: dict[str, dict[str, dict[str, Any]]] = {c: {} for c in ood_classes}
@@ -337,82 +343,71 @@ def _render(
     n = len(ood_classes)
     n_cols = 2
     n_rows = (n + n_cols - 1) // n_cols
-    fig, axes = plt.subplots(n_rows, n_cols, figsize=(13.5, 4.5 * n_rows), squeeze=False)
+    fig, axes = plt.subplots(n_rows, n_cols, figsize=(11.0, 2.6 * n_rows), squeeze=False)
+
+    def _bar_colour(policy: str) -> str:
+        if policy == "ppo":
+            return ACCENT["primary"]  # the contribution, emphasised
+        if policy == "recommended_action":
+            return ACCENT["neutral"]  # full-observability oracle
+        if policy == "rf_acting":
+            return ACCENT["secondary"]  # supervised baseline (the foil)
+        if policy in _RL_ALGOS:
+            return policy_style(policy).get("color", ACCENT["muted"])
+        return ACCENT["muted"]  # heuristic baselines
 
     for ax_idx, ood_class in enumerate(ood_classes):
         ax = axes[ax_idx // n_cols][ax_idx % n_cols]
         cell = by_class.get(ood_class, {})
-        # Sort the displayed policies by mean_reward asc so the highest
-        # bar is at the top of each panel (mirrors F8 idiom).
+        # Sort displayed policies by prevention_rate asc so the strongest
+        # defender is at the top of each panel.
         present = [p for p in _POLICY_ORDER if p in cell]
-        present.sort(key=lambda p: cell[p]["mean_reward"])
+        present.sort(key=lambda p: cell[p].get("prevention_rate", 0.0))
 
         labels = [_DISPLAY.get(p, p) for p in present]
-        means = [cell[p]["mean_reward"] for p in present]
-        lo_err = [max(cell[p]["mean_reward"] - cell[p]["ci_low"], 0.0) for p in present]
-        hi_err = [max(cell[p]["ci_high"] - cell[p]["mean_reward"], 0.0) for p in present]
-        colours = [
-            (
-                "#dc2626"
-                if p == "recommended_action"  # oracle marker
-                else "#2563eb" if p in _RL_ALGOS else "#9ca3af"  # RL blue
-            )  # baselines grey
-            for p in present
-        ]
+        prevent = [float(cell[p].get("prevention_rate", 0.0)) for p in present]
+        colours = [_bar_colour(p) for p in present]
 
         bars = ax.barh(
             labels,
-            means,
-            xerr=[lo_err, hi_err],
+            prevent,
             color=colours,
-            edgecolor="black",
-            linewidth=0.5,
-            error_kw={"ecolor": "black", "capsize": 3, "lw": 0.8},
+            edgecolor="white",
+            linewidth=0.6,
         )
-        for bar, m in zip(bars, means):
-            x = m + 30.0
+        for bar, v in zip(bars, prevent):
+            if not math.isfinite(v):
+                continue
             ax.text(
-                x,
+                min(v + 0.02, 0.98),
                 bar.get_y() + bar.get_height() / 2,
-                f"{m:.0f}",
+                f"{v:.2f}",
                 va="center",
                 ha="left",
                 fontsize=7,
             )
 
         ax.set_title(ood_class, fontsize=10)
+        ax.set_xlim(0.0, 1.0)
         ax.grid(True, axis="x", linestyle=":", alpha=0.4)
-        # Guard against partial / smoke output where some cells are NaN.
-        finite_xs = [
-            (m - lo, m + hi)
-            for m, lo, hi in zip(means, lo_err, hi_err)
-            if math.isfinite(m) and math.isfinite(lo) and math.isfinite(hi)
-        ]
-        if finite_xs:
-            xmin = min(p[0] for p in finite_xs)
-            xmax = max(p[1] for p in finite_xs)
-            ax.set_xlim(xmin - 80, xmax + 250)
+
+    # Shared x-label on the bottom row only.
+    for c in range(n_cols):
+        last_row = (n - 1) // n_cols if c <= (n - 1) % n_cols else (n - 1) // n_cols - 1
+        if last_row >= 0:
+            axes[last_row][c].set_xlabel("Prevention rate (held below impact)")
 
     # Hide any unused subplot.
     for k in range(n, n_rows * n_cols):
         axes[k // n_cols][k % n_cols].axis("off")
 
     fig.suptitle(
-        "F15 — OOD-class robustness (mean episodic reward, 95 % bootstrap CI)",
+        "Out-of-distribution prevention rate across ten held-out zero-day classes",
         fontsize=12,
         y=1.0,
     )
-    fig.text(
-        0.5,
-        -0.01,
-        "audit-AF1 · trained-RL recovery of supervised-detector OOD blind spots · "
-        "detector RF recall on VulnerabilityScan = 0.001",
-        ha="center",
-        fontsize=8,
-        style="italic",
-    )
     fig.tight_layout()
-    fig.savefig(out_path, dpi=200, bbox_inches="tight")
+    save_figure(fig, out_path)
     plt.close(fig)
 
 
@@ -497,9 +492,9 @@ def _render_recall_vs_advantage(
     spots — predicts the advantage rises as detector recall falls (a negative
     slope / upper-left cluster). Returns the plotted point table for the JSON.
     """
-    import matplotlib
+    from scripts._plot_style import ACCENT, apply_house_style, save_figure
 
-    matplotlib.use("Agg")
+    apply_house_style()
     import matplotlib.pyplot as plt
 
     by_cp = {(r["ood_class"], r["policy"]): r for r in rows}
@@ -531,8 +526,8 @@ def _render_recall_vs_advantage(
     if points:
         xs = [p["rf_recall"] for p in points]
         ys = [p["advantage"] for p in points]
-        ax.axhline(0.0, color="#9ca3af", lw=0.8, ls="--")
-        ax.scatter(xs, ys, c="#2563eb", edgecolor="black", s=60, zorder=3)
+        ax.axhline(0.0, color=ACCENT["muted"], lw=0.8, ls="--")
+        ax.scatter(xs, ys, c=ACCENT["primary"], edgecolor="white", s=60, zorder=3)
         for p in points:
             ax.annotate(
                 p["ood_class"],
@@ -546,7 +541,7 @@ def _render_recall_vs_advantage(
     ax.set_title("Detector-independence dividend: RL advantage vs detector recall")
     ax.grid(True, linestyle=":", alpha=0.4)
     fig.tight_layout()
-    fig.savefig(out_path, dpi=200, bbox_inches="tight")
+    save_figure(fig, out_path)
     plt.close(fig)
     return {"metric": metric, "points": points}
 
@@ -654,9 +649,11 @@ def main(argv: list[str] | None = None) -> int:
     out_dir = Path(args.out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    # Render the figure.
-    png_path = out_dir / "F15_ood_robustness.png"
-    _render(rows, list(args.ood_classes), png_path)
+    # Render the figure (save_figure derives both .pdf and .png from the base).
+    fig_base = out_dir / "F15_ood_robustness"
+    _render(rows, list(args.ood_classes), fig_base)
+    png_path = fig_base.with_suffix(".png")
+    pdf_path = fig_base.with_suffix(".pdf")
 
     # Detector-independence figure: per-class RF recall vs RL-minus-RF advantage.
     from scripts.ablation.run_ood_eval import _OOD_STAGE_BY_CLASS
@@ -667,14 +664,16 @@ def main(argv: list[str] | None = None) -> int:
         dataset_dir=Path(args.dataset_dir),
         stage_by_class=_OOD_STAGE_BY_CLASS,
     )
-    recall_png = out_dir / "F15b_recall_vs_advantage.png"
+    recall_base = out_dir / "F15b_recall_vs_advantage"
     recall_fig = _render_recall_vs_advantage(
         rows,
         recall_by_class,
         list(args.ood_classes),
-        recall_png,
+        recall_base,
         metric=args.advantage_metric,
     )
+    recall_png = recall_base.with_suffix(".png")
+    recall_pdf = recall_base.with_suffix(".pdf")
 
     # Evaluate gates.
     g78 = _evaluate_g78(rows, list(args.ood_classes), list(args.policies))
@@ -711,7 +710,11 @@ def main(argv: list[str] | None = None) -> int:
         "git_sha": _git_sha(),
         "audit_finding": "AF1",
         "outputs": {
+            "pdf": str(pdf_path),
+            "pdf_sha256": _sha256(pdf_path),
             "png": str(png_path),
+            "recall_vs_advantage_pdf": str(recall_pdf),
+            "recall_vs_advantage_pdf_sha256": _sha256(recall_pdf),
             "recall_vs_advantage_png": str(recall_png),
             "json": str(out_dir / "F15_summary.json"),
         },
@@ -743,18 +746,20 @@ def main(argv: list[str] | None = None) -> int:
     caption_path = out_dir / "F15_caption.md"
     if not caption_path.exists():
         caption_path.write_text(
-            "**F15 — Zero-day (out-of-distribution) robustness.** Mean "
-            "episodic reward of every defence policy when each of the ten "
-            "held-out attack classes is injected eval-only on the frozen "
-            "agents, at the same finite-budget operating point as the "
-            "held-out benchmark. The held-out classes span the detector's "
-            "recall spectrum, from near-perfect to the `VulnerabilityScan` "
-            "blind spot (supervised RF recall ≈ 0.001). Because the trained "
-            "RL agent acts on raw features rather than the detector's "
-            "stage label, it degrades gracefully where the detector-coupled "
-            "RF-Acting baseline collapses; the companion figure plots this "
-            "RL-minus-RF advantage against per-class detector recall. Error "
-            "bars are 95 % bootstrap CIs.\n"
+            "**F15 — Zero-day (out-of-distribution) robustness.** Prevention "
+            "rate (fraction of episodes in which the attacker is held below "
+            "the impact stage for the full horizon) of every defence policy "
+            "when each of the ten held-out attack classes is injected "
+            "eval-only on the frozen agents, under the locked outcome reward "
+            "contract. Prevention rate is reported in preference to raw "
+            "episodic reward, which is dominated by accumulated step "
+            "penalties over long episodes. The held-out classes span the "
+            "detector's recall spectrum, from near-perfect to the "
+            "`VulnerabilityScan` blind spot. Because the trained RL agent "
+            "acts on raw features rather than the detector's stage label, it "
+            "degrades gracefully where the detector-coupled RF-Acting "
+            "baseline collapses; the companion figure plots this RL-minus-RF "
+            "advantage against per-class detector recall.\n"
         )
 
     logger.info(

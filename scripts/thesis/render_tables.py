@@ -27,6 +27,8 @@ from pathlib import Path
 
 FALPHA = Path("docs/results/ablation/Falpha_summary.json")
 FCOUPLING = Path("docs/results/ablation/Fcoupling_summary.json")
+FTEN = Path("docs/results/ablation/F10_summary.json")
+FSEVENTEEN = Path("docs/results/ablation/F17_summary.json")
 TEST_COUNT = Path("docs/results/test_count.json")
 
 # Spelled-out alpha keys (LaTeX macro names cannot contain digits or dots).
@@ -35,6 +37,24 @@ _ALPHA_WORD = {
     "0.2": "Two",
     "0.4": "Four",
     "0.6": "Six",
+}
+
+# Spelled-out p_down sweep points (LaTeX macro names cannot contain digits/dots).
+_PDOWN_WORD = {
+    0.0: "Zero",
+    0.2: "Two",
+    0.4: "Four",
+    0.6: "Six",
+    0.8: "Eight",
+    1.0: "One",
+}
+
+# Spelled-out evasion sweep points.
+_EVASION_WORD = {
+    0.0: "Zero",
+    0.25: "TwentyFive",
+    0.5: "Fifty",
+    0.75: "SeventyFive",
 }
 
 
@@ -56,6 +76,55 @@ def _newcmd(name: str, value: str) -> str:
 # ---------------------------------------------------------------------------
 # Macro rendering
 # ---------------------------------------------------------------------------
+
+
+def _render_aggressiveness_numbers() -> list[str]:
+    """F10 environment-difficulty sweep: PPO reward + CI at each p_down point.
+
+    Emits ``\\Ften<Word>{PPO,PPOCILow,PPOCIHigh}`` for every swept p_down so the
+    Section 4.6 prose (results.tex) can cite the harshest, an intermediate, and
+    the easiest setting mechanically instead of by hand.
+    """
+    if not FTEN.exists():
+        return []
+    f10 = _load(FTEN)
+    lines: list[str] = ["% --- F10 environment-difficulty sweep (PPO) ---"]
+    ppo_by_p = {round(float(r["p"]), 2): r for r in f10.get("ppo_rows", [])}
+    for p, word in _PDOWN_WORD.items():
+        row = ppo_by_p.get(round(p, 2))
+        if row is None:
+            continue
+        lines.append(_newcmd(f"Ften{word}PPO", f"{row['mean_reward']:+0.1f}"))
+        lines.append(_newcmd(f"Ften{word}PPOCILow", f"{row['ci_low']:+0.1f}"))
+        lines.append(_newcmd(f"Ften{word}PPOCIHigh", f"{row['ci_high']:+0.1f}"))
+    return lines
+
+
+def _render_evasion_numbers() -> list[str]:
+    """F17 evasion-before-commit sweep: PPO reward + compromise at each evasion.
+
+    Emits ``\\Fseventeen<Word>{Reward,Compromise}`` per evasion point plus the
+    headline degradation macros the Section 4.6 prose cites (reward at the
+    reference vs. the most evasive attacker, and the lower-CI degradation).
+    """
+    if not FSEVENTEEN.exists():
+        return []
+    f17 = _load(FSEVENTEEN)
+    lines: list[str] = ["% --- F17 evasion-before-commit sweep (PPO) ---"]
+    rows_by_e = {round(float(r["evasion_prob"]), 2): r for r in f17.get("rows", [])}
+    for e, word in _EVASION_WORD.items():
+        row = rows_by_e.get(round(e, 2))
+        if row is None:
+            continue
+        lines.append(_newcmd(f"Fseventeen{word}Reward", f"{row['mean_reward']:+0.1f}"))
+        lines.append(_newcmd(f"Fseventeen{word}Compromise", f"{row['compromise_rate']:0.3f}"))
+    # Lower-CI degradation between the reference (evasion=0) and the most evasive
+    # attacker, as reported by the G7.10 robustness gate.
+    gate = f17.get("gates", {}).get("G7.10", {})
+    deg = gate.get("ci_low_degradation")
+    if deg is not None:
+        lines.append(_newcmd("FseventeenCILowDegradation", f"{abs(float(deg)):0.1f}"))
+    return lines
 
 
 def _render_numbers() -> str:
@@ -119,6 +188,11 @@ def _render_numbers() -> str:
             f"{fc['per_mode']['outcome']['per_algo']['dqn']['mean_reward']:+0.1f}",
         )
     )
+
+    # Environment-difficulty (F10) and evasion (F17) sweep macros, emitted only
+    # when their canonical summaries exist (regenerated after the sweeps re-run).
+    lines.extend(_render_aggressiveness_numbers())
+    lines.extend(_render_evasion_numbers())
 
     # Test count (sidecar JSON; canonical pytest count).
     if TEST_COUNT.exists():

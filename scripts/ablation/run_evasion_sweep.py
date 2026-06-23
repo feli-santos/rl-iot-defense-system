@@ -1,8 +1,10 @@
 """ablation F17 — Evasion-reactive sweep driver (prevention pivot).
 
-Sweeps ``evasion_prob ∈ {0.0, 0.25, 0.5, 0.75}`` × PPO only × N seeds ×
-250K timesteps, all under the primary ``impact_is_terminal=False`` contract.
-Total: 4 × N runs.
+Sweeps ``evasion_prob ∈ {0.0, 0.25, 0.5, 0.75}`` × PPO only × 10 seeds,
+all under the LOCKED primary reward contract (``reward_mode='outcome'``,
+``impact_is_terminal=False``, ``aliasing_rate=0.4``) at a 1.5M-timestep
+cap with eval-plateau early-stopping, so F17 numbers are directly
+comparable to the Chapter 4 headline. Total: 4 × 10 runs.
 
 ``evasion_prob`` models an *evasive* attacker (adversarial_env.py
 "evasion-before-commit"): when the defender has recently applied force
@@ -55,6 +57,30 @@ _ROOT = Path(__file__).resolve().parents[2]
 _DEFAULT_EVASION_VALUES: list[float] = [0.0, 0.25, 0.5, 0.75]
 
 
+# Locked primary reward contract (matches the headline redesign sweep). F17
+# MUST train + evaluate under this contract so its numbers are directly
+# comparable to Chapter 4; the swept knob (evasion_prob) is merged on top per
+# cell. Previously this sweep inherited the EnvConfigSerializable dataclass
+# defaults (reward_mode='coupled', impact_is_terminal=True, aliasing_rate=0.0),
+# which is OFF-CONTRACT. NOTE: attacker_budget no longer exists (finite
+# intrusion budget was retired); the budget=40 mentioned in old docstrings is
+# obsolete.
+_CONTRACT_OVERRIDES: dict[str, Any] = {
+    "reward_mode": "outcome",
+    "aliasing_rate": 0.4,
+    "no_post_transition_leak": True,
+    "proximity_coupled": True,
+    "impact_is_terminal": False,
+}
+
+
+def _cell_overrides(e: float) -> dict[str, Any]:
+    """Canonical on-contract override set for an F17 cell at evasion_prob=e."""
+    merged = dict(_CONTRACT_OVERRIDES)
+    merged["evasion_prob"] = e
+    return merged
+
+
 def _sha256(path: Path) -> str | None:
     p = Path(path)
     if not p.exists():
@@ -87,14 +113,14 @@ def _e_slug(e: float) -> str:
 
 
 def _overrides_json(e: float) -> str:
-    return json.dumps({"evasion_prob": e})
+    return json.dumps(_cell_overrides(e))
 
 
 # --------------------------------------------------------------------- per-cell
 
 
 def _train_ppo(args: argparse.Namespace, e: float, seed: int) -> dict[str, Any]:
-    """Train PPO at evasion_prob=e (budget=40) for one seed."""
+    """Train PPO at evasion_prob=e under the locked outcome contract."""
     out_dir = Path(args.out_root) / f"ppo_e{_e_slug(e)}" / f"seed_{seed}"
     out_dir.mkdir(parents=True, exist_ok=True)
     log_path = out_dir / "train.log"
@@ -119,8 +145,6 @@ def _train_ppo(args: argparse.Namespace, e: float, seed: int) -> dict[str, Any]:
         args.dataset_path,
         "--splits-manifest",
         args.splits_manifest,
-        "--impact-is-terminal",
-        "false",
         "--reward-overrides",
         _overrides_json(e),
         "--verbose",
@@ -195,16 +219,15 @@ def _eval_ppo_on_test(
         manifest = json.loads(run_manifest_path.read_text())
         spec = EnvConfigSerializable(**manifest["eval_env"])
         spec.split = "test_balanced"
-        # Belt-and-braces: ensure the eval cell carries evasion even
-        # if the manifest round-trip dropped it (metadata-gap guard).
-        spec.evasion_prob = e
-        spec.impact_is_terminal = False
+        # Belt-and-braces: ensure the eval cell carries the on-contract
+        # knobs even if the manifest round-trip dropped them.
+        for _k, _v in _cell_overrides(e).items():
+            setattr(spec, _k, _v)
     else:
         spec = EnvConfigSerializable(
             split="test_balanced",
             exclude_ood=True,
-            evasion_prob=e,
-            impact_is_terminal=False,
+            **_cell_overrides(e),
         )
     env = make_eval_env(
         spec=spec,
@@ -247,8 +270,8 @@ def _build_argparser() -> argparse.ArgumentParser:
         type=float,
         default=_DEFAULT_EVASION_VALUES,
     )
-    p.add_argument("--seeds", nargs="+", type=int, default=[0, 1, 2, 3, 4])
-    p.add_argument("--total-timesteps", type=int, default=250_000)
+    p.add_argument("--seeds", nargs="+", type=int, default=[0, 1, 2, 3, 4, 5, 6, 7, 8, 9])
+    p.add_argument("--total-timesteps", type=int, default=1_500_000)
     p.add_argument("--eval-freq", type=int, default=25_000)
     p.add_argument("--n-eval-episodes", type=int, default=300)
     p.add_argument("--out-root", default="runs/ablation/evasion")

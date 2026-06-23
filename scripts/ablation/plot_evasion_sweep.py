@@ -8,7 +8,7 @@ contract:
 
   x-axis:  evasion_prob ∈ {0.0, 0.25, 0.5, 0.75}
   y-axis:  mean episodic reward on test_balanced (95 % bootstrap CI)
-  curve:   trained PPO (across N seeds, 250K timesteps)
+  curve:   trained PPO (across N seeds, on-contract outcome reward)
 
 ``evasion_prob`` models an *evasive* attacker (adversarial_env.py
 "evasion-before-commit"): when the defender has recently applied force
@@ -47,6 +47,7 @@ from typing import Any
 
 import numpy as np
 
+from scripts._plot_style import ACCENT, apply_house_style, save_figure
 from src.blue_team.aggregation import bootstrap_ci, read_episodes_jsonl
 
 logger = logging.getLogger("scripts.ablation.plot_evasion_sweep")
@@ -235,38 +236,39 @@ def _evaluate_g710(
 
 
 def _render(rows: list[dict[str, Any]], out_path: Path) -> None:
-    import matplotlib
-
-    matplotlib.use("Agg")
+    apply_house_style()
     import matplotlib.pyplot as plt
 
     rows = sorted(rows, key=lambda r: r["evasion_prob"])
+    n_seeds = max((int(r.get("n_seeds", 0) or 0) for r in rows), default=0)
+    seed_lbl = f"PPO ({n_seeds} seeds)" if n_seeds else "PPO"
 
-    fig, ax = plt.subplots(figsize=(8.5, 5.0))
+    fig, ax = plt.subplots(figsize=(7.0, 4.6))
 
     xs = [r["evasion_prob"] for r in rows]
     means = [r["mean_reward"] for r in rows]
     lo = [r["ci_low"] for r in rows]
     hi = [r["ci_high"] for r in rows]
-    ax.plot(xs, means, "o-", color="#2563eb", label="PPO (250K timesteps)", linewidth=1.8)
-    ax.fill_between(xs, lo, hi, alpha=0.18, color="#2563eb")
+    ax.plot(
+        xs,
+        means,
+        marker="o",
+        color=ACCENT["primary"],
+        label=seed_lbl,
+        linewidth=2.4,
+        zorder=5,
+    )
+    ax.fill_between(xs, lo, hi, alpha=0.18, color=ACCENT["primary"], zorder=1)
 
-    ax.set_xlabel(
-        "evasion_prob (attacker stall-on-force probability at RECON/ACCESS)",
-        fontsize=10,
-    )
-    ax.set_ylabel("Mean episodic reward on test_balanced (95 % bootstrap CI)", fontsize=10)
-    ax.set_title(
-        "F17 — Defender robustness to an evasive attacker (budget=40)",
-        fontsize=11,
-    )
-    ax.grid(True, linestyle=":", alpha=0.4)
-    ax.legend(loc="best", fontsize=9, framealpha=0.95)
+    ax.axhline(0.0, color=ACCENT["muted"], lw=0.8, ls=":", zorder=0)
+    ax.set_xlabel("Attacker evasion probability (stall-on-force at RECON/ACCESS)")
+    ax.set_ylabel("Mean episodic reward on test_balanced")
+    ax.set_title("Defender robustness to an evasive attacker")
+    ax.legend(loc="best", framealpha=0.9)
     if xs:
         ax.set_xticks(xs)
 
-    fig.tight_layout()
-    fig.savefig(out_path, dpi=200, bbox_inches="tight")
+    save_figure(fig, out_path)
     plt.close(fig)
 
 
@@ -307,8 +309,10 @@ def main(argv: list[str] | None = None) -> int:
 
     out_dir = Path(args.out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
-    png_path = out_dir / "F17_evasion_sweep.png"
-    _render(rows, png_path)
+    fig_base = out_dir / "F17_evasion_sweep"
+    _render(rows, fig_base)
+    pdf_path = fig_base.with_suffix(".pdf")
+    png_path = fig_base.with_suffix(".png")
 
     g710 = _evaluate_g710(rows, robust_tol=args.robust_tol)
     summary = {
@@ -328,6 +332,8 @@ def main(argv: list[str] | None = None) -> int:
         "figure": "F17",
         "git_sha": _git_sha(),
         "outputs": {
+            "pdf": str(pdf_path),
+            "pdf_sha256": _sha256(pdf_path),
             "png": str(png_path),
             "json": str(out_dir / "F17_summary.json"),
         },
@@ -345,8 +351,8 @@ def main(argv: list[str] | None = None) -> int:
     if not caption_path.exists():
         caption_path.write_text(
             "**F17 — Defender robustness to an evasive attacker.** Mean "
-            "episodic reward on `test_balanced` for PPO (blue, 250K "
-            "timesteps) trained and evaluated against an *evasive* attacker "
+            "episodic reward on `test_balanced` for PPO (green) trained and "
+            "evaluated against an *evasive* attacker "
             "as a function of `evasion_prob` (the probability the attacker "
             "stalls in place at RECON/ACCESS when the defender has recently "
             "applied force). Shaded band: "

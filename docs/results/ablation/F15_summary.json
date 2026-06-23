@@ -21,9 +21,9 @@
     "dqn",
     "ppo",
     "a2c",
-    "always_block",
     "random",
-    "always_observe"
+    "always_observe",
+    "always_block"
   ],
   "rows": [
     {
@@ -31,11 +31,11 @@
       "policy": "recommended_action",
       "n_seeds": 1,
       "n_episodes": 150,
-      "mean_reward": 194.7926666666667,
-      "ci_low": 194.6493166666667,
-      "ci_high": 194.94466666666665,
+      "mean_reward": 144.86533333333335,
+      "ci_low": 144.73600000000002,
+      "ci_high": 144.99466666666666,
       "compromise_rate": 0.0,
-      "prevention_rate": 1.0,
+      "prevention_rate": 0.0,
       "mitigated_impact_rate": 0.0,
       "mean_episode_length": 100.0
     },
@@ -44,13 +44,13 @@
       "policy": "rf_acting",
       "n_seeds": 1,
       "n_episodes": 150,
-      "mean_reward": 79.02266666666667,
-      "ci_low": 59.30653333333332,
-      "ci_high": 97.43821666666668,
-      "compromise_rate": 0.82,
-      "prevention_rate": 0.18,
-      "mitigated_impact_rate": 0.5733333333333334,
-      "mean_episode_length": 58.306666666666665
+      "mean_reward": 117.86133333333333,
+      "ci_low": 117.09665,
+      "ci_high": 118.62876666666664,
+      "compromise_rate": 0.0,
+      "prevention_rate": 0.0,
+      "mitigated_impact_rate": 0.0,
+      "mean_episode_length": 100.0
     },
     {
       "ood_class": "VulnerabilityScan",
@@ -93,19 +93,6 @@
     },
     {
       "ood_class": "VulnerabilityScan",
-      "policy": "always_block",
-      "n_seeds": 1,
-      "n_episodes": 150,
-      "mean_reward": 0.0,
-      "ci_low": 0.0,
-      "ci_high": 0.0,
-      "compromise_rate": 0.0,
-      "prevention_rate": 1.0,
-      "mitigated_impact_rate": 0.0,
-      "mean_episode_length": 100.0
-    },
-    {
-      "ood_class": "VulnerabilityScan",
       "policy": "random",
       "n_seeds": 5,
       "n_episodes": 150,
@@ -129,6 +116,19 @@
       "prevention_rate": 0.0,
       "mitigated_impact_rate": 0.0,
       "mean_episode_length": 21.246666666666666
+    },
+    {
+      "ood_class": "VulnerabilityScan",
+      "policy": "always_block",
+      "n_seeds": 1,
+      "n_episodes": 150,
+      "mean_reward": 0.0,
+      "ci_low": 0.0,
+      "ci_high": 0.0,
+      "compromise_rate": 0.0,
+      "prevention_rate": 1.0,
+      "mitigated_impact_rate": 0.0,
+      "mean_episode_length": 100.0
     },
     {
       "ood_class": "Recon-OSScan",
@@ -197,19 +197,6 @@
     },
     {
       "ood_class": "Recon-OSScan",
-      "policy": "always_block",
-      "n_seeds": 1,
-      "n_episodes": 150,
-      "mean_reward": 0.0,
-      "ci_low": 0.0,
-      "ci_high": 0.0,
-      "compromise_rate": 0.0,
-      "prevention_rate": 1.0,
-      "mitigated_impact_rate": 0.0,
-      "mean_episode_length": 100.0
-    },
-    {
-      "ood_class": "Recon-OSScan",
       "policy": "random",
       "n_seeds": 5,
       "n_episodes": 150,
@@ -233,6 +220,19 @@
       "prevention_rate": 0.0,
       "mitigated_impact_rate": 0.0,
       "mean_episode_length": 21.38
+    },
+    {
+      "ood_class": "Recon-OSScan",
+      "policy": "always_block",
+      "n_seeds": 1,
+      "n_episodes": 150,
+      "mean_reward": 0.0,
+      "ci_low": 0.0,
+      "ci_high": 0.0,
+      "compromise_rate": 0.0,
+      "prevention_rate": 1.0,
+      "mitigated_impact_rate": 0.0,
+      "mean_episode_length": 100.0
     },
     {
       "ood_class": "XSS",
@@ -301,19 +301,6 @@
     },
     {
       "ood_class": "XSS",
-      "policy": "always_block",
-      "n_seeds": 1,
-      "n_episodes": 150,
-      "mean_reward": 0.0,
-      "ci_low": 0.0,
-      "ci_high": 0.0,
-      "compromise_rate": 0.0,
-      "prevention_rate": 1.0,
-      "mitigated_impact_rate": 0.0,
-      "mean_episode_length": 100.0
-    },
-    {
-      "ood_class": "XSS",
       "policy": "random",
       "n_seeds": 5,
       "n_episodes": 150,
@@ -337,6 +324,19 @@
       "prevention_rate": 0.0,
       "mitigated_impact_rate": 0.0,
       "mean_episode_length": 21.36
+    },
+    {
+      "ood_class": "XSS",
+      "policy": "always_block",
+      "n_seeds": 1,
+      "n_episodes": 150,
+      "mean_reward": 0.0,
+      "ci_low": 0.0,
+      "ci_high": 0.0,
+      "compromise_rate": 0.0,
+      "prevention_rate": 1.0,
+      "mitigated_impact_rate": 0.0,
+      "mean_episode_length": 100.0
     },
     {
       "ood_class": "SqlInjection",
@@ -405,19 +405,6 @@
     },
     {
       "ood_class": "SqlInjection",
-      "policy": "always_block",
-      "n_seeds": 1,
-      "n_episodes": 150,
-      "mean_reward": 0.0,
-      "ci_low": 0.0,
-      "ci_high": 0.0,
-      "compromise_rate": 0.0,
-      "prevention_rate": 1.0,
-      "mitigated_impact_rate": 0.0,
-      "mean_episode_length": 100.0
-    },
-    {
-      "ood_class": "SqlInjection",
       "policy": "random",
       "n_seeds": 5,
       "n_episodes": 150,
@@ -441,6 +428,19 @@
       "prevention_rate": 0.0,
       "mitigated_impact_rate": 0.0,
       "mean_episode_length": 21.293333333333333
+    },
+    {
+      "ood_class": "SqlInjection",
+      "policy": "always_block",
+      "n_seeds": 1,
+      "n_episodes": 150,
+      "mean_reward": 0.0,
+      "ci_low": 0.0,
+      "ci_high": 0.0,
+      "compromise_rate": 0.0,
+      "prevention_rate": 1.0,
+      "mitigated_impact_rate": 0.0,
+      "mean_episode_length": 100.0
     },
     {
       "ood_class": "Mirai-udpplain",
@@ -509,19 +509,6 @@
     },
     {
       "ood_class": "Mirai-udpplain",
-      "policy": "always_block",
-      "n_seeds": 1,
-      "n_episodes": 150,
-      "mean_reward": 0.0,
-      "ci_low": 0.0,
-      "ci_high": 0.0,
-      "compromise_rate": 0.0,
-      "prevention_rate": 1.0,
-      "mitigated_impact_rate": 0.0,
-      "mean_episode_length": 100.0
-    },
-    {
-      "ood_class": "Mirai-udpplain",
       "policy": "random",
       "n_seeds": 5,
       "n_episodes": 150,
@@ -545,6 +532,19 @@
       "prevention_rate": 0.0,
       "mitigated_impact_rate": 0.0,
       "mean_episode_length": 21.326666666666668
+    },
+    {
+      "ood_class": "Mirai-udpplain",
+      "policy": "always_block",
+      "n_seeds": 1,
+      "n_episodes": 150,
+      "mean_reward": 0.0,
+      "ci_low": 0.0,
+      "ci_high": 0.0,
+      "compromise_rate": 0.0,
+      "prevention_rate": 1.0,
+      "mitigated_impact_rate": 0.0,
+      "mean_episode_length": 100.0
     },
     {
       "ood_class": "DNS_Spoofing",
@@ -613,19 +613,6 @@
     },
     {
       "ood_class": "DNS_Spoofing",
-      "policy": "always_block",
-      "n_seeds": 1,
-      "n_episodes": 150,
-      "mean_reward": 0.0,
-      "ci_low": 0.0,
-      "ci_high": 0.0,
-      "compromise_rate": 0.0,
-      "prevention_rate": 1.0,
-      "mitigated_impact_rate": 0.0,
-      "mean_episode_length": 100.0
-    },
-    {
-      "ood_class": "DNS_Spoofing",
       "policy": "random",
       "n_seeds": 5,
       "n_episodes": 150,
@@ -649,6 +636,19 @@
       "prevention_rate": 0.0,
       "mitigated_impact_rate": 0.0,
       "mean_episode_length": 21.313333333333333
+    },
+    {
+      "ood_class": "DNS_Spoofing",
+      "policy": "always_block",
+      "n_seeds": 1,
+      "n_episodes": 150,
+      "mean_reward": 0.0,
+      "ci_low": 0.0,
+      "ci_high": 0.0,
+      "compromise_rate": 0.0,
+      "prevention_rate": 1.0,
+      "mitigated_impact_rate": 0.0,
+      "mean_episode_length": 100.0
     },
     {
       "ood_class": "DDoS-HTTP_Flood",
@@ -717,19 +717,6 @@
     },
     {
       "ood_class": "DDoS-HTTP_Flood",
-      "policy": "always_block",
-      "n_seeds": 1,
-      "n_episodes": 150,
-      "mean_reward": 0.0,
-      "ci_low": 0.0,
-      "ci_high": 0.0,
-      "compromise_rate": 0.0,
-      "prevention_rate": 1.0,
-      "mitigated_impact_rate": 0.0,
-      "mean_episode_length": 100.0
-    },
-    {
-      "ood_class": "DDoS-HTTP_Flood",
       "policy": "random",
       "n_seeds": 5,
       "n_episodes": 150,
@@ -753,6 +740,19 @@
       "prevention_rate": 0.0,
       "mitigated_impact_rate": 0.0,
       "mean_episode_length": 21.273333333333333
+    },
+    {
+      "ood_class": "DDoS-HTTP_Flood",
+      "policy": "always_block",
+      "n_seeds": 1,
+      "n_episodes": 150,
+      "mean_reward": 0.0,
+      "ci_low": 0.0,
+      "ci_high": 0.0,
+      "compromise_rate": 0.0,
+      "prevention_rate": 1.0,
+      "mitigated_impact_rate": 0.0,
+      "mean_episode_length": 100.0
     },
     {
       "ood_class": "DoS-SYN_Flood",
@@ -821,19 +821,6 @@
     },
     {
       "ood_class": "DoS-SYN_Flood",
-      "policy": "always_block",
-      "n_seeds": 1,
-      "n_episodes": 150,
-      "mean_reward": 0.0,
-      "ci_low": 0.0,
-      "ci_high": 0.0,
-      "compromise_rate": 0.0,
-      "prevention_rate": 1.0,
-      "mitigated_impact_rate": 0.0,
-      "mean_episode_length": 100.0
-    },
-    {
-      "ood_class": "DoS-SYN_Flood",
       "policy": "random",
       "n_seeds": 5,
       "n_episodes": 150,
@@ -857,6 +844,19 @@
       "prevention_rate": 0.0,
       "mitigated_impact_rate": 0.0,
       "mean_episode_length": 21.273333333333333
+    },
+    {
+      "ood_class": "DoS-SYN_Flood",
+      "policy": "always_block",
+      "n_seeds": 1,
+      "n_episodes": 150,
+      "mean_reward": 0.0,
+      "ci_low": 0.0,
+      "ci_high": 0.0,
+      "compromise_rate": 0.0,
+      "prevention_rate": 1.0,
+      "mitigated_impact_rate": 0.0,
+      "mean_episode_length": 100.0
     },
     {
       "ood_class": "DDoS-SlowLoris",
@@ -925,19 +925,6 @@
     },
     {
       "ood_class": "DDoS-SlowLoris",
-      "policy": "always_block",
-      "n_seeds": 1,
-      "n_episodes": 150,
-      "mean_reward": 0.0,
-      "ci_low": 0.0,
-      "ci_high": 0.0,
-      "compromise_rate": 0.0,
-      "prevention_rate": 1.0,
-      "mitigated_impact_rate": 0.0,
-      "mean_episode_length": 100.0
-    },
-    {
-      "ood_class": "DDoS-SlowLoris",
       "policy": "random",
       "n_seeds": 5,
       "n_episodes": 150,
@@ -961,6 +948,19 @@
       "prevention_rate": 0.0,
       "mitigated_impact_rate": 0.0,
       "mean_episode_length": 21.26
+    },
+    {
+      "ood_class": "DDoS-SlowLoris",
+      "policy": "always_block",
+      "n_seeds": 1,
+      "n_episodes": 150,
+      "mean_reward": 0.0,
+      "ci_low": 0.0,
+      "ci_high": 0.0,
+      "compromise_rate": 0.0,
+      "prevention_rate": 1.0,
+      "mitigated_impact_rate": 0.0,
+      "mean_episode_length": 100.0
     },
     {
       "ood_class": "DDoS-ACK_Fragmentation",
@@ -1029,19 +1029,6 @@
     },
     {
       "ood_class": "DDoS-ACK_Fragmentation",
-      "policy": "always_block",
-      "n_seeds": 1,
-      "n_episodes": 150,
-      "mean_reward": 0.0,
-      "ci_low": 0.0,
-      "ci_high": 0.0,
-      "compromise_rate": 0.0,
-      "prevention_rate": 1.0,
-      "mitigated_impact_rate": 0.0,
-      "mean_episode_length": 100.0
-    },
-    {
-      "ood_class": "DDoS-ACK_Fragmentation",
       "policy": "random",
       "n_seeds": 5,
       "n_episodes": 150,
@@ -1065,6 +1052,19 @@
       "prevention_rate": 0.0,
       "mitigated_impact_rate": 0.0,
       "mean_episode_length": 21.246666666666666
+    },
+    {
+      "ood_class": "DDoS-ACK_Fragmentation",
+      "policy": "always_block",
+      "n_seeds": 1,
+      "n_episodes": 150,
+      "mean_reward": 0.0,
+      "ci_low": 0.0,
+      "ci_high": 0.0,
+      "compromise_rate": 0.0,
+      "prevention_rate": 1.0,
+      "mitigated_impact_rate": 0.0,
+      "mean_episode_length": 100.0
     }
   ],
   "per_class_rf_recall": {
@@ -1085,9 +1085,9 @@
       {
         "ood_class": "VulnerabilityScan",
         "rf_recall": 0.22399141984984738,
-        "rf_metric": 0.18,
+        "rf_metric": 0.0,
         "best_rl_metric": 0.6533333333333333,
-        "advantage": 0.47333333333333333
+        "advantage": 0.6533333333333333
       },
       {
         "ood_class": "Recon-OSScan",
@@ -1175,9 +1175,9 @@
         "dqn",
         "ppo",
         "a2c",
-        "always_block",
         "random",
-        "always_observe"
+        "always_observe",
+        "always_block"
       ],
       "n_cells_expected": 80,
       "n_cells_present": 80,
@@ -1193,12 +1193,12 @@
         125.58666666666667,
         134.454
       ],
-      "rf_acting_mean_reward": 79.02266666666667,
+      "rf_acting_mean_reward": 117.86133333333333,
       "rf_acting_ci": [
-        59.30653333333332,
-        97.43821666666668
+        117.09665,
+        118.62876666666664
       ],
-      "delta_mean": 51.20266666666667,
+      "delta_mean": 12.364000000000004,
       "interpretation": "Trained RL recovers some of the supervised RF blind spot on VulnerabilityScan."
     }
   },

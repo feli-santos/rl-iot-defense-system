@@ -142,9 +142,9 @@ def summarise_mode(
 
 
 def _render_gap_figure(summary: dict[str, Any], out_path: Path) -> None:
-    import matplotlib
+    from scripts._plot_style import ACCENT, apply_house_style, save_figure
 
-    matplotlib.use("Agg")
+    apply_house_style()
     import matplotlib.pyplot as plt
     import numpy as np
 
@@ -160,14 +160,14 @@ def _render_gap_figure(summary: dict[str, Any], out_path: Path) -> None:
         [v if v is not None else 0.0 for v in best_rl],
         width,
         label="Best RL agent",
-        color="#2c7fb8",
+        color=ACCENT["primary"],
     )
     b2 = ax.bar(
         x + width / 2,
         [v if v is not None else 0.0 for v in rf],
         width,
         label="RF-Acting (supervised)",
-        color="#d95f0e",
+        color=ACCENT["secondary"],
     )
     ax.set_xticks(x)
     ax.set_xticklabels(
@@ -176,7 +176,7 @@ def _render_gap_figure(summary: dict[str, Any], out_path: Path) -> None:
         else modes
     )
     ax.set_ylabel("Mean test reward")
-    ax.axhline(0.0, color="black", linewidth=0.8)
+    ax.axhline(0.0, color=ACCENT["muted"], linewidth=0.8)
     ax.set_title("Reward design controls RF-Acting's apparent advantage")
     ax.legend(loc="best", fontsize=9)
 
@@ -200,8 +200,7 @@ def _render_gap_figure(summary: dict[str, Any], out_path: Path) -> None:
     ax.bar_label(b1, fmt="%.0f", padding=2, fontsize=7)
     ax.bar_label(b2, fmt="%.0f", padding=2, fontsize=7)
     fig.tight_layout()
-    fig.savefig(out_path, dpi=150)
-    fig.savefig(out_path.with_suffix(".pdf"))
+    save_figure(fig, out_path)
     plt.close(fig)
 
 
@@ -266,6 +265,7 @@ def main(argv: list[str] | None = None) -> int:
         "outputs": {
             "summary_json": _sha256(summary_path),
             "reward_gap_png": _sha256(fig_path) if fig_ok else None,
+            "reward_gap_pdf": _sha256(fig_path.with_suffix(".pdf")) if fig_ok else None,
         },
     }
     (out_dir / "Fcoupling_manifest.json").write_text(json.dumps(manifest, indent=2))

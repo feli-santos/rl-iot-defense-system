@@ -26,16 +26,13 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-import matplotlib
-
-matplotlib.use("Agg")  # headless rendering
-import matplotlib.pyplot as plt  # noqa: E402
-import numpy as np  # noqa: E402
+import numpy as np
 
 _ROOT = Path(__file__).resolve().parents[2]
 if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
+from scripts._plot_style import apply_house_style, policy_style, save_figure  # noqa: E402
 from src.blue_team.aggregation import (  # noqa: E402
     aggregate_seeds,
     bin_by_timesteps,
@@ -44,11 +41,18 @@ from src.blue_team.aggregation import (  # noqa: E402
     summarise_last_window,
 )
 
+apply_house_style()
+import matplotlib.pyplot as plt  # noqa: E402
+
 logger = logging.getLogger("scripts.blue_team.plot_learning_curves")
 
 
-# Per-algo line colours, matched in F4.
-_ALGO_COLORS = {"dqn": "#d62728", "ppo": "#1f77b4", "a2c": "#2ca02c"}
+# Per-algo line colours, matched in F4 (house palette).
+_ALGO_COLORS = {
+    "dqn": policy_style("dqn")["color"],
+    "ppo": policy_style("ppo")["color"],
+    "a2c": policy_style("a2c")["color"],
+}
 
 
 def _git_sha() -> str:
@@ -198,7 +202,7 @@ def render(
         }
 
     # ---------- render --------------------------------------------------------
-    fig, axes = plt.subplots(1, 3, figsize=(15, 4.5), sharex=True)
+    fig, axes = plt.subplots(1, 3, figsize=(13.5, 4.2), sharex=True)
     metric_titles = {
         "episode_reward": ("Mean episodic reward", "reward"),
         "mttc_steps": ("Mean Time-To-Compromise (MTTC)", "steps"),
@@ -231,22 +235,24 @@ def render(
         ax.set_xlabel("Training timesteps")
         ax.set_ylabel(ylabel)
         ax.grid(alpha=0.25)
-    axes[0].legend(loc="best", fontsize=8, ncol=2)
-    n_seeds_summary = sum(
-        len(seeds_train)
-        for seeds_train in [sorted(s for (a, s) in train_runs if a == algo) for algo in algos]
+    axes[0].legend(loc="best", ncol=2)
+    seeds_per_algo = max(
+        (len([s for (a, s) in train_runs if a == algo]) for algo in algos),
+        default=0,
     )
     fig.suptitle(
-        f"F3 — RL learning curves "
-        f"(DQN/PPO/A2C, {len(algos)} algos × {n_seeds_summary} seeds total, "
+        "RL learning curves "
+        f"({'/'.join(a.upper() for a in algos)}, {seeds_per_algo} seeds per algorithm, "
         f"{n_bins} time bins; bands = 95 % bootstrap CI across seeds)",
         y=1.02,
     )
     fig.tight_layout()
 
-    fig_path = out_dir / "F3_learning_curves.png"
-    fig.savefig(fig_path, dpi=150, bbox_inches="tight")
+    fig_base = out_dir / "F3_learning_curves"
+    save_figure(fig, fig_base)
     plt.close(fig)
+    fig_path = fig_base.with_suffix(".png")
+    pdf_path = fig_base.with_suffix(".pdf")
     logger.info("wrote %s", fig_path)
 
     # F3_summary.json
@@ -271,6 +277,7 @@ def render(
         "produced_by": "scripts/blue_team/plot_learning_curves.py",
         "inputs": inputs,
         "outputs": {
+            str(pdf_path.relative_to(out_dir)): _sha256(pdf_path),
             str(fig_path.relative_to(out_dir)): _sha256(fig_path),
             str(summary_path.relative_to(out_dir)): _sha256(summary_path),
         },
@@ -281,6 +288,7 @@ def render(
 
     return {
         "fig_path": str(fig_path),
+        "pdf_path": str(pdf_path),
         "summary_path": str(summary_path),
         "manifest_path": str(manifest_path),
     }

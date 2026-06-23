@@ -4,8 +4,10 @@ PLAN §3.1.9, D5.10, D5.11.
 
 Two-panel layout:
   (a) MAIN — stacked-area chart of marginal action proportions over
-      training timesteps for the *best-performing algo* (chosen by
-      eval-reward, D5.11), 25-K-step bins.
+      training timesteps for the *headline algo*. By default this is the
+      best-performing algo (chosen by eval-reward, D5.11), but the thesis
+      pins it to PPO via ``--force-algo ppo`` so the figure matches the
+      surrounding prose. 25-K-step bins.
   (b) SUPPLEMENTARY — 3 × 5 small-multiples: rows = checkpoints
       {early=5%, mid=50%, late=100% of training}; cols = decision
       stage. Each small panel is a per-stage action histogram. This
@@ -39,6 +41,7 @@ _ROOT = Path(__file__).resolve().parents[2]
 if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
+from scripts._plot_style import apply_house_style, save_figure  # noqa: E402
 from src.blue_team.aggregation import (  # noqa: E402
     action_counts_by_bin,
     bucket_centers,
@@ -149,8 +152,10 @@ def render(
     *,
     n_bins: int = 25,
     fraction: float = 0.10,
+    force_algo: str | None = None,
 ) -> dict[str, Any]:
     out_dir.mkdir(parents=True, exist_ok=True)
+    apply_house_style()
 
     train_runs = read_runs_directory(runs_root, file_name="episodes.jsonl")
     eval_runs = read_runs_directory(runs_root, file_name="eval.jsonl")
@@ -161,13 +166,23 @@ def render(
     edges = np.linspace(0, max_ts, n_bins + 1, dtype=np.int64)
     centers = bucket_centers(edges)
 
-    # Pick the best algo per D5.11 from eval reward.
-    best_algo = (
+    # Headline algo. The thesis pins this to PPO (--force-algo ppo) so the
+    # figure agrees with the surrounding prose; otherwise fall back to the
+    # eval-reward best algo (D5.11). The eval-reward best is still recorded
+    # in the summary JSON for the gate, even when display is forced.
+    best_by_eval = (
         _select_best_algo(eval_runs, fraction=fraction)
         if eval_runs
         else sorted({a for (a, _) in train_runs})[0]
     )
-    logger.info("F4 best-algo selection -> %s", best_algo)
+    available = sorted({a for (a, _) in train_runs})
+    if force_algo is not None:
+        if force_algo not in available:
+            raise RuntimeError(f"--force-algo {force_algo!r} not among trained algos {available}")
+        best_algo = force_algo
+    else:
+        best_algo = best_by_eval
+    logger.info("F4 display algo -> %s (eval-reward best = %s)", best_algo, best_by_eval)
 
     # Marginal action distribution over training time, averaged across
     # seeds for the best algo.
@@ -262,18 +277,18 @@ def render(
         # Mark the recommended action with a star.
         ax.axvline(col_idx, color="k", lw=0.6, ls="--", alpha=0.4)
     fig.suptitle(
-        f"F4 — Action-distribution evolution. Best algo (eval reward) = "
-        f"{best_algo.upper()}. Bottom row = per-stage histograms at "
-        f"early/mid/late training checkpoints. G5.5 (no action > 70 % per "
-        f"stage at late checkpoint): {'PASS' if g5_5_passes else 'FAIL'}.",
+        f"{best_algo.upper()} action-distribution evolution over training\n"
+        "(top) marginal action share; (bottom) per-stage action histograms "
+        "at early / mid / late checkpoints",
         y=0.99,
-        fontsize=11,
+        fontsize=12,
     )
 
-    fig_path = out_dir / "F4_action_distribution.png"
-    fig.savefig(fig_path, dpi=150, bbox_inches="tight")
+    fig_stem = out_dir / "F4_action_distribution"
+    save_figure(fig, fig_stem)
+    fig_path = fig_stem.with_suffix(".png")
     plt.close(fig)
-    logger.info("wrote %s", fig_path)
+    logger.info("wrote %s (+ .pdf)", fig_path)
 
     summary = {
         "version": "1.0",
@@ -281,6 +296,9 @@ def render(
         "timestamp": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "runs_root": str(runs_root),
         "best_algo": best_algo,
+        "display_algo": best_algo,
+        "best_algo_by_eval_reward": best_by_eval,
+        "display_algo_forced": force_algo is not None,
         "max_timesteps": int(max_ts),
         "n_bins": n_bins,
         "checkpoint_windows": {k: list(v) for k, v in cps.items()},
@@ -323,6 +341,7 @@ def render(
         "inputs": inputs,
         "outputs": {
             "F4_action_distribution.png": _sha256(fig_path),
+            "F4_action_distribution.pdf": _sha256(fig_stem.with_suffix(".pdf")),
             "F4_summary.json": _sha256(summary_path),
         },
     }
@@ -344,6 +363,15 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--out-dir", default="docs/results/blue-team-training")
     p.add_argument("--n-bins", type=int, default=25)
     p.add_argument("--fraction", type=float, default=0.10)
+    p.add_argument(
+        "--force-algo",
+        default=None,
+        help=(
+            "Pin the displayed algo (e.g. 'ppo') instead of auto-selecting "
+            "the eval-reward best. The thesis uses 'ppo' so the figure "
+            "matches the prose."
+        ),
+    )
     args = p.parse_args(argv)
     logging.basicConfig(
         level=logging.INFO,
@@ -354,6 +382,7 @@ def main(argv: list[str] | None = None) -> int:
         out_dir=Path(args.out_dir),
         n_bins=args.n_bins,
         fraction=args.fraction,
+        force_algo=args.force_algo,
     )
     return 0
 

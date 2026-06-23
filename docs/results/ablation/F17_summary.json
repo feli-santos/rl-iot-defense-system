@@ -2,7 +2,6 @@
   "schema_version": "1.0",
   "stage": "ablation",
   "figure": "F17",
-  "attacker_budget": 40,
   "evasion_values": [
     0.0,
     0.25,
@@ -14,37 +13,37 @@
       "evasion_prob": 0.0,
       "n_seeds": 10,
       "n_episodes": 3000,
-      "mean_reward": 271.6145,
-      "ci_low": 262.9021758333333,
-      "ci_high": 280.90502749999996,
-      "compromise_rate": 0.663
+      "mean_reward": 120.44583333333334,
+      "ci_low": 113.79534916666667,
+      "ci_high": 126.88286416666668,
+      "compromise_rate": 0.49266666666666664
     },
     {
       "evasion_prob": 0.25,
       "n_seeds": 10,
       "n_episodes": 3000,
-      "mean_reward": 275.75143333333335,
-      "ci_low": 266.2290575,
-      "ci_high": 283.7707866666667,
-      "compromise_rate": 0.669
+      "mean_reward": 110.39136666666666,
+      "ci_low": 103.15806999999998,
+      "ci_high": 116.90243249999999,
+      "compromise_rate": 0.5196666666666667
     },
     {
       "evasion_prob": 0.5,
       "n_seeds": 10,
       "n_episodes": 3000,
-      "mean_reward": 269.26270000000005,
-      "ci_low": 253.8177658333333,
-      "ci_high": 288.85970499999996,
-      "compromise_rate": 0.6596666666666666
+      "mean_reward": 114.06263333333334,
+      "ci_low": 108.88097083333334,
+      "ci_high": 118.86990416666666,
+      "compromise_rate": 0.492
     },
     {
       "evasion_prob": 0.75,
       "n_seeds": 10,
       "n_episodes": 3000,
-      "mean_reward": 270.7461,
-      "ci_low": 259.36519916666674,
-      "ci_high": 283.0854825,
-      "compromise_rate": 0.6523333333333333
+      "mean_reward": 115.00769999999999,
+      "ci_low": 110.05819333333335,
+      "ci_high": 119.6312625,
+      "compromise_rate": 0.4816666666666667
     }
   ],
   "gates": {
@@ -52,23 +51,23 @@
       "passes": true,
       "reference_evasion": 0.0,
       "max_evasion": 0.75,
-      "reference_mean_reward": 271.6145,
+      "reference_mean_reward": 120.44583333333334,
       "reference_ci": [
-        262.9021758333333,
-        280.90502749999996
+        113.79534916666667,
+        126.88286416666668
       ],
-      "max_evasion_mean_reward": 270.7461,
+      "max_evasion_mean_reward": 115.00769999999999,
       "max_evasion_ci": [
-        259.36519916666674,
-        283.0854825
+        110.05819333333335,
+        119.6312625
       ],
       "robust_tol": 0.25,
-      "tolerance_abs": 67.903625,
-      "ci_low_degradation": 3.5369766666665328,
-      "reference_compromise_rate": 0.663,
-      "max_evasion_compromise_rate": 0.6523333333333333,
-      "interpretation": "PASS: the PPO defender stays robust to an evasive attacker \u2014 mean test reward at evasion=0.75 (270.7) is within 25% of the evasion=0 reference (271.6); the evasion-before-commit coupling does not collapse the learned defense."
+      "tolerance_abs": 30.111458333333335,
+      "ci_low_degradation": 3.7371558333333184,
+      "reference_compromise_rate": 0.49266666666666664,
+      "max_evasion_compromise_rate": 0.4816666666666667,
+      "interpretation": "PASS: the PPO defender stays robust to an evasive attacker \u2014 mean test reward at evasion=0.75 (115.0) is within 25% of the evasion=0 reference (120.4); the evasion-before-commit coupling does not collapse the learned defense."
     }
   },
-  "headline": "PASS: the PPO defender stays robust to an evasive attacker \u2014 mean test reward at evasion=0.75 (270.7) is within 25% of the evasion=0 reference (271.6); the evasion-before-commit coupling does not collapse the learned defense."
+  "headline": "PASS: the PPO defender stays robust to an evasive attacker \u2014 mean test reward at evasion=0.75 (115.0) is within 25% of the evasion=0 reference (120.4); the evasion-before-commit coupling does not collapse the learned defense."
 }

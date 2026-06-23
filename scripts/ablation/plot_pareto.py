@@ -1,11 +1,16 @@
 """ablation F12 — Security-vs-availability Pareto frontier (PLAN §3.1.6 / D7.5).
 
-Plotter-only (D7.5): F12 is *derived* from F9 + F10 outputs, not a
-separate sweep. Reads:
+Plotter-only (D7.5): F12 is *derived* from the F10 aggressiveness sweep
+and the held-out benchmark anchors, not a separate sweep. Reads:
 
-  runs/ablation/reward_sweep/<cell_id>/seed_<k>/eval_test.jsonl
   runs/ablation/aggressiveness/{ppo,rule}_p<p>/seed_<k>/eval_test.jsonl
   runs/benchmark/<policy>/seed_<k>/eval_test.jsonl  (benchmark anchors)
+
+(The earlier F9 reward-perturbation cloud was dropped: those cells were
+produced under the pre-redesign *proportional* reward contract and are
+off the locked ``outcome`` contract, so mixing them into the on-contract
+frontier would be apples-to-oranges. The frontier collapse is shown by
+the on-contract benchmark policies + oracle + the F10 points alone.)
 
 For each (cell, policy) point computes:
 
@@ -45,6 +50,7 @@ from typing import Any
 
 import numpy as np
 
+from scripts._plot_style import ACCENT, apply_house_style, save_figure
 from src.blue_team.aggregation import read_episodes_jsonl
 
 logger = logging.getLogger("scripts.ablation.plot_pareto")
@@ -154,41 +160,6 @@ def _collect_benchmark_points(
                 "source": "benchmark",
                 "policy": policy_dir.name,
                 "label": policy_dir.name,
-                "security_gain": sec,
-                "availability_cost": avail,
-                "n_episodes": n_ep,
-            }
-        )
-    return points
-
-
-def _collect_f9_points(
-    f9_root: Path,
-    sha_collector: dict[str, str],
-) -> list[dict[str, Any]]:
-    points: list[dict[str, Any]] = []
-    if not f9_root.exists():
-        logger.warning("F9 root missing: %s — skipping", f9_root)
-        return points
-    for cell_dir in sorted(f9_root.iterdir()):
-        if not cell_dir.is_dir() or not (cell_dir / "cell_config.json").exists():
-            continue
-        cell_config = json.loads((cell_dir / "cell_config.json").read_text())
-        seed_dirs = sorted(
-            d for d in cell_dir.iterdir() if d.is_dir() and d.name.startswith("seed_")
-        )
-        sec, avail, n_ep = _summarise_seed_dirs(
-            seed_dirs,
-            sha_collector=sha_collector,
-        )
-        points.append(
-            {
-                "source": "f9_reward_sweep",
-                "cell_id": cell_dir.name,
-                "axis": cell_config.get("axis"),
-                "component": cell_config.get("component"),
-                "multiplier": cell_config.get("multiplier"),
-                "label": f"f9:{cell_dir.name}",
                 "security_gain": sec,
                 "availability_cost": avail,
                 "n_episodes": n_ep,
@@ -317,37 +288,38 @@ def _render(
     frontier: list[int],
     out_path: Path,
 ) -> None:
-    import matplotlib
-
-    matplotlib.use("Agg")
+    apply_house_style()
     import matplotlib.pyplot as plt
 
-    fig, ax = plt.subplots(figsize=(9.0, 6.0))
+    fig, ax = plt.subplots(figsize=(7.2, 5.2))
 
-    # Group by source for colour/marker.
+    # Group by source for colour/marker. Human-readable legend labels (no
+    # internal source slugs leaking into the figure).
     colours = {
-        "benchmark": "#9ca3af",
-        "f9_reward_sweep": "#2563eb",
-        "f10_aggressiveness": "#16a34a",
+        "benchmark": ACCENT["neutral"],
+        "f10_aggressiveness": ACCENT["primary"],
     }
     markers = {
         "benchmark": "s",
-        "f9_reward_sweep": "o",
         "f10_aggressiveness": "^",
+    }
+    legend_label = {
+        "benchmark": "Held-out benchmark policies",
+        "f10_aggressiveness": "Environment-difficulty sweep ($p_{\\mathrm{down}}$)",
     }
     label_done = set()
     for i, p in enumerate(points):
         if not (math.isfinite(p["security_gain"]) and math.isfinite(p["availability_cost"])):
             continue
         src = p["source"]
-        label = src if src not in label_done else None
+        label = legend_label.get(src) if src not in label_done else None
         label_done.add(src)
         ax.scatter(
             p["availability_cost"],
             p["security_gain"],
-            c=colours.get(src, "#000"),
+            c=colours.get(src, ACCENT["muted"]),
             marker=markers.get(src, "o"),
-            s=80 if i in frontier else 40,
+            s=90 if i in frontier else 42,
             edgecolors="black" if i in frontier else "none",
             linewidth=1.0 if i in frontier else 0,
             alpha=0.85,
@@ -370,24 +342,18 @@ def _render(
             [p["availability_cost"] for p in front_pts],
             [p["security_gain"] for p in front_pts],
             "--",
-            color="#dc2626",
-            linewidth=1.4,
-            alpha=0.85,
+            color=ACCENT["secondary"],
+            linewidth=1.6,
+            alpha=0.9,
             zorder=2,
             label="Pareto frontier",
         )
 
-    ax.set_xlabel("Availability cost (BLOCK + ISOLATE share of decisions)", fontsize=10)
-    ax.set_ylabel("Security gain (1 − compromise rate)", fontsize=10)
-    ax.set_title(
-        "F12 — Security vs. availability Pareto "
-        "(F9 reward sweep + F10 aggressiveness sweep + benchmark anchors)",
-        fontsize=11,
-    )
-    ax.grid(True, linestyle=":", alpha=0.4)
-    ax.legend(loc="lower right", fontsize=9, framealpha=0.95)
-    fig.tight_layout()
-    fig.savefig(out_path, dpi=200, bbox_inches="tight")
+    ax.set_xlabel("Availability cost (BLOCK + ISOLATE share of decisions)")
+    ax.set_ylabel("Security gain (1 − compromise rate)")
+    ax.set_title("Security–availability trade-off collapses to a single dominant point")
+    ax.legend(loc="lower right", framealpha=0.95)
+    save_figure(fig, out_path)
     plt.close(fig)
 
 
@@ -397,10 +363,9 @@ def _render(
 def _build_argparser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         description="ablation F12 — security-vs-availability Pareto plot. "
-        "Plotter-only (D7.5); reads F9 + F10 + benchmark outputs.",
+        "Plotter-only (D7.5); reads F10 + benchmark outputs.",
     )
     p.add_argument("--benchmark-runs", default="runs/benchmark")
-    p.add_argument("--ablation-reward-runs", default="runs/ablation/reward_sweep")
     p.add_argument("--ablation-aggressiveness-runs", default="runs/ablation/aggressiveness")
     p.add_argument("--out-dir", default="docs/results/ablation")
     # Step-8 F2 (07_HANDOFF.md §5): explicit upstream-manifest SHA pins.
@@ -427,14 +392,11 @@ def main(argv: list[str] | None = None) -> int:
     sha_collector: dict[str, str] = {}
     points: list[dict[str, Any]] = []
     points += _collect_benchmark_points(Path(args.benchmark_runs), sha_collector)
-    points += _collect_f9_points(Path(args.ablation_reward_runs), sha_collector)
     points += _collect_f10_points(Path(args.ablation_aggressiveness_runs), sha_collector)
-    logger.info("F12: collected %d points (benchmark + F9 + F10)", len(points))
+    logger.info("F12: collected %d points (benchmark + F10)", len(points))
 
     if not points:
-        logger.error(
-            "F12: no points collected — run benchmark, ablation-reward, ablation-aggressiveness first."
-        )
+        logger.error("F12: no points collected — run benchmark and ablation-aggressiveness first.")
         return 1
 
     frontier = _pareto_frontier(points)
@@ -442,8 +404,10 @@ def main(argv: list[str] | None = None) -> int:
 
     out_dir = Path(args.out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
-    png_path = out_dir / "F12_pareto.png"
-    _render(points, frontier, png_path)
+    fig_base = out_dir / "F12_pareto"
+    _render(points, frontier, fig_base)
+    png_path = fig_base.with_suffix(".png")
+    pdf_path = fig_base.with_suffix(".pdf")
 
     summary = {
         "schema_version": "1.0",
@@ -463,6 +427,8 @@ def main(argv: list[str] | None = None) -> int:
         "figure": "F12",
         "git_sha": _git_sha(),
         "outputs": {
+            "pdf": str(pdf_path),
+            "pdf_sha256": _sha256(pdf_path),
             "png": str(png_path),
             "json": str(out_dir / "F12_summary.json"),
         },
@@ -470,10 +436,6 @@ def main(argv: list[str] | None = None) -> int:
             "benchmark_eval_manifest": {
                 "path": str(Path(args.benchmark_runs) / "eval_manifest.json"),
                 "sha256": _sha256(Path(args.benchmark_runs) / "eval_manifest.json"),
-            },
-            "ablation_reward_sweep_manifest": {
-                "path": str(Path(args.ablation_reward_runs) / "sweep_manifest.json"),
-                "sha256": _sha256(Path(args.ablation_reward_runs) / "sweep_manifest.json"),
             },
             "ablation_aggressiveness_sweep_manifest": {
                 "path": str(Path(args.ablation_aggressiveness_runs) / "sweep_manifest.json"),
@@ -497,14 +459,15 @@ def main(argv: list[str] | None = None) -> int:
     caption_path = out_dir / "F12_caption.md"
     caption_path.write_text(
         "**F12 — Security vs. availability Pareto.** Each point is one "
-        "(reward_config, p_down) cell from F9 + F10, "
-        "plus the eight benchmark anchor policies, with x = "
-        "availability cost (BLOCK + ISOLATE share of decisions) and "
-        "y = security gain (1 − compromise rate). The dashed red curve "
-        "highlights the Pareto frontier. Squares = benchmark anchors; "
-        "circles = F9 reward-sweep cells; triangles = F10 "
-        "environment-difficulty (p_down) cells. Larger black-edged markers "
-        "are on the frontier. (PLAN §3.1.6 / D7.5; G7.4 evaluator.)\n"
+        "operating cell, with x = availability cost (BLOCK + ISOLATE share "
+        "of decisions) and y = security gain (1 − compromise rate). Squares "
+        "= held-out benchmark anchor policies; triangles = F10 "
+        "environment-difficulty ($p_{\\mathrm{down}}$) cells. The dashed "
+        "curve highlights the Pareto frontier; larger black-edged markers "
+        "are on it. The frontier collapses onto the single full-observability "
+        "oracle point — the interior placement of the learned agents "
+        "quantifies the cost of partial observability, not a genuine "
+        "multi-point trade-off. (PLAN §3.1.6 / D7.5; G7.4 evaluator.)\n"
     )
 
     logger.info(

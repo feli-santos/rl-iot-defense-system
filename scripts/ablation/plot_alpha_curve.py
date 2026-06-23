@@ -36,12 +36,12 @@ import subprocess
 from pathlib import Path
 from typing import Any
 
-import matplotlib
+from scripts._plot_style import apply_house_style
 
-matplotlib.use("Agg")
-import matplotlib.pyplot as plt
+apply_house_style()
+import matplotlib.pyplot as plt  # noqa: E402
 
-from src.blue_team.aggregation import bootstrap_ci, read_episodes_jsonl
+from src.blue_team.aggregation import bootstrap_ci, read_episodes_jsonl  # noqa: E402
 
 logger = logging.getLogger("scripts.ablation.plot_alpha_curve")
 

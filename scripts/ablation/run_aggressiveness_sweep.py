@@ -1,8 +1,12 @@
 """ablation F10 — Environment-difficulty sweep driver (PLAN §3.1.5).
 
 Sweeps the tug-of-war de-escalation success probability
-``p_down ∈ {0.0, 0.2, 0.4, 0.6, 0.8, 0.9 (default), 1.0}`` × PPO only
-(D7.2) × seeds × 250K timesteps (D7.8).
+``p_down ∈ {0.0, 0.2, 0.4, 0.6, 0.8, 1.0}`` × PPO only (D7.2) × 10 seeds.
+Each cell trains under the LOCKED primary reward contract
+(``reward_mode='outcome'``, ``impact_is_terminal=False``,
+``attacker_budget=None``, ``aliasing_rate=0.4``) at a 1.5M-timestep cap
+with eval-plateau early-stopping, so F10 numbers are directly comparable
+to the Chapter 4 headline.
 
 ``p_down`` is the live tug-of-war knob that governs how *forgiving the
 environment is to a correct defender*: when the defender plays the
@@ -20,8 +24,9 @@ the attacker can only be held, never reversed); ``p_down=1.0`` means a
 correct action ALWAYS reverses one stage (easiest environment). We
 expect achievable RL reward to rise monotonically with ``p_down``.
 
-Each cell trains PPO with ``--reward-overrides '{"p_down": P}'`` and
-evaluates on test_balanced AT THE SAME P. The recommended-action
+Each cell trains PPO with the on-contract override set merged with
+``{"p_down": P}`` and evaluates on test_balanced AT THE SAME P. The
+recommended-action
 oracle baseline is rolled separately under each p as a reference
 curve (its mean reward shifts with p because the de-escalation success
 rate shifts even though the rule's behaviour does not).
@@ -69,6 +74,32 @@ _ROOT = Path(__file__).resolve().parents[2]
 
 
 _DEFAULT_P_VALUES: list[float] = [0.0, 0.2, 0.4, 0.6, 0.8, 1.0]
+
+
+# Locked primary reward contract (matches the headline redesign sweep:
+# runs/redesign/*/sweep_manifest.json). F10 MUST train + evaluate under this
+# contract so its numbers are directly comparable to Chapter 4; the swept
+# knob (p_down) is merged on top per cell. Previously this sweep inherited the
+# EnvConfigSerializable dataclass defaults (reward_mode='proportional',
+# impact_is_terminal=True), which is OFF-CONTRACT.
+# NB: the finite ``attacker_budget`` and ``session_coherent`` knobs were
+# retired in commit 1e86f68 (no fixed intrusion budget; session-coherence is
+# now intrinsic), so they are deliberately ABSENT here — passing them would
+# raise ValueError under the current EnvConfigSerializable schema.
+_CONTRACT_OVERRIDES: dict[str, Any] = {
+    "reward_mode": "outcome",
+    "aliasing_rate": 0.4,
+    "no_post_transition_leak": True,
+    "proximity_coupled": True,
+    "impact_is_terminal": False,
+}
+
+
+def _cell_overrides(p: float) -> dict[str, Any]:
+    """Canonical on-contract override set for an F10 cell at p_down=p."""
+    merged = dict(_CONTRACT_OVERRIDES)
+    merged["p_down"] = p
+    return merged
 
 
 def _sha256(path: Path) -> str | None:
@@ -136,7 +167,7 @@ def _train_ppo(
         "--splits-manifest",
         args.splits_manifest,
         "--reward-overrides",
-        json.dumps({"p_down": p}),
+        json.dumps(_cell_overrides(p)),
         "--verbose",
         "0",
     ]
@@ -216,8 +247,7 @@ def _eval_ppo_on_test(
         spec = EnvConfigSerializable(
             split="test_balanced",
             exclude_ood=True,
-            p_down=p,
-            impact_is_terminal=False,  # match the primary training contract
+            **_cell_overrides(p),  # on-contract: outcome reward + p_down
         )
     env = make_eval_env(
         spec=spec,
@@ -275,18 +305,16 @@ def _roll_rule_baseline(
         spec = EnvConfigSerializable(
             split="test_balanced",
             exclude_ood=True,
-            p_down=p,
             window_size=4,
             max_steps=20,
             min_episode_length=5,
-            impact_is_terminal=False,  # match the primary training contract
+            **_cell_overrides(p),  # on-contract: outcome reward + p_down
         )
     else:
         spec = EnvConfigSerializable(
             split="test_balanced",
             exclude_ood=True,
-            p_down=p,
-            impact_is_terminal=False,  # match the primary training contract
+            **_cell_overrides(p),  # on-contract: outcome reward + p_down
         )
     env = make_eval_env(
         spec=spec,
@@ -344,10 +372,10 @@ def _build_argparser() -> argparse.ArgumentParser:
         "--seeds",
         nargs="+",
         type=int,
-        default=[0, 1, 2, 3, 4],
+        default=[0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
         help="PPO seeds (recommended-action rule uses single seed=0).",
     )
-    p.add_argument("--total-timesteps", type=int, default=250_000)
+    p.add_argument("--total-timesteps", type=int, default=1_500_000)
     p.add_argument("--eval-freq", type=int, default=25_000)
     p.add_argument("--n-eval-episodes", type=int, default=30)
     p.add_argument(

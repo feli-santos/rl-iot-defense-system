@@ -2,212 +2,16 @@
   "schema_version": "1.0",
   "stage": "ablation",
   "figure": "F12",
-  "n_points_total": 32,
-  "n_frontier_points": 7,
+  "n_points_total": 12,
+  "n_frontier_points": 6,
   "points": [
-    {
-      "source": "benchmark",
-      "policy": "a2c",
-      "label": "a2c",
-      "security_gain": 0.5966666666666667,
-      "availability_cost": 0.14642245072836332,
-      "n_episodes": 300
-    },
-    {
-      "source": "benchmark",
-      "policy": "always_block",
-      "label": "always_block",
-      "security_gain": 1.0,
-      "availability_cost": 1.0,
-      "n_episodes": 300
-    },
-    {
-      "source": "benchmark",
-      "policy": "always_observe",
-      "label": "always_observe",
-      "security_gain": 0.0,
-      "availability_cost": 0.0,
-      "n_episodes": 300
-    },
-    {
-      "source": "benchmark",
-      "policy": "dqn",
-      "label": "dqn",
-      "security_gain": 0.5366666666666666,
-      "availability_cost": 0.07899968609396255,
-      "n_episodes": 300
-    },
-    {
-      "source": "benchmark",
-      "policy": "ppo",
-      "label": "ppo",
-      "security_gain": 0.32999999999999996,
-      "availability_cost": 0.20800361745421658,
-      "n_episodes": 300
-    },
-    {
-      "source": "benchmark",
-      "policy": "random",
-      "label": "random",
-      "security_gain": 0.13666666666666671,
-      "availability_cost": 0.40820435384421794,
-      "n_episodes": 300
-    },
-    {
-      "source": "benchmark",
-      "policy": "recommended_action",
-      "label": "recommended_action",
-      "security_gain": 1.0,
-      "availability_cost": 0.0,
-      "n_episodes": 300
-    },
-    {
-      "source": "benchmark",
-      "policy": "rf_acting",
-      "label": "rf_acting",
-      "security_gain": 0.9733333333333334,
-      "availability_cost": 0.01810118562765861,
-      "n_episodes": 300
-    },
-    {
-      "source": "f9_reward_sweep",
-      "cell_id": "baseline_defaults",
-      "axis": "baseline",
-      "component": null,
-      "multiplier": 1.0,
-      "label": "f9:baseline_defaults",
-      "security_gain": 0.07666666666666666,
-      "availability_cost": 0.08193094200469327,
-      "n_episodes": 300
-    },
-    {
-      "source": "f9_reward_sweep",
-      "cell_id": "defense_success_bonus_x0p5",
-      "axis": "reward",
-      "component": "defense_success_bonus",
-      "multiplier": 0.5,
-      "label": "f9:defense_success_bonus_x0p5",
-      "security_gain": 0.07333333333333336,
-      "availability_cost": 0.08211387752271308,
-      "n_episodes": 300
-    },
-    {
-      "source": "f9_reward_sweep",
-      "cell_id": "defense_success_bonus_x2p0",
-      "axis": "reward",
-      "component": "defense_success_bonus",
-      "multiplier": 2.0,
-      "label": "f9:defense_success_bonus_x2p0",
-      "security_gain": 0.09666666666666668,
-      "availability_cost": 0.0749566146041917,
-      "n_episodes": 300
-    },
-    {
-      "source": "f9_reward_sweep",
-      "cell_id": "impact_is_terminal_false",
-      "axis": "impact_terminal",
-      "component": "impact_is_terminal",
-      "multiplier": null,
-      "label": "f9:impact_is_terminal_false",
-      "security_gain": 0.0033333333333332993,
-      "availability_cost": 0.2505137690094533,
-      "n_episodes": 300
-    },
-    {
-      "source": "f9_reward_sweep",
-      "cell_id": "penalty_disproportionate_x0p5",
-      "axis": "reward",
-      "component": "penalty_disproportionate",
-      "multiplier": 0.5,
-      "label": "f9:penalty_disproportionate_x0p5",
-      "security_gain": 0.06666666666666665,
-      "availability_cost": 0.1091897233201581,
-      "n_episodes": 300
-    },
-    {
-      "source": "f9_reward_sweep",
-      "cell_id": "penalty_disproportionate_x2p0",
-      "axis": "reward",
-      "component": "penalty_disproportionate",
-      "multiplier": 2.0,
-      "label": "f9:penalty_disproportionate_x2p0",
-      "security_gain": 0.09666666666666668,
-      "availability_cost": 0.07686029111685486,
-      "n_episodes": 300
-    },
-    {
-      "source": "f9_reward_sweep",
-      "cell_id": "penalty_missed_impact_x0p5",
-      "axis": "reward",
-      "component": "penalty_missed_impact",
-      "multiplier": 0.5,
-      "label": "f9:penalty_missed_impact_x0p5",
-      "security_gain": 0.10999999999999999,
-      "availability_cost": 0.09520783017668742,
-      "n_episodes": 300
-    },
-    {
-      "source": "f9_reward_sweep",
-      "cell_id": "penalty_missed_impact_x2p0",
-      "axis": "reward",
-      "component": "penalty_missed_impact",
-      "multiplier": 2.0,
-      "label": "f9:penalty_missed_impact_x2p0",
-      "security_gain": 0.013333333333333308,
-      "availability_cost": 0.05278012983347446,
-      "n_episodes": 300
-    },
-    {
-      "source": "f9_reward_sweep",
-      "cell_id": "reward_benign_passive_x0p5",
-      "axis": "reward",
-      "component": "reward_benign_passive",
-      "multiplier": 0.5,
-      "label": "f9:reward_benign_passive_x0p5",
-      "security_gain": 0.09999999999999998,
-      "availability_cost": 0.10159179342058719,
-      "n_episodes": 300
-    },
-    {
-      "source": "f9_reward_sweep",
-      "cell_id": "reward_benign_passive_x2p0",
-      "axis": "reward",
-      "component": "reward_benign_passive",
-      "multiplier": 2.0,
-      "label": "f9:reward_benign_passive_x2p0",
-      "security_gain": 0.13666666666666671,
-      "availability_cost": 0.07013157894736842,
-      "n_episodes": 300
-    },
-    {
-      "source": "f9_reward_sweep",
-      "cell_id": "reward_proportional_x0p5",
-      "axis": "reward",
-      "component": "reward_proportional",
-      "multiplier": 0.5,
-      "label": "f9:reward_proportional_x0p5",
-      "security_gain": 0.10999999999999999,
-      "availability_cost": 0.08604884576781532,
-      "n_episodes": 300
-    },
-    {
-      "source": "f9_reward_sweep",
-      "cell_id": "reward_proportional_x2p0",
-      "axis": "reward",
-      "component": "reward_proportional",
-      "multiplier": 2.0,
-      "label": "f9:reward_proportional_x2p0",
-      "security_gain": 0.06000000000000005,
-      "availability_cost": 0.08424372980458532,
-      "n_episodes": 300
-    },
     {
       "source": "f10_aggressiveness",
       "kind": "ppo",
       "p_down": 0.0,
       "label": "f10:ppo_p0.0",
       "security_gain": 0.0,
-      "availability_cost": 0.4531925718646655,
+      "availability_cost": 0.47684391080617494,
       "n_episodes": 300
     },
     {
@@ -215,8 +19,8 @@
       "kind": "ppo",
       "p_down": 0.2,
       "label": "f10:ppo_p0.2",
-      "security_gain": 0.040000000000000036,
-      "availability_cost": 0.1355485680292343,
+      "security_gain": 0.0,
+      "availability_cost": 0.5619345859429367,
       "n_episodes": 300
     },
     {
@@ -224,8 +28,8 @@
       "kind": "ppo",
       "p_down": 0.4,
       "label": "f10:ppo_p0.4",
-      "security_gain": 0.09999999999999998,
-      "availability_cost": 0.1003709810387469,
+      "security_gain": 0.29333333333333333,
+      "availability_cost": 0.3288611707981762,
       "n_episodes": 300
     },
     {
@@ -233,8 +37,8 @@
       "kind": "ppo",
       "p_down": 0.6,
       "label": "f10:ppo_p0.6",
-      "security_gain": 0.09333333333333338,
-      "availability_cost": 0.09015136360605454,
+      "security_gain": 0.3533333333333334,
+      "availability_cost": 0.3141706161137441,
       "n_episodes": 300
     },
     {
@@ -242,8 +46,8 @@
       "kind": "ppo",
       "p_down": 0.8,
       "label": "f10:ppo_p0.8",
-      "security_gain": 0.07666666666666666,
-      "availability_cost": 0.08929589509692132,
+      "security_gain": 0.51,
+      "availability_cost": 0.3758535461438566,
       "n_episodes": 300
     },
     {
@@ -251,8 +55,8 @@
       "kind": "ppo",
       "p_down": 1.0,
       "label": "f10:ppo_p1.0",
-      "security_gain": 0.10999999999999999,
-      "availability_cost": 0.0741234756097561,
+      "security_gain": 0.5333333333333333,
+      "availability_cost": 0.3563996696944674,
       "n_episodes": 300
     },
     {
@@ -312,12 +116,11 @@
   ],
   "frontier_indices": [
     6,
-    26,
-    27,
-    28,
-    29,
-    30,
-    31
+    7,
+    8,
+    9,
+    10,
+    11
   ],
   "gates": {
     "G7.4": {
@@ -325,12 +128,11 @@
       "n_distinct_frontier_points": 1,
       "frontier_indices": [
         6,
-        26,
-        27,
-        28,
-        29,
-        30,
-        31
+        7,
+        8,
+        9,
+        10,
+        11
       ],
       "frontier_distinct_indices": [
         6
