@@ -8,7 +8,7 @@
 SHELL := /bin/bash
 
 # Configurable variables (override on the CLI: `make train-rl ALGO=ppo SEED=1`)
-PYTHON   ?= python
+PYTHON   ?= $(if $(wildcard .venv/bin/python),.venv/bin/python,python3)
 CONFIG   ?= config.yml
 ALGO     ?= ppo
 SEED     ?= 0
@@ -54,11 +54,11 @@ format:  ## Auto-format with black + ruff --fix + isort.
 
 .PHONY: test
 test:  ## Run pytest with quiet output.
-	pytest -q
+	$(PYTHON) -m pytest -q
 
 .PHONY: test-cov
 test-cov:  ## Run pytest with coverage.
-	pytest --cov=src --cov-report=term-missing --cov-report=html
+	$(PYTHON) -m pytest --cov=src --cov-report=term-missing --cov-report=html
 
 ##@ Pipeline (per-step)
 .PHONY: process-data
@@ -342,14 +342,17 @@ thesis-image:  ## Build the minimal container image for thesis compilation (one-
 
 .PHONY: thesis
 thesis:  ## Compile tex/main.pdf (full: pdflatex × 3 + bibtex) via container engine.
+	$(MAKE) render-tables
 	bash tex/build.sh
 
 .PHONY: thesis-draft
 thesis-draft:  ## Single fast pdflatex pass (no bibtex, no ToC fix-up).
+	$(MAKE) render-tables
 	bash tex/build.sh --draft
 
 .PHONY: thesis-rebuild
 thesis-rebuild:  ## Force-rebuild container image, then compile thesis.
+	$(MAKE) render-tables
 	bash tex/build.sh --rebuild
 
 ##@ Figure / Table Synchronisation (anti-drift)
@@ -366,7 +369,7 @@ sync-figures: export-figure-pdfs  ## Export PDFs then copy them from docs/result
 	@cp docs/results/ablation/F10_*.pdf tex/figs/ 2>/dev/null || true
 	@cp docs/results/ablation/F12_*.pdf tex/figs/ 2>/dev/null || true
 	@cp docs/results/ablation/F15_*.pdf tex/figs/ 2>/dev/null || true
-	@cp docs/results/ablation/F15b_recall_vs_advantage.png tex/figs/ 2>/dev/null || true
+	@cp docs/results/ablation/F15b_recall_vs_advantage.pdf tex/figs/ 2>/dev/null || true
 	@cp docs/results/ablation/F17_*.pdf tex/figs/ 2>/dev/null || true
 	@echo "Done."
 

@@ -47,7 +47,7 @@
 \begin{tikzpicture}[node distance=0.45cm and 0.55cm]
 
 %% ==============================================================
-%%  STAGE I  — three offline preparation lanes
+%% Offline preparation lanes
 %% ==============================================================
 
 % --- Lane 1: Dataset pipeline ---
@@ -89,11 +89,11 @@
   \node[draw=colBorder, fill=colOffline!40, rounded corners=5pt,
         inner sep=8pt,
         fit=(dataset)(detector),
-        label={[groupLabel]above:Stage I — Offline Preparation (dashed boxes)}] (stageI) {};
+        label={[groupLabel]above:Offline Preparation (dashed boxes)}] (stageI) {};
 \end{scope}
 
 %% ==============================================================
-%%  STAGE II  — Online RL loop
+%% Online RL loop
 %% ==============================================================
 
 % --- Adversarial Environment ---
@@ -140,18 +140,18 @@
   \node[draw=colBorder, fill=colOnline!40, rounded corners=5pt,
         inner sep=10pt,
         fit=(realizer)(reward)(agent),
-        label={[groupLabel]above:Stage II — Online RL Training Loop (solid box)}] (stageII) {};
+        label={[groupLabel]above:Online RL Training Loop (solid box)}] (stageII) {};
 \end{scope}
 
 %% ==============================================================
-%%  STAGE III  — Benchmark & Ablation
+%% Benchmark & Ablation
 %% ==============================================================
 
 \node[box, fill=colBench,
       minimum width=11.6cm, minimum height=2.2cm,
       align=center,
       below=1.0cm of stageII.south] (bench) {
-  \textbf{Stage III — Benchmark \& Ablation (held-out \texttt{test\_balanced})}\\[4pt]
+  \textbf{Benchmark \& Ablation (held-out \texttt{test\_balanced})}\\[4pt]
   Trained DRL (DQN / PPO / A2C) \quad vs.\quad
   Random \;|\; Always-Observe \;|\; Always-Block \;|\; RF-Acting \;|\; Oracle\\[2pt]
   Reward-coupling ablation \;|\;
@@ -163,13 +163,13 @@
 %%  ARROWS
 %% ==============================================================
 
-% Stage I → Stage II (dataset to realizer)
+% Dataset to realizer
 \draw[arr] (dataset.south) -- ++(0,-0.45) -| (realizer.north);
 
-% Stage I → Stage II (Markov attacker to env)
+% Markov attacker to env
 \draw[arr] (redteam.south) -- (env.north);
 
-% Stage I → Stage II (detector to reward, dashed = eval-time only)
+% Detector to reward, dashed = eval-time only
 \draw[dasharr] (detector.south) -- ++(0,-0.45) -| (reward.north)
     node[midway, right, font=\tiny, text=colBorder] {eval-time};
 
@@ -188,7 +188,7 @@
 \draw[arr] (agent.west) -- ++(-0.6,0) |-
     node[near end, left, font=\tiny]{$a_t$} (realizer.south);
 
-% Stage II → Stage III
+% Online loop to benchmark
 \draw[arr] ([yshift=-2pt]stageII.south) -- (bench.north);
 
 %% ==============================================================

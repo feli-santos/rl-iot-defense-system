@@ -210,6 +210,7 @@ else
   makeindex_pass
   pdflatex_pass "pdflatex pass 2/3"
   pdflatex_pass "pdflatex pass 3/3"
+  pdflatex_pass "pdflatex pass 4/4 (final refs)"
 fi
 
 echo ""

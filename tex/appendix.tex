@@ -1,7 +1,7 @@
 % ====================================================================
 % Appendices
 % ====================================================================
-% After \appendix in thesis.tex, each \section here renders as
+% After \appendix in main.tex, each \section here renders as
 % Appendix A, B, C, ...
 
 % ====================================================================
@@ -22,11 +22,11 @@ Every component of the framework emits one or more \texttt{manifest.json} files 
 \toprule
 Component & Path & Key artefacts \\
 \midrule
-Dataset prep. & \texttt{dataset/} & \texttt{class\_distribution.png}, \texttt{stage\_distribution.png}, \texttt{summary.json}, \texttt{manifest.json} \\
+Dataset prep. & \texttt{dataset/} & \texttt{class\_distribution.png}, \texttt{stage\_distribution.png}, \texttt{dataset\_summary.json}, \texttt{manifest.json} \\
 Markov attacker & --- & Closed-form $5\times5$ transition matrix; no trained artefacts (requires no training) \\
 Stage detector & \texttt{stage-detector/} & \texttt{F11\_per\_stage\_recall.png}, \texttt{F11\_summary.json}, \texttt{manifest.json} \\
-Blue-team training & \texttt{benchmark/} & \texttt{F3/F4\_*.png}, per-figure \texttt{summary.json} + \texttt{manifest.json} \\
-Held-out benchmark & \texttt{ablation/} & \texttt{Falpha\_curve.pdf}, \texttt{Falpha\_summary.json}, \texttt{Falpha\_manifest.json} \\
+Blue-team training & \texttt{blue-team-training/} & \texttt{F3/F4\_*.png}, per-figure \texttt{summary.json} + \texttt{manifest.json} \\
+Alpha-curve benchmark & \texttt{ablation/} & \texttt{Falpha\_curve.pdf}, \texttt{Falpha\_summary.json}, \texttt{Falpha\_manifest.json} \\
 Ablation \& robustness & \texttt{ablation/} & \texttt{Fcoupling\_*}, \texttt{F10/F12/F15\_*}, per-figure \texttt{summary.json} + \texttt{manifest.json} \\
 \bottomrule
 \end{tabularx}
@@ -43,7 +43,7 @@ git clone <repo-url> rl-iot-defense-system
 cd rl-iot-defense-system
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
-pytest -q                             # expect: 473 passed
+pytest -q                             # expect: 446 passed
 python -m scripts.reproducibility_smoke
 # expect: VERDICT PASS (no unexplained hash mismatches)
 \end{verbatim}
@@ -134,7 +134,7 @@ The reward-coupling and out-of-distribution evaluations re-use these hyperparame
 \chapter{Sensitivity Sweep Figures}\label{app:sensitivity}
 % ====================================================================
 
-This appendix collects the three sensitivity sweep figures referenced in Section~\ref{cap:methodology} (Sections~\ref{ssec:pdeesc_justification}, \ref{ssec:action_cost_justification}, and~\ref{ssec:window_justification}). Two of the three (Sections~\ref{app:action_cost_sweep} and~\ref{app:window_ablation}) are \emph{preliminary}: they were produced on an earlier reward scale before the partially-observable redesign, so only their relative conclusions carry over. All sweeps use DQN (single seed) or PPO (\NumSeeds{} seeds) with all other parameters held at their environment-design defaults; mean test reward on \texttt{test\_balanced} is the primary metric. 95\,\% bootstrap confidence intervals are shown as shaded bands.
+This appendix collects the three sensitivity sweep figures referenced in Chapter~\ref{cap:methodology} (Sections~\ref{ssec:pdeesc_justification}, \ref{ssec:action_cost_justification}, and~\ref{ssec:window_justification}). Two of the three (Sections~\ref{app:action_cost_sweep} and~\ref{app:window_ablation}) are \emph{preliminary}: they were produced on an earlier reward scale before the partially-observable redesign, so only their relative conclusions carry over. All sweeps use DQN (single seed) or PPO (\NumSeeds{} seeds) with all other parameters held at their environment-design defaults; mean test reward on \texttt{test\_balanced} is the primary metric. 95\,\% bootstrap confidence intervals are shown as shaded bands.
 
 \section{Defender De-escalation Probability Sweep}\label{app:deesc_sweep}
 
