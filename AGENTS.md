@@ -45,6 +45,18 @@ Kill-chain stages (5): `0 BENIGN, 1 RECON, 2 ACCESS, 3 MANEUVER, 4 IMPACT`
 `benchmark/`=baselines + eval runner, `algorithms/`=SB3 wrappers,
 `utils/`=dataset + realization engine.
 
+**Canonical blue-team checkpoints (current contract): `runs/redesign/alpha_<NN>/<algo>/seed_<n>/best_model.zip`** (`alpha_00/02/04/06`; headline = `alpha_04`,
+matching HeadlineAlpha=0.4). The legacy `runs/blue_team/` path is **pre-redesign
+and absent on fresh checkouts** — do NOT point eval at it. The OOD eval target
+`make ablation-ood-eval` is wired to `ABLATION_OOD_BLUE_TEAM_RUNS ?=
+runs/redesign/alpha_04` and passes the partial-observability flags
+(`--aliasing-rate 0.4 --session-coherent --no-post-transition-leak
+--proximity-coupled --proximity-min-escalation 0.4`) via
+`ABLATION_OOD_POMDP_FLAGS`; these flags are **mandatory** — omitting them makes
+`run_ood_eval.py` fall back to a fully-observable MDP (aliasing=0, no session
+coherence) that mismatches the trained checkpoints and trips the train/eval
+parity assertion.
+
 ## Conventions / gotchas
 
 - **`config.yml` is the single source of hyperparameters.** `main.py` reads it

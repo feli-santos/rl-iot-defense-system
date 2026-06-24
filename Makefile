@@ -186,6 +186,20 @@ ABLATION_OOD_N_DET_EPISODES ?= 300
 # Commensurability: the OOD eval MUST run at the same operating point as the
 # held-out benchmark, else OOD reward is on an incomparable (unbounded) axis.
 ABLATION_OOD_REWARD_MODE ?= outcome
+# Canonical current-contract blue-team checkpoints live under
+# runs/redesign/alpha_<NN>/<algo>/seed_<n>/best_model.zip (NOT runs/blue_team,
+# which is the legacy/pre-redesign path and is absent on fresh checkouts). The
+# headline operating point is alpha=0.4, so OOD eval loads from alpha_04.
+ABLATION_OOD_BLUE_TEAM_RUNS ?= runs/redesign/alpha_04
+# Partial-observability operating point: these flags MUST be passed or the
+# runner falls back to a fully-observable MDP (aliasing_rate=0, no session
+# coherence) that mismatches the trained checkpoints' contract and trips the
+# train/eval parity assertion. Mirrors the locked HeadlineAlpha=0.4 regime.
+ABLATION_OOD_ALIASING_RATE ?= 0.4
+ABLATION_OOD_PROXIMITY_MIN ?= 0.4
+ABLATION_OOD_POMDP_FLAGS ?= --aliasing-rate $(ABLATION_OOD_ALIASING_RATE) \
+	    --session-coherent --no-post-transition-leak \
+	    --proximity-coupled --proximity-min-escalation $(ABLATION_OOD_PROXIMITY_MIN)
 
 .PHONY: ablation-ood-smoke
 ablation-ood-smoke:  ## Ablation F15 smoke: 1 OOD class × 2 policies × 1 seed × 2 ep (~10 s). Writes to throwaway dir, never canonical.
@@ -193,16 +207,17 @@ ablation-ood-smoke:  ## Ablation F15 smoke: 1 OOD class × 2 policies × 1 seed 
 	    --smoke --out-root runs/ablation/_smoke/ood
 
 .PHONY: ablation-ood-eval
-ablation-ood-eval:  ## Ablation: zero-day OOD eval, 10 held-out classes × 8 policies (~2 h CPU).
+ablation-ood-eval:  ## Ablation: zero-day OOD eval, 10 held-out classes × 8 policies × 10 seeds (~2 h CPU).
 	$(PYTHON) -m scripts.ablation.run_ood_eval \
 	    --ood-classes $(ABLATION_OOD_CLASSES) \
 	    --policies $(ABLATION_OOD_POLICIES) \
 	    --seeds $(BLUE_TEAM_SEEDS) \
 	    --n-episodes $(ABLATION_OOD_N_EPISODES) \
 	    --n-deterministic-episodes $(ABLATION_OOD_N_DET_EPISODES) \
-	    --blue-team-runs $(BLUE_TEAM_RUNS_ROOT) \
+	    --blue-team-runs $(ABLATION_OOD_BLUE_TEAM_RUNS) \
 	    --out-root $(ABLATION_OOD_RUNS_ROOT) \
 	    --reward-mode $(ABLATION_OOD_REWARD_MODE) \
+	    $(ABLATION_OOD_POMDP_FLAGS) \
 	    --rf-path $(BENCHMARK_RF_PATH)
 
 .PHONY: ablation-ood-figure
@@ -211,7 +226,8 @@ ablation-ood-figure:  ## Ablation: render F15 from runs/ablation/ood/.
 	    --runs-root $(ABLATION_OOD_RUNS_ROOT) \
 	    --out-dir $(ABLATION_OUT_DIR) \
 	    --ood-classes $(ABLATION_OOD_CLASSES) \
-	    --policies $(ABLATION_OOD_POLICIES)
+	    --policies $(ABLATION_OOD_POLICIES) \
+	    --blue-team-sweep-manifest $(ABLATION_OOD_BLUE_TEAM_RUNS)/sweep_manifest.json
 
 .PHONY: ablation-ood
 ablation-ood: ablation-ood-eval ablation-ood-figure  ## Ablation F15: full OOD eval + figure.
