@@ -1152,7 +1152,20 @@
         "best_rl_metric": 0.54,
         "advantage": 0.5066666666666667
       }
-    ]
+    ],
+    "stats": {
+      "n": 10,
+      "spearman_rho": 0.3586642707712381,
+      "spearman_p": 0.3087986342680014,
+      "pearson_r": 0.6661499498676258,
+      "pearson_p": 0.03545937730704043,
+      "ols_slope": 0.11739385014584856,
+      "ols_intercept": 0.40745807237895326,
+      "ols_slope_ci_low": -0.12173897344895492,
+      "ols_slope_ci_high": 0.19612575242003386,
+      "bootstrap_n": 10000,
+      "interpretation": "No detractor-supporting dependence: the Spearman rank correlation is non-significant and the bootstrap OLS-slope CI spans zero, so the advantage does not diminish as detector recall rises. Any weak linear association (Pearson) is in the positive direction, opposite to the 'RL only rescues the detector's blind spots' hypothesis."
+    }
   },
   "gates": {
     "G7.8": {

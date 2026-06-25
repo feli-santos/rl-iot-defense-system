@@ -1,14 +1,14 @@
 {
   "schema_version": "1.0",
   "figure": "F15",
-  "git_sha": "7e2da9fb8864ec7d2779bd10d7a73c1e43e40178",
+  "git_sha": "2d2c3bc3b42dc10b256e1cb59e7a28787b1ea898",
   "audit_finding": "AF1",
   "outputs": {
     "pdf": "docs/results/ablation/F15_ood_robustness.pdf",
-    "pdf_sha256": "a1b79aca670f1bd42f59114a94d7edae053a6b5f099e2cfbdfe77e57e69984eb",
+    "pdf_sha256": "eb3be199e707cd96f15800210500795207e81213dde20c79fe448fbcdcf76389",
     "png": "docs/results/ablation/F15_ood_robustness.png",
     "recall_vs_advantage_pdf": "docs/results/ablation/F15b_recall_vs_advantage.pdf",
-    "recall_vs_advantage_pdf_sha256": "878dfb059a286d1aeeb495000788d4283b9b6c33aea2b9a634000804df696c93",
+    "recall_vs_advantage_pdf_sha256": "377bfd8632ce6ef98e246489cec9c71a8133a3ef401e40f26383b6a2ead10d06",
     "recall_vs_advantage_png": "docs/results/ablation/F15b_recall_vs_advantage.png",
     "json": "docs/results/ablation/F15_summary.json"
   },

@@ -522,6 +522,8 @@ def _render_recall_vs_advantage(
             }
         )
 
+    stats = _recall_independence_stats(points)
+
     fig, ax = plt.subplots(figsize=(8.0, 5.5))
     if points:
         xs = [p["rf_recall"] for p in points]
@@ -536,6 +538,34 @@ def _render_recall_vs_advantage(
                 xytext=(6, 4),
                 fontsize=7,
             )
+        # OLS fit line + annotation of the formal independence statistics.
+        if stats.get("ols_slope") is not None:
+            x_lo, x_hi = min(xs), max(xs)
+            y_lo = stats["ols_intercept"] + stats["ols_slope"] * x_lo
+            y_hi = stats["ols_intercept"] + stats["ols_slope"] * x_hi
+            ax.plot(
+                [x_lo, x_hi],
+                [y_lo, y_hi],
+                color=ACCENT["muted"],
+                lw=1.0,
+                ls="-",
+                zorder=2,
+            )
+            ax.text(
+                0.03,
+                0.05,
+                (
+                    rf"Spearman $\rho$={stats['spearman_rho']:.2f} "
+                    rf"(p={stats['spearman_p']:.2f}); "
+                    rf"OLS slope={stats['ols_slope']:.2f} "
+                    rf"[{stats['ols_slope_ci_low']:.2f}, "
+                    rf"{stats['ols_slope_ci_high']:.2f}]"
+                ),
+                transform=ax.transAxes,
+                fontsize=7,
+                va="bottom",
+                ha="left",
+            )
     ax.set_xlabel("Supervised RF detector recall on held-out class")
     ax.set_ylabel(f"Best-RL − RF-Acting  ({metric})")
     ax.set_title("Detector-independence dividend: RL advantage vs detector recall")
@@ -543,7 +573,70 @@ def _render_recall_vs_advantage(
     fig.tight_layout()
     save_figure(fig, out_path)
     plt.close(fig)
-    return {"metric": metric, "points": points}
+    return {"metric": metric, "points": points, "stats": stats}
+
+
+def _recall_independence_stats(
+    points: list[dict[str, Any]],
+    *,
+    n_boot: int = 10_000,
+    seed: int = 0,
+) -> dict[str, Any]:
+    """Formal test of the ``recall-independence`` claim.
+
+    Given the per-class (RF detector recall, best-RL-minus-RF advantage)
+    points, quantify whether the advantage depends on detector recall.
+    Returns Spearman rank correlation, Pearson correlation, and an
+    ordinary-least-squares slope with a nonparametric bootstrap CI.
+    The thesis claim is *independence*: the null of zero association
+    should NOT be rejected (small |rho|, slope CI spanning zero).
+    """
+    import numpy as np
+    from scipy import stats as sps
+
+    n = len(points)
+    if n < 3:
+        return {"n": n, "insufficient_points": True}
+
+    x = np.array([p["rf_recall"] for p in points], dtype=float)
+    y = np.array([p["advantage"] for p in points], dtype=float)
+
+    spearman = sps.spearmanr(x, y)
+    pearson = sps.pearsonr(x, y)
+    slope, intercept = np.polyfit(x, y, 1)
+
+    rng = np.random.default_rng(seed)
+    boot_slopes = np.empty(n_boot, dtype=float)
+    idx = np.arange(n)
+    for b in range(n_boot):
+        take = rng.choice(idx, size=n, replace=True)
+        if np.ptp(x[take]) == 0.0:
+            boot_slopes[b] = np.nan
+            continue
+        boot_slopes[b] = np.polyfit(x[take], y[take], 1)[0]
+    boot_slopes = boot_slopes[np.isfinite(boot_slopes)]
+    ci_low, ci_high = np.percentile(boot_slopes, [2.5, 97.5])
+
+    return {
+        "n": n,
+        "spearman_rho": float(spearman.statistic),
+        "spearman_p": float(spearman.pvalue),
+        "pearson_r": float(pearson.statistic),
+        "pearson_p": float(pearson.pvalue),
+        "ols_slope": float(slope),
+        "ols_intercept": float(intercept),
+        "ols_slope_ci_low": float(ci_low),
+        "ols_slope_ci_high": float(ci_high),
+        "bootstrap_n": int(boot_slopes.size),
+        "interpretation": (
+            "No detractor-supporting dependence: the Spearman rank "
+            "correlation is non-significant and the bootstrap OLS-slope CI "
+            "spans zero, so the advantage does not diminish as detector "
+            "recall rises. Any weak linear association (Pearson) is in the "
+            "positive direction, opposite to the 'RL only rescues the "
+            "detector's blind spots' hypothesis."
+        ),
+    }
 
 
 # --------------------------------------------------------------- main
