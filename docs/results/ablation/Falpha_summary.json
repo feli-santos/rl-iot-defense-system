@@ -3,7 +3,6 @@
   "kind": "alpha_curve_summary",
   "regime": {
     "reward_mode": "outcome",
-    "attacker_budget": null,
     "session_coherent": true,
     "no_post_transition_leak": true,
     "proximity_coupled": true,

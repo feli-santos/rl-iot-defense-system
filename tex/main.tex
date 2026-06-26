@@ -101,7 +101,8 @@ recompensa, neutralizando a objeção de que uma recompensa com informação
 privilegiada reduziria a tarefa a uma classificação de estágio. Terceiro, sob
 \emph{distribuição deslocada} (dez classes de ataque \emph{zero-day} retidas), o
 PPO previne uma fração uniformemente maior dos ataques do que a RF em todas as dez
-classes, sem dependência estatisticamente significativa da acurácia do detector: a
+classes, sem dependência detectável da acurácia do detector na direção que a
+objeção de classificação-disfarçada prevê (com $n=10$ classes): a
 prevenção é uma propriedade de controle temporal que um classificador sem memória
 não captura. Reportamos
 que apenas o PPO, em política e com \emph{rollouts} longos, é estável
@@ -152,9 +153,10 @@ environment is partially observable, the best RL agent beats RF-Acting under
 \emph{both} reward regimes, neutralising the objection that a privileged-information
 reward would reduce the task to stage classification. Third, under distribution
 shift (ten held-out \emph{zero-day} attack classes), PPO prevents a uniformly larger
-fraction of attacks than RF-Acting across all ten classes, with no significant
-dependence on detector accuracy: prevention is a temporal-control property that a
-memoryless classifier cannot capture. We report that only on-policy, long-rollout PPO is stable
+fraction of attacks than RF-Acting across all ten classes, with no detectable
+dependence on detector accuracy in the direction the disguised-classification
+objection predicts (on $n=10$ classes): prevention is a temporal-control property
+that a memoryless classifier cannot capture. We report that only on-policy, long-rollout PPO is stable
 under the sparse outcome-based reward; DQN and A2C are unstable in
 this regime. All results carry bootstrap confidence intervals and a reproducible
 artefact chain.

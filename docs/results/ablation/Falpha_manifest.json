@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0",
   "kind": "alpha_curve_plot_manifest",
-  "git_sha": "cf1ebc75c99902405a38230b9dad200087fdfb23",
+  "git_sha": "ca7e799acfca5c65212f068cd07b280e9416fb47",
   "inputs": {
     "eval_manifest_alpha_00": "3684515cf99cf01c4a2b54b016bcfdfd8abbed8785aafa03a100d0b5b872cf63",
     "eval_manifest_alpha_02": "27928e98c3eff90232196b949634ea8501092c05c612af9ae4c19d4a291f9ea2",
@@ -9,8 +9,8 @@
     "eval_manifest_alpha_06": "4f657103911aaa671ff29d967025f5c6c4edb217f6be25635f1c2f1fe9112df5"
   },
   "outputs": {
-    "summary_json": "769dd106ee5223d81fd4ab686244ab6bc642f621b8c53a46e9a21b3dcaf1f0c8",
-    "curve_png": "24405e6420f526c864d4e04019c5c6bbc3bf74c0a4ef48b4b65c15aeabff5c86",
-    "curve_pdf": "823c428ea659ff8a34608dde78e5283fde5e4b6af520bbfba87dfaa9dc007774"
+    "summary_json": "5e2061c1f97dc0ba322b3e19e4b4ebdb764fd5688af5147a0a686a9085afa128",
+    "curve_png": "595e2d4139b9585338d95ed270c37ef018a59ae340c5213b9d362e6c618b8cf7",
+    "curve_pdf": "9fe86f94e24272f79b27450a9be227d6c3a968e34d184301413ee0b57d8c109a"
   }
 }

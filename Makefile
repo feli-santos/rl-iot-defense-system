@@ -384,6 +384,7 @@ sync-figures: export-figure-pdfs  ## Export PDFs then copy them from docs/result
 	@cp docs/results/blue-team-training/F4_*.pdf tex/figs/ 2>/dev/null || true
 	@cp docs/results/ablation/F10_*.pdf tex/figs/ 2>/dev/null || true
 	@cp docs/results/ablation/F12_*.pdf tex/figs/ 2>/dev/null || true
+	@cp docs/results/ablation/Falpha_curve.pdf tex/figs/ 2>/dev/null || true
 	@cp docs/results/ablation/F15_*.pdf tex/figs/ 2>/dev/null || true
 	@cp docs/results/ablation/F15b_recall_vs_advantage.pdf tex/figs/ 2>/dev/null || true
 	@cp docs/results/ablation/F17_*.pdf tex/figs/ 2>/dev/null || true

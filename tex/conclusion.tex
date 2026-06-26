@@ -35,7 +35,7 @@ Three findings constitute the empirical backbone of the dissertation: a partial-
 
 % --- Subsection 5.3 ---
 \section{Limitations}\label{sec:limitations}
-The work has four principal limitations, surfaced in Section~\ref{sec:discussion} and recapitulated here.
+The work has six principal limitations, surfaced in Section~\ref{sec:discussion} and recapitulated here.
 
 \begin{enumerate}
     \item \textbf{Session coherence and observation aliasing are modelling abstractions.} CICIoT2023 ships pre-aggregated flow records with no recoverable session identifier, so the session-coherent sampling and the adjacent-stage aliasing that make stage inference hard are imposed at the environment layer rather than recovered from raw traffic. The aliasing rate $\alpha$ is a controlled knob, not a measured property of a deployment. The contribution is therefore the \emph{shape} of the policies' response to partial observability --- anchored by the $\alpha=0$ tie that proves no built-in RL advantage --- rather than a claim about one specific operating point.
@@ -44,7 +44,11 @@ The work has four principal limitations, surfaced in Section~\ref{sec:discussion
 
     \item \textbf{The RL advantage is conditional on partial observability.} In the unaliased, lowest-ambiguity regime ($\alpha=0$) the learned policy does \emph{not} beat the tuned classifier --- they are tied. The dissertation does not claim a universal RL win; it claims, and demonstrates, that the advantage emerges and grows specifically as the observation channel becomes ambiguous, and that it generalises to distribution shift.
 
-    \item \textbf{Designed (not learned) attacker dynamics.} The tug-of-war attacker reacts to the defender's force and escalates more aggressively near \textsc{impact}, but it is not jointly or adversarially co-trained with the defender, limiting realism relative to an adversary that may pivot, retreat, interleave kill-chain stages, or adapt over time. This is a deliberate, explicitly-bounded simplification; the evasion-reactive sweep shows the learned defender degrades gracefully when the attacker stalls in response to force, but a fully adaptive, co-adapting, or non-monotonic attacker is deferred to future work.
+    \item \textbf{Designed (not learned) attacker dynamics, and attacker-class conditionality.} The tug-of-war attacker reacts to the defender's force and escalates more aggressively near \textsc{impact}, but it is not jointly or adversarially co-trained with the defender, limiting realism relative to an adversary that may pivot, retreat, interleave kill-chain stages, or adapt over time. Because the proximity-coupled dynamics reward sustained proportional force, the crossover is a claim \emph{conditional on this attacker class}; an adversary indifferent to defensive force or escalating on a fixed schedule could shrink the gap. This is a deliberate, explicitly-bounded simplification; the evasion-reactive sweep shows the learned defender degrades gracefully when the attacker stalls in response to force, but validating the crossover against a fully adaptive, co-adapting self-play attacker is deferred to future work (Direction~5).
+
+    \item \textbf{The supervised baseline is memoryless by construction.} RF-Acting consumes a single feature row per decision, so the benchmark isolates windowed temporal control against memoryless control rather than reinforcement learning against supervised learning \emph{per se}. A windowed supervised controller given the same observation window (e.g.\ an HMM or temporal-convolution head composed with the recommended-action rule) would attribute the advantage specifically to the learned control policy; that intermediate baseline was not run and is the most direct strengthening of the central claim. The coupling ablation and the $\alpha=0$ tie nonetheless rule out the two strongest alternative explanations (privileged reward shaping and an RL-favouring environment).
+
+    \item \textbf{Single-dataset evaluation.} All results derive from CICIoT2023; external validity to other deployments is asserted by construction, not demonstrated. Replicating the aliasing crossover on an independent corpus with a comparable device mix --- Bot-IoT~\cite{Koroniotis2019} is the natural target --- is required before the effect can be claimed dataset-independent.
 \end{enumerate}
 
 % --- Subsection 5.4 ---

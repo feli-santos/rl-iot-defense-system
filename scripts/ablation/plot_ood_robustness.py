@@ -557,9 +557,14 @@ def _render_recall_vs_advantage(
                 (
                     rf"Spearman $\rho$={stats['spearman_rho']:.2f} "
                     rf"(p={stats['spearman_p']:.2f}); "
+                    rf"Pearson $r$={stats['pearson_r']:.2f} "
+                    rf"(p={stats['pearson_p']:.2f}); "
                     rf"OLS slope={stats['ols_slope']:.2f} "
                     rf"[{stats['ols_slope_ci_low']:.2f}, "
                     rf"{stats['ols_slope_ci_high']:.2f}]"
+                    "\n"
+                    r"No negative trend: advantage does not rise as detector"
+                    " recall falls (n=10)."
                 ),
                 transform=ax.transAxes,
                 fontsize=7,
@@ -742,13 +747,9 @@ def main(argv: list[str] | None = None) -> int:
     out_dir = Path(args.out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    # Render the figure (save_figure derives both .pdf and .png from the base).
-    fig_base = out_dir / "F15_ood_robustness"
-    _render(rows, list(args.ood_classes), fig_base)
-    png_path = fig_base.with_suffix(".png")
-    pdf_path = fig_base.with_suffix(".pdf")
-
-    # Detector-independence figure: per-class RF recall vs RL-minus-RF advantage.
+    # Per-class RF recall (computed first so the F15 panels can be ordered by
+    # detector recall: this makes the "advantage does not track recall" reading
+    # legible left-to-right / top-to-bottom).
     from scripts.ablation.run_ood_eval import _OOD_STAGE_BY_CLASS
 
     recall_by_class = _compute_per_class_rf_recall(
@@ -757,6 +758,20 @@ def main(argv: list[str] | None = None) -> int:
         dataset_dir=Path(args.dataset_dir),
         stage_by_class=_OOD_STAGE_BY_CLASS,
     )
+
+    # Order panels by ascending detector recall (blind spots first). Classes
+    # with missing recall fall back to their original position at the end.
+    def _recall_key(cls: str) -> float:
+        r = recall_by_class.get(cls)
+        return r if (r is not None and math.isfinite(r)) else math.inf
+
+    ordered_classes = sorted(args.ood_classes, key=_recall_key)
+
+    # Render the figure (save_figure derives both .pdf and .png from the base).
+    fig_base = out_dir / "F15_ood_robustness"
+    _render(rows, ordered_classes, fig_base)
+    png_path = fig_base.with_suffix(".png")
+    pdf_path = fig_base.with_suffix(".pdf")
     recall_base = out_dir / "F15b_recall_vs_advantage"
     recall_fig = _render_recall_vs_advantage(
         rows,
