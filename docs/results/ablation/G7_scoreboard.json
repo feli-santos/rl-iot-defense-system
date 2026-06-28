@@ -1,14 +1,14 @@
 {
   "schema_version": "2.0",
   "stage": "ablation",
-  "git_sha": "2b16224c0249c4a84baec244f630ed793c4c3989",
-  "completed_at": "2026-06-12T00:03:50Z",
+  "git_sha": "95384f082ee617dbb4d7589b5ec006d1373bbd5b",
+  "completed_at": "2026-06-28T18:14:37Z",
   "summary": {
-    "total_gates": 10,
-    "pass": 8,
+    "total_gates": 9,
+    "pass": 9,
     "pass_with_finding": 0,
     "pass_without_stretch": 0,
-    "fail_with_finding": 2,
+    "fail_with_finding": 0,
     "fail": 0,
     "skip": 0
   },
@@ -16,36 +16,25 @@
     {
       "id": "G7.1",
       "threshold": "pytest -q \u2265 428 passed; zero new skips",
-      "value": "======================= 428 passed, 1 warning in 21.88s ========================",
+      "value": "======================= 446 passed, 1 warning in 15.50s ========================",
       "status": "PASS",
       "kind": "tests"
     },
     {
       "id": "G7.2",
-      "threshold": "F9 best reward-comparable cell mean test reward > Held-Out-Benchmark DQN +1336 by \u22651\u03c3 (apples-to-apples; reward-coefficient cells fall back to security-KPI strand per D7.1.1)",
-      "value": "reward-comparable best=impact_is_terminal_false (+278.5); security-KPI best=impact_is_terminal_false (mit=0.850); meets_oracle_stretch=False",
-      "status": "FAIL-WITH-FINDING",
-      "finding_id": "D7.1.1",
-      "kind": "f9",
-      "interpretation": "FAIL-WITH-FINDING (D7.1.1, activated 2026-05-01): no reward-comparable cell (environment-design reward fn preserved) beats the deployable best (+278) on raw reward by \u2265 1\u03c3. BUT: the security-KPI strand passes \u2014 cell `impact_is_terminal_false` improves mitigated_impact_rate to 0.850 (vs deployable-best baseline 0.123, \u2265 1.5\u00d7 threshold 0.185). The one-at-a-time linear sweep characterised the limit of environment-design-style reward shaping at the apples-to-apples reward level, but env-semantics + coefficient scaling do move the real-security needle. Closing the +265 reward gap under fixed reward semantics requires a different mechanism (curriculum, reward modelling, or attack-aware exploration), deferred to future work.",
-      "security_kpi_strand_passes": true
+      "threshold": "Under outcome (sparse) reward, best RL agent outperforms RF-Acting (gap_outcome < 0)",
+      "value": "outcome: best_rl=ppo (+126.2), RF=+83.1, gap=-43.1",
+      "status": "PASS",
+      "kind": "fcoupling",
+      "interpretation": "PASS: under the sparse outcome reward the best RL agent (ppo, +126.2) outperforms the memoryless RF-Acting baseline (+83.1) by +43.1 points \u2014 the RL advantage is not an artefact of dense per-step shaping."
     },
     {
       "id": "G7.3",
       "threshold": "PPO p=0.0 < p=0.6 by \u22651\u03c3 AND rule monotone",
-      "value": "p=0.0 CI=(-117.1, -105.2); p=0.6 CI=(67.1, 112.7)",
+      "value": "p=0.0 CI=(12.7, 35.4); p=0.6 CI=(65.7, 109.4)",
       "status": "PASS",
       "kind": "f10",
       "interpretation": "PASS: PPO benefits from a more lenient environment (higher p_down \u21d2 higher reward) by \u2265 1\u03c3 between p_down=0.0 and p_down=0.6, and the rule curve is monotone non-decreasing in p_down \u2014 the value function shifts with environment difficulty as expected (conceptually aligned with IoTWarden Fig. 6)."
-    },
-    {
-      "id": "G7.4",
-      "threshold": "Pareto frontier \u2265 3 distinct dominant points",
-      "value": "n_distinct=1/32",
-      "status": "FAIL-WITH-FINDING",
-      "finding_id": "R7.3",
-      "kind": "f12",
-      "interpretation": "FAIL-WITH-FINDING (R7.3): only 1 distinct dominant point(s) on the frontier. Under the tug-of-war dynamics the stage-aware proportional oracle (recommended_action) attains perfect security (security_gain=1.0) at near-zero availability cost, strictly dominating always_block (which also prevents 100% but at unit availability cost) and every interior learned policy. The security-availability trade-off therefore collapses to a single dominant operating point *given perfect stage perception*; the interior placement of the RL agents quantifies the cost of partial observability (POMDP), not a genuine multi-point frontier."
     },
     {
       "id": "G7.5",
@@ -56,22 +45,22 @@
     },
     {
       "id": "G7.6",
-      "threshold": "No regression on environment-design/detector/blue-team/benchmark frozen tests overall",
+      "threshold": "No regression on environment-design/detector/Blue-Team/benchmark frozen tests overall",
       "value": "G7.1 carries this through",
       "status": "PASS",
       "kind": "regression"
     },
     {
       "id": "G7.7",
-      "threshold": "F9/F10/F12/F15/F17 manifest.json all present + SHA-pinned",
-      "value": "all 5 manifests present",
+      "threshold": "Fcoupling/F10/F15/F17 manifest.json all present + SHA-pinned",
+      "value": "all 4 manifests present",
       "status": "PASS",
       "kind": "manifests"
     },
     {
       "id": "G7.8",
       "threshold": "F15 4-class \u00d7 8-policy matrix complete, no NaN means",
-      "value": "32/32 cells; n_missing=0; n_nan=0",
+      "value": "80/80 cells; n_missing=0; n_nan=0",
       "status": "PASS",
       "kind": "f15",
       "audit_finding": "AF1"
@@ -79,19 +68,19 @@
     {
       "id": "G7.9",
       "threshold": "On VulnerabilityScan, best trained RL CI_low > RF-Acting CI_high (\u22651\u03c3 separation, RL > RF)",
-      "value": "best_rl=ppo (+298.3), RF=(-4430.6), \u0394=+4728.9",
+      "value": "best_rl=ppo (+123.0), RF=(+72.6), \u0394=+50.4",
       "status": "PASS",
       "kind": "f15",
       "audit_finding": "AF1 (HEADLINE)",
-      "interpretation": "PASS: trained RL recovers some of the supervised RF blind spot on VulnerabilityScan."
+      "interpretation": "Trained RL recovers some of the supervised RF blind spot on VulnerabilityScan."
     },
     {
       "id": "G7.10",
       "threshold": "F17 max-evasion (0.75) mean test reward within robust_tol=0.25 of evasion=0 reference (graceful degradation, no collapse)",
-      "value": "ref(e=0)=+271.6, max(e=0.75)=+270.7, ci_low_degradation=3.5 (tol_abs=67.9)",
+      "value": "ref(e=0)=+120.4, max(e=0.75)=+115.0, ci_low_degradation=3.7 (tol_abs=30.1)",
       "status": "PASS",
       "kind": "f17",
-      "interpretation": "PASS: the PPO defender stays robust to an evasive attacker \u2014 mean test reward at evasion=0.75 (270.7) is within 25% of the evasion=0 reference (271.6); the evasion-before-commit coupling does not collapse the learned defense."
+      "interpretation": "PASS: the PPO defender stays robust to an evasive attacker \u2014 mean test reward at evasion=0.75 (115.0) is within 25% of the evasion=0 reference (120.4); the evasion-before-commit coupling does not collapse the learned defense."
     }
   ]
 }

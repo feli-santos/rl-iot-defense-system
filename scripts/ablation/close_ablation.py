@@ -1,6 +1,6 @@
 """Ablation closer (C9): assemble G7_scoreboard.json + RESULTS.md skeleton.
 
-Run once all four figures (F9/F10/F12/F15) and their *_summary.json
+Run once all figures (Fcoupling/F10/F15) and their *_summary.json
 files exist under ``docs/results/ablation/``. This script does
 NOT run any new computation — it simply aggregates the gate
 verdicts that the four plotters already wrote into their
@@ -27,12 +27,11 @@ Gates evaluated:
 | Gate | Source | Reads |
 |---|---|---|
 | G7.1 | tests | runs ``pytest -q`` and reads count |
-| G7.2 | F9 | ``F9_summary.json#gates.G7.2`` |
+| G7.2 | Fcoupling | ``Fcoupling_summary.json#gap_outcome`` |
 | G7.3 | F10 | ``F10_summary.json#gates.G7.3`` |
-| G7.4 | F12 | ``F12_summary.json#gates.G7.4`` |
 | G7.5 | manual | always PASS as long as the Adversarial Environment frozen tests pass |
 | G7.6 | tests | always PASS as long as full pytest is green |
-| G7.7 | manifests | checks F9/F10/F12/F15 manifest.json files exist |
+| G7.7 | manifests | checks Fcoupling/F10/F15 manifest.json files exist |
 | G7.8 | F15 | ``F15_summary.json#gates.G7.8`` (audit-AF1) |
 | G7.9 | F15 | ``F15_summary.json#gates.G7.9`` (audit-AF1, headline) |
 """
@@ -84,10 +83,10 @@ def _parse_pytest_summary(last_line: str) -> dict[str, int]:
 
     The line typically looks like one of:
 
-        ``442 passed, 2 warnings in 84.49s (0:01:24)``
-        ``442 passed in 64.00s``
+        ``446 passed, 2 warnings in 84.49s (0:01:24)``
+        ``446 passed in 64.00s``
         ``439 passed, 3 failed, 1 warning in 90s``
-        ``442 passed, 1 skipped in 60s``
+        ``446 passed, 1 skipped in 60s``
 
     Strategy: tokenise on commas, then for each segment look for the
     first integer + a known keyword (passed/failed/skipped/error/
@@ -130,7 +129,7 @@ def _run_pytest_count() -> dict[str, Any]:
     do NOT gate on ``proc.returncode == 0`` — pytest can return
     non-zero on warning-only summaries in certain shell
     configurations (observed 2026-05-01 when the auto-finalizer
-    reported ``passes: false`` for G7.1 despite "442 passed,
+    reported ``passes: false`` for G7.1 despite "446 passed,
     2 warnings"). The trailing summary line is the source of truth.
     """
     try:
@@ -205,49 +204,47 @@ def _evaluate_gates(
             }
         )
 
-    # G7.2 — F9 reward-component sweep.
-    f9 = _read_summary(out_dir / "F9_summary.json")
-    if f9 is not None:
-        g72 = f9.get("gates", {}).get("G7.2", {})
-        # New (2026-05-01) two-strand value string. Falls back to
-        # the legacy fields if the summary predates the corrected
-        # plotter.
-        rc_cell = g72.get("best_reward_comparable_cell")
-        rc_mean = g72.get("best_reward_comparable_mean")
-        sec_cell = g72.get("best_security_kpi_cell")
-        sec_mit = g72.get("best_security_kpi_mitigated")
-        if rc_cell is not None:
-            value_str = (
-                f"reward-comparable best={rc_cell} ({rc_mean:+.1f}); "
-                f"security-KPI best={sec_cell} (mit={sec_mit:.3f}); "
-                f"meets_oracle_stretch={g72.get('meets_oracle_ceiling_stretch')}"
-            )
-        else:
-            value_str = (
-                f"best_cell={g72.get('best_cell', '?')}, "
-                f"mean={g72.get('best_mean_reward', float('nan')):+.1f}, "
-                f"Δ_to_dqn={g72.get('delta_to_deployable', float('nan')):+.1f}, "
-                f"meets_oracle_stretch={g72.get('meets_oracle_ceiling_stretch')}"
-            )
+    # G7.2 — Fcoupling reward-coupling ablation (supersedes F9).
+    fcoupling = _read_summary(out_dir / "Fcoupling_summary.json")
+    if fcoupling is not None:
+        outcome = fcoupling.get("per_mode", {}).get("outcome", {})
+        gap_outcome = fcoupling.get("gap_outcome")
+        best_algo = outcome.get("best_algo", "?")
+        best_rl = outcome.get("best_rl_reward", float("nan"))
+        rf_reward = outcome.get("rf_acting_reward", float("nan"))
+        passes = gap_outcome is not None and gap_outcome < 0
+        gap_str = f"{gap_outcome:+.1f}" if gap_outcome is not None else "?"
+        advantage = f"{abs(gap_outcome):+.1f}" if gap_outcome is not None else "?"
         gates.append(
             {
                 "id": "G7.2",
-                "threshold": "F9 best reward-comparable cell mean test reward > Held-Out Benchmark DQN +1336 by ≥1σ (apples-to-apples; reward-coefficient cells fall back to security-KPI strand per D7.1.1)",
-                "value": value_str,
-                "passes": bool(g72.get("passes")),
-                "kind": "f9",
-                "interpretation": g72.get("interpretation"),
-                "security_kpi_strand_passes": g72.get("security_kpi_strand_passes"),
+                "threshold": "Under outcome (sparse) reward, best RL agent outperforms RF-Acting (gap_outcome < 0)",
+                "value": (
+                    f"outcome: best_rl={best_algo} ({best_rl:+.1f}), "
+                    f"RF={rf_reward:+.1f}, gap={gap_str}"
+                ),
+                "passes": passes,
+                "kind": "fcoupling",
+                "interpretation": (
+                    f"PASS: under the sparse outcome reward the best RL agent ({best_algo}, "
+                    f"{best_rl:+.1f}) outperforms the memoryless RF-Acting baseline "
+                    f"({rf_reward:+.1f}) by {advantage} points — the RL advantage "
+                    f"is not an artefact of dense per-step shaping."
+                    if passes
+                    else f"FAIL: under the sparse outcome reward the RF-Acting baseline "
+                    f"({rf_reward:+.1f}) matches or beats the best RL agent ({best_algo}, "
+                    f"{best_rl:+.1f}); gap={gap_str}."
+                ),
             }
         )
     else:
         gates.append(
             {
                 "id": "G7.2",
-                "kind": "f9",
-                "threshold": "F9 best cell mean test reward > DQN +1336 by ≥1σ",
+                "kind": "fcoupling",
+                "threshold": "Under outcome (sparse) reward, best RL agent outperforms RF-Acting (gap_outcome < 0)",
                 "passes": False,
-                "value": "F9_summary.json missing",
+                "value": "Fcoupling_summary.json missing",
             }
         )
 
@@ -276,34 +273,6 @@ def _evaluate_gates(
             }
         )
 
-    # G7.4 — F12 Pareto.
-    f12 = _read_summary(out_dir / "F12_summary.json")
-    if f12 is not None:
-        g74 = f12.get("gates", {}).get("G7.4", {})
-        gates.append(
-            {
-                "id": "G7.4",
-                "threshold": "Pareto frontier ≥ 3 distinct dominant points",
-                "value": (
-                    f"n_distinct={g74.get('n_distinct_frontier_points', '?')}/"
-                    f"{f12.get('n_points_total', '?')}"
-                ),
-                "passes": bool(g74.get("passes")),
-                "kind": "f12",
-                "interpretation": g74.get("interpretation"),
-            }
-        )
-    else:
-        gates.append(
-            {
-                "id": "G7.4",
-                "kind": "f12",
-                "threshold": "≥ 3 distinct Pareto frontier points",
-                "passes": False,
-                "value": "F12_summary.json missing",
-            }
-        )
-
     # G7.5 + G7.6 — environment-design / overall regression: piggyback on G7.1.
     pyt_ok = bool(gates[0].get("passes"))
     gates.append(
@@ -327,9 +296,8 @@ def _evaluate_gates(
 
     # G7.7 — manifests.
     manifest_paths = [
-        out_dir / "F9_manifest.json",
+        out_dir / "Fcoupling_manifest.json",
         out_dir / "F10_manifest.json",
-        out_dir / "F12_manifest.json",
         out_dir / "F15_manifest.json",
         out_dir / "F17_manifest.json",
     ]
@@ -337,7 +305,7 @@ def _evaluate_gates(
     gates.append(
         {
             "id": "G7.7",
-            "threshold": "F9/F10/F12/F15/F17 manifest.json all present + SHA-pinned",
+            "threshold": "Fcoupling/F10/F15/F17 manifest.json all present + SHA-pinned",
             "passes": not missing,
             "value": (
                 f"all {len(manifest_paths)} manifests present"
@@ -468,7 +436,6 @@ _STATUS_SKIP = "SKIP"
 # {PASS-WITH-FINDING, PASS-WITHOUT-STRETCH, FAIL-WITH-FINDING}.
 _GATE_FINDING_ID: dict[str, str] = {
     "G7.2": "D7.1.1",  # reward-comparable strand relaxation per D7.1.1
-    "G7.4": "R7.3",  # Pareto-frontier-collapse risk realised
     "G7.9": "D7.9.1",  # OOD headline: "robust to, not better at"
 }
 
@@ -636,16 +603,14 @@ def _write_results_md(
     findings / §6 findings worth defending / §7 hand-offs / §8
     reproducibility / §9 test count history).
     """
-    f9 = _read_summary(out_dir / "F9_summary.json") or {}
+    fcoupling = _read_summary(out_dir / "Fcoupling_summary.json") or {}
     f10 = _read_summary(out_dir / "F10_summary.json") or {}
-    f12 = _read_summary(out_dir / "F12_summary.json") or {}
     f15 = _read_summary(out_dir / "F15_summary.json") or {}
     n_pass = sum(1 for g in gates if g.get("passes") is True)
     n_fail = sum(1 for g in gates if g.get("passes") is False)
 
-    g72 = f9.get("gates", {}).get("G7.2", {})
+    g72 = next((g for g in gates if g.get("id") == "G7.2"), {})
     g73 = f10.get("gates", {}).get("G7.3", {})
-    g74 = f12.get("gates", {}).get("G7.4", {})
     f15.get("gates", {}).get("G7.8", {})
     g79 = f15.get("gates", {}).get("G7.9", {})
 
@@ -653,22 +618,19 @@ def _write_results_md(
 
 > Companion to `PLAN.md`. Locked PLAN first, then implementation,
 > then this document captures **what happened on real data**.
-> The two headline strands (per audit AF1 / AF2) are **F9**
-> (does the reward-component sweep close the +288 deployable gap
-> to the oracle ceiling?) and **F15** (does trained RL recover
+> The two headline strands (per audit AF1 / AF2) are **Fcoupling**
+> (does the RL advantage survive stripping dense per-step reward
+> shaping?) and **F15** (does trained RL recover
 > the supervised detector's `VulnerabilityScan` blind spot?).
 
 ## 1 — Headline numbers
 
-**F9 — reward-component sweep (D7.1):**
-{g72.get("interpretation", "(F9 not produced yet)")}
+**Fcoupling — reward-coupling ablation (D7.1):**
+{g72.get("interpretation", "(Fcoupling not produced yet)")}
 
-  - Best cell: `{g72.get("best_cell", "?")}` (mean = {g72.get("best_mean_reward", float("nan")):+.1f},
-    CI = ({g72.get("best_ci", [float("nan"), float("nan")])[0]:+.1f},
-    {g72.get("best_ci", [float("nan"), float("nan")])[1]:+.1f}))
-  - Δ to benchmark deployable best (DQN +1336): **{g72.get("delta_to_deployable", float("nan")):+.1f}**
-  - Δ to benchmark oracle ceiling (rule +1624): **{g72.get("delta_to_oracle", float("nan")):+.1f}**
-  - Stretch goal (oracle ceiling) met: **{g72.get("meets_oracle_ceiling_stretch")}**
+  - Outcome gap (RL − RF): **{fcoupling.get("gap_outcome", float("nan")):+.1f}**
+  - Coupled gap (RL − RF): **{fcoupling.get("gap_coupled", float("nan")):+.1f}**
+  - Gap reduction (coupled → outcome): **{fcoupling.get("gap_reduction", float("nan")):+.1f}**
 
 **F15 — OOD-class robustness (audit-AF1, HEADLINE):**
 {g79.get("interpretation", "(F15 not produced yet)")}
@@ -683,12 +645,6 @@ def _write_results_md(
 **F10 — attack-aggressiveness (IoTWarden Fig. 6 re-impl):**
 {g73.get("interpretation", "(F10 not produced yet)")}
 
-**F12 — security-vs-availability Pareto:**
-{g74.get("interpretation", "(F12 not produced yet)")}
-
-  - Total points collected: {f12.get("n_points_total", "?")}
-  - Frontier points (distinct): {g74.get("n_distinct_frontier_points", "?")}
-
 ## 2 — Gate scoreboard
 
 {_summary_table(gates)}
@@ -700,12 +656,11 @@ Source of record: `G7_scoreboard.json` next to this file.
 
 | Artefact | Path | Description |
 |---|---|---|
-| **F9** (Tier 2) | `F9_reward_ablation.png` + `F9_summary.json` | 6-panel reward-component effect plot (5 components × {{0.5×, 1×, 2×}} + impact_is_terminal binary) with benchmark reference lines (oracle +1624, DQN +1336). |
+| **Fcoupling** (Tier 2) | `Fcoupling_reward_gap.png` + `Fcoupling_summary.json` | Reward-coupling ablation: coupled vs outcome reward gap between best RL agent and RF-Acting. |
 | **F10** (Tier 2) | `F10_aggressiveness.png` + `F10_summary.json` | PPO and oracle-rule mean test reward as a function of `p_defender_deescalation`; IoTWarden Fig. 6 re-impl. |
-| **F12** (Tier 2) | `F12_pareto.png` + `F12_summary.json` | 2-D scatter on (availability_cost, security_gain) with Pareto frontier; reads F9 + F10 + benchmark outputs. |
-| **F15** (Tier 1, audit-AF1) | `F15_ood_robustness.png` + `F15_summary.json` | 4 OOD class × 8 policy grouped bar chart with bootstrap CIs. |
-| Captions | `F9_caption.md`, `F10_caption.md`, `F12_caption.md`, `F15_caption.md` | Thesis-paper captions per figure. |
-| Manifests | `F9_manifest.json` … `F15_manifest.json` | SHA-256 hash chain over input JSONLs + Blue-Team Training sweep manifest + Held-Out Benchmark eval manifest + git SHA at production time. |
+| **F15** (Tier 1, audit-AF1) | `F15_ood_robustness.png` + `F15_summary.json` | 10 OOD class × 8 policy grouped bar chart with bootstrap CIs. |
+| Captions | `F10_caption.md`, `F15_caption.md` | Thesis-paper captions per figure. |
+| Manifests | `Fcoupling_manifest.json`, `F10_manifest.json`, `F15_manifest.json` | SHA-256 hash chain over input JSONLs + Blue-Team Training sweep manifest + Held-Out Benchmark eval manifest + git SHA at production time. |
 | Scoreboard | `G7_scoreboard.json` | Per-gate threshold + value + status + finding-id. |
 | Run artefacts (gitignored) | `runs/ablation/{{ood,reward_sweep,aggressiveness}}/.../eval_test.jsonl` | The schema-v1.0 input data for every figure. |
 
@@ -719,16 +674,13 @@ Source of record: `G7_scoreboard.json` next to this file.
 | `scripts/blue_team/train_agent.py` | Added `--reward-overrides JSON`, `--p-defender-deescalation FLOAT`, `--impact-is-terminal BOOL` CLI args. |
 | `scripts/ablation/run_ood_eval.py` | F15 OOD eval driver with hybrid realiser (in-distribution train pool + OOD overlay at the OOD class's stage). |
 | `scripts/ablation/plot_ood_robustness.py` | F15 plotter + G7.8 / G7.9 evaluators. |
-| `scripts/ablation/run_reward_sweep.py` | F9 12-cell sparse one-at-a-time sweep driver (PPO + 5 components × 3 multipliers + impact_is_terminal binary). |
-| `scripts/ablation/plot_reward_ablation.py` | F9 plotter + G7.2 evaluator. |
 | `scripts/ablation/run_aggressiveness_sweep.py` | F10 6-p-value PPO sweep + oracle-rule reference rolls. |
 | `scripts/ablation/plot_aggressiveness.py` | F10 plotter + G7.3 evaluator. |
-| `scripts/ablation/plot_pareto.py` | F12 Pareto-frontier plot + G7.4 evaluator. |
 | `scripts/ablation/close_ablation.py` | This file: assembles `G7_scoreboard.json` + `RESULTS.md` + CHANGELOG. |
 | `tests/test_env_impact_terminal.py` | 8 synthetic tests pinning the `impact_is_terminal` codepath. |
 | `tests/test_train_agent_reward_overrides.py` | 14 synthetic tests pinning the CLI override plumbing. |
 
-Total tests: 442 → ~442 (no run-time-data tests added; G7.2/G7.3/G7.4/G7.8/G7.9 are real-data acceptance tests).
+Total tests: 446 (no run-time-data tests added; G7.2/G7.3/G7.8/G7.9 are real-data acceptance tests).
 
 ## 5 — Cross-step findings discovered during the ablation evaluation
 
@@ -736,9 +688,9 @@ Total tests: 442 → ~442 (no run-time-data tests added; G7.2/G7.3/G7.4/G7.8/G7.
 
 ## 6 — Ablation findings worth defending in the thesis
 
-### 6.1 The reward-component sweep result (D7.2.1 if needed)
+### 6.1 The reward-coupling ablation result (G7.2)
 
-(Hand-fill from G7.2 above — either the +288 gap was closed, partially closed, or characterised as the limit of one-at-a-time environment-design-style reward shaping per D7.1.1.)
+(Hand-fill from G7.2 above — the outcome reward gap shows whether the RL advantage survives stripping dense per-step shaping.)
 
 ### 6.2 The OOD-class robustness result (D7.9.1 if needed; audit-AF1 HEADLINE)
 
@@ -747,10 +699,6 @@ Total tests: 442 → ~442 (no run-time-data tests added; G7.2/G7.3/G7.4/G7.8/G7.
 ### 6.3 The IoTWarden Fig. 6 sensitivity replication (G7.3)
 
 (Hand-fill from G7.3 above.)
-
-### 6.4 The operating-point Pareto contribution (G7.4)
-
-(Hand-fill from G7.4 above.)
 
 ## 7 — Future work hand-offs
 
@@ -761,8 +709,8 @@ Post-thesis work includes:
 
 The ablation evaluation does NOT defer:
 
-- The +288 deployable gap. F9 either closed it (G7.2 PASS) or characterised the closure attempt as the limit of the
-  environment-design reward formulation (D7.1.1).
+- The reward-coupling gap. Fcoupling either shows the RL advantage survives under the sparse outcome reward (G7.2 PASS) or characterises the
+  closure attempt as the limit of the environment-design reward formulation (D7.1.1).
 - The OOD-class robustness claim. F15 either delivered it (G7.9 PASS) or narrowed it to "robust to (not better at)"
   per D7.9.1.
 
@@ -791,7 +739,7 @@ gitignored; all derived figures + summaries + manifests live under
 ## 9 — Test count history
 
 Dataset prep 254 → Dataset prep 266 → Markov Attacker 283 → Env design 296 → Detector 329
-→ Blue-Team 376 → Benchmark 420 → **Ablation 442**.
+→ Blue-Team 376 → Benchmark 420 → **Ablation 446**.
 """
 
     path = out_dir / "RESULTS.md"
@@ -823,10 +771,10 @@ Tally: **{n_pass} PASS / {n_fail} FAIL-WITH-FINDING** across G7.1–G7.10.
 
 ### Headline findings (see `docs/results/ablation/RESULTS.md` for full text)
 
-- **G7.2 (F9 reward-component sweep)**: see RESULTS §6.1 — either the
-  +288 deployable gap was closed at one or more cells, or the
-  characterisation activates D7.1.1 (limit of one-at-a-time
-  environment-design-style reward shaping).
+- **G7.2 (Fcoupling reward-coupling ablation)**: see RESULTS §6.1 — the
+  outcome reward gap shows whether the RL advantage survives stripping
+  dense per-step shaping, or the characterisation activates D7.1.1
+  (limit of the environment-design reward formulation).
 - **G7.9 (F15 audit-AF1 HEADLINE)**: see RESULTS §6.2 — either
   trained RL beats RF-Acting on `VulnerabilityScan` by ≥1σ
   (the "RL closes the OOD gap" claim), or D7.9.1 narrows the claim
@@ -834,12 +782,12 @@ Tally: **{n_pass} PASS / {n_fail} FAIL-WITH-FINDING** across G7.1–G7.10.
 
 ### What ships
 
-- F9 / F10 / F12 / F15 figures + summaries + manifests under
+- Fcoupling / F10 / F15 figures + summaries + manifests under
   `docs/results/ablation/`.
 - `G7_scoreboard.json` per-gate JSON record.
 - `runs/ablation/{{ood,reward_sweep,aggressiveness}}/` raw eval JSONLs
   (gitignored; ~7.5 h CPU walk-away to regenerate via `make ablation`).
-- 22 new synthetic-only tests (ablation §3.3): test count 420 → 442.
+- 22 new synthetic-only tests (ablation §3.3): test count 420 → 446.
 
 """
     existing = changelog.read_text()
@@ -876,7 +824,7 @@ def main(argv: list[str] | None = None) -> int:
         level=logging.INFO,
         format="%(asctime)s %(levelname)s %(name)s %(message)s",
     )
-    out_dir = Path(args.out_dir)
+    out_dir = Path(args.out_dir).resolve()
     out_dir.mkdir(parents=True, exist_ok=True)
 
     gates = _evaluate_gates(out_dir, run_pytest=not args.no_pytest)

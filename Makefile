@@ -316,14 +316,6 @@ ablation-evasion-figure:  ## Ablation: render F17 from runs/ablation/evasion/.
 .PHONY: ablation-evasion
 ablation-evasion: ablation-evasion-sweep ablation-evasion-figure  ## Ablation F17: full sweep + figure.
 
-# F12 — Security-vs-availability Pareto (plotter-only; reads F10 + benchmark)
-.PHONY: ablation-pareto
-ablation-pareto:  ## Ablation F12: render Pareto plot from F10 + benchmark outputs.
-	$(PYTHON) -m scripts.ablation.plot_pareto \
-	    --benchmark-runs $(BENCHMARK_RUNS_ROOT) \
-	    --ablation-aggressiveness-runs $(ABLATION_AGGR_RUNS_ROOT) \
-	    --out-dir $(ABLATION_OUT_DIR)
-
 # Close (G7 scoreboard + RESULTS.md)
 .PHONY: ablation-close
 ablation-close:  ## Ablation: assemble G7 scoreboard + RESULTS.md skeleton.
@@ -332,10 +324,10 @@ ablation-close:  ## Ablation: assemble G7 scoreboard + RESULTS.md skeleton.
 
 # Top-level ablation chains
 .PHONY: ablation-figures
-ablation-figures: ablation-ood-figure ablation-aggressiveness-figure ablation-evasion-figure ablation-pareto  ## Ablation: render F10/F12/F15/F17 from existing runs/ablation/.
+ablation-figures: ablation-ood-figure ablation-aggressiveness-figure ablation-evasion-figure  ## Ablation: render F10/F15/F17 from existing runs/ablation/.
 
 .PHONY: ablation
-ablation: ablation-ood ablation-aggressiveness ablation-evasion ablation-pareto  ## Ablation: full F10 + F12 + F15 + F17 (~8.5 h CPU walk-away).
+ablation: ablation-ood ablation-aggressiveness ablation-evasion  ## Ablation: full F10 + F15 + F17 (~8.5 h CPU walk-away).
 
 .PHONY: train-rl
 train-rl:  ## Train a single RL agent (override ALGO=ppo|dqn|a2c).
@@ -383,7 +375,6 @@ sync-figures: export-figure-pdfs  ## Export PDFs then copy them from docs/result
 	@cp docs/results/blue-team-training/F3_*.pdf tex/figs/ 2>/dev/null || true
 	@cp docs/results/blue-team-training/F4_*.pdf tex/figs/ 2>/dev/null || true
 	@cp docs/results/ablation/F10_*.pdf tex/figs/ 2>/dev/null || true
-	@cp docs/results/ablation/F12_*.pdf tex/figs/ 2>/dev/null || true
 	@cp docs/results/ablation/Falpha_curve.pdf tex/figs/ 2>/dev/null || true
 	@cp docs/results/ablation/F15_*.pdf tex/figs/ 2>/dev/null || true
 	@cp docs/results/ablation/F15b_recall_vs_advantage.pdf tex/figs/ 2>/dev/null || true

@@ -682,7 +682,7 @@ def _build_argparser() -> argparse.ArgumentParser:
     )
     # Step-8 F2 (07_HANDOFF.md §5): explicit upstream-manifest SHA pin
     # for the dataset-prep splits manifest so the F15 hash chain is
-    # self-contained (matches the F9/F10/F12 pattern landed in Step 8).
+    # self-contained (matches the F9/F10 pattern landed in Step 8).
     p.add_argument(
         "--split-splits-manifest",
         default="docs/results/dataset/manifest.json",
@@ -840,7 +840,7 @@ def main(argv: list[str] | None = None) -> int:
                 "sha256": _sha256(Path(args.blue_team_sweep_manifest)),
             },
             # Step-8 F2: explicit dataset-prep splits manifest pin so the
-            # F15 hash chain is self-contained (matches F9/F10/F12).
+            # F15 hash chain is self-contained (matches F9/F10).
             "split_splits_manifest": {
                 "path": str(args.split_splits_manifest),
                 "sha256": _sha256(Path(args.split_splits_manifest)),

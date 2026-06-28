@@ -22,7 +22,7 @@ What it checks (per step, in order):
 - Detector: ``docs/results/stage-detector/manifest.json`` ↔ on-disk
   outputs. Inputs (features.npy etc.) are gitignored; if missing,
   the harness skips them with a warning rather than failing.
-- Ablation: ``docs/results/ablation/F[10,12,15,17]_manifest.json``
+- Ablation: ``docs/results/ablation/F[10,15,17]_manifest.json``
   plus ``Falpha_manifest.json`` / ``Fcoupling_manifest.json``
   ↔ on-disk outputs (PNG + summary JSON). Upstream pins
   (``blue_team_sweep_manifest`` / ``benchmark_eval_manifest`` /
@@ -45,7 +45,7 @@ SKIP taxonomy (expected, non-FAIL):
   filesystem paths, and reference gitignored per-seed run manifests
   under ``runs/``. They carry no resolvable path and therefore always
   SKIP; the corresponding figure values are independently re-checked
-  by the F10/F12/F15 chains, whose seed-level eval JSONLs *are* pinned
+  by the F10/F15 chains, whose seed-level eval JSONLs *are* pinned
   by path.
 
 Wallclock budget: ~5 seconds on a fresh checkout.
@@ -97,7 +97,6 @@ _TARGETS: list[tuple[str, Path, bool]] = [
     ("dataset", _ROOT / "docs/results/dataset/manifest.json", True),
     ("detector", _ROOT / "docs/results/stage-detector/manifest.json", True),
     ("ablation/F10", _ROOT / "docs/results/ablation/F10_manifest.json", True),
-    ("ablation/F12", _ROOT / "docs/results/ablation/F12_manifest.json", True),
     ("ablation/F15", _ROOT / "docs/results/ablation/F15_manifest.json", True),
     ("ablation/F17", _ROOT / "docs/results/ablation/F17_manifest.json", True),
     ("ablation/Falpha", _ROOT / "docs/results/ablation/Falpha_manifest.json", True),
