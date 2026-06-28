@@ -211,20 +211,20 @@ class AdversarialEnvConfig:
         and (b) when the env de-escalates from MANEUVER/IMPACT to BENIGN
         because of an agent-driven defense action.
     impact_is_terminal:
-        If ``True`` (default, environment-design frozen contract), the episode
-        terminates the same step the env transitions to IMPACT, and the
-        terminal reward is applied inline against whatever action the
-        agent took *that same step* (which was chosen at the previous,
-        non-IMPACT stage).
-
-        If ``False`` (ablation D7.3, F9 ablation axis), the env transitions
-        to IMPACT but does NOT terminate that step. The agent's *next*
-        action is taken as the explicit IMPACT-row decision, then
-        :meth:`_step_at_impact` runs with that action and the env
+        If ``False`` (default, primary training + benchmark contract), the
+        env transitions to IMPACT but does NOT terminate that step. The
+        agent's *next* action is taken as the explicit IMPACT-row decision,
+        then :meth:`_step_at_impact` runs with that action and the env
         terminates. This decouples "the step where IMPACT arrives" from
         "the step where the agent picks an IMPACT response", giving the
-        agent an unconfounded IMPACT-row decision. Default ``True``
-        preserves the environment-design/4/5/6 frozen contract byte-for-byte.
+        agent an unconfounded IMPACT-row decision.
+
+        If ``True`` (retained as a reward-mis-specification case study),
+        the episode terminates the same step the env transitions to IMPACT,
+        and the terminal reward is applied inline against whatever action
+        the agent took *that same step* (which was chosen at the previous,
+        non-IMPACT stage). This is the legacy environment-design frozen
+        contract, kept for the reward-coupling ablation only.
     """
 
     # Lifecycle
@@ -233,7 +233,7 @@ class AdversarialEnvConfig:
     window_size: int = 5
     include_deltas: bool = True
     num_actions: int = 5
-    impact_is_terminal: bool = True
+    impact_is_terminal: bool = False
 
     # =====================================================================
     # Tug-of-war attacker dynamics (environment-design v3, headline)

@@ -72,8 +72,10 @@ class EnvConfigSerializable:
     include_deltas: bool = True
     p_defender_deescalation: float = 0.6
     # ablation D7.3: explicit IMPACT-row decision step toggle. Default
-    # ``True`` preserves the environment-design/4/5/6 frozen contract.
-    impact_is_terminal: bool = True
+    # ``False`` is the primary training + benchmark contract (the agent
+    # gets an unconfounded IMPACT-row decision). ``True`` is retained
+    # only as a reward-mis-specification case study.
+    impact_is_terminal: bool = False
 
     # Stage-prediction ablation (review 2.4.1)
     stage_detector_path: str | None = None
@@ -118,12 +120,13 @@ class EnvConfigSerializable:
     proportional_bonus_cap: float | None = 100.0
     reward_deescalation: float = 15.0
     deescalation_bonus_cap: float | None = 150.0
-    # Reward mode. Canonical: "coupled" (kill-chain-aware shaping, the
-    # reward-shaping ablation cell) or "outcome" (outcome-only, the primary
-    # deployment contract). Legacy aliases "proportional"/"outcome_only" are
-    # accepted and normalised in __post_init__ so serialised manifests are
-    # canonical (keeps the train/eval parity check alias-insensitive).
-    reward_mode: str = "proportional"
+    # Reward mode. Canonical: "outcome" (outcome-only, the primary
+    # deployment + training contract) or "coupled" (kill-chain-aware shaping,
+    # the reward-shaping ablation cell). Legacy aliases
+    # "proportional"/"outcome_only" are accepted and normalised in
+    # __post_init__ so serialised manifests are canonical (keeps the
+    # train/eval parity check alias-insensitive).
+    reward_mode: str = "outcome"
     impact_penalty: float = 200.0
     penalty_missed_impact: float = 150.0
     defense_success_bonus: float = 250.0

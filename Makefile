@@ -97,7 +97,7 @@ detector-figure:  ## Detector: re-plot per_stage_recall (Fig 4.3) from F11_summa
 # Blue Team — DQN/PPO/A2C × 10 seeds + F3/F4/T1
 # -----------------------------------------------------------------------------
 BLUE_TEAM_RUNS_ROOT     ?= runs/blue_team
-BLUE_TEAM_TIMESTEPS     ?= 250000
+BLUE_TEAM_TIMESTEPS     ?= 1500000
 BLUE_TEAM_SEEDS         ?= 0 1 2 3 4 5 6 7 8 9
 BLUE_TEAM_ALGOS         ?= dqn ppo a2c
 BLUE_TEAM_PARALLEL      ?= 1

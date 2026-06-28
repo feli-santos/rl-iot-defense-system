@@ -144,11 +144,11 @@ class TestBuildRunConfigOverrides:
         assert cfg.env.action_cost_scale == 1.0
         # Lifecycle defaults too.
         assert cfg.env.p_defender_deescalation == 0.6
-        assert cfg.env.impact_is_terminal is True
+        assert cfg.env.impact_is_terminal is False
         # Same for the eval spec (overrides apply to both).
         assert cfg.eval_env.defense_success_bonus == 250.0
         assert cfg.eval_env.p_defender_deescalation == 0.6
-        assert cfg.eval_env.impact_is_terminal is True
+        assert cfg.eval_env.impact_is_terminal is False
 
     def test_reward_overrides_json_applied_to_both_specs(self) -> None:
         """``--reward-overrides`` modifies both train and eval env specs."""
@@ -168,7 +168,7 @@ class TestBuildRunConfigOverrides:
         assert cfg.eval_env.p_defender_deescalation == 0.0
         # Other defaults preserved.
         assert cfg.env.defense_success_bonus == 250.0
-        assert cfg.env.impact_is_terminal is True
+        assert cfg.env.impact_is_terminal is False
 
     def test_impact_is_terminal_false_arg(self) -> None:
         """``--impact-is-terminal false`` flips the env-config flag.
@@ -293,9 +293,9 @@ class TestBackwardCompatibility:
         # Pre-ablation fields preserved.
         assert cfg.env.p_defender_deescalation == 0.6
         # New ablation fields default to AdversarialEnvConfig defaults
-        # (== environment-design frozen contract). This is what makes Blue-Team
+        # (== primary training + benchmark contract). This is what makes
         # checkpoints loadable + comparable under ablation evaluation.
         assert cfg.env.defense_success_bonus == 250.0
         assert cfg.env.penalty_missed_impact == 150.0
         assert cfg.env.reward_proportional == 5.0
-        assert cfg.env.impact_is_terminal is True
+        assert cfg.env.impact_is_terminal is False

@@ -172,38 +172,38 @@ def _force_into_impact(
 
 
 class TestImpactIsTerminalDefault:
-    """Default ``impact_is_terminal=True`` preserves the environment-design
-    frozen contract byte-for-byte."""
+    """Default ``impact_is_terminal=False`` is the primary training + benchmark
+    contract: the agent gets an explicit IMPACT-row decision step."""
 
-    def test_default_value_is_true(self, env_factory):
-        """A bare ``AdversarialEnvConfig()`` has ``impact_is_terminal=True``."""
+    def test_default_value_is_false(self, env_factory):
+        """A bare ``AdversarialEnvConfig()`` has ``impact_is_terminal=False``."""
         cfg = AdversarialEnvConfig()
-        assert cfg.impact_is_terminal is True, (
-            "Default impact_is_terminal must be True to preserve the "
-            "environment-design frozen contract. Changing the default would "
-            "invalidate Blue-Team and benchmark trained checkpoints."
+        assert cfg.impact_is_terminal is False, (
+            "Default impact_is_terminal must be False (primary training + "
+            "benchmark contract). True is retained only as a reward-mis-"
+            "specification case study."
         )
 
-    def test_default_terminates_at_impact_arrival(self, env_factory):
-        """With the default config, the step that lands on IMPACT
-        terminates the episode (environment-design frozen lifecycle)."""
-        env = env_factory()  # impact_is_terminal=True by default
+    def test_true_terminates_at_impact_arrival(self, env_factory):
+        """With ``impact_is_terminal=True`` (case-study branch), the step that
+        lands on IMPACT terminates the episode inline."""
+        env = env_factory(impact_is_terminal=True)
         obs, reward, terminated, truncated, info = _force_into_impact(
             env,
             action_into_impact=4,  # ISOLATE
         )
         assert terminated is True, (
-            "Environment-design frozen contract: episode must terminate the same "
-            "step IMPACT arrives when impact_is_terminal=True (default)."
+            "impact_is_terminal=True (case study): episode must terminate the same "
+            "step IMPACT arrives."
         )
         assert info["attack_stage"] == KillChainStage.IMPACT.value
 
-    def test_default_isolate_at_impact_arrival_nets_partial_mitigation(self, env_factory):
-        """With the default, ISOLATE on the IMPACT-arrival step earns
-        the inline terminal reward shape: -impact_penalty
+    def test_true_isolate_at_impact_arrival_nets_partial_mitigation(self, env_factory):
+        """With ``impact_is_terminal=True``, ISOLATE on the IMPACT-arrival step
+        earns the inline terminal reward shape: -impact_penalty
         +defense_success_bonus + the proportionality reward for picking
         ISOLATE on MANEUVER (the decision-time stage)."""
-        env = env_factory()
+        env = env_factory(impact_is_terminal=True)
         obs, reward, terminated, truncated, info = _force_into_impact(env, action_into_impact=4)
         # MANEUVER -> ISOLATE: action_cost=-0.8, prop_band(|4-3|=1)=+5,
         # then -impact_penalty(200) +defense_success_bonus(250) inline.

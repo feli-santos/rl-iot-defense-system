@@ -546,10 +546,11 @@ def _build_argparser() -> argparse.ArgumentParser:
         default=None,
         help=(
             "Override AdversarialEnvConfig.impact_is_terminal "
-            "(true/false). Default None preserves environment-design/4/5/6 "
-            "frozen contract (True). When False, the agent gets an "
-            "explicit IMPACT-row decision step before termination "
-            "(F9 binary axis, D7.3)."
+            "(true/false). Default None preserves the dataclass default "
+            "(False, the primary training + benchmark contract): the agent "
+            "gets an explicit IMPACT-row decision step before termination. "
+            "Set --impact-is-terminal true only for the reward-mis-"
+            "specification case study (D7.3)."
         ),
     )
     return p
