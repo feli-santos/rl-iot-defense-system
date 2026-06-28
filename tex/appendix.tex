@@ -149,7 +149,7 @@ Figure~\ref{fig:app_f10} reproduces the F10 environment-difficulty sweep from Se
 
 \section{Action-Cost Scale Sweep (Preliminary)}\label{app:action_cost_sweep}
 
-\textbf{Preliminary (pre-redesign reward scale).} \emph{The two sweeps in this and the following section were conducted on an earlier reward scale, before the partially-observable redesign, and were not re-run under the present tug-of-war contract. They are reported only for their relative conclusions; their absolute reward magnitudes are not comparable to the figures in Chapter~\ref{cap:results}.}
+\textbf{Preliminary (pre-redesign reward scale).} \emph{The two sweeps in this and the following section were conducted on an earlier reward scale, before the partially-observable redesign, and were not re-run under the present tug-of-war contract. They are reported only for their relative conclusions; their absolute reward magnitudes are not comparable to the figures in Chapter~\ref{cap:results}. Unlike the headline figures, these two sweeps do not carry a provenance manifest under \texttt{docs/results/} (their data lives only in the figure PDFs) and are therefore not part of the reproducibility hash chain; they should be read as exploratory sensitivity checks rather than registered results.}
 
 Figure~\ref{fig:app_fa_cost} shows the action-cost scale sensitivity sweep over $\kappa \in \{0.5, 1.0, 2.0\}$ (the action-cost multiplier of Section~\ref{ssec:action_cost_justification}, distinct from the observation-aliasing rate $\alpha$). All three settings produce overlapping 95\,\% bootstrap confidence intervals, indicating that the default $\kappa = 1.0$ is robust to $\pm 2\times$ perturbation.
 
