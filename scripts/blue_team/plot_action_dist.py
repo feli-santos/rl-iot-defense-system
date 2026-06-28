@@ -285,6 +285,7 @@ def render(
     )
 
     fig_stem = out_dir / "F4_action_distribution"
+    _git_sha_cached = _git_sha()
     save_figure(fig, fig_stem)
     fig_path = fig_stem.with_suffix(".png")
     plt.close(fig)
@@ -292,7 +293,7 @@ def render(
 
     summary = {
         "version": "1.0",
-        "git_sha": _git_sha(),
+        "git_sha": _git_sha_cached,
         "timestamp": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "runs_root": str(runs_root),
         "best_algo": best_algo,
