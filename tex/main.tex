@@ -69,7 +69,7 @@ superfície de ataque enquanto o impacto econômico global de ameaças cibernét
 continua a crescer. As restrições computacionais de muitos dispositivos IoT
 tornam ineficazes as soluções de segurança tradicionais e motivam mecanismos de
 defesa adaptativos capazes de operar autonomamente. Esta dissertação projeta,
-implementa e avalia rigorosamente um arcabouço de defesa adaptativo ciente da
+implementa e avalia um arcabouço de defesa adaptativo ciente da
 cadeia de eliminação cibernética (\emph{kill-chain-aware}) para redes IoT,
 baseado em Aprendizado por Reforço Profundo (DRL). O sistema é avaliado sobre
 linhas de características reais do \emph{dataset} CICIoT2023 amostradas em uma
@@ -84,23 +84,24 @@ estágio da cadeia e age apenas sobre linhas de características brutas amostrad
 forma \emph{coerente por sessão}, e estágios adjacentes são estatisticamente
 \emph{aliasados} (uma taxa $\alpha$ controla a ambiguidade de cada observação
 individual), de modo que nenhuma linha isolada revela o estágio --- ele só pode
-ser inferido ao longo de uma janela temporal. Esta é a condição realista que a
-formulação anterior, baseada em amostragem independente por passo, abstraía.
+ser inferido ao longo de uma janela temporal. Esta é a condição de
+observabilidade parcial, motivada por implantação, que a formulação anterior,
+baseada em amostragem independente por passo, abstraía.
 Treinamos um agente de RL com janela temporal (PPO, com DQN e A2C como
 \emph{baselines}) sobre \NumSeeds{} sementes e o comparamos a uma Floresta
 Aleatória acoplada a detector (RF-Acting), a um oráculo de observabilidade total e
 a políticas triviais. Três resultados sustentam a contribuição. Primeiro, à medida
 que a ambiguidade observacional $\alpha$ aumenta, o classificador supervisionado
 por fluxo degrada monotonicamente enquanto o agente PPO com janela permanece
-estável: em $\alpha=0$ os dois empatam (provando que o redesenho não favorece
+estável: em $\alpha=0$ os dois empatam (evidenciando que o redesenho não favorece
 artificialmente o RL), e a partir de $\alpha=\HeadlineAlpha$ o PPO supera a RF com
 intervalos de confiança disjuntos. Segundo, uma ablação de recompensa
 acoplada-versus-desacoplada mostra que, uma vez que o ambiente é parcialmente
 observável, o melhor agente de RL supera a RF em \emph{ambos} os regimes de
-recompensa, neutralizando a objeção de que uma recompensa com informação
+recompensa, respondendo à objeção de que uma recompensa com informação
 privilegiada reduziria a tarefa a uma classificação de estágio. Terceiro, sob
-\emph{distribuição deslocada} (dez classes de ataque \emph{zero-day} retidas), o
-PPO previne uma fração uniformemente maior dos ataques do que a RF em todas as dez
+\emph{distribuição deslocada} (dez classes de ataque retidas como avaliação
+fora da distribuição), o PPO previne uma fração maior dos ataques do que a RF em todas as dez
 classes, sem dependência detectável da acurácia do detector na direção que a
 objeção de classificação-disfarçada prevê (com $n=10$ classes): a
 prevenção é uma propriedade de controle temporal que um classificador sem memória
@@ -127,7 +128,7 @@ vast attack surface while the global economic impact of cyber threats continues
 to grow. The computational constraints of many IoT devices render traditional
 security solutions ineffective and motivate intelligent, adaptive defense
 mechanisms capable of operating autonomously. This dissertation designs,
-implements, and rigorously evaluates a kill-chain-aware adaptive defense
+implements, and evaluates a kill-chain-aware adaptive defense
 framework for IoT networks, built on Deep Reinforcement Learning (DRL). The
 framework is evaluated on real CICIoT2023 feature rows sampled into a simulated
 kill-chain trajectory, projected onto a five-stage Cyber Kill Chain. The adversary
@@ -139,21 +140,22 @@ over-forced action merely holds it. Centrally, we cast the defense as a genuine
 and acts on raw feature rows alone, drawn \emph{session-coherently}, while adjacent
 stages are statistically \emph{aliased} (a rate $\alpha$ controls how ambiguous
 each single observation is), so no individual row reveals the stage --- it can be
-inferred only across a temporal window. This is the realistic condition that the
-earlier independent-per-step sampling abstracted away. We train a windowed RL agent
+inferred only across a temporal window. This is the deployment-motivated
+partial-observability condition that the earlier independent-per-step sampling
+abstracted away. We train a windowed RL agent
 (PPO, with DQN and A2C as baselines) over \NumSeeds{} seeds and compare it against a
 detector-coupled Random-Forest policy (RF-Acting), a full-observability oracle, and
 trivial baselines. Three results support the contribution. First, as the
 observation ambiguity $\alpha$ rises, the per-flow supervised classifier degrades
 monotonically while the windowed PPO agent stays flat: at $\alpha=0$ the two tie
-(proving the redesign does not favour RL by construction), and from
+(evidencing that the redesign does not favour RL by construction), and from
 $\alpha=\HeadlineAlpha$ onward PPO beats RF-Acting with disjoint confidence
 intervals. Second, a coupled-versus-decoupled reward ablation shows that, once the
 environment is partially observable, the best RL agent beats RF-Acting under
-\emph{both} reward regimes, neutralising the objection that a privileged-information
+\emph{both} reward regimes, addressing the objection that a privileged-information
 reward would reduce the task to stage classification. Third, under distribution
-shift (ten held-out \emph{zero-day} attack classes), PPO prevents a uniformly larger
-fraction of attacks than RF-Acting across all ten classes, with no detectable
+shift (ten held-out attack classes used as feature-injection stress tests), PPO
+prevents a larger fraction of attacks than RF-Acting across all ten classes, with no detectable
 dependence on detector accuracy in the direction the disguised-classification
 objection predicts (on $n=10$ classes): prevention is a temporal-control property
 that a memoryless classifier cannot capture. We report that only on-policy, long-rollout PPO is stable
