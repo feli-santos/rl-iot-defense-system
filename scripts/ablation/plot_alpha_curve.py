@@ -29,14 +29,20 @@ Outputs (under ``--out-dir``):
 from __future__ import annotations
 
 import argparse
-import hashlib
 import json
 import logging
 import subprocess
 from pathlib import Path
 from typing import Any
 
-from scripts._plot_style import apply_house_style
+from scripts._plot_style import (
+    POLICY_LABEL,
+    POLICY_ORDER,
+    POLICY_STYLE,
+    apply_house_style,
+    save_figure,
+    sha256_file,
+)
 
 apply_house_style()
 import matplotlib.pyplot as plt  # noqa: E402
@@ -46,47 +52,6 @@ from src.blue_team.aggregation import bootstrap_ci, read_episodes_jsonl  # noqa:
 logger = logging.getLogger("scripts.ablation.plot_alpha_curve")
 
 _ROOT = Path(__file__).resolve().parents[2]
-
-# Display order + styling. RL agents first (the contribution), then the
-# supervised baseline and the full-observability ceiling.
-_POLICY_ORDER: tuple[str, ...] = (
-    "ppo",
-    "dqn",
-    "a2c",
-    "rf_acting",
-    "recommended_action",
-)
-_POLICY_LABEL: dict[str, str] = {
-    "ppo": "PPO (windowed RL)",
-    "dqn": "DQN (windowed RL)",
-    "a2c": "A2C (windowed RL)",
-    "rf_acting": "RF-Acting (supervised)",
-    "recommended_action": "Oracle (full obs.)",
-}
-_POLICY_STYLE: dict[str, dict[str, Any]] = {
-    "ppo": {"color": "#1b7837", "marker": "o", "lw": 2.4, "zorder": 5},
-    "dqn": {"color": "#7fbf7b", "marker": "s", "lw": 1.6, "zorder": 3},
-    "a2c": {"color": "#b8e186", "marker": "^", "lw": 1.6, "zorder": 3},
-    "rf_acting": {"color": "#b2182b", "marker": "D", "lw": 2.4, "zorder": 5},
-    "recommended_action": {
-        "color": "#4d4d4d",
-        "marker": "x",
-        "lw": 1.4,
-        "ls": "--",
-        "zorder": 2,
-    },
-}
-
-
-def _sha256(path: Path) -> str | None:
-    p = Path(path)
-    if not p.exists():
-        return None
-    h = hashlib.sha256()
-    with p.open("rb") as fh:
-        for chunk in iter(lambda: fh.read(1 << 20), b""):
-            h.update(chunk)
-    return h.hexdigest()
 
 
 def _git_sha() -> str:
@@ -117,7 +82,7 @@ def _pool_rewards(policy_dir: Path) -> list[float]:
 
 def _summarise_alpha(bench_dir: Path) -> dict[str, dict[str, float | int]]:
     out: dict[str, dict[str, float | int]] = {}
-    for policy in _POLICY_ORDER:
+    for policy in POLICY_ORDER:
         pdir = bench_dir / policy
         if not pdir.exists():
             continue
@@ -172,7 +137,7 @@ def _render_curve(
 ) -> None:
     alphas = sorted(per_alpha)
     fig, ax = plt.subplots(figsize=(7.0, 4.6))
-    for policy in _POLICY_ORDER:
+    for policy in POLICY_ORDER:
         xs: list[float] = []
         ys: list[float] = []
         los: list[float] = []
@@ -187,7 +152,7 @@ def _render_curve(
             his.append(float(cell["ci_high"]))
         if not xs:
             continue
-        style = _POLICY_STYLE.get(policy, {})
+        style = POLICY_STYLE.get(policy, {})
         ls = style.get("ls", "-")
         ax.plot(
             xs,
@@ -197,7 +162,7 @@ def _render_curve(
             lw=style.get("lw", 1.8),
             ls=ls,
             zorder=style.get("zorder", 3),
-            label=_POLICY_LABEL.get(policy, policy),
+            label=POLICY_LABEL.get(policy, policy),
         )
         if policy in ("ppo", "rf_acting"):
             ax.fill_between(xs, los, his, color=style.get("color"), alpha=0.15, zorder=1)
@@ -212,8 +177,7 @@ def _render_curve(
     ax.grid(True, alpha=0.25)
     ax.legend(loc="lower left", fontsize=8, framealpha=0.9)
     fig.tight_layout()
-    fig.savefig(out_path, dpi=160)
-    fig.savefig(out_path.with_suffix(".pdf"))
+    save_figure(fig, out_path)
     plt.close(fig)
 
 
@@ -253,7 +217,7 @@ def main() -> None:
             continue
         per_alpha[alpha] = _summarise_alpha(bench_dir)
         man = bench_dir / "eval_manifest.json"
-        input_hashes[f"eval_manifest_alpha_{nn}"] = _sha256(man)
+        input_hashes[f"eval_manifest_alpha_{nn}"] = sha256_file(man)
 
     crossover = _crossover_read(per_alpha)
 
@@ -284,9 +248,9 @@ def main() -> None:
         "git_sha": _git_sha(),
         "inputs": input_hashes,
         "outputs": {
-            "summary_json": _sha256(summary_path),
-            "curve_png": _sha256(png_path),
-            "curve_pdf": _sha256(png_path.with_suffix(".pdf")),
+            "summary_json": sha256_file(summary_path),
+            "curve_png": sha256_file(png_path),
+            "curve_pdf": sha256_file(png_path.with_suffix(".pdf")),
         },
     }
     (out_dir / "Falpha_manifest.json").write_text(json.dumps(manifest, indent=2))

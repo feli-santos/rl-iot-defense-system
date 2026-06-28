@@ -130,8 +130,8 @@
       below=0.8cm of env] (agent) {
   \textbf{Blue-Team Agent}\\[3pt]
   DQN / PPO / A2C\\
-  (Stable Baselines3\\
-   MultiInputPolicy)\\[3pt]
+   (Stable Baselines3\\
+    MlpPolicy)\\[3pt]
   10 seeds $\times$ $\leq$1.5M steps
 };
 
@@ -192,11 +192,11 @@
 \draw[arr] ([yshift=-2pt]stageII.south) -- (bench.north);
 
 %% ==============================================================
-%%  OBSERVATION DICT label
+%%  OBSERVATION label
 %% ==============================================================
 \node[font=\tiny, align=left, text=colBorder,
       below=2pt of env.south east, anchor=north east, xshift=-2pt] {
-  obs = \{features, history, action\_hist, [stage\_pred]\}
+  obs = Box(290,) = $5 \times 29 \times \{$raw, $\Delta\}$
 };
 
 \end{tikzpicture}

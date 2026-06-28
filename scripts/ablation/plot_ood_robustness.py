@@ -5,7 +5,7 @@ files (produced by :mod:`scripts.ablation.run_ood_eval`), aggregates
 per (class, policy) with the same bootstrap-CI protocol benchmark used
 in :mod:`scripts.benchmark.build_summary_table`, and emits:
 
-- ``F15_ood_robustness.png`` — 4-class × 8-policy grouped horizontal
+- ``F15_ood_robustness.png`` — 10-class × 8-policy grouped horizontal
   bar chart with 95 % bootstrap CI whiskers, one panel per OOD class.
   Same visual idiom as benchmark F8.
 - ``F15_summary.json`` — per (class, policy) row + a ``headline`` block
@@ -21,7 +21,7 @@ Gate evaluation:
 
 - **G7.8** (audit-AF1) — pass iff every (class, policy) cell produced
   a non-empty eval_test.jsonl with a finite mean_reward (no NaNs in
-  the 4 × 8 result matrix).
+  the 10 × 8 result matrix).
 - **G7.9** (audit-AF1, headline) — pass iff on `VulnerabilityScan`,
   the *best* trained RL mean_reward exceeds RF-Acting mean_reward by
   at least 1σ of the per-policy bootstrap CI (i.e., the lower bound
@@ -30,9 +30,9 @@ Gate evaluation:
   thesis claim narrows from "RL closes the OOD gap" to "RL is
   *robust to* (not *better at*) the OOD class".
 
-detector reminder: detector RESULTS §3.2 reported the supervised RF
-stage detector has **0.001 recall on `VulnerabilityScan`**. F15
-quantifies how much of that blind spot the trained RL policy
+detector reminder: the supervised RF stage detector has **recall 0.076
+on `VulnerabilityScan`** (F11 standalone) / **0.224** (F15 in-env).
+F15 quantifies how much of that blind spot the trained RL policy
 recovers by acting on raw features rather than the detector's
 classification.
 """
