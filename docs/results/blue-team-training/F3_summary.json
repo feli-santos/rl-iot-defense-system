@@ -1,7 +1,7 @@
 {
   "version": "1.0",
-  "git_sha": "9491fecdee74-dirty",
-  "timestamp": "2026-06-22T23:19:19Z",
+  "git_sha": "c06cca3674db",
+  "timestamp": "2026-06-28T18:16:12Z",
   "runs_root": "runs/redesign/alpha_04",
   "n_bins": 25,
   "bootstrap_n": 1000,

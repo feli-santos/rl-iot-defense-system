@@ -1,7 +1,7 @@
 {
   "version": "1.0",
-  "git_sha": "9491fecdee74-dirty",
-  "timestamp": "2026-06-22T23:19:19Z",
+  "git_sha": "c06cca3674db",
+  "timestamp": "2026-06-28T18:16:12Z",
   "produced_by": "scripts/blue_team/plot_learning_curves.py",
   "inputs": {
     "runs/redesign/alpha_04/a2c/seed_0/episodes.jsonl": "166a61e17b5304f174fa09f0c7c0e335f76fcc487fab8c1b7864d7f8319c6392",
@@ -66,8 +66,8 @@
     "runs/redesign/alpha_04/ppo/seed_9/eval.jsonl": "36a56c65c00c61a9f7aafd6bdc46b5eaf7e8dde057b178b8fbf1bf839afebeaf"
   },
   "outputs": {
-    "F3_learning_curves.pdf": "f66b1d2786290b6e767900b723b87b51940426e1376fa794e1f2cfb88d453adc",
+    "F3_learning_curves.pdf": "c16d1022429ef39726d7926d5c7715d8d074a1adcb2c85a4bd9b8d4755e1beec",
     "F3_learning_curves.png": "335b118561b84b15e09080f7ec5cf89594e25d73c3fe9bae24a469710fb27237",
-    "F3_summary.json": "011a3c03cbce4e695966e0892134ed95508d4304c728beccfe4bb29fa252c67d"
+    "F3_summary.json": "c0ec5807c83ba68c7d2c15d8bc942cc997dbc7cdb004853cb16e33a107754afd"
   }
 }
