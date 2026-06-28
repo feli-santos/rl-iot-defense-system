@@ -36,8 +36,8 @@ artefacts under [`docs/results/`](docs/results/):
 
 3. **Out-of-distribution generalisation.** On 10 held-out zero-day attack
    classes, the windowed PPO defender prevents a substantially larger fraction
-   of intrusions than RF-Acting on **every** class (PPO 0.37–0.65 vs RF
-   0.00–0.18), and the advantage is **independent of the upstream detector's
+   of intrusions than RF-Acting on **every** class (PPO 0.37–0.57 vs RF
+   0.00–0.15), and the advantage is **independent of the upstream detector's
    per-class recall** — a temporal-control property no memoryless per-flow
    classifier can reproduce.
 
