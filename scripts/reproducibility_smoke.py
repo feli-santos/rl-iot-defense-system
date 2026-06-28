@@ -104,7 +104,7 @@ _TARGETS: list[tuple[str, Path, bool]] = [
 ]
 
 _SCOREBOARDS: list[tuple[str, Path]] = [
-    ("G4", _ROOT / "docs/results/stage-detector/detector_acceptance.json"),
+    ("G4", _ROOT / "docs/results/stage-detector/G4_scoreboard.json"),
     ("G5", _ROOT / "docs/results/blue-team-training/G5_scoreboard.json"),
     # G6 (benchmark) has no standalone scoreboard JSON — its acceptance is
     # captured by the Falpha manifest hash-chain above.

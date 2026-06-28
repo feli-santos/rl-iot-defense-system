@@ -1,0 +1,79 @@
+{
+  "schema_version": "2.0",
+  "stage": "stage_detector",
+  "git_sha": "c02d7a0ffae3d9298e402e82d1248b68f86c5b26",
+  "completed_at": "2026-06-28T18:15:47Z",
+  "evaluated_against": {
+    "split": "test_balanced",
+    "manifest_git_sha": "cf1ebc75c999",
+    "manifest_generated_at": "2026-06-17T13:33:48Z",
+    "input_hashes_in": "manifest.json"
+  },
+  "summary": {
+    "total_gates": 5,
+    "pass": 3,
+    "pass_with_finding": 1,
+    "pass_without_stretch": 0,
+    "fail_with_finding": 0,
+    "fail": 0,
+    "skip": 1
+  },
+  "gates": [
+    {
+      "id": "G4.1",
+      "description": "full pytest suite green",
+      "threshold": "all tests green",
+      "value": "329 / 329 (detector lock; post-cleanup: 411/411 at HEAD; see RESULTS.md \u00a79 footnote)",
+      "status": "SKIP",
+      "evaluated": false,
+      "note": "evaluated separately by `pytest -q`; locked detector value preserved verbatim from RESULTS.md \u00a72"
+    },
+    {
+      "id": "G4.2",
+      "description": "Detector head macro-F1 on test_balanced >= 0.75",
+      "threshold": 0.75,
+      "observed": 0.834705,
+      "status": "PASS"
+    },
+    {
+      "id": "G4.3",
+      "description": "Detector head per-stage recall >= 0.50 on every stage",
+      "threshold": 0.5,
+      "observed_worst": 0.612,
+      "observed_worst_at": "StageDetector/RECON",
+      "diagnostic_cross_baseline_worst": 0.612,
+      "diagnostic_cross_baseline_worst_at": "StageDetector/RECON",
+      "status": "PASS"
+    },
+    {
+      "id": "G4.4",
+      "description": "At least one held-out OOD class fails to generalise (recall <= 0.30)",
+      "threshold_min_recall": 0.3,
+      "observed_min": 0.179523,
+      "observed_max": 0.998597,
+      "observed_gap": 0.819074,
+      "per_class": {
+        "VulnerabilityScan": 0.179523,
+        "Recon-OSScan": 0.415972,
+        "XSS": 0.904056,
+        "SqlInjection": 0.63184,
+        "Mirai-udpplain": 0.27539,
+        "DNS_Spoofing": 0.233809,
+        "DDoS-HTTP_Flood": 0.99505,
+        "DoS-SYN_Flood": 0.998597,
+        "DDoS-SlowLoris": 0.816929,
+        "DDoS-ACK_Fragmentation": 0.99439
+      },
+      "note": "Asymmetric OOD generalisation observed (max=0.999, min=0.180, gap=0.819). At least one held-out class falls within the ambitious threshold; the detector has a genuine blind spot for the RL agent to compensate for. Recorded as a thesis finding (PLAN \u00a78.D2 revised step 4.5).",
+      "status": "PASS-WITH-FINDING",
+      "finding_id": "D2.1"
+    },
+    {
+      "id": "G4.5",
+      "description": "StageDetector per-sample inference <= 1 ms",
+      "threshold_ms": 1.0,
+      "observed_ms": 0.0393,
+      "status": "PASS"
+    }
+  ]
+}
