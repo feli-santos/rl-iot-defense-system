@@ -38,10 +38,65 @@
     \end{fichacatalografica}
 }{}
 
+% Folha de Aprova\c{c}\~{a}o (IN CCPG 06/2025, Art. 2 I.4): nome do(a) aluno(a) e
+% membros da Comiss\~{a}o Examinadora, com v\'{\i}nculo, SEM assinatura. Quando o
+% PDF assinado pela secretaria existe (vers\~{a}o de homologa\c{c}\~{a}o), ele \'{e}
+% inclu\'{\i}do; caso contr\'{a}rio, a folha sem assinatura \'{e} tipografada.
 \IfFileExists{folha-assinaturas.pdf}{%
     \includepdf[pagecommand={\thispagestyle{plain}}]{folha-assinaturas.pdf}
     \cleardoublepage
-}{}
+}{%
+    \begin{folhadeaprovacao}
+        \begin{center}
+            {\ABNTEXchapterfont\large\imprimirautor}
+
+            \vspace*{\fill}\vspace*{\fill}
+
+            {\ABNTEXchapterfont\bfseries\Large\imprimirtitulo}
+        \end{center}
+
+        \vspace*{\fill}
+
+        \noindent
+        Disserta\c{c}\~{a}o apresentada ao Programa de P\'{o}s-Gradua\c{c}\~{a}o em
+        Engenharia El\'{e}trica da Faculdade de Engenharia El\'{e}trica e de
+        Computa\c{c}\~{a}o da Universidade Estadual de Campinas (UNICAMP), na
+        \'{A}rea de Engenharia de Computa\c{c}\~{a}o.
+
+        \vspace{\onelineskip}
+
+        \noindent Data da defesa: \rule{4cm}{0.4pt}
+
+        \vspace*{2\onelineskip}
+
+        \noindent\textbf{Composi\c{c}\~{a}o da Comiss\~{a}o Examinadora:}
+
+        \vspace*{2\onelineskip}
+
+        \begin{center}
+            \SingleSpacing
+            Prof. Dr. Denis Fantinato (Orientador)\\
+            FEEC/UNICAMP
+
+            \vspace*{2\onelineskip}
+
+            Prof. Dr. Eric Rohmer\\
+            FEEC/UNICAMP
+
+            \vspace*{2\onelineskip}
+
+            Prof. Dr. Jo\~{a}o Kleinschmidt\\
+            UFABC
+        \end{center}
+
+        \vspace*{\fill}
+
+        \noindent A Ata de Defesa, com as respectivas assinaturas dos membros
+        da Comiss\~{a}o Examinadora, consta no SIGA (Sistema de Fluxo de
+        Disserta\c{c}\~{o}es/Teses) da vida acad\^{e}mica do(a) aluno(a).
+    \end{folhadeaprovacao}
+    \cleardoublepage
+}
 
 % --- Dedicat\'{o}ria ---
 \begin{dedicatoria}
