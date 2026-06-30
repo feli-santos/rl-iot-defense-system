@@ -143,7 +143,7 @@ The environment-design default constants used throughout the dissertation (\text
 
 \paragraph{Disabled knobs.} Two reward or dynamics knobs exist in the environment configuration but are \emph{disabled} (set to zero) in every headline experiment and ablation reported in this dissertation, and are documented here only for completeness. A \textbf{Lagrangian benign-FPR penalty} (\texttt{fpr\_penalty\_beta}, default $0.0$) would subtract $\beta \cdot (\text{benign\_blocks} / \text{benign\_steps})$ at episode end; it is redundant with the explicit benign guardrails (components~5--6) and the reported benign false-positive rates (Section~\ref{sec:benchmark_results}). A \textbf{non-monotonic retreat probability} (\texttt{retreat\_prob}, default $0.0$) would let the attacker randomly retreat to an earlier stage independently of the defender's action; it is disabled because the headline tug-of-war attacker ``never retreats autonomously'' --- retreat is driven \emph{only} by proportionate defender force (Section~\ref{ssec:proximity_coupled}). Neither knob affects any reported number.
 
-The action-cost vector $C_{\mathrm{action}}(a)$ uses scale $\kappa = 1.0$ as the default. A sensitivity sweep over $\kappa \in \{0.5, 1.0, 2.0\}$ (Section~\ref{ssec:action_cost_justification}) shows that all three settings produce overlapping 95\,\% bootstrap confidence intervals, confirming that the default $\kappa = 1.0$ is robust to $\pm 2\times$ perturbation in action cost.
+The action-cost vector $C_{\mathrm{action}}(a)$ uses scale $\kappa = 1.0$ as the default calibrated environment-design setting (Section~\ref{ssec:action_cost_justification}).
 
 \begin{table}[!htbp]
 \centering
@@ -179,16 +179,20 @@ proximity floor           & \texttt{proximity\_min\_escalation} & 0.4 & residual
 \end{tabularx}
 \end{table}
 
-Algorithm~\ref{alg:reward} gives the complete reward function as pseudocode; the authoritative implementation is \path{src/environment/adversarial_env.py::_compute_reward()}.
+Algorithm~\ref{alg:reward} gives the full piecewise reward as pseudocode---that is, the complete \texttt{coupled}-contract signal; under the primary \texttt{outcome} contract the six stage-conditioned shaping components are stripped and only the action cost and terminal accounting remain (an early return after the action-cost line). The authoritative implementation is \path{src/environment/adversarial_env.py::_calculate_reward()}.
 
 \begin{algorithm}[!htbp]
-\caption{Per-step reward computation (\texttt{\_compute\_reward()} in \texttt{AdversarialIoTEnv})}
+\caption{Per-step reward computation (\texttt{\_calculate\_reward()} in \texttt{AdversarialIoTEnv}); full \texttt{coupled}-contract signal, with the \texttt{outcome} contract stripping the stage-conditioned shaping}
 \label{alg:reward}
 \begin{algorithmic}
 \REQUIRE action $a_t \in \{0,\ldots,4\}$, decision-time stage $s_t$, \textit{is\_terminal} flag, constants (Table~\ref{tab:reward_constants})
 \STATE \COMMENT{de-escalation reward, prevention bonus, and tug-of-war transition are applied by the caller; see \S\ref{ssec:reward}}
 \STATE $\mathit{rec} \leftarrow \mathit{RecommendedAction}(s_t)$ \COMMENT{stage $\to$ action map}
 \STATE $r \leftarrow -\kappa \cdot C_{\mathrm{action}}(a_t)$ \COMMENT{action cost (always)}
+\IF{$\mathit{reward\_mode} = \texttt{outcome}$}
+    \STATE \textbf{return} $r$ \COMMENT{primary contract: strip stage-conditioned shaping; terminal accounting still applied by caller}
+\ENDIF
+\STATE \COMMENT{remaining lines fire only under the \texttt{coupled} contract}
 \IF{$|a_t - \mathit{rec}| \leq 1$}
     \STATE $r \leftarrow r + r_{\mathrm{prop}}$ \COMMENT{proportionality bonus (subject to per-episode cap $b_{\mathrm{prop\text{-}cap}}$, applied by caller)}
 \ELSIF{$|a_t - \mathit{rec}| \geq 2$}
@@ -224,13 +228,13 @@ Algorithm~\ref{alg:reward} gives the complete reward function as pseudocode; the
 The reward is evaluated against the \emph{decision-time} stage $s_t$, not against the next stage; this preserves causal credit assignment. Security outcomes are reported through prevention, compromise, and benign false-positive rates rather than time-to-compromise summaries, because the lifecycle floor described above makes unconstrained timing claims less informative than direct episode outcomes.
 
 \subsection{Justification of $p_{\mathrm{down}} = 0.90$}\label{ssec:pdeesc_justification}
-The de-escalation success probability $p_{\mathrm{down}}$ controls how strongly a correct, proportionate defender action pushes the attacker one stage back down the kill chain. The environment-difficulty sweep over $p_{\mathrm{down}} \in \{0.0, 0.2, 0.4, 0.6, 0.8, 1.0\}$ (Figure~\ref{fig:f10}, Section~\ref{sec:ablation_results}) shows that both the trained PPO policy and the oracle recommended-action rule earn monotonically more reward as $p_{\mathrm{down}}$ rises (PPO from $+24.5$ at $p_{\mathrm{down}} = 0.0$ to $+119.9$ at $p_{\mathrm{down}} = 1.0$; the oracle rule from $+34.3$ to $+195.3$), a clean monotone response with no rank inversions. The headline value $p_{\mathrm{down}} = 0.90$ sits in the near-optimal region while remaining sub-certain, so that (i) a proportionate response reliably but not deterministically reverses the attacker, (ii) the residual stochasticity prevents a degenerate lookup-table solution and keeps value learning meaningful, and (iii) the trained policy's reward is in the same order of magnitude as the oracle ceiling. The full sweep is provided in Appendix~D.
+The de-escalation success probability $p_{\mathrm{down}}$ controls how strongly a correct, proportionate defender action pushes the attacker one stage back down the kill chain. The environment-difficulty sweep over $p_{\mathrm{down}} \in \{0.0, 0.2, 0.4, 0.6, 0.8, 1.0\}$ (Figure~\ref{fig:f10}, Section~\ref{sec:ablation_results}) shows that both the trained PPO policy and the oracle recommended-action rule earn monotonically more reward as $p_{\mathrm{down}}$ rises (PPO from $+24.5$ at $p_{\mathrm{down}} = 0.0$ to $+119.9$ at $p_{\mathrm{down}} = 1.0$; the oracle rule from $+34.3$ to $+195.3$), a clean monotone response with no rank inversions. The headline value $p_{\mathrm{down}} = 0.90$ sits in the near-optimal region while remaining sub-certain, so that (i) a proportionate response reliably but not deterministically reverses the attacker, (ii) the residual stochasticity prevents a degenerate lookup-table solution and keeps value learning meaningful, and (iii) the trained policy's reward is in the same order of magnitude as the oracle ceiling. The full sweep is reported in Section~\ref{sec:ablation_results} (Figure~\ref{fig:f10}).
 
 \subsection{Justification of $\kappa = 1.0$ (Action-Cost Scale)}\label{ssec:action_cost_justification}
-The action-cost scale $\kappa$ determines how strongly the reward function penalises high-disruption actions. The default $\kappa = 1.0$ is retained as the calibrated environment-design setting used in all headline experiments. Appendix~D reports a preliminary pre-redesign sensitivity sweep over $\kappa \in \{0.5, 1.0, 2.0\}$ as exploratory support only; because that sweep was not re-run under the final tug-of-war contract, it is not used as final evidence for the headline results.
+The action-cost scale $\kappa$ determines how strongly the reward function penalises high-disruption actions. The default $\kappa = 1.0$ is retained as the calibrated environment-design setting used in all headline experiments; a final-contract sensitivity sweep over $\kappa$ is left as follow-up work rather than claimed as settled evidence here.
 
 \subsection{Justification of $w = 5$ (History Window Size)}\label{ssec:window_justification}
-The history window size $w$ controls how many recent feature vectors the agent can observe. The headline experiments fix $w = 5$, providing temporal context while keeping the observation dimension manageable (290 features). Appendix~D reports a preliminary pre-redesign sweep over $w \in \{1, 3, 5, 10\}$ as design context only; because it was not re-run under the final reward and attacker contract, a final-contract windowed supervised baseline and window-size study are left as the most direct follow-up rather than claimed as settled evidence here.
+The history window size $w$ controls how many recent feature vectors the agent can observe. The headline experiments fix $w = 5$, providing temporal context while keeping the observation dimension manageable (290 features). A final-contract windowed supervised baseline and window-size study are left as the most direct follow-up rather than claimed as settled evidence here.
 
 % --- Subsection 3.6 ---
 \section{Blue-Team Training Protocol}\label{sec:drl_training}

@@ -177,23 +177,33 @@ def _render_gap_figure(summary: dict[str, Any], out_path: Path) -> None:
     )
     ax.set_ylabel("Mean test reward")
     ax.axhline(0.0, color=ACCENT["muted"], linewidth=0.8)
-    ax.set_title("Reward design controls RF-Acting's apparent advantage")
-    ax.legend(loc="best", fontsize=9)
+    ax.set_title("Reward design controls RF-Acting's apparent advantage", pad=12)
+    ax.legend(loc="upper right", fontsize=9)
 
-    for m, xi in zip(modes, x):
-        gap = summary["per_mode"][m]["rf_minus_rl_gap"]
-        if gap is None:
-            continue
-        top = max(
+    # Reserve headroom above the tallest bar so the per-group gap annotations
+    # do not collide with the title or the legend.
+    bar_tops = [
+        max(
             summary["per_mode"][m]["best_rl_reward"] or 0.0,
             summary["per_mode"][m]["rf_acting_reward"] or 0.0,
         )
+        for m in modes
+    ]
+    y_max = max(bar_tops) if bar_tops else 0.0
+    if y_max > 0:
+        ax.set_ylim(top=y_max * 1.28)
+
+    for m, xi, top in zip(modes, x, bar_tops):
+        gap = summary["per_mode"][m]["rf_minus_rl_gap"]
+        if gap is None:
+            continue
         ax.annotate(
             f"RF−RL gap\n{gap:+.1f}",
             xy=(xi, top),
-            xytext=(0, 8),
+            xytext=(0, 26),
             textcoords="offset points",
             ha="center",
+            va="bottom",
             fontsize=8,
         )
 

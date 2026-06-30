@@ -476,6 +476,85 @@ def _compute_per_class_rf_recall(
     return out
 
 
+def _annotate_without_overlap(ax: Any, points: list[dict[str, Any]], *, x_hi: float) -> None:
+    """Place per-point class labels with a simple greedy de-collision pass.
+
+    Labels are placed in display (pixel) space so the de-collision is metric
+    in the rendered figure. Each new label is nudged vertically in small,
+    bounded steps until it clears the data points and every label already
+    placed; right-edge points are labelled to the left (with a short leader
+    line) so text does not run off the plot. This avoids an external
+    ``adjustText`` dependency while removing the overlapping-label clutter in
+    the recall-vs-advantage scatter.
+    """
+    fig = ax.figure
+    fig.canvas.draw()  # realise the transforms before measuring in pixels.
+    trans = ax.transData
+
+    # Approximate label box size in pixels (fontsize 7, ~14 chars).
+    px_per_pt = fig.dpi / 72.0
+    line_h = 13.0 * px_per_pt  # vertical clearance between stacked labels
+    x_span = max(x_hi, 1e-9)
+
+    pts_px = [trans.transform((p["rf_recall"], p["advantage"])) for p in points]
+
+    arrow = {
+        "arrowstyle": "-",
+        "color": "0.6",
+        "lw": 0.5,
+        "shrinkA": 0.0,
+        "shrinkB": 2.0,
+    }
+
+    def _place(i: int, ha: str, off_x: float, off_y: float) -> None:
+        ax.annotate(
+            points[i]["ood_class"],
+            (points[i]["rf_recall"], points[i]["advantage"]),
+            textcoords="offset points",
+            xytext=(off_x, off_y),
+            fontsize=7,
+            ha=ha,
+            va="center",
+            annotation_clip=False,
+            arrowprops=arrow,
+        )
+
+    # Split the dense right cluster (recall near 1.0) from the rest: its labels
+    # are laid out as a single right-anchored vertical column to the left of the
+    # cluster, which removes the horizontal pile-up that a per-point offset
+    # cannot resolve. The remaining points keep simple left-anchored labels with
+    # a small upward de-collision nudge.
+    cluster = [i for i in range(len(points)) if points[i]["rf_recall"] >= 0.90 * x_span]
+    rest = [i for i in range(len(points)) if i not in cluster]
+
+    placed_px: list[tuple[float, float, float]] = []  # (x, y, half-width)
+    for i in sorted(rest, key=lambda j: (pts_px[j][0], pts_px[j][1])):
+        mx, my = pts_px[i]
+        half_w = 0.5 * len(points[i]["ood_class"]) * 4.0 * px_per_pt
+        lab_x = mx + 10.0 * px_per_pt
+        lab_y = my + 5.0 * px_per_pt
+        for _ in range(6):
+            clash = any(
+                abs(lab_y - qy) < line_h and abs(lab_x - qx) < (half_w + qhw)
+                for qx, qy, qhw in placed_px
+            )
+            if not clash:
+                break
+            lab_y += line_h
+        placed_px.append((lab_x, lab_y, half_w))
+        _place(i, "left", (lab_x - mx) / px_per_pt, (lab_y - my) / px_per_pt)
+
+    if cluster:
+        # Anchor the column just left of the leftmost marker in the cluster,
+        # stacked top-down by marker height with fixed spacing.
+        col_x = min(pts_px[i][0] for i in cluster) - 14.0 * px_per_pt
+        top_y = max(pts_px[i][1] for i in cluster) + 18.0 * px_per_pt
+        for rank, i in enumerate(sorted(cluster, key=lambda j: -pts_px[j][1])):
+            mx, my = pts_px[i]
+            lab_y = top_y - rank * line_h
+            _place(i, "right", (col_x - mx) / px_per_pt, (lab_y - my) / px_per_pt)
+
+
 def _render_recall_vs_advantage(
     rows: list[dict[str, Any]],
     recall_by_class: dict[str, float | None],
@@ -530,14 +609,15 @@ def _render_recall_vs_advantage(
         ys = [p["advantage"] for p in points]
         ax.axhline(0.0, color=ACCENT["muted"], lw=0.8, ls="--")
         ax.scatter(xs, ys, c=ACCENT["primary"], edgecolor="white", s=60, zorder=3)
-        for p in points:
-            ax.annotate(
-                p["ood_class"],
-                (p["rf_recall"], p["advantage"]),
-                textcoords="offset points",
-                xytext=(6, 4),
-                fontsize=7,
-            )
+        # Reserve right/top margin so left-anchored cluster labels and the
+        # upward de-collision stacking stay inside the axes.
+        x_min, x_max = min(xs), max(xs)
+        x_pad = 0.16 * (x_max - x_min or 1.0)
+        ax.set_xlim(x_min - 0.5 * x_pad, x_max + x_pad)
+        y_min, y_max = min(ys + [0.0]), max(ys)
+        y_pad = 0.34 * (y_max - y_min or 1.0)
+        ax.set_ylim(y_min - 0.04 * (y_max - y_min or 1.0), y_max + y_pad)
+        _annotate_without_overlap(ax, points, x_hi=max(xs))
         # OLS fit line + annotation of the formal independence statistics.
         if stats.get("ols_slope") is not None:
             x_lo, x_hi = min(xs), max(xs)

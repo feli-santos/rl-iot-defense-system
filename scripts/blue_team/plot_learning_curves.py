@@ -202,49 +202,51 @@ def render(
         }
 
     # ---------- render --------------------------------------------------------
-    fig, axes = plt.subplots(1, 3, figsize=(13.5, 4.2), sharex=True)
+    # Only the episodic-reward panel is plotted: the thesis reports security
+    # outcomes through prevention/compromise/benign-FPR rates rather than
+    # time-to-compromise summaries (methodology Section 3.6.3), so the MTTC
+    # and mitigated-impact panels are intentionally omitted from this figure.
+    # The other metrics are still aggregated into F3_summary.json above.
+    plot_key = "episode_reward"
     metric_titles = {
         "episode_reward": ("Mean episodic reward", "reward"),
-        "mttc_steps": ("Mean Time-To-Compromise (MTTC)", "steps"),
-        "impact_mitigated": ("Mitigated-impact rate (per episode)", "fraction"),
     }
-    for ax, k in zip(axes, metric_keys):
-        for algo, agg in panels[k].items():
-            color = _ALGO_COLORS.get(algo, "k")
-            mean = agg["mean"]
-            low = agg["low"]
-            high = agg["high"]
-            valid = np.isfinite(mean)
-            ax.plot(centers[valid], mean[valid], color=color, label=f"{algo.upper()} (train)", lw=2)
-            ax.fill_between(centers[valid], low[valid], high[valid], color=color, alpha=0.18)
-        # Eval overlay (dotted).
-        for algo, agg in eval_panels[k].items():
-            color = _ALGO_COLORS.get(algo, "k")
-            mean = agg["mean"]
-            valid = np.isfinite(mean)
-            ax.plot(
-                centers[valid],
-                mean[valid],
-                color=color,
-                ls=":",
-                lw=2,
-                label=f"{algo.upper()} (eval)",
-            )
-        title, ylabel = metric_titles[k]
-        ax.set_title(title)
-        ax.set_xlabel("Training timesteps")
-        ax.set_ylabel(ylabel)
-        ax.grid(alpha=0.25)
-    axes[0].legend(loc="best", ncol=2)
+    fig, ax = plt.subplots(1, 1, figsize=(7.0, 4.4))
+    for algo, agg in panels[plot_key].items():
+        color = _ALGO_COLORS.get(algo, "k")
+        mean = agg["mean"]
+        low = agg["low"]
+        high = agg["high"]
+        valid = np.isfinite(mean)
+        ax.plot(centers[valid], mean[valid], color=color, label=f"{algo.upper()} (train)", lw=2)
+        ax.fill_between(centers[valid], low[valid], high[valid], color=color, alpha=0.18)
+    # Eval overlay (dotted).
+    for algo, agg in eval_panels[plot_key].items():
+        color = _ALGO_COLORS.get(algo, "k")
+        mean = agg["mean"]
+        valid = np.isfinite(mean)
+        ax.plot(
+            centers[valid],
+            mean[valid],
+            color=color,
+            ls=":",
+            lw=2,
+            label=f"{algo.upper()} (eval)",
+        )
+    _title, ylabel = metric_titles[plot_key]
+    ax.set_xlabel("Training timesteps")
+    ax.set_ylabel(ylabel)
+    ax.grid(alpha=0.25)
+    ax.legend(loc="best", ncol=2)
     seeds_per_algo = max(
         (len([s for (a, s) in train_runs if a == algo]) for algo in algos),
         default=0,
     )
-    fig.suptitle(
-        "RL learning curves "
-        f"({'/'.join(a.upper() for a in algos)}, {seeds_per_algo} seeds per algorithm, "
+    ax.set_title(
+        "Mean episodic reward over training "
+        f"({'/'.join(a.upper() for a in algos)}, {seeds_per_algo} seeds per algorithm;\n"
         f"{n_bins} time bins; bands = 95 % bootstrap CI across seeds)",
-        y=1.02,
+        fontsize=11,
     )
     fig.tight_layout()
 
