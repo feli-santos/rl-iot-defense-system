@@ -29,6 +29,7 @@ FALPHA = Path("docs/results/ablation/Falpha_summary.json")
 FCOUPLING = Path("docs/results/ablation/Fcoupling_summary.json")
 FTEN = Path("docs/results/ablation/F10_summary.json")
 FSEVENTEEN = Path("docs/results/ablation/F17_summary.json")
+FELEVEN = Path("docs/results/stage-detector/F11_summary.json")
 TEST_COUNT = Path("docs/results/test_count.json")
 
 # Spelled-out alpha keys (LaTeX macro names cannot contain digits or dots).
@@ -127,6 +128,32 @@ def _render_evasion_numbers() -> list[str]:
     return lines
 
 
+def _render_detector_numbers() -> list[str]:
+    """F11 stage-detector macro-F1 macros, split-tagged.
+
+    Emits the production MLP and tuned-RandomForest macro-F1 on both the
+    ``test_balanced`` split (the one Section 4.3 prose and Figure 4.3 report) and
+    the full ``test`` split, so the detector numbers are mechanically derived
+    from ``F11_summary.json`` instead of hand-typed. The split tag is part of the
+    macro name to make split-mix-ups (e.g.\\ quoting the full-test 0.925 as a
+    ``test_balanced`` number) impossible.
+    """
+    if not FELEVEN.exists():
+        return []
+    f11 = _load(FELEVEN)
+    models = f11["models"]
+    lines: list[str] = ["% --- F11 stage-detector macro-F1 (split-tagged) ---"]
+    for macro, model, split in (
+        ("DetectorMlpFoneBalanced", "StageDetector", "test_balanced"),
+        ("DetectorMlpFoneFull", "StageDetector", "test"),
+        ("DetectorRfFoneBalanced", "RandomForest", "test_balanced"),
+        ("DetectorRfFoneFull", "RandomForest", "test"),
+    ):
+        f1 = models[model][split]["macro_f1"]
+        lines.append(_newcmd(macro, f"{f1:0.3f}"))
+    return lines
+
+
 def _render_numbers() -> str:
     fa = _load(FALPHA)
     fc = _load(FCOUPLING)
@@ -193,6 +220,7 @@ def _render_numbers() -> str:
     # when their canonical summaries exist (regenerated after the sweeps re-run).
     lines.extend(_render_aggressiveness_numbers())
     lines.extend(_render_evasion_numbers())
+    lines.extend(_render_detector_numbers())
 
     # Test count (sidecar JSON; canonical pytest count).
     if TEST_COUNT.exists():
