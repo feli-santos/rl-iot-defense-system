@@ -40,7 +40,8 @@ def _recall_vector(per_stage_recall: dict[str, float]) -> np.ndarray:
     return np.array([float(per_stage_recall[s]) for s in STAGE_NAMES], dtype=np.float64)
 
 
-def _render(summary: dict[str, Any], out_path: Path) -> None:
+def _render_recall(summary: dict[str, Any], out_path: Path) -> None:
+    """Per-stage recall grouped-bar chart (RF vs StageDetector), standalone."""
     apply_house_style()
     import matplotlib.pyplot as plt
 
@@ -49,9 +50,9 @@ def _render(summary: dict[str, Any], out_path: Path) -> None:
     rf = models["RandomForest"]["test_balanced"]
     n_stages = len(STAGE_NAMES)
 
-    fig, (ax_bar, ax_cm) = plt.subplots(1, 2, figsize=(11.5, 4.3))
+    fig, ax_bar = plt.subplots(1, 1, figsize=(9.5, 5.6))
 
-    # ---- Left: per-stage recall, grouped bars (RF emphasised as the winner).
+    # ---- Per-stage recall, grouped bars (RF emphasised as the winner).
     width = 0.38
     x = np.arange(n_stages)
     series = [
@@ -59,7 +60,7 @@ def _render(summary: dict[str, Any], out_path: Path) -> None:
         ("StageDetector (MLP)", _recall_vector(sd["per_stage_recall"]), ACCENT["primary"]),
     ]
     for i, (name, rec, colour) in enumerate(series):
-        ax_bar.bar(
+        bars = ax_bar.bar(
             x + (i - 0.5) * width,
             rec,
             width=width,
@@ -68,6 +69,7 @@ def _render(summary: dict[str, Any], out_path: Path) -> None:
             edgecolor="white",
             linewidth=0.6,
         )
+        ax_bar.bar_label(bars, fmt="%.2f", padding=2, fontsize=9)
 
     best_name, best_f1 = max(
         (("RandomForest", rf["macro_f1"]), ("StageDetector (MLP)", sd["macro_f1"])),
@@ -84,11 +86,25 @@ def _render(summary: dict[str, Any], out_path: Path) -> None:
     ax_bar.set_xticklabels(STAGE_NAMES, rotation=15)
     ax_bar.set_ylabel("Recall")
     ax_bar.set_title("Per-stage recall on test_balanced")
-    ax_bar.set_ylim(0, 1.02)
+    ax_bar.set_ylim(0, 1.08)
     ax_bar.grid(axis="y", alpha=0.3)
-    ax_bar.legend(loc="lower left", fontsize=8)
+    ax_bar.legend(loc="lower left", fontsize=10)
 
-    # ---- Right: StageDetector confusion matrix (row-normalised %).
+    fig.tight_layout()
+    save_figure(fig, out_path)
+    plt.close(fig)
+
+
+def _render_confusion(summary: dict[str, Any], out_path: Path) -> None:
+    """StageDetector row-normalised confusion matrix, standalone."""
+    apply_house_style()
+    import matplotlib.pyplot as plt
+
+    sd = summary["models"]["StageDetector"]["test_balanced"]
+    n_stages = len(STAGE_NAMES)
+
+    fig, ax_cm = plt.subplots(1, 1, figsize=(7.6, 6.4))
+
     cm = np.asarray(sd["confusion_matrix"], dtype=np.float64)
     row_sums = np.maximum(cm.sum(axis=1, keepdims=True), 1.0)
     cm_norm = cm / row_sums
@@ -110,15 +126,10 @@ def _render(summary: dict[str, Any], out_path: Path) -> None:
                 ha="center",
                 va="center",
                 color="white" if cm_norm[i, j] > 0.5 else "black",
-                fontsize=8,
+                fontsize=11,
             )
     fig.colorbar(im, ax=ax_cm, fraction=0.046, pad=0.04, label="row-normalised")
 
-    fig.suptitle(
-        "Stage detection: detector head vs supervised baselines",
-        fontsize=12,
-        y=1.02,
-    )
     fig.tight_layout()
     save_figure(fig, out_path)
     plt.close(fig)
@@ -156,13 +167,19 @@ def main(argv: list[str] | None = None) -> int:
 
     out_dir = Path(args.out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
-    fig_base = out_dir / "per_stage_recall"
-    _render(summary, fig_base)
-    pdf_path = fig_base.with_suffix(".pdf")
-    png_path = fig_base.with_suffix(".png")
-    logger.info("wrote %s and %s", pdf_path, png_path)
 
-    # Manifest: this figure is a pure re-render of F11_summary.json.
+    recall_base = out_dir / "per_stage_recall"
+    confusion_base = out_dir / "per_stage_confusion"
+    _render_recall(summary, recall_base)
+    _render_confusion(summary, confusion_base)
+
+    recall_pdf = recall_base.with_suffix(".pdf")
+    recall_png = recall_base.with_suffix(".png")
+    confusion_pdf = confusion_base.with_suffix(".pdf")
+    confusion_png = confusion_base.with_suffix(".png")
+    logger.info("wrote %s, %s, %s, %s", recall_pdf, recall_png, confusion_pdf, confusion_png)
+
+    # Manifest: these figures are a pure re-render of F11_summary.json.
     manifest = {
         "version": "1.0",
         "figure": "per_stage_recall",
@@ -171,8 +188,10 @@ def main(argv: list[str] | None = None) -> int:
             "F11_summary.json": sha256_file(summary_path),
         },
         "outputs": {
-            "per_stage_recall.pdf": sha256_file(pdf_path),
-            "per_stage_recall.png": sha256_file(png_path),
+            "per_stage_recall.pdf": sha256_file(recall_pdf),
+            "per_stage_recall.png": sha256_file(recall_png),
+            "per_stage_confusion.pdf": sha256_file(confusion_pdf),
+            "per_stage_confusion.png": sha256_file(confusion_png),
         },
     }
     (out_dir / "per_stage_recall_manifest.json").write_text(json.dumps(manifest, indent=2))

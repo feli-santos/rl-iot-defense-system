@@ -16,14 +16,14 @@ The CICIoT2023 dataset is projected onto the five kill-chain stages using the pe
 
 \begin{figure}[!htbp]
     \centering
-    \includegraphics[width=0.85\textwidth]{figs/class_distribution.pdf}
+    \includegraphics[width=0.95\textwidth]{figs/class_distribution.pdf}
     \caption{CICIoT2023 per-class row counts after the kill-chain projection and rebalancing protocol.}
     \label{fig:f0a}
 \end{figure}
 
 \begin{figure}[!htbp]
     \centering
-    \includegraphics[width=0.85\textwidth]{figs/stage_distribution.pdf}
+    \includegraphics[width=0.95\textwidth]{figs/stage_distribution.pdf}
     \caption{CICIoT2023 per-stage row counts across the partitions (\texttt{train}, \texttt{val\_balanced}, \texttt{test\_balanced}, \texttt{ood}) after the kill-chain projection.}
     \label{fig:f0b}
 \end{figure}
@@ -35,12 +35,15 @@ After reserving the ten held-out attack classes (Section~\ref{ssec:splits}), the
 % --- Subsection 4.2 ---
 \clearpage
 \section{Supervised Stage Detector}\label{sec:detector_results}
-The supervised stage detector and the RandomForest baseline used by the RF-Acting policy are evaluated on the held-out \texttt{test\_balanced} split. Figure~\ref{fig:f11} shows the per-stage recall of the production MLP detector and the RandomForest reference baseline.
+The supervised stage detector and the RandomForest baseline used by the RF-Acting policy are evaluated on the held-out \texttt{test\_balanced} split. Figure~\ref{fig:f11} shows the per-stage recall of the production MLP detector and the RandomForest reference baseline (top), together with the MLP detector's row-normalised confusion matrix (bottom).
 
 \begin{figure}[!htbp]
     \centering
-    \includegraphics[width=0.85\textwidth]{figs/per_stage_recall.pdf}
-    \caption{Per-stage recall on the held-out \texttt{test\_balanced} split for the production MLP stage detector and the hyperparameter-tuned RandomForest reference baseline. The RandomForest achieves higher recall across all in-distribution stages on the 29-feature CICIoT2023 vector.}
+    \includegraphics[width=0.9\textwidth]{figs/per_stage_recall.pdf}
+
+    \vspace{1.2em}
+    \includegraphics[width=0.72\textwidth]{figs/per_stage_confusion.pdf}
+    \caption{Stage detection on the held-out \texttt{test\_balanced} split. \textbf{Top:} per-stage recall for the production MLP stage detector and the hyperparameter-tuned RandomForest reference baseline; the RandomForest achieves higher recall across all in-distribution stages on the 29-feature CICIoT2023 vector. \textbf{Bottom:} the MLP detector's row-normalised confusion matrix, showing where misclassified stages are routed.}
     \label{fig:f11}
 \end{figure}
 
@@ -79,13 +82,13 @@ The three feedforward reinforcement-learning algorithms (PPO, DQN, A2C) were tra
 \begin{figure}[!htbp]
     \centering
     \includegraphics[width=0.85\textwidth]{figs/F3_learning_curves.pdf}
-    \caption{Blue-team learning curves: episodic reward over training for PPO, DQN, and A2C across \NumSeeds{} seeds each. Shaded bands are 95\,\% bootstrap confidence intervals over seeds. PPO converges to a stable plateau; DQN and A2C exhibit substantially higher across-seed variance under the sparse outcome reward.}
+    \caption{Blue-team learning curves: episodic reward over training for PPO, DQN, and A2C across \NumSeeds{} seeds each. Curves are binned into 25 timestep windows, so the leftmost point is the mean over the first window of training rather than the value at initialization. All three algorithms begin in the same negative regime: under the sparse outcome reward an untrained policy lets the attacker reach the impact stage and collects the terminal penalty, so the expected episodic reward of a random policy is negative. DQN starts lowest because its $\epsilon$-greedy exploration and replay warm-up keep it acting near-randomly through the first window, whereas PPO's long on-policy rollouts already reflect rapid improvement within that window. Shaded bands are 95\,\% bootstrap confidence intervals over seeds. PPO converges to a stable plateau; DQN and A2C exhibit substantially higher across-seed variance and never climb out of the negative regime under the sparse outcome reward.}
     \label{fig:f3}
 \end{figure}
 
 \begin{figure}[!htbp]
     \centering
-    \includegraphics[width=0.85\textwidth]{figs/F4_action_distribution.pdf}
+    \includegraphics[width=0.95\textwidth]{figs/F4_action_distribution.pdf}
     \caption{Per-stage action distribution of the trained PPO policy under the sparse outcome reward. The policy applies a graded force ladder --- light observation/logging at benign and reconnaissance stages, escalating to restriction, blocking, and isolation as the inferred threat advances --- learned purely from accumulated feature evidence rather than from any per-step stage label.}
     \label{fig:f4}
 \end{figure}
@@ -186,7 +189,7 @@ The ten held-out attack classes (Section~\ref{ssec:splits}) were evaluated again
 
 \begin{figure}[!htbp]
     \centering
-    \includegraphics[width=0.8\textwidth]{figs/F15b_recall_vs_advantage.pdf}
+    \includegraphics[width=0.92\textwidth]{figs/F15b_recall_vs_advantage.pdf}
     \caption{Prevention advantage of windowed PPO over RF-Acting on each held-out class, plotted against the RandomForest's recall on that class, with an ordinary-least-squares fit. The advantage is positive on every class ($+0.36$ to $+0.55$) and does \emph{not} diminish as detector recall rises: the rank correlation is not significant (Spearman $\rho = 0.36$, $p = 0.31$) and the bootstrap 95\% CI for the OLS slope spans zero ($[-0.12, +0.20]$). If anything the weak linear trend is mildly \emph{positive} (Pearson $r = 0.67$, $p = 0.04$) --- the opposite of the ``RL only rescues the detector's blind spots'' hypothesis, which would predict the advantage shrinking toward zero on the well-detected classes. Under this feature-injection protocol, the learned policy's robustness is better explained by sequential control under partial observability than by detector accuracy alone.}
     \label{fig:f15b}
 \end{figure}

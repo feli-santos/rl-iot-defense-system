@@ -44,7 +44,7 @@
 }
 
 \begin{document}
-\begin{tikzpicture}[node distance=0.45cm and 0.55cm]
+\begin{tikzpicture}[node distance=0.7cm and 0.9cm]
 
 %% ==============================================================
 %% Offline preparation lanes
@@ -98,7 +98,7 @@
 
 % --- Adversarial Environment ---
 \node[envBox, fill=colOnline,
-      below=1.1cm of redteam] (env) {
+      below=1.7cm of redteam] (env) {
   \textbf{AdversarialIoTEnv}\\[3pt]
   Hidden attack stage $s_t$\\
   Kill-chain MDP\\
@@ -107,7 +107,7 @@
 
 % --- Realization Engine ---
 \node[envBox, fill=colOnline,
-      left=0.7cm of env] (realizer) {
+      left=1.1cm of env] (realizer) {
   \textbf{Realization Engine}\\[3pt]
   Session-coherent,\\
   aliasing-aware\\
@@ -117,7 +117,7 @@
 
 % --- Reward function ---
 \node[envBox, fill=colOnline,
-      right=0.7cm of env] (reward) {
+      right=1.1cm of env] (reward) {
   \textbf{Reward Function}\\[3pt]
   Stage-action\\
   proportionality\\
@@ -127,11 +127,11 @@
 
 % --- RL Agent ---
 \node[envBox, fill=colOnline,
-      below=0.8cm of env] (agent) {
+      below=1.6cm of env] (agent) {
   \textbf{Blue-Team Agent}\\[3pt]
   DQN / PPO / A2C\\
    (Stable Baselines3\\
-    MlpPolicy)\\[3pt]
+    MultiInputPolicy)\\[3pt]
   10 seeds $\times$ $\leq$1.5M steps
 };
 
@@ -171,22 +171,22 @@
 
 % Detector to reward, dashed = eval-time only
 \draw[dasharr] (detector.south) -- ++(0,-0.45) -| (reward.north)
-    node[midway, right, font=\tiny, text=colBorder] {eval-time};
+    node[midway, right, font=\small, text=colBorder] {eval-time};
 
 % Realizer ↔ Env
-\draw[arr] (realizer.east) -- node[above, font=\tiny]{obs} (env.west);
+\draw[arr] (realizer.east) -- node[above, font=\small]{obs} (env.west);
 
 % Env ↔ Reward
-\draw[arr] (env.east) -- node[above, font=\tiny]{$(s_t,a_t)$} (reward.west);
-\draw[arr] (reward.south) -- ++(0,-0.3) -| (agent.east)
-    node[near start, right, font=\tiny]{$r_t$};
+\draw[arr] (env.east) -- node[above, font=\small]{$(s_t,a_t)$} (reward.west);
+\draw[arr] (reward.south) |- ([yshift=0.9cm]agent.east) -- (agent.east)
+    node[near start, right, font=\small]{$r_t$};
 
 % Env → Agent
-\draw[arr] (env.south) -- node[right, font=\tiny]{obs} (agent.north);
+\draw[arr] (env.south) -- node[midway, right, font=\small]{obs} (agent.north);
 
 % Agent → Env (action)
-\draw[arr] (agent.west) -- ++(-0.6,0) |-
-    node[near end, left, font=\tiny]{$a_t$} (realizer.south);
+\draw[arr] (agent.west) -| ([xshift=-0.7cm]realizer.south)
+    node[near end, left, font=\small]{$a_t$} -- (realizer.south);
 
 % Online loop to benchmark
 \draw[arr] ([yshift=-2pt]stageII.south) -- (bench.north);
@@ -194,9 +194,9 @@
 %% ==============================================================
 %%  OBSERVATION label
 %% ==============================================================
-\node[font=\tiny, align=left, text=colBorder,
-      below=2pt of env.south east, anchor=north east, xshift=-2pt] {
-  obs = Box(290,) = $5 \times 29 \times \{$raw, $\Delta\}$
+\node[font=\small, align=left, text=colBorder,
+      below right=2pt and 0pt of stageII.south west, anchor=north west] {
+  obs = \{features, history, action hist, [stage pred]\}
 };
 
 \end{tikzpicture}

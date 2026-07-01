@@ -118,9 +118,11 @@ Table~\ref{tab:related_work_comparison} positions the most closely related prior
 \centering
 \caption{Comparison of DRL-based IoT security systems. ``Deployable'' means the policy runs on observable network inputs without simulator-privileged state; the parenthetical notes whether a system closes the defensive loop (emits responses) or only deceives, monitors, or classifies. ``Head-to-head benchmark'' means the paper reports numerical comparisons against at least one deployable non-RL baseline under a shared evaluation contract. ``Partial-obs.\ stress'' means the system deliberately degrades single-observation stage identifiability (e.g.\ via an observation-aliasing rate) to force sequential inference.}
 \label{tab:related_work_comparison}
-\small
-\setlength{\tabcolsep}{3pt}
-\begin{tabularx}{\textwidth}{@{}p{1.7cm} X X X p{1.5cm} p{1.5cm} p{1.3cm}@{}}
+\footnotesize
+\setlength{\tabcolsep}{4pt}
+\renewcommand{\arraystretch}{1.15}
+\newcolumntype{Y}{>{\raggedright\arraybackslash}X}
+\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{1.6cm} Y Y Y Y Y Y@{}}
 \toprule
 \textbf{System} & \textbf{Environment} & \textbf{Action space} & \textbf{Dataset} & \textbf{Deployable?} & \textbf{Head-to-head?} & \textbf{Partial-obs.\ stress?} \\
 \midrule

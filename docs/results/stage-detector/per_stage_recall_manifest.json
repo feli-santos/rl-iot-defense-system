@@ -6,7 +6,9 @@
     "F11_summary.json": "7c12a2bc8248efa01c590f8e3d68bbde81593ed19d296819ea9d9bfce6c5ecdf"
   },
   "outputs": {
-    "per_stage_recall.pdf": "66d5409b8c256ada591092f4c3d38b1cfa9d230414009ba28249420465635f4f",
-    "per_stage_recall.png": "e0c312aff50b06a918fc56a16bbd3f4e864d1fab2c443f139d8c45d89aafa35b"
+    "per_stage_recall.pdf": "994fececedab10ce0f1350ce61fc5b40609e78226a9bb06c0123f8361dc1038e",
+    "per_stage_recall.png": "93d92d084d12464c47955ec80d0461879f26297b5ddab109834dd15e5a8f94b3",
+    "per_stage_confusion.pdf": "2fe24fdbe3fc54e16d67eef977d08ddd774d47a78c60c959987f303032355579",
+    "per_stage_confusion.png": "cb18ff7b167d8dbf165ab4c883033e6b1662871e7e856810911aed457ab63015"
   }
 }
