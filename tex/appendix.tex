@@ -8,22 +8,22 @@
 \chapter{Reproducibility Protocol and Verification Recipe}\label{app:repro}
 % ====================================================================
 
-This appendix documents the reproducibility protocol that underpins every numerical claim in this dissertation, following a model-card-style template for machine-learning artefacts \cite{Mitchell2019}. Each figure, table, and benchmark number is pinned to its inputs and the producing Git commit by a manifest, and a lightweight verification harness rebuilds the chain end-to-end on a fresh checkout.
+This appendix documents the reproducibility protocol that underpins every numerical claim in this dissertation, following a model-card-style template for machine-learning artifacts \cite{Mitchell2019}. Each figure, table, and benchmark number is pinned to its inputs and the producing Git commit by a manifest, and a lightweight verification harness rebuilds the chain end-to-end on a fresh checkout.
 
 \section{Per-Stage Manifest Pattern}\label{app:manifest_pattern}
-Every component of the framework emits one or more \texttt{manifest.json} files under \texttt{docs/results/} that record (a) a content hash of every input artefact (data splits, trained models, scaler, episode roll-outs, upstream manifests), (b) the producing Git commit (\texttt{git\_sha}), and (c) the producing-script invocation (\texttt{produced\_by}). Each manifest also records the hash of every output artefact (figure, summary JSON) so that a downstream component can pin an upstream output by hash, not by filename alone. The artefact inventory is summarised in Table~\ref{tab:manifest_inventory}.
+Every component of the framework emits one or more \texttt{manifest.json} files under \texttt{docs/results/} that record (a) a content hash of every input artifact (data splits, trained models, scaler, episode roll-outs, upstream manifests), (b) the producing Git commit (\texttt{git\_sha}), and (c) the producing-script invocation (\texttt{produced\_by}). Each manifest also records the hash of every output artifact (figure, summary JSON) so that a downstream component can pin an upstream output by hash, not by filename alone. The artifact inventory is summarized in Table~\ref{tab:manifest_inventory}.
 
 \begin{table}[!htbp]
 \centering
-\caption{Reproducibility-artefact inventory under \texttt{docs/results/}. \texttt{F\textit{k}} entries are figures or tables. Run-time roll-out JSONLs (under \texttt{runs/}) are gitignored but their hashes are pinned by the corresponding manifest.}
+\caption{Reproducibility-artifact inventory under \texttt{docs/results/}. \texttt{F\textit{k}} entries are figures or tables. Run-time roll-out JSONLs (under \texttt{runs/}) are gitignored but their hashes are pinned by the corresponding manifest.}
 \label{tab:manifest_inventory}
 \scriptsize
 \begin{tabularx}{\textwidth}{l l X}
 \toprule
-Component & Path & Key artefacts \\
+Component & Path & Key artifacts \\
 \midrule
 Dataset prep. & \texttt{dataset/} & \texttt{class\_distribution.png}, \texttt{stage\_distribution.png}, \texttt{dataset\_summary.json}, \texttt{manifest.json} \\
-Markov attacker & --- & Closed-form $5\times5$ transition matrix; no trained artefacts (requires no training) \\
+Markov attacker & --- & Closed-form $5\times5$ transition matrix; no trained artifacts (requires no training) \\
 Stage detector & \texttt{stage-detector/} & \texttt{F11\_per\_stage\_recall.png}, \texttt{F11\_summary.json}, \texttt{manifest.json} \\
 Blue-team training & \texttt{blue-team-training/} & \texttt{F3/F4\_*.png}, per-figure \texttt{summary.json} + \texttt{manifest.json} \\
 Alpha-curve benchmark & \texttt{ablation/} & \texttt{Falpha\_curve.pdf}, \texttt{Falpha\_summary.json}, \texttt{Falpha\_manifest.json} \\
@@ -33,7 +33,7 @@ Ablation \& robustness & \texttt{ablation/} & \texttt{Fcoupling\_*}, \texttt{F10
 \end{table}
 
 \section{Verification Harness}\label{app:r1}
-The harness \texttt{scripts/reproducibility\_smoke.py} walks every committed \texttt{manifest.json} file under \texttt{docs/results/} and verifies, for every recorded input artefact, that its on-disk content hash \emph{right now} matches the hash recorded by the manifest that consumed it. A mismatch flags a figure or summary that is no longer reproducible-by-hash from the inputs on disk. Inputs that are gitignored and absent on a fresh clone (large feature arrays \texttt{features.npy}/\texttt{stages.npy} and split-index files derived from the raw CICIoT2023 dataset) are reported as skipped rather than failed. On a fresh checkout the harness passes with no unexplained mismatches.
+The harness \texttt{scripts/reproducibility\_smoke.py} walks every committed \texttt{manifest.json} file under \texttt{docs/results/} and verifies, for every recorded input artifact, that its on-disk content hash \emph{right now} matches the hash recorded by the manifest that consumed it. A mismatch flags a figure or summary that is no longer reproducible-by-hash from the inputs on disk. Inputs that are gitignored and absent on a fresh clone (large feature arrays \texttt{features.npy}/\texttt{stages.npy} and split-index files derived from the raw CICIoT2023 dataset) are reported as skipped rather than failed. On a fresh checkout the harness passes with no unexplained mismatches.
 
 \section{Verification Recipe (Fresh-Checkout Reproduction)}\label{app:recipe}
 On a fresh checkout, the empirical record can be re-verified end-to-end without retraining any model:
@@ -107,7 +107,7 @@ Stage & CICIoT2023 labels \\
 \chapter{Hyperparameters per Algorithm}\label{app:hparams}
 % ====================================================================
 
-The per-algorithm training hyperparameters for DQN, PPO, and A2C are listed in Table~\ref{tab:hparams}. Each configuration was chosen by a small grid search rather than left at library defaults, so that every learned agent is trained under settings appropriate to the sparse outcome-reward regime; the same values are used across all \NumSeeds{} seeds (\texttt{seed} $\in \{0, 1, \ldots, 9\}$). Empty cells indicate hyperparameters that do not apply to the algorithm (e.g.\ off-policy DQN-only fields are blank for the on-policy PPO and A2C rows). PPO retains the standard configuration; A2C uses a substantially longer rollout ($n_{\text{steps}} = 256$ rather than the default $5$) to give the on-policy estimator enough horizon for the long credit-assignment delay, and DQN uses a larger replay buffer and slower target updates to stabilise the off-policy bootstrap.
+The per-algorithm training hyperparameters for DQN, PPO, and A2C are listed in Table~\ref{tab:hparams}. Each configuration was chosen by a small grid search rather than left at library defaults, so that every learned agent is trained under settings appropriate to the sparse outcome-reward regime; the same values are used across all \NumSeeds{} seeds (\texttt{seed} $\in \{0, 1, \ldots, 9\}$). Empty cells indicate hyperparameters that do not apply to the algorithm (e.g.\ off-policy DQN-only fields are blank for the on-policy PPO and A2C rows). PPO retains the standard configuration; A2C uses a substantially longer rollout ($n_{\text{steps}} = 256$ rather than the default $5$) to give the on-policy estimator enough horizon for the long credit-assignment delay, and DQN uses a larger replay buffer and slower target updates to stabilize the off-policy bootstrap.
 
 \begin{table}[!htbp]
 \centering
