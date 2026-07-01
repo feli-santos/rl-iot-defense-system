@@ -1,7 +1,7 @@
 {
   "version": "1.0",
-  "git_sha": "76b65434358e",
-  "timestamp": "2026-06-28T18:18:10Z",
+  "git_sha": "447a2d2d4350-dirty",
+  "timestamp": "2026-07-01T02:03:45Z",
   "runs_root": "runs/redesign/alpha_04",
   "best_algo": "ppo",
   "display_algo": "ppo",

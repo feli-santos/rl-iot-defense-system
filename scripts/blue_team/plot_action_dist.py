@@ -1,17 +1,18 @@
-"""F4 — Action-distribution evolution over training.
+"""F4 — Per-stage action distribution of the converged policy.
 
 PLAN §3.1.9, D5.10, D5.11.
 
-Two-panel layout:
-  (a) MAIN — stacked-area chart of marginal action proportions over
-      training timesteps for the *headline algo*. By default this is the
-      best-performing algo (chosen by eval-reward, D5.11), but the thesis
-      pins it to PPO via ``--force-algo ppo`` so the figure matches the
-      surrounding prose. 25-K-step bins.
-  (b) SUPPLEMENTARY — 3 × 5 small-multiples: rows = checkpoints
-      {early=5%, mid=50%, late=100% of training}; cols = decision
-      stage. Each small panel is a per-stage action histogram. This
-      panel is what gates G5.5 (per-stage non-degeneracy).
+Single-row layout: five per-stage action histograms (BENIGN … IMPACT)
+for the converged (late-checkpoint) policy of the headline algo. By
+default the headline algo is the best-performing algo (chosen by
+eval-reward, D5.11), but the thesis pins it to PPO via ``--force-algo
+ppo`` so the figure matches the surrounding prose. A shared action-color
+legend runs along the bottom. This is the panel that gates G5.5
+(per-stage non-degeneracy).
+
+The marginal action share over training timesteps (25-K-step bins) and
+the early/mid checkpoints are still computed and recorded in
+``F4_summary.json`` for the gate, but are no longer drawn.
 
 Outputs:
     F4_action_distribution.png
@@ -36,6 +37,7 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
 import numpy as np  # noqa: E402
+from matplotlib.patches import Patch  # noqa: E402
 
 _ROOT = Path(__file__).resolve().parents[2]
 if str(_ROOT) not in sys.path:
@@ -227,62 +229,59 @@ def render(
         }
     g5_5_passes = all(v.get("passes") in (True, None) for v in g5_5_violations.values())
 
-    # ---------- render --------------------------------------------------------
-    fig = plt.figure(figsize=(14, 9))
-    gs = fig.add_gridspec(
-        2, 5, height_ratios=(1.2, 1.3), hspace=0.45, wspace=0.2, left=0.07, right=0.98, top=0.92
-    )
-    # (a) main: stacked area
-    ax_main = fig.add_subplot(gs[0, :])
-    bin_props_safe = np.nan_to_num(bin_props, nan=0.0)
-    ax_main.stackplot(
-        centers,
-        bin_props_safe.T,
-        labels=ACTION_NAMES,
-        colors=[_ACTION_COLORS[a] for a in range(5)],
-        alpha=0.9,
-    )
-    ax_main.set_xlim(0, max_ts)
-    ax_main.set_ylim(0, 1)
-    ax_main.set_xlabel("Training timesteps")
-    ax_main.set_ylabel("Action share (marginal, mean over seeds)")
-    ax_main.set_title(f"(a) {best_algo.upper()} marginal action distribution over training")
-    ax_main.legend(loc="upper right", fontsize=8, ncol=5)
-
-    # (b) per-stage histograms at 3 checkpoints
+    # Checkpoint labels retained for the summary JSON (all three windows are
+    # still recorded even though the figure now shows only the late policy).
     cp_labels = ["early", "mid", "late"]
-    for col_idx, stage_name in enumerate(_STAGE_NAMES):
-        ax = fig.add_subplot(gs[1, col_idx])
-        x = np.arange(5)
-        width = 0.27
-        for k, lab in enumerate(cp_labels):
-            row = per_stage_cps[lab][col_idx]
-            row_safe = np.nan_to_num(row, nan=0.0)
-            ax.bar(
-                x + (k - 1) * width,
-                row_safe,
-                width=width,
-                color=[_ACTION_COLORS[a] for a in range(5)],
-                edgecolor="k",
-                linewidth=(0.6 if lab == "late" else 0.0),
-                alpha=(1.0 if lab == "late" else 0.55),
-                label=f"t={lab}",
-            )
-        ax.set_xticks(x)
-        ax.set_xticklabels(ACTION_NAMES, rotation=45, ha="right", fontsize=7)
-        ax.set_ylim(0, 1.05)
-        ax.set_title(stage_name, fontsize=10)
-        if col_idx == 0:
-            ax.set_ylabel("Action share")
-        # Mark the recommended action with a star.
-        ax.axvline(col_idx, color="k", lw=0.6, ls="--", alpha=0.4)
-    fig.suptitle(
-        f"{best_algo.upper()} action-distribution evolution over training\n"
-        "(top) marginal action share; (bottom) per-stage action histograms "
-        "at early / mid / late checkpoints",
-        y=0.99,
-        fontsize=12,
+
+    # ---------- render --------------------------------------------------------
+    # Single row of per-stage action histograms for the converged (late)
+    # policy. The marginal-over-training panel was dropped: the thesis point
+    # is the *learned per-stage force ladder*, which the late checkpoint shows
+    # directly. bin_props is still recorded in the summary JSON for the gate.
+    bin_props_safe = np.nan_to_num(bin_props, nan=0.0)
+
+    fig, axes = plt.subplots(
+        1, 5, figsize=(15, 4.6), sharey=True, gridspec_kw={"wspace": 0.12}
     )
+    x = np.arange(5)
+    late_cps = per_stage_cps["late"]
+    for col_idx, (ax, stage_name) in enumerate(zip(axes, _STAGE_NAMES)):
+        row_safe = np.nan_to_num(late_cps[col_idx], nan=0.0)
+        bars = ax.bar(
+            x,
+            row_safe,
+            width=0.72,
+            color=[_ACTION_COLORS[a] for a in range(5)],
+            edgecolor="k",
+            linewidth=0.6,
+        )
+        ax.bar_label(bars, fmt="%.2f", padding=2, fontsize=9)
+        ax.set_xticks(x)
+        ax.set_xticklabels(ACTION_NAMES, rotation=45, ha="right", fontsize=9)
+        ax.set_ylim(0, 1.12)
+        ax.set_title(stage_name, fontsize=12)
+        ax.grid(axis="y", ls=":", alpha=0.4)
+        if col_idx == 0:
+            ax.set_ylabel("Action share", fontsize=11)
+
+    legend_handles = [
+        Patch(facecolor=_ACTION_COLORS[a], edgecolor="k", label=ACTION_NAMES[a])
+        for a in range(5)
+    ]
+    fig.legend(
+        handles=legend_handles,
+        loc="lower center",
+        ncol=5,
+        fontsize=10,
+        frameon=False,
+        bbox_to_anchor=(0.5, -0.06),
+    )
+    fig.suptitle(
+        f"{best_algo.upper()} per-stage action distribution of the converged policy",
+        y=1.0,
+        fontsize=13,
+    )
+    fig.tight_layout(rect=(0, 0.1, 1, 0.98))
 
     fig_stem = out_dir / "F4_action_distribution"
     _git_sha_cached = _git_sha()

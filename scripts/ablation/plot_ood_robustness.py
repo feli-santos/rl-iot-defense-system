@@ -80,6 +80,10 @@ _DISPLAY: dict[str, str] = {
     "always_observe": "Always-OBSERVE",
 }
 _RL_ALGOS = {"dqn", "ppo", "a2c"}
+# Policies aggregated and kept in the summary JSON but NOT drawn in the F15
+# figure. Always-BLOCK is a degenerate always-isolate heuristic that only
+# clutters the per-class comparison.
+_RENDER_EXCLUDE = {"always_block"}
 _OOD_CLASSES_DEFAULT: list[str] = [
     # RECON
     "VulnerabilityScan",
@@ -360,8 +364,10 @@ def _render(
         ax = axes[ax_idx // n_cols][ax_idx % n_cols]
         cell = by_class.get(ood_class, {})
         # Sort displayed policies by prevention_rate asc so the strongest
-        # defender is at the top of each panel.
-        present = [p for p in _POLICY_ORDER if p in cell]
+        # defender is at the top of each panel. Always-BLOCK is excluded from
+        # the figure (it is a degenerate always-isolate heuristic that clutters
+        # the comparison); it is retained in the summary JSON and gate checks.
+        present = [p for p in _POLICY_ORDER if p in cell and p not in _RENDER_EXCLUDE]
         present.sort(key=lambda p: cell[p].get("prevention_rate", 0.0))
 
         labels = [_DISPLAY.get(p, p) for p in present]
