@@ -103,18 +103,18 @@
     \vspace*{\fill}
     \centering
     \noindent
-    \textit{To my family.}
+    \textit{\`{A} minha fam\'{i}lia.}
     \vspace*{\fill}
 \end{dedicatoria}
 
 % --- Agradecimentos ---
 \begin{agradecimentos}
-    I would like to thank my advisor, Prof.\ Dr.\ Denis Fantinato, for his
-    continuous guidance, patience, and insight throughout this work. I am also
-    grateful to the Faculdade de Engenharia El\'{e}trica e de Computa\c{c}\~{a}o
-    (FEEC) at Unicamp for providing the environment in which this research
-    was carried out, and to my colleagues and family for their unwavering
-    support.
+    Agrade\c{c}o ao meu orientador, Prof.\ Dr.\ Denis Fantinato, pela
+    orienta\c{c}\~{a}o cont\'{i}nua, paci\^{e}ncia e discernimento ao longo deste
+    trabalho. Agrade\c{c}o tamb\'{e}m \`{a} Faculdade de Engenharia El\'{e}trica e
+    de Computa\c{c}\~{a}o (FEEC) da Unicamp por proporcionar o ambiente em que esta
+    pesquisa foi realizada, e aos meus colegas e familiares pelo apoio
+    incondicional.
 \end{agradecimentos}
 
 % --- Resumo (PT) e Abstract (EN) ---
@@ -212,6 +212,85 @@ reproducible artifact chain.
 
 \pdfbookmark[0]{\listtablename}{lot}
 \listoftables*
+\cleardoublepage
+
+% --- Lista de abreviaturas e siglas ---
+\begin{siglas}
+  \item[A2C]        Advantage Actor-Critic
+  \item[A3C]        Asynchronous Advantage Actor-Critic
+  \item[APT]        Advanced Persistent Threat
+  \item[CICIoT2023] Canadian Institute for Cybersecurity IoT 2023 dataset
+  \item[CNN]        Convolutional Neural Network
+  \item[DDoS]       Distributed Denial of Service
+  \item[DoS]        Denial of Service
+  \item[DQN]        Deep Q-Network
+  \item[DRL]        Deep Reinforcement Learning
+  \item[GAE]        Generalized Advantage Estimation
+  \item[IDS]        Intrusion Detection System
+  \item[IoT]        Internet of Things
+  \item[LSTM]       Long Short-Term Memory
+  \item[MDP]        Markov Decision Process
+  \item[MLP]        Multi-Layer Perceptron
+  \item[OOD]        Out-of-Distribution
+  \item[POMDP]      Partially Observable Markov Decision Process
+  \item[PPO]        Proximal Policy Optimization
+  \item[RF]         Random Forest
+  \item[RL]         Reinforcement Learning
+  \item[SB3]        Stable Baselines3
+  \item[SVM]        Support Vector Machine
+\end{siglas}
+\cleardoublepage
+
+% --- Lista de simbolos ---
+\begin{simbolos}
+  \item[$\alpha$]                 Observation-aliasing rate (probability a step emits a feature row from a stage adjacent to the true one)
+  \item[$\beta$]                  Benign false-positive-rate penalty coefficient (disabled by default)
+  \item[$\gamma$]                 Discount factor
+  \item[$\epsilon$]               PPO clipping parameter
+  \item[$\kappa$]                 Action-cost scale
+  \item[$\lambda$]                Attacker proximity to the impact stage ($\lambda = s/4$)
+  \item[$\lambda_{\text{GAE}}$]   Generalized Advantage Estimation parameter
+  \item[$\pi$]                    Policy mapping states to a distribution over actions
+  \item[$\rho$]                   Spearman rank-correlation coefficient
+  \item[$\sigma_{\min}$]          Residual escalation floor (proximity-coupled escalation)
+  \item[$\theta$]                 Policy / Q-network parameters
+  \item[$\theta^{-}$]             Target-network parameters (DQN)
+  \item[$A$]                      Action set $\{\textsc{observe},\textsc{log},\textsc{restrict},\textsc{block},\textsc{isolate}\} = \{0,1,2,3,4\}$
+  \item[$\hat{A}_t$]              Estimated advantage at step $t$ (PPO)
+  \item[$b_{\text{prevent}}$]     Prevention bonus ($+50$)
+  \item[$b_{\text{success}}$]     Terminal defense-success bonus ($+250$)
+  \item[$d_t$]                    Signed force gap, $d_t = a_t - \mathit{rec}(s_t)$
+  \item[$n$]                      Sample size ($n=300$ episodes per policy; $n=10$ held-out classes)
+  \item[$\mathcal{O}$]            Observation space of the POMDP
+  \item[$P$]                      State-transition probability function
+  \item[$p$]                      Statistical significance ($p$-value)
+  \item[$p_{\text{up}}$]          Base attacker escalation probability
+  \item[$p_{\text{up}}^{\text{eff}}$] Proximity-scaled effective escalation probability
+  \item[$p_{\text{down}}$]        Attacker de-escalation probability
+  \item[$p_{\text{down}}^{\textsc{iso}}$] De-escalation probability when the proportionate action is \textsc{isolate}
+  \item[$p_{\text{onset}}$]       Benign$\rightarrow$recon onset probability
+  \item[$p_{\text{onset,access}}$] Benign$\rightarrow$access onset probability
+  \item[$p_{\text{disp}}$]        Disproportionate-action penalty
+  \item[$p_{\text{over}}$]        Overreact-on-benign penalty
+  \item[$p_{\text{block-benign}}$] Block-on-benign penalty
+  \item[$p_{\text{block-recon}}$]  Block-on-recon penalty
+  \item[$p_{\text{impact}}$]      Terminal-impact penalty
+  \item[$p_{\text{missed}}$]      Missed-impact penalty
+  \item[$Q^{\pi}(s,a)$]           Action-value function under policy $\pi$
+  \item[$Q^{*}(s,a)$]             Optimal action-value function
+  \item[$R$]                      Reward function
+  \item[$R_t$]                    Per-step reward (sum of the six components)
+  \item[$\mathit{rec}(s)$]        Recommended-action mapping (stage $\rightarrow$ action)
+  \item[$r_{\text{prop}}$]        Proportionality bonus
+  \item[$r_{\text{benign}}$]      Benign-passive bonus
+  \item[$r_{\text{deesc}}$]       De-escalation reward
+  \item[$\mathcal{S}$]            Latent state space of the POMDP
+  \item[$s_t$]                    Decision-time kill-chain stage observed by the agent
+  \item[$s^{\text{stage}}_t$]     True (latent) kill-chain stage at step $t$
+  \item[$V^{\pi}(s)$]             State-value function under policy $\pi$
+  \item[$w$]                      History window size ($w=5$)
+  \item[$Z$]                      Observation model of the POMDP, $Z(o \mid s', a)$
+\end{simbolos}
 \cleardoublepage
 
 \pdfbookmark[0]{\contentsname}{toc}
