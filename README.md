@@ -2,7 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
-[![Tests: 446 passed](https://img.shields.io/badge/tests-446%20passed-brightgreen.svg)](#)
+[![Tests: 447 passed](https://img.shields.io/badge/tests-447%20passed-brightgreen.svg)](#)
 [![Thesis: 84 pages](https://img.shields.io/badge/thesis-84%20pages-blue.svg)](#thesis)
 
 > A reproducible MSc-thesis codebase: an adversarial reinforcement-learning
@@ -20,9 +20,9 @@ artefacts under [`docs/results/`](docs/results/):
 
 1. **Partial-observability crossover.** Sweeping the observation-aliasing rate
    α traces a clean crossover: at α=0 a windowed PPO defender and a tuned
-   RandomForest classifier **tie** (PPO +131.3 vs RF +134.8, overlapping CIs),
+   RandomForest classifier **tie** (PPO +138.6 vs RF +137.5, overlapping CIs),
    proving the environment does not favour RL by construction. As α rises, PPO
-   holds flat (→+117.4) while RF degrades monotonically (→+67.7). From α=0.4
+   holds flat (→+113.3) while RF degrades monotonically (→+73.6). From α=0.4
    onward the CIs are disjoint. The α=0 tie is the anchor; the crossover shape
    is the contribution.
 
@@ -31,19 +31,23 @@ artefacts under [`docs/results/`](docs/results/):
    making a supervised classifier sufficient. We test this by training under
    both a **coupled** (shaped) and a **decoupled** (sparse outcome-only) reward.
    The best RL agent beats the tuned RF under **both** contracts (coupled gap
-   −63.1; outcome gap −43.1), so the RL advantage is not an artefact of reward
-   shaping.
+   −128.0, DQN +274.8 vs RF +146.8; outcome gap −42.9, PPO +123.8 vs RF +80.9),
+   so the RL advantage is not an artefact of reward shaping.
 
 3. **Out-of-distribution generalisation.** On 10 held-out zero-day attack
    classes, the windowed PPO defender prevents a substantially larger fraction
-   of intrusions than RF-Acting on **every** class (PPO 0.37–0.57 vs RF
+   of intrusions than RF-Acting on **every** class (PPO 0.30–0.59 vs RF
    0.00–0.15), and the advantage is **independent of the upstream detector's
    per-class recall** — a temporal-control property no memoryless per-flow
    classifier can reproduce.
 
-**Honest finding.** Only the long-rollout on-policy PPO agent trains stably
-under the sparse outcome reward; DQN and A2C fail to converge in this regime
-and are reported as such rather than omitted.
+**Honest finding.** Under a fixed 5,000,000-step budget with no early stopping,
+all three DRL agents clear the negative-return regime on their best checkpoint
+(at α=0.4, DQN +72.5 and A2C +22.7 alongside PPO +121.3) — the earlier "only
+on-policy converges" claim does not hold. The on-policy advantage is one of
+**training reliability, not achievable peak return**: only PPO reaches its
+best policy dependably, with far lower across-seed variance (sd ≈15 vs DQN ≈52
+and A2C ≈38). This is reported as such rather than overstated.
 
 ---
 
@@ -101,7 +105,7 @@ cd rl-iot-defense-system
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
-make test                    # 446 passed in ~60-90 s on CPU
+make test                    # 447 passed in ~60-90 s on CPU
 ```
 
 ### Dataset
