@@ -148,9 +148,12 @@ agente de RL supera a RF em \emph{ambos} os regimes, refutando a objeção de qu
 uma recompensa com informação privilegiada reduziria a tarefa a classificação.
 Terceiro, sob \emph{distribuição deslocada} (dez classes de ataque retidas), o PPO
 previne uma fração maior de ataques que a RF em todas as dez classes, sem
-dependência negativa detectável da acurácia do detector ($n=10$). Reportamos que
-apenas o PPO, em política e com \emph{rollouts} longos, é estável sob a
-recompensa esparsa baseada em desfecho; DQN e A2C são instáveis nesse regime.
+dependência negativa detectável da acurácia do detector ($n=10$). Sob um
+orçamento fixo de 5.000.000 de passos sem parada antecipada, os três algoritmos
+saem do regime negativo, mas apenas o PPO o faz de forma confiável: DQN e A2C
+alcançam retornos de melhor \emph{checkpoint} comparáveis, porém com variância
+entre sementes várias vezes maior que a do PPO. A vantagem \emph{on-policy} é,
+portanto, de confiabilidade de treino, não de retorno máximo alcançável.
 Todos os resultados são acompanhados de intervalos de confiança por
 \emph{bootstrap} e de uma cadeia de artefatos reprodutível.
 
@@ -191,9 +194,12 @@ shows the best RL agent beats RF-Acting under \emph{both} reward regimes,
 refuting the objection that a privileged-information reward reduces the task to
 classification. Third, under distribution shift (ten held-out attack classes),
 PPO prevents a larger fraction of attacks than RF-Acting on every class, with no
-detectable negative dependence on detector accuracy ($n=10$). We report that
-only on-policy, long-rollout PPO is stable under the sparse outcome reward; DQN
-and A2C are unstable. All results carry bootstrap confidence intervals and a
+detectable negative dependence on detector accuracy ($n=10$). Under a fixed
+5{,}000{,}000-step budget with no early stopping, all three algorithms clear the
+negative regime, but only PPO does so reliably: DQN and A2C reach comparable
+best-checkpoint returns yet with several times PPO's across-seed variance, so the
+on-policy advantage is one of training reliability, not achievable peak return.
+All results carry bootstrap confidence intervals and a
 reproducible artifact chain.
 
     \vspace{\onelineskip}

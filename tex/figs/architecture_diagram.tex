@@ -76,8 +76,7 @@
 % --- Lane 3: Stage Detector ---
 \node[stageBox, fill=colOffline, right=of redteam] (detector) {
   \textbf{Stage Detector}\\[3pt]
-  MLP (production)\\
-  RandomForest\\[3pt]
+  RandomForest (tuned)\\[3pt]
   Input: 29-dim\\
   per-flow features\\[3pt]
   Output: $\hat{s} \in$\\
@@ -129,10 +128,10 @@
 \node[envBox, fill=colOnline,
       below=1.6cm of env] (agent) {
   \textbf{Blue-Team Agent}\\[3pt]
-  DQN / PPO / A2C\\
+   DQN / PPO / A2C\\
    (Stable Baselines3\\
-    MultiInputPolicy)\\[3pt]
-  10 seeds $\times$ $\leq$1.5M steps
+    MlpPolicy)\\[3pt]
+  10 seeds $\times$ 5M steps (no early stopping)
 };
 
 % --- Online bounding box ---
