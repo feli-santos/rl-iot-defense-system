@@ -9,7 +9,8 @@ with IoTWarden Fig. 6, Bhattacharjee et al., 2023):
            (lower = harsher environment: a correct defender action is
             less likely to push the attacker back down the kill chain)
   y-axis:  mean episodic reward on test_balanced (locked outcome contract)
-  curves:  trained PPO (across seeds) + recommended-action oracle rule
+  curves:  fixed det-5M PPO (across seeds, evaluated under shifted p_down)
+           + recommended-action oracle rule
 
 Outputs:
 - ``F10_aggressiveness.png``
@@ -373,12 +374,13 @@ def main(argv: list[str] | None = None) -> int:
     caption_path.write_text(
         "**F10 — Sensitivity to environment difficulty.** Mean episodic "
         "reward on `test_balanced` under the locked outcome reward contract "
-        f"for trained PPO (green, {n_seeds_ppo} seeds) and the "
-        "recommended-action oracle (grey, full observability) as a function "
-        "of the tug-of-war de-escalation success probability `p_down` "
-        "(lower = harsher environment, where a correct defender action is "
-        "less likely to push the attacker back down the kill chain). Shaded "
-        "bands: 95 % bootstrap CIs. (PLAN §3.1.5; D7.2.)\n"
+        f"for the fixed deterministic-5M α=0.4 PPO defender (green, "
+        f"{n_seeds_ppo} seeds), re-evaluated (not retrained) under each "
+        "shifted environment, and the recommended-action oracle (grey, full "
+        "observability) as a function of the tug-of-war de-escalation success "
+        "probability `p_down` (lower = harsher environment, where a correct "
+        "defender action is less likely to push the attacker back down the "
+        "kill chain). Shaded bands: 95 % bootstrap CIs. (PLAN §3.1.5; D7.2.)\n"
     )
 
     logger.info(

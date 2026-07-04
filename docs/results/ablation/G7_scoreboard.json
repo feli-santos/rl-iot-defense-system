@@ -1,8 +1,8 @@
 {
   "schema_version": "2.0",
   "stage": "ablation",
-  "git_sha": "95384f082ee617dbb4d7589b5ec006d1373bbd5b",
-  "completed_at": "2026-06-28T18:14:37Z",
+  "git_sha": "dcaa6288dd2c261b9ce62ca699bb02a61af7876c",
+  "completed_at": "2026-07-04T22:38:00Z",
   "summary": {
     "total_gates": 9,
     "pass": 9,
@@ -16,22 +16,22 @@
     {
       "id": "G7.1",
       "threshold": "pytest -q \u2265 428 passed; zero new skips",
-      "value": "======================= 446 passed, 1 warning in 15.50s ========================",
+      "value": "======================= 447 passed, 1 warning in 16.45s ========================",
       "status": "PASS",
       "kind": "tests"
     },
     {
       "id": "G7.2",
       "threshold": "Under outcome (sparse) reward, best RL agent outperforms RF-Acting (gap_outcome < 0)",
-      "value": "outcome: best_rl=ppo (+126.2), RF=+83.1, gap=-43.1",
+      "value": "outcome: best_rl=ppo (+123.8), RF=+80.9, gap=-42.9",
       "status": "PASS",
       "kind": "fcoupling",
-      "interpretation": "PASS: under the sparse outcome reward the best RL agent (ppo, +126.2) outperforms the memoryless RF-Acting baseline (+83.1) by +43.1 points \u2014 the RL advantage is not an artefact of dense per-step shaping."
+      "interpretation": "PASS: under the sparse outcome reward the best RL agent (ppo, +123.8) outperforms the memoryless RF-Acting baseline (+80.9) by +42.9 points \u2014 the RL advantage is not an artefact of dense per-step shaping."
     },
     {
       "id": "G7.3",
       "threshold": "PPO p=0.0 < p=0.6 by \u22651\u03c3 AND rule monotone",
-      "value": "p=0.0 CI=(12.7, 35.4); p=0.6 CI=(65.7, 109.4)",
+      "value": "p=0.0 CI=(-64.7, -37.3); p=0.6 CI=(93.5, 107.7)",
       "status": "PASS",
       "kind": "f10",
       "interpretation": "PASS: PPO benefits from a more lenient environment (higher p_down \u21d2 higher reward) by \u2265 1\u03c3 between p_down=0.0 and p_down=0.6, and the rule curve is monotone non-decreasing in p_down \u2014 the value function shifts with environment difficulty as expected (conceptually aligned with IoTWarden Fig. 6)."
@@ -68,7 +68,7 @@
     {
       "id": "G7.9",
       "threshold": "On VulnerabilityScan, best trained RL CI_low > RF-Acting CI_high (\u22651\u03c3 separation, RL > RF)",
-      "value": "best_rl=ppo (+123.0), RF=(+72.6), \u0394=+50.4",
+      "value": "best_rl=ppo (+127.8), RF=(+90.1), \u0394=+37.6",
       "status": "PASS",
       "kind": "f15",
       "audit_finding": "AF1 (HEADLINE)",
@@ -77,10 +77,10 @@
     {
       "id": "G7.10",
       "threshold": "F17 max-evasion (0.75) mean test reward within robust_tol=0.25 of evasion=0 reference (graceful degradation, no collapse)",
-      "value": "ref(e=0)=+120.4, max(e=0.75)=+115.0, ci_low_degradation=3.7 (tol_abs=30.1)",
+      "value": "ref(e=0)=+123.8, max(e=0.75)=+96.4, ci_low_degradation=30.9 (tol_abs=30.9)",
       "status": "PASS",
       "kind": "f17",
-      "interpretation": "PASS: the PPO defender stays robust to an evasive attacker \u2014 mean test reward at evasion=0.75 (115.0) is within 25% of the evasion=0 reference (120.4); the evasion-before-commit coupling does not collapse the learned defense."
+      "interpretation": "PASS: the PPO defender stays robust to an evasive attacker \u2014 mean test reward at evasion=0.75 (96.4) is within 25% of the evasion=0 reference (123.8); evasive persistence (post-detection hardening) degrades but does not collapse the learned defense."
     }
   ]
 }

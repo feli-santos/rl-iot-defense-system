@@ -1,21 +1,24 @@
 """ablation F17 — Evasion-reactive sensitivity plot (prevention pivot).
 
 Reads ``runs/ablation/evasion/ppo_e<e>/seed_<k>/eval_test.jsonl`` (produced
-by ``scripts.ablation.run_evasion_sweep``) and renders how a PPO defender —
-*trained and evaluated against an evasive attacker* — fares as the evasion
-coupling strengthens, all under the primary ``impact_is_terminal=False``
-contract:
+by ``scripts.ablation.run_evasion_sweep``) and renders how the fixed det-5M
+alpha-04 PPO defender — *evaluated against an increasingly evasive attacker*
+— fares as the evasion coupling strengthens, all under the primary
+``impact_is_terminal=False`` contract:
 
   x-axis:  evasion_prob ∈ {0.0, 0.25, 0.5, 0.75}
   y-axis:  mean episodic reward on test_balanced (95 % bootstrap CI)
-  curve:   trained PPO (across N seeds, on-contract outcome reward)
+  curve:   fixed PPO (across N seeds, on-contract outcome reward)
 
-``evasion_prob`` models an *evasive* attacker (adversarial_env.py
-"evasion-before-commit"): when the defender has recently applied force
-(BLOCK/ISOLATE) and the attacker is at a pre-trigger stage (RECON/ACCESS),
-with probability ``evasion_prob`` the attacker STALLS in place instead of
-progressing. At ``evasion_prob=0`` this reduces to the standard Markov
-attacker (so the e=0 cell is the within-sweep reference).
+``evasion_prob`` models an *evasive* attacker via evasive persistence
+(adversarial_env.py "post-detection hardening"): once the attacker senses
+force (BLOCK/ISOLATE) at a pre-commit stage (RECON/ACCESS) it hardens, and
+on the next proportional (correctly-forced) step it RESISTS eviction with
+probability ``evasion_prob`` — holding its ground rather than being
+de-escalated (correct force still holds the line; it is never a loss for the
+defender, the attacker just is not removed that turn). At ``evasion_prob=0``
+this reduces to the standard tug-of-war attacker (so the e=0 cell is the
+within-sweep reference).
 
 Outputs:
 - ``F17_evasion_sweep.png``
@@ -217,9 +220,9 @@ def _evaluate_g710(
             f"PASS: the PPO defender stays robust to an evasive attacker — "
             f"mean test reward at evasion={es[-1]} "
             f"({e_max['mean_reward']:.1f}) is within {robust_tol:.0%} of the "
-            f"evasion=0 reference ({e_ref['mean_reward']:.1f}); the "
-            f"evasion-before-commit coupling does not collapse the learned "
-            f"defense."
+            f"evasion=0 reference ({e_ref['mean_reward']:.1f}); evasive "
+            f"persistence (post-detection hardening) degrades but does not "
+            f"collapse the learned defense."
             if passes
             else (
                 f"FAIL-WITH-FINDING (D7.10.1): an evasive attacker materially "
@@ -350,12 +353,13 @@ def main(argv: list[str] | None = None) -> int:
     caption_path = out_dir / "F17_caption.md"
     if not caption_path.exists():
         caption_path.write_text(
-            "**F17 — Defender robustness to an evasive attacker.** Mean "
-            "episodic reward on `test_balanced` for PPO (green) trained and "
-            "evaluated against an *evasive* attacker "
-            "as a function of `evasion_prob` (the probability the attacker "
-            "stalls in place at RECON/ACCESS when the defender has recently "
-            "applied force). Shaded band: "
+            "**F17 — Defender robustness to an evasive-persistence attacker.** "
+            "Mean episodic reward on `test_balanced` for the fixed "
+            "deterministic-5M α=0.4 PPO defender, evaluated (not retrained) "
+            "against an attacker exhibiting *evasive persistence* "
+            "(post-detection hardening) as a function of `evasion_prob` (the "
+            "probability that, after sensing defensive force at RECON/ACCESS, "
+            "the attacker resists the next eviction attempt). Shaded band: "
             "95 % bootstrap CI. The `evasion_prob=0` cell is the standard "
             "Markov-attacker reference. (PLAN §3.1.6; D7.10.)\n"
         )

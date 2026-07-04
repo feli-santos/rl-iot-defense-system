@@ -10,38 +10,38 @@
 ## 1 — Headline numbers
 
 **Fcoupling — reward-coupling ablation (D7.1):**
-PASS: under the sparse outcome reward the best RL agent (ppo, +126.2) outperforms the memoryless RF-Acting baseline (+83.1) by +43.1 points — the RL advantage is not an artefact of dense per-step shaping.
+PASS: under the sparse outcome reward the best RL agent (ppo, +123.8) outperforms the memoryless RF-Acting baseline (+80.9) by +42.9 points — the RL advantage is not an artefact of dense per-step shaping.
 
-  - Outcome gap (RL − RF): **-43.1**
-  - Coupled gap (RL − RF): **-63.1**
-  - Gap reduction (coupled → outcome): **-19.9**
+  - Outcome gap (RL − RF): **-42.9**
+  - Coupled gap (RL − RF): **-127.9**
+  - Gap reduction (coupled → outcome): **-85.1**
 
 **F15 — OOD-class robustness (audit-AF1, HEADLINE):**
 Trained RL recovers some of the supervised RF blind spot on VulnerabilityScan.
 
   - On `VulnerabilityScan` (RF detector recall = 0.001):
-    - Best trained RL: `ppo` mean = +123.0
-      (CI [105.86626666666668, 137.49155000000002])
-    - RF-Acting mean = +72.6
-      (CI [59.21407500000001, 85.33297499999999])
-    - Δ = **+50.4**
+    - Best trained RL: `ppo` mean = +127.8
+      (CI [117.42337500000001, 137.08531666666664])
+    - RF-Acting mean = +90.1
+      (CI [76.60926666666667, 102.57432499999997])
+    - Δ = **+37.6**
 
-**F10 — attack-aggressiveness (IoTWarden Fig. 6 re-impl):**
+**F10 — attack-aggressiveness (fixed-policy sweep; conceptually aligned with IoTWarden Fig. 6):**
 PASS: PPO benefits from a more lenient environment (higher p_down ⇒ higher reward) by ≥ 1σ between p_down=0.0 and p_down=0.6, and the rule curve is monotone non-decreasing in p_down — the value function shifts with environment difficulty as expected (conceptually aligned with IoTWarden Fig. 6).
 
 ## 2 — Gate scoreboard
 
 | Gate | Threshold | Status | Value / Notes |
 |---|---|:---:|---|
-| **G7.1** | pytest -q ≥ 428 passed; zero new skips | **PASS** | ======================= 446 passed, 1 warning in 15.50s ======================== |
-| **G7.2** | Under outcome (sparse) reward, best RL agent outperforms RF-Acting (gap_outcome < 0) | **PASS** | outcome: best_rl=ppo (+126.2), RF=+83.1, gap=-43.1 |
-| **G7.3** | PPO p=0.0 < p=0.6 by ≥1σ AND rule monotone | **PASS** | p=0.0 CI=(12.7, 35.4); p=0.6 CI=(65.7, 109.4) |
+| **G7.1** | pytest -q ≥ 428 passed; zero new skips | **PASS** | ======================= 447 passed, 1 warning in 16.45s ======================== |
+| **G7.2** | Under outcome (sparse) reward, best RL agent outperforms RF-Acting (gap_outcome < 0) | **PASS** | outcome: best_rl=ppo (+123.8), RF=+80.9, gap=-42.9 |
+| **G7.3** | PPO p=0.0 < p=0.6 by ≥1σ AND rule monotone | **PASS** | p=0.0 CI=(-64.7, -37.3); p=0.6 CI=(93.5, 107.7) |
 | **G7.5** | Environment-design frozen tests pass with impact_is_terminal=True | **PASS** | G7.1 carries this through (full pytest green ⇒ environment-design contract preserved) |
 | **G7.6** | No regression on environment-design/detector/Blue-Team/benchmark frozen tests overall | **PASS** | G7.1 carries this through |
 | **G7.7** | Fcoupling/F10/F15/F17 manifest.json all present + SHA-pinned | **PASS** | all 4 manifests present |
 | **G7.8** | F15 4-class × 8-policy matrix complete, no NaN means | **PASS** | 80/80 cells; n_missing=0; n_nan=0 |
-| **G7.9** | On VulnerabilityScan, best trained RL CI_low > RF-Acting CI_high (≥1σ separation, RL > RF) | **PASS** | best_rl=ppo (+123.0), RF=(+72.6), Δ=+50.4 |
-| **G7.10** | F17 max-evasion (0.75) mean test reward within robust_tol=0.25 of evasion=0 reference (graceful degradation, no collapse) | **PASS** | ref(e=0)=+120.4, max(e=0.75)=+115.0, ci_low_degradation=3.7 (tol_abs=30.1) |
+| **G7.9** | On VulnerabilityScan, best trained RL CI_low > RF-Acting CI_high (≥1σ separation, RL > RF) | **PASS** | best_rl=ppo (+127.8), RF=(+90.1), Δ=+37.6 |
+| **G7.10** | F17 max-evasion (0.75) mean test reward within robust_tol=0.25 of evasion=0 reference (graceful degradation, no collapse) | **PASS** | ref(e=0)=+123.8, max(e=0.75)=+96.4, ci_low_degradation=30.9 (tol_abs=30.9) |
 
 Tally: **9 PASS / 0 FAIL-WITH-FINDING**.
 Source of record: `G7_scoreboard.json` next to this file.
@@ -51,7 +51,7 @@ Source of record: `G7_scoreboard.json` next to this file.
 | Artefact | Path | Description |
 |---|---|---|
 | **Fcoupling** (Tier 2) | `Fcoupling_reward_gap.png` + `Fcoupling_summary.json` | Reward-coupling ablation: coupled vs outcome reward gap between best RL agent and RF-Acting. |
-| **F10** (Tier 2) | `F10_aggressiveness.png` + `F10_summary.json` | PPO and oracle-rule mean test reward as a function of `p_defender_deescalation`; IoTWarden Fig. 6 re-impl. |
+| **F10** (Tier 2) | `F10_aggressiveness.png` + `F10_summary.json` | Fixed det-5M α=0.4 PPO and oracle-rule mean test reward as a function of `p_defender_deescalation` (re-evaluated, not retrained); conceptually aligned with IoTWarden Fig. 6. |
 | **F15** (Tier 1, audit-AF1) | `F15_ood_robustness.png` + `F15_summary.json` | 10 OOD class × 8 policy grouped bar chart with bootstrap CIs. |
 | Captions | `F10_caption.md`, `F15_caption.md` | Thesis-paper captions per figure. |
 | Manifests | `Fcoupling_manifest.json`, `F10_manifest.json`, `F15_manifest.json` | SHA-256 hash chain over input JSONLs + Blue-Team Training sweep manifest + Held-Out Benchmark eval manifest + git SHA at production time. |
@@ -74,7 +74,7 @@ Source of record: `G7_scoreboard.json` next to this file.
 | `tests/test_env_impact_terminal.py` | 8 synthetic tests pinning the `impact_is_terminal` codepath. |
 | `tests/test_train_agent_reward_overrides.py` | 14 synthetic tests pinning the CLI override plumbing. |
 
-Total tests: 446 (no run-time-data tests added; G7.2/G7.3/G7.8/G7.9 are real-data acceptance tests).
+Total tests: 447 (no run-time-data tests added; G7.2/G7.3/G7.8/G7.9 are real-data acceptance tests).
 
 ## 5 — Cross-step findings discovered during the ablation evaluation
 
@@ -90,7 +90,7 @@ Total tests: 446 (no run-time-data tests added; G7.2/G7.3/G7.8/G7.9 are real-dat
 
 (Hand-fill from G7.9 above — either trained RL beats RF-Acting on `VulnerabilityScan` by ≥1σ (RL closes the OOD gap), or it does not (RL is *robust to* not *better at* the OOD class). Either outcome is defensible.)
 
-### 6.3 The IoTWarden Fig. 6 sensitivity replication (G7.3)
+### 6.3 The fixed-policy difficulty sensitivity sweep (G7.3; conceptually aligned with IoTWarden Fig. 6)
 
 (Hand-fill from G7.3 above.)
 
@@ -133,4 +133,4 @@ gitignored; all derived figures + summaries + manifests live under
 ## 9 — Test count history
 
 Dataset prep 254 → Dataset prep 266 → Markov Attacker 283 → Env design 296 → Detector 329
-→ Blue-Team 376 → Benchmark 420 → **Ablation 446**.
+→ Blue-Team 376 → Benchmark 420 → **Ablation 447**.

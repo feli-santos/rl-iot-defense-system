@@ -41,6 +41,7 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import re
 import subprocess
 import sys
 from datetime import datetime, timezone
@@ -609,6 +610,12 @@ def _write_results_md(
     n_pass = sum(1 for g in gates if g.get("passes") is True)
     n_fail = sum(1 for g in gates if g.get("passes") is False)
 
+    # Live test count parsed from the G7.1 pytest value (e.g. "447 passed, ...")
+    # so the §4 / §9 test-count lines never drift from the actual suite size.
+    g71 = next((g for g in gates if g.get("id") == "G7.1"), {})
+    _m = re.search(r"(\d+)\s+passed", str(g71.get("value", "")))
+    n_tests = int(_m.group(1)) if _m else 447
+
     g72 = next((g for g in gates if g.get("id") == "G7.2"), {})
     g73 = f10.get("gates", {}).get("G7.3", {})
     f15.get("gates", {}).get("G7.8", {})
@@ -642,7 +649,7 @@ def _write_results_md(
       (CI {g79.get("rf_acting_ci", [float("nan"), float("nan")])})
     - Δ = **{g79.get("delta_mean", float("nan")):+.1f}**
 
-**F10 — attack-aggressiveness (IoTWarden Fig. 6 re-impl):**
+**F10 — attack-aggressiveness (fixed-policy sweep; conceptually aligned with IoTWarden Fig. 6):**
 {g73.get("interpretation", "(F10 not produced yet)")}
 
 ## 2 — Gate scoreboard
@@ -657,7 +664,7 @@ Source of record: `G7_scoreboard.json` next to this file.
 | Artefact | Path | Description |
 |---|---|---|
 | **Fcoupling** (Tier 2) | `Fcoupling_reward_gap.png` + `Fcoupling_summary.json` | Reward-coupling ablation: coupled vs outcome reward gap between best RL agent and RF-Acting. |
-| **F10** (Tier 2) | `F10_aggressiveness.png` + `F10_summary.json` | PPO and oracle-rule mean test reward as a function of `p_defender_deescalation`; IoTWarden Fig. 6 re-impl. |
+| **F10** (Tier 2) | `F10_aggressiveness.png` + `F10_summary.json` | Fixed det-5M α=0.4 PPO and oracle-rule mean test reward as a function of `p_defender_deescalation` (re-evaluated, not retrained); conceptually aligned with IoTWarden Fig. 6. |
 | **F15** (Tier 1, audit-AF1) | `F15_ood_robustness.png` + `F15_summary.json` | 10 OOD class × 8 policy grouped bar chart with bootstrap CIs. |
 | Captions | `F10_caption.md`, `F15_caption.md` | Thesis-paper captions per figure. |
 | Manifests | `Fcoupling_manifest.json`, `F10_manifest.json`, `F15_manifest.json` | SHA-256 hash chain over input JSONLs + Blue-Team Training sweep manifest + Held-Out Benchmark eval manifest + git SHA at production time. |
@@ -680,7 +687,7 @@ Source of record: `G7_scoreboard.json` next to this file.
 | `tests/test_env_impact_terminal.py` | 8 synthetic tests pinning the `impact_is_terminal` codepath. |
 | `tests/test_train_agent_reward_overrides.py` | 14 synthetic tests pinning the CLI override plumbing. |
 
-Total tests: 446 (no run-time-data tests added; G7.2/G7.3/G7.8/G7.9 are real-data acceptance tests).
+Total tests: {n_tests} (no run-time-data tests added; G7.2/G7.3/G7.8/G7.9 are real-data acceptance tests).
 
 ## 5 — Cross-step findings discovered during the ablation evaluation
 
@@ -696,7 +703,7 @@ Total tests: 446 (no run-time-data tests added; G7.2/G7.3/G7.8/G7.9 are real-dat
 
 (Hand-fill from G7.9 above — either trained RL beats RF-Acting on `VulnerabilityScan` by ≥1σ (RL closes the OOD gap), or it does not (RL is *robust to* not *better at* the OOD class). Either outcome is defensible.)
 
-### 6.3 The IoTWarden Fig. 6 sensitivity replication (G7.3)
+### 6.3 The fixed-policy difficulty sensitivity sweep (G7.3; conceptually aligned with IoTWarden Fig. 6)
 
 (Hand-fill from G7.3 above.)
 
@@ -739,7 +746,7 @@ gitignored; all derived figures + summaries + manifests live under
 ## 9 — Test count history
 
 Dataset prep 254 → Dataset prep 266 → Markov Attacker 283 → Env design 296 → Detector 329
-→ Blue-Team 376 → Benchmark 420 → **Ablation 446**.
+→ Blue-Team 376 → Benchmark 420 → **Ablation {n_tests}**.
 """
 
     path = out_dir / "RESULTS.md"
