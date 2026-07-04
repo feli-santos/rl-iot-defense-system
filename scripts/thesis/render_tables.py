@@ -29,7 +29,9 @@ FALPHA = Path("docs/results/ablation/Falpha_summary.json")
 FCOUPLING = Path("docs/results/ablation/Fcoupling_summary.json")
 FTEN = Path("docs/results/ablation/F10_summary.json")
 FSEVENTEEN = Path("docs/results/ablation/F17_summary.json")
+FFIFTEEN = Path("docs/results/ablation/F15_summary.json")
 FELEVEN = Path("docs/results/stage-detector/F11_summary.json")
+FTUNEDRF = Path("docs/results/stage-detector/tuned_rf_stage_detection.json")
 TEST_COUNT = Path("docs/results/test_count.json")
 
 # Spelled-out alpha keys (LaTeX macro names cannot contain digits or dots).
@@ -38,6 +40,8 @@ _ALPHA_WORD = {
     "0.2": "Two",
     "0.4": "Four",
     "0.6": "Six",
+    "0.8": "Eight",
+    "1.0": "One",
 }
 
 # Spelled-out p_down sweep points (LaTeX macro names cannot contain digits/dots).
@@ -128,29 +132,86 @@ def _render_evasion_numbers() -> list[str]:
     return lines
 
 
+def _render_ood_numbers() -> list[str]:
+    """F15 OOD-robustness macros: prevention ranges, advantage, detector-independence stats.
+
+    Every OOD number the thesis prose cites (Sections 1, 3.5, 4.6, conclusion) is
+    emitted here so the fragile hand-typed literals become mechanically derived
+    from ``F15_summary.json``. LaTeX macro names cannot contain digits, so the
+    F15 macros are prefixed ``\\Ffifteen``.
+
+    Emits (all from the canonical F15 summary):
+      - ``\\FfifteenPPOPreventionLow/High``   PPO prevention-rate range across the
+        ten held-out OOD classes.
+      - ``\\FfifteenRFPreventionLow/High``    tuned RF-Acting prevention-rate range.
+      - ``\\FfifteenAdvantageLow/High``       best-RL-minus-RF prevention advantage range.
+      - ``\\FfifteenSpearmanRho/P``,          detector-independence rank-correlation,
+        ``\\FfifteenPearsonR/P``,             linear correlation, and
+        ``\\FfifteenOLSSlopeCILow/High``      bootstrap OLS-slope CI (spans zero).
+      - per-class exemplars cited in prose: ``\\FfifteenSynFloodRecall/Advantage``
+        (high-recall class) and ``\\FfifteenVulnScanRecall/Advantage`` plus
+        ``\\FfifteenDNSSpoofingRecall`` (low-recall blind spots).
+    """
+    if not FFIFTEEN.exists():
+        return []
+    f15 = _load(FFIFTEEN)
+    di = f15.get("detector_independence", {})
+    points = di.get("points", [])
+    if not points:
+        return []
+    lines: list[str] = ["% --- F15 OOD-robustness (detector-independence) ---"]
+
+    # Prevention ranges across the ten OOD classes (best-RL vs. tuned RF-Acting).
+    rl_prev = [p["best_rl_metric"] for p in points]
+    rf_prev = [p["rf_metric"] for p in points]
+    adv = [p["advantage"] for p in points]
+    lines.append(_newcmd("FfifteenPPOPreventionLow", f"{min(rl_prev):0.2f}"))
+    lines.append(_newcmd("FfifteenPPOPreventionHigh", f"{max(rl_prev):0.2f}"))
+    lines.append(_newcmd("FfifteenRFPreventionLow", f"{min(rf_prev):0.2f}"))
+    lines.append(_newcmd("FfifteenRFPreventionHigh", f"{max(rf_prev):0.2f}"))
+    lines.append(_newcmd("FfifteenAdvantageLow", f"{min(adv):+0.2f}"))
+    lines.append(_newcmd("FfifteenAdvantageHigh", f"{max(adv):+0.2f}"))
+
+    # Detector-independence statistics (Spearman non-significant, OLS CI spans zero).
+    stats = di.get("stats", {})
+    if stats:
+        lines.append(_newcmd("FfifteenSpearmanRho", f"{stats['spearman_rho']:0.2f}"))
+        lines.append(_newcmd("FfifteenSpearmanP", f"{stats['spearman_p']:0.2f}"))
+        lines.append(_newcmd("FfifteenPearsonR", f"{stats['pearson_r']:0.2f}"))
+        lines.append(_newcmd("FfifteenPearsonP", f"{stats['pearson_p']:0.2f}"))
+        lines.append(_newcmd("FfifteenOLSSlopeCILow", f"{stats['ols_slope_ci_low']:+0.2f}"))
+        lines.append(_newcmd("FfifteenOLSSlopeCIHigh", f"{stats['ols_slope_ci_high']:+0.2f}"))
+
+    # Per-class exemplars cited in prose (high-recall vs. blind-spot classes).
+    by_class = {p["ood_class"]: p for p in points}
+    syn = by_class.get("DoS-SYN_Flood")
+    if syn is not None:
+        lines.append(_newcmd("FfifteenSynFloodRecall", f"{syn['rf_recall']:0.3f}"))
+        lines.append(_newcmd("FfifteenSynFloodAdvantage", f"{syn['advantage']:+0.2f}"))
+    vuln = by_class.get("VulnerabilityScan")
+    if vuln is not None:
+        lines.append(_newcmd("FfifteenVulnScanRecall", f"{vuln['rf_recall']:0.3f}"))
+        lines.append(_newcmd("FfifteenVulnScanAdvantage", f"{vuln['advantage']:+0.2f}"))
+    dns = by_class.get("DNS_Spoofing")
+    if dns is not None:
+        lines.append(_newcmd("FfifteenDNSSpoofingRecall", f"{dns['rf_recall']:0.3f}"))
+    return lines
+
+
 def _render_detector_numbers() -> list[str]:
     """F11 stage-detector macro-F1 macros, split-tagged.
 
-    Emits the production MLP and tuned-RandomForest macro-F1 on both the
-    ``test_balanced`` split (the one Section 4.3 prose and Figure 4.3 report) and
-    the full ``test`` split, so the detector numbers are mechanically derived
-    from ``F11_summary.json`` instead of hand-typed. The split tag is part of the
-    macro name to make split-mix-ups (e.g.\\ quoting the full-test 0.925 as a
-    ``test_balanced`` number) impossible.
+    Emits the tuned-RandomForest (RF-Acting baseline) macro-F1 on the
+    ``test_balanced`` split, sourced from ``tuned_rf_stage_detection.json`` so the
+    detector number quoted in prose (Section 3.5 and Section 4.1) is mechanically
+    the same tuned model the RF-Acting policy deploys, not the earlier untuned
+    reference RF. The dropped supervised-MLP detector is no longer emitted.
     """
-    if not FELEVEN.exists():
+    if not FTUNEDRF.exists():
         return []
-    f11 = _load(FELEVEN)
-    models = f11["models"]
-    lines: list[str] = ["% --- F11 stage-detector macro-F1 (split-tagged) ---"]
-    for macro, model, split in (
-        ("DetectorMlpFoneBalanced", "StageDetector", "test_balanced"),
-        ("DetectorMlpFoneFull", "StageDetector", "test"),
-        ("DetectorRfFoneBalanced", "RandomForest", "test_balanced"),
-        ("DetectorRfFoneFull", "RandomForest", "test"),
-    ):
-        f1 = models[model][split]["macro_f1"]
-        lines.append(_newcmd(macro, f"{f1:0.3f}"))
+    trf = _load(FTUNEDRF)
+    lines: list[str] = ["% --- tuned RF-Acting stage-detector macro-F1 ---"]
+    lines.append(_newcmd("DetectorRfFoneBalanced", f"{trf['macro_f1']:0.3f}"))
     return lines
 
 
@@ -220,13 +281,14 @@ def _render_numbers() -> str:
     # when their canonical summaries exist (regenerated after the sweeps re-run).
     lines.extend(_render_aggressiveness_numbers())
     lines.extend(_render_evasion_numbers())
+    lines.extend(_render_ood_numbers())
     lines.extend(_render_detector_numbers())
 
     # Test count (sidecar JSON; canonical pytest count).
     if TEST_COUNT.exists():
-        num_tests = json.loads(TEST_COUNT.read_text()).get("num_tests", 446)
+        num_tests = json.loads(TEST_COUNT.read_text()).get("num_tests", 447)
     else:
-        num_tests = 446
+        num_tests = 447
     lines.append(_newcmd("NumTests", f"{num_tests:d}"))
 
     return "\n".join(lines) + "\n"
@@ -245,7 +307,7 @@ def _render_alpha_table() -> str:
     fa = _load(FALPHA)
     per_alpha = fa["per_alpha"]
     body: list[str] = []
-    for akey in ("0.0", "0.2", "0.4", "0.6"):
+    for akey in ("0.0", "0.2", "0.4", "0.6", "0.8", "1.0"):
         c = per_alpha[akey]
         ppo, dqn, a2c = c["ppo"], c["dqn"], c["a2c"]
         rf, orc = c["rf_acting"], c["recommended_action"]
