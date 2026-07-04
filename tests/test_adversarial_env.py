@@ -980,6 +980,173 @@ class TestEvasion:
         assert asdict(spec)["evasion_prob"] == 0.5
 
 
+class TestEvasivePersistence:
+    """Evasive persistence under the *tug-of-war* dynamics (the headline contract).
+
+    The legacy stall (``TestEvasion``) lives only in ``_advance_attack``
+    (``tug_of_war=False``). Under tug-of-war the attacker never climbs on a
+    proportional/over-force step, so a stall has no bite. Here evasion is
+    reinterpreted as *post-detection hardening*: after the attacker senses force
+    (BLOCK/ISOLATE) at a pre-commit stage (RECON/ACCESS) it *arms*, and on a
+    subsequent proportional (``d == 0``) step it *resists* the de-escalation
+    pushdown with probability ``evasion_prob``. The correct response still holds
+    the line (the attacker never climbs), it just fails to evict the hardened
+    attacker that turn. Every new RNG draw is gated behind ``evasion_prob > 0``
+    AND the armed flag, so with ``evasion_prob == 0`` the RNG stream — and thus
+    every deterministic result and gate — is byte-identical to before.
+    """
+
+    @pytest.fixture
+    def mock_dataset(self, tmp_path):
+        import json
+
+        dataset_path = tmp_path / "dataset"
+        dataset_path.mkdir(parents=True)
+        features = np.random.randn(100, 46).astype(np.float32)
+        np.save(dataset_path / "features.npy", features)
+        labels = np.random.randint(0, 5, size=100)
+        np.save(dataset_path / "labels.npy", labels)
+        state_indices = {str(i): [] for i in range(5)}
+        for idx, label in enumerate(labels):
+            state_indices[str(label)].append(idx)
+        with open(dataset_path / "state_indices.json", "w") as f:
+            json.dump(state_indices, f)
+        import joblib
+        from sklearn.preprocessing import StandardScaler
+
+        scaler = StandardScaler()
+        scaler.fit(features)
+        joblib.dump(scaler, dataset_path / "scaler.joblib")
+        return dataset_path
+
+    def _build_env(self, mock_dataset, **config_kwargs):
+        from src.environment.adversarial_env import (
+            AdversarialEnvConfig,
+            AdversarialIoTEnv,
+        )
+
+        # tug_of_war=True is the default headline contract; make it explicit.
+        config_kwargs.setdefault("tug_of_war", True)
+        config = AdversarialEnvConfig(**config_kwargs)
+        env = AdversarialIoTEnv(
+            dataset_path=mock_dataset,
+            config=config,
+        )
+        env.reset(seed=42)
+        return env
+
+    def test_evasion_prob_zero_never_arms(self, mock_dataset):
+        """evasion_prob=0: over-force at RECON after a block never arms hardening."""
+        from src.utils.label_mapper import KillChainStage
+
+        env = self._build_env(mock_dataset, evasion_prob=0.0)
+        env._recent_block = True
+        stage = KillChainStage.RECON.value
+        env._current_attack_stage = stage
+        env._attack_history = [stage]
+        # action=3 (BLOCK) at RECON (recommended=1) -> d=+2 (over-force / HOLD).
+        env._advance_tug_of_war(action=3, previous_stage=stage)
+        assert env._evasion_hardened is False
+
+    def test_evasion_prob_zero_deescalates_normally(self, mock_dataset):
+        """evasion_prob=0: a proportional step de-escalates as usual (p_down=1)."""
+        from src.utils.label_mapper import KillChainStage
+
+        env = self._build_env(mock_dataset, evasion_prob=0.0, p_down=1.0)
+        stage = KillChainStage.ACCESS.value
+        env._current_attack_stage = stage
+        env._attack_history = [stage]
+        # action=2 (recommended for ACCESS) -> d=0 -> de-escalate w.p. p_down=1.
+        result = env._advance_tug_of_war(action=2, previous_stage=stage)
+        assert result == "defended"
+        assert env._current_attack_stage == stage - 1
+
+    def test_arming_on_over_force_at_precommit(self, mock_dataset):
+        """Block/ISOLATE at RECON/ACCESS after a recent block arms hardening."""
+        from src.utils.label_mapper import KillChainStage
+
+        for stage in (KillChainStage.RECON.value, KillChainStage.ACCESS.value):
+            env = self._build_env(mock_dataset, evasion_prob=1.0)
+            env._recent_block = True
+            env._current_attack_stage = stage
+            env._attack_history = [stage]
+            # action=4 (ISOLATE) -> d >= 1 at these low stages (over-force).
+            env._advance_tug_of_war(action=4, previous_stage=stage)
+            assert env._evasion_hardened is True
+            assert env._current_attack_stage == stage  # held, did not climb
+
+    def test_arming_requires_recent_block(self, mock_dataset):
+        """No arming without a recent defender block (defender-coupled)."""
+        from src.utils.label_mapper import KillChainStage
+
+        env = self._build_env(mock_dataset, evasion_prob=1.0)
+        env._recent_block = False
+        stage = KillChainStage.RECON.value
+        env._current_attack_stage = stage
+        env._attack_history = [stage]
+        env._advance_tug_of_war(action=4, previous_stage=stage)
+        assert env._evasion_hardened is False
+
+    def test_arming_only_at_precommit_stages(self, mock_dataset):
+        """Over-force at MANEUVER (post-commit) does not arm hardening."""
+        from src.utils.label_mapper import KillChainStage
+
+        env = self._build_env(mock_dataset, evasion_prob=1.0)
+        env._recent_block = True
+        stage = KillChainStage.MANEUVER.value
+        env._current_attack_stage = stage
+        env._attack_history = [stage]
+        # action=4 (ISOLATE) at MANEUVER (recommended=3) -> d=+1 (over-force).
+        env._advance_tug_of_war(action=4, previous_stage=stage)
+        assert env._evasion_hardened is False
+
+    def test_hardened_attacker_resists_deescalation(self, mock_dataset):
+        """Armed + evasion_prob=1: a proportional step is resisted (no pushdown)."""
+        from src.utils.label_mapper import KillChainStage
+
+        env = self._build_env(mock_dataset, evasion_prob=1.0, p_down=1.0)
+        stage = KillChainStage.ACCESS.value
+        env._current_attack_stage = stage
+        env._attack_history = [stage]
+        env._evasion_hardened = True
+        # action=2 (recommended for ACCESS) -> d=0 -> would de-escalate, but the
+        # hardened attacker resists this turn.
+        result = env._advance_tug_of_war(action=2, previous_stage=stage)
+        assert result == "ongoing"
+        assert env._current_attack_stage == stage  # held the line
+        assert env._evasion_hardened is False  # flag consumed
+
+    def test_resist_fires_once_then_evicts(self, mock_dataset):
+        """After resisting once, the flag is consumed and the next proportional
+        step de-escalates normally."""
+        from src.utils.label_mapper import KillChainStage
+
+        env = self._build_env(mock_dataset, evasion_prob=1.0, p_down=1.0)
+        stage = KillChainStage.ACCESS.value
+        env._current_attack_stage = stage
+        env._attack_history = [stage]
+        env._evasion_hardened = True
+        env._advance_tug_of_war(action=2, previous_stage=stage)  # resisted
+        assert env._current_attack_stage == stage
+        # Second proportional step: no longer hardened -> de-escalates.
+        result = env._advance_tug_of_war(action=2, previous_stage=stage)
+        assert result == "defended"
+        assert env._current_attack_stage == stage - 1
+
+    def test_unarmed_proportional_deescalates(self, mock_dataset):
+        """Not armed + evasion_prob=1: proportional step still de-escalates."""
+        from src.utils.label_mapper import KillChainStage
+
+        env = self._build_env(mock_dataset, evasion_prob=1.0, p_down=1.0)
+        stage = KillChainStage.ACCESS.value
+        env._current_attack_stage = stage
+        env._attack_history = [stage]
+        env._evasion_hardened = False
+        result = env._advance_tug_of_war(action=2, previous_stage=stage)
+        assert result == "defended"
+        assert env._current_attack_stage == stage - 1
+
+
 class TestRewardMode:
     """Outcome-only reward mode: tests whether the proportionality shaping is
     load-bearing.

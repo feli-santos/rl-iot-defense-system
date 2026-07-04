@@ -49,8 +49,8 @@ from src.generator.markov_attacker import MarkovAttacker
 from src.utils.label_mapper import KillChainStage
 from src.utils.realization_engine import RealizationEngine
 
-# Optional stage-detector loading (lazy to avoid heavy import when unused)
-_StageDetector = Any  # forward ref for type hints
+# Optional stage-detector loading (RandomForest .joblib; lazy import when unused)
+_StageDetector = Any  # forward ref for type hints (RF estimator)
 
 logger = logging.getLogger(__name__)
 
@@ -90,29 +90,21 @@ def get_action_cost(action: int) -> float:
 def _load_stage_detector(path: Path) -> Any:
     """Load a frozen stage detector from ``path``.
 
-    Supports ``.pt`` (PyTorch :class:`StageDetector`) and ``.joblib``
-    (sklearn :class:`RandomForestClassifier`) checkpoints.  Returns an
-    object with a ``predict(features_2d) -> stage_ids`` method.
+    Supports ``.joblib`` (sklearn :class:`RandomForestClassifier`)
+    checkpoints.  Returns an object with a
+    ``predict(features_2d) -> stage_ids`` method.
     """
     suffix = path.suffix.lower()
-    if suffix == ".pt":
-        from src.detector.stage_detector import StageDetector
-
-        det = StageDetector.from_checkpoint(path)
-        # wrap so caller sees uniform ``predict``
-        return _DetectorWrapper(det.predict)
     if suffix in (".joblib", ".pkl", ".pickle"):
         import joblib
 
         clf = joblib.load(path)
         return _DetectorWrapper(clf.predict)
-    raise ValueError(
-        f"Unsupported stage-detector checkpoint format: {path} " f"(expected .pt or .joblib)"
-    )
+    raise ValueError(f"Unsupported stage-detector checkpoint format: {path} (expected .joblib)")
 
 
 class _DetectorWrapper:
-    """Thin wrapper unifying StageDetector.predict and sklearn.predict."""
+    """Thin wrapper exposing a uniform ``predict`` over the RF detector."""
 
     def __init__(self, predict_fn):
         self._predict = predict_fn
@@ -584,7 +576,17 @@ class AdversarialIoTEnv(gym.Env):
         self._last_action: int = 0
         # Evasion-before-commit: did the defender just apply force this step?
         self._recent_block: bool = False
+        # Evasive persistence: armed when the attacker sensed force at a
+        # pre-commit stage; makes the next eviction attempt resist (tug-of-war).
+        self._evasion_hardened: bool = False
         self._rng: Optional[np.random.Generator] = None
+        # Deterministic-eval support: once a reset supplies an explicit seed we
+        # remember it as a base seed and derive a fresh, DETERMINISTIC child seed
+        # for every subsequent seedless reset (e.g. SB3 VecEnv autoreset). This
+        # keeps benchmark rollouts reproducible without changing training, which
+        # never sets a base seed and therefore keeps drawing fresh OS entropy.
+        self._base_seed: Optional[int] = None
+        self._episode_counter: int = 0
         # environment-design: MTTC tracking & defender-driven de-escalation
         self._first_attack_step: Optional[int] = None
         self._compromise_step: Optional[int] = None
@@ -621,12 +623,39 @@ class AdversarialIoTEnv(gym.Env):
         """
         super().reset(seed=seed)
 
-        # Setup RNG
+        # Setup RNG.
+        #
+        # Determinism contract:
+        #   * An explicit ``seed`` establishes (or re-establishes) a base seed
+        #     and resets the per-episode counter, then seeds this episode with
+        #     exactly ``seed``.
+        #   * A seedless reset (``seed is None``) — which is what SB3's VecEnv
+        #     autoreset uses between episodes — derives a DETERMINISTIC child
+        #     seed from the remembered base seed and an incrementing counter,
+        #     so a benchmark that seeds only the *first* reset still gets a
+        #     reproducible sequence of attacker trajectories.
+        #   * If no base seed was ever set (training default), fall back to
+        #     fresh OS entropy so training keeps its per-episode stochasticity.
         if seed is not None:
-            self._rng = np.random.default_rng(seed)
+            self._base_seed = int(seed)
+            self._episode_counter = 0
+            effective_seed: Optional[int] = int(seed)
+        elif self._base_seed is not None:
+            self._episode_counter += 1
+            # SeedSequence spawns well-distributed, non-colliding child seeds.
+            effective_seed = int(
+                np.random.SeedSequence([self._base_seed, self._episode_counter]).generate_state(1)[
+                    0
+                ]
+            )
+        else:
+            effective_seed = None
+
+        if effective_seed is not None:
+            self._rng = np.random.default_rng(effective_seed)
             # Also seed the realization engine
-            self._realization_engine._rng = np.random.default_rng(seed)
-            np.random.seed(seed)
+            self._realization_engine._rng = np.random.default_rng(effective_seed)
+            np.random.seed(effective_seed)
         else:
             self._rng = np.random.default_rng()
 
@@ -634,6 +663,7 @@ class AdversarialIoTEnv(gym.Env):
         self._step_count = 0
         self._last_action = 0
         self._recent_block = False
+        self._evasion_hardened = False
         self._first_attack_step = None
         self._compromise_step = None
         self._defender_deescalations = 0
@@ -977,11 +1007,30 @@ class AdversarialIoTEnv(gym.Env):
             # de-escalates more reliably than BLOCK (real force gradient). On a
             # failed pushdown the attacker simply holds (it never climbs under a
             # correct response).
+            #
+            # Evasive persistence (post-detection hardening): an attacker that
+            # sensed force at a pre-commit stage (RECON/ACCESS) hardens against
+            # eviction. On this proportional step it RESISTS the pushdown with
+            # probability ``evasion_prob`` — the correct response still holds the
+            # line (never a loss), it just fails to remove the hardened attacker
+            # this turn. The RNG draw is gated behind ``evasion_prob > 0`` AND an
+            # armed hardening flag, so the headline contract (evasion_prob == 0)
+            # never draws and every deterministic result/gate stays byte-identical.
+            if (
+                self._config.evasion_prob > 0.0
+                and self._evasion_hardened
+                and self._rng.random() < self._config.evasion_prob
+            ):
+                # Hardened resist: consume the flag, hold the stage (no pushdown).
+                self._evasion_hardened = False
+                self._attack_history.append(self._current_attack_stage)
+                return "ongoing"
             p_down = self._config.p_down_isolate if action == 4 else self._config.p_down
             if self._rng.random() < p_down:
                 self._current_attack_stage = max(0, stage - 1)
                 self._attack_history.append(self._current_attack_stage)
                 self._defender_deescalations += 1
+                self._evasion_hardened = False
                 return "defended"
             self._attack_history.append(self._current_attack_stage)
             return "ongoing"
@@ -990,6 +1039,17 @@ class AdversarialIoTEnv(gym.Env):
         # Mis-targeted (disproportionately heavy) force stalls the attacker but
         # does not de-escalate it: spraying ISOLATE at a low stage holds the
         # intrusion in place without pushing it down.
+        #
+        # Evasive persistence (arming): if the attacker senses heavy force
+        # (BLOCK/ISOLATE) while still at a pre-commit stage (RECON/ACCESS), it
+        # hardens against the *next* eviction attempt. The flag is only ever set
+        # when evasion_prob > 0, so the headline contract is untouched.
+        if (
+            self._config.evasion_prob > 0.0
+            and self._recent_block
+            and stage in (KillChainStage.RECON.value, KillChainStage.ACCESS.value)
+        ):
+            self._evasion_hardened = True
         self._attack_history.append(self._current_attack_stage)
         return "ongoing"
 
