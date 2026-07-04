@@ -92,6 +92,39 @@ def _build_curves(
     return out
 
 
+def _reference_band(
+    benchmark_root: Path,
+    policy: str,
+) -> dict[str, Any] | None:
+    """Mean + 95 % normal-approx CI of episodic reward for a non-learning
+    baseline (e.g. ``rf_acting``, ``recommended_action``) read from its
+    ``benchmark_root/<policy>/seed_0/eval_test.jsonl``.
+
+    These policies are not RL-trained and therefore have no reward-vs-timestep
+    curve; they are drawn as flat horizontal reference bands. Returns ``None``
+    if the file is absent so the caller can silently skip the band.
+    """
+    path = benchmark_root / policy / "seed_0" / "eval_test.jsonl"
+    if not path.exists():
+        return None
+    rewards = [
+        json.loads(line)["episode_reward"] for line in path.read_text().splitlines() if line.strip()
+    ]
+    if not rewards:
+        return None
+    arr = np.asarray(rewards, dtype=float)
+    mean = float(arr.mean())
+    # 95 % CI of the mean (normal approx); n=300 so this is tight.
+    half = 1.96 * float(arr.std(ddof=1)) / np.sqrt(len(arr)) if len(arr) > 1 else 0.0
+    return {
+        "mean": mean,
+        "low": mean - half,
+        "high": mean + half,
+        "n": len(arr),
+        "source": str(path.relative_to(_ROOT) if path.is_absolute() else path),
+    }
+
+
 def render(
     runs_root: Path,
     out_dir: Path,
@@ -99,8 +132,16 @@ def render(
     n_bins: int = 25,
     bootstrap_n: int = 1000,
     fraction: float = 0.10,
+    benchmark_root: Path | None = None,
+    reference_policies: Sequence[str] = ("rf_acting", "recommended_action"),
 ) -> dict[str, Any]:
-    """Build F3 + F3_summary.json + manifest.json under ``out_dir``."""
+    """Build F3 + F3_summary.json + manifest.json under ``out_dir``.
+
+    If ``benchmark_root`` is given, flat horizontal reference bands for the
+    non-learning baselines in ``reference_policies`` (default RF-Acting and the
+    recommended-action oracle) are overlaid on the reward panel, read from
+    ``benchmark_root/<policy>/seed_0/eval_test.jsonl``.
+    """
     out_dir.mkdir(parents=True, exist_ok=True)
 
     train_runs = read_runs_directory(runs_root, file_name="episodes.jsonl")
@@ -201,6 +242,20 @@ def render(
             "eval_last_window": {k: _agg_lw(last_window_seeds_eval, k) for k in _summary_keys},
         }
 
+    # ---------- non-learning reference bands ----------------------------------
+    # RF-Acting and the recommended-action oracle are not RL-trained (no
+    # reward-vs-timestep curve); they are drawn as flat horizontal bands from
+    # their n=300 benchmark episodes so the reader can situate the RL curves
+    # between the supervised baseline and the oracle ceiling.
+    reference_bands: dict[str, dict[str, Any]] = {}
+    if benchmark_root is not None:
+        for policy in reference_policies:
+            band = _reference_band(benchmark_root, policy)
+            if band is not None:
+                reference_bands[policy] = band
+        summary["reference_bands"] = reference_bands
+        summary["benchmark_root"] = str(benchmark_root)
+
     # ---------- render --------------------------------------------------------
     # Only the episodic-reward panel is plotted: the thesis reports security
     # outcomes through prevention/compromise/benign-FPR rates rather than
@@ -233,6 +288,22 @@ def render(
             lw=2,
             label=f"{algo.upper()} (eval)",
         )
+    # Flat reference bands for the non-learning baselines.
+    _ref_style = {
+        "rf_acting": {"color": "#555555", "ls": "--", "label": "RF-Acting"},
+        "recommended_action": {"color": "#000000", "ls": "-.", "label": "Oracle"},
+    }
+    for policy, band in reference_bands.items():
+        style = _ref_style.get(policy, {"color": "grey", "ls": "--", "label": policy})
+        ax.axhline(
+            band["mean"],
+            color=style["color"],
+            ls=style["ls"],
+            lw=1.5,
+            label=f"{style['label']} (n={band['n']})",
+        )
+        ax.axhspan(band["low"], band["high"], color=style["color"], alpha=0.08)
+
     _title, ylabel = metric_titles[plot_key]
     ax.set_xlabel("Training timesteps")
     ax.set_ylabel(ylabel)
@@ -303,6 +374,15 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--n-bins", type=int, default=25)
     p.add_argument("--bootstrap-n", type=int, default=1000)
     p.add_argument("--fraction", type=float, default=0.10)
+    p.add_argument(
+        "--benchmark-root",
+        default=None,
+        help=(
+            "Optional benchmark eval directory (e.g. runs/benchmark_5M_peak). "
+            "If given, draws flat RF-Acting and oracle reference bands from "
+            "<root>/<policy>/seed_0/eval_test.jsonl."
+        ),
+    )
     args = p.parse_args(argv)
     logging.basicConfig(
         level=logging.INFO,
@@ -314,6 +394,7 @@ def main(argv: list[str] | None = None) -> int:
         n_bins=args.n_bins,
         bootstrap_n=args.bootstrap_n,
         fraction=args.fraction,
+        benchmark_root=Path(args.benchmark_root) if args.benchmark_root else None,
     )
     return 0
 

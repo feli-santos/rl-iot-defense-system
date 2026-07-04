@@ -371,7 +371,8 @@ export-figure-pdfs:  ## Wrap docs/results/**/F*.png into same-named F*.pdf (rast
 .PHONY: sync-figures
 sync-figures: export-figure-pdfs  ## Export PDFs then copy them from docs/results/ → tex/figs/
 	@echo "Syncing figures ..."
-	@cp docs/results/stage-detector/per_stage_recall.pdf tex/figs/ 2>/dev/null || true
+	@cp docs/results/stage-detector/tuned_rf_per_class_f1.pdf tex/figs/ 2>/dev/null || true
+	@cp docs/results/stage-detector/tuned_rf_confusion.pdf tex/figs/ 2>/dev/null || true
 	@cp docs/results/blue-team-training/F3_*.pdf tex/figs/ 2>/dev/null || true
 	@cp docs/results/blue-team-training/F4_*.pdf tex/figs/ 2>/dev/null || true
 	@cp docs/results/ablation/F10_*.pdf tex/figs/ 2>/dev/null || true

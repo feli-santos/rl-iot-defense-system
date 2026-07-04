@@ -4,8 +4,8 @@ detector step 4.2 (see ``docs/results/stage-detector/PLAN.md`` §A2).
 
 The dataset-prep dataset already groups every row by Kill Chain stage in
 ``state_indices.json``. For detector we want a flat ``(N,)`` int8 array of
-stage labels so both supervised baselines (StageDetector MLP and RF)
-train on the *same* per-row labels with O(1) lookup. Building it
+stage labels so the supervised RandomForest stage detector
+trains on stable per-row labels with O(1) lookup. Building it
 once and hash-pinning the output prevents a class of "did we use the
 same labels?" bugs from ever showing up downstream.
 

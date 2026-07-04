@@ -240,9 +240,7 @@ def render(
     # directly. bin_props is still recorded in the summary JSON for the gate.
     bin_props_safe = np.nan_to_num(bin_props, nan=0.0)
 
-    fig, axes = plt.subplots(
-        1, 5, figsize=(15, 4.6), sharey=True, gridspec_kw={"wspace": 0.12}
-    )
+    fig, axes = plt.subplots(1, 5, figsize=(15, 4.6), sharey=True, gridspec_kw={"wspace": 0.12})
     x = np.arange(5)
     late_cps = per_stage_cps["late"]
     for col_idx, (ax, stage_name) in enumerate(zip(axes, _STAGE_NAMES)):
@@ -265,8 +263,7 @@ def render(
             ax.set_ylabel("Action share", fontsize=11)
 
     legend_handles = [
-        Patch(facecolor=_ACTION_COLORS[a], edgecolor="k", label=ACTION_NAMES[a])
-        for a in range(5)
+        Patch(facecolor=_ACTION_COLORS[a], edgecolor="k", label=ACTION_NAMES[a]) for a in range(5)
     ]
     fig.legend(
         handles=legend_handles,

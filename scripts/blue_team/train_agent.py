@@ -349,37 +349,50 @@ def train(cfg: BlueTeamRunConfig, *, verbose: int = 0) -> dict[str, Any]:
     )
     callbacks: list[Any] = [cb_train, cb_eval]
 
-    # Best-checkpoint + early-stop on the eval-reward plateau. SB3's
-    # EvalCallback needs its OWN VecEnv (it resets/steps it during the eval
-    # block), so we build a third env here with a disjoint seed pool. It
-    # writes ``best_model.zip`` whenever the mean eval reward improves; the
-    # benchmark + OOD harnesses load that checkpoint, so a slow-converging
-    # algorithm is never penalised for the fixed ``total_timesteps`` cap.
-    sb3_eval_env = None
-    if cfg.early_stop:
-        sb3_eval_env = make_eval_env(
-            spec=cfg.eval_env,
-            dataset_path=cfg.dataset_path,
-            splits_manifest=splits_manifest,
-            seed=cfg.seed + 20_000,  # disjoint from train (seed) + eval (+10k)
-        )
-        stop_cb = StopTrainingOnNoModelImprovement(
+    # Best-checkpoint saving is ALWAYS on; early-stop is an independent knob.
+    # SB3's EvalCallback needs its OWN VecEnv (it resets/steps it during the
+    # eval block), so we build a third env here with a disjoint seed pool. It
+    # writes ``best_model.zip`` whenever the mean eval (validation) reward
+    # improves; the benchmark + OOD harnesses load that checkpoint. We DEPLOY
+    # the highest-reward checkpoint, not the last policy, so this must run
+    # regardless of ``cfg.early_stop`` -- otherwise a --no-early-stop run would
+    # leave ``best_model.zip`` == the last (possibly regressed) policy, which is
+    # exactly the failure mode that hides on-policy-vs-off-policy stability.
+    # ``cfg.early_stop`` now only decides whether a plateau *halts* training;
+    # it no longer decides whether the peak checkpoint is captured.
+    sb3_eval_env = make_eval_env(
+        spec=cfg.eval_env,
+        dataset_path=cfg.dataset_path,
+        splits_manifest=splits_manifest,
+        seed=cfg.seed + 20_000,  # disjoint from train (seed) + eval (+10k)
+    )
+    # Deterministic checkpoint selection: establish the attacker-RNG base seed
+    # at the env layer so SB3 EvalCallback's evaluate_policy() rollouts (which
+    # autoreset with no seed) derive reproducible child seeds. make_eval_env's
+    # seed= only reaches the RealizationEngine feature-sampler, NOT the attacker
+    # RNG, so without this the best_model.zip selection varies run-to-run.
+    sb3_eval_env.env_method("reset", seed=cfg.seed + 20_000)
+    stop_cb = (
+        StopTrainingOnNoModelImprovement(
             max_no_improvement_evals=cfg.early_stop_patience,
             min_evals=cfg.early_stop_min_evals,
             verbose=verbose,
         )
-        sb3_eval_cb = EvalCallback(
-            sb3_eval_env,
-            best_model_save_path=str(out_dir),
-            log_path=None,
-            eval_freq=cfg.eval_freq,
-            n_eval_episodes=cfg.n_eval_episodes,
-            deterministic=True,
-            render=False,
-            callback_after_eval=stop_cb,
-            verbose=verbose,
-        )
-        callbacks.append(sb3_eval_cb)
+        if cfg.early_stop
+        else None
+    )
+    sb3_eval_cb = EvalCallback(
+        sb3_eval_env,
+        best_model_save_path=str(out_dir),
+        log_path=None,
+        eval_freq=cfg.eval_freq,
+        n_eval_episodes=cfg.n_eval_episodes,
+        deterministic=True,
+        render=False,
+        callback_after_eval=stop_cb,
+        verbose=verbose,
+    )
+    callbacks.append(sb3_eval_cb)
 
     cb = CallbackList(callbacks)
 
@@ -392,10 +405,11 @@ def train(cfg: BlueTeamRunConfig, *, verbose: int = 0) -> dict[str, Any]:
     wallclock = time.time() - t0
 
     # Persist the last model + manifest. ``best_model.zip`` (written by the
-    # EvalCallback) is the canonical checkpoint for downstream eval; we keep
-    # ``model.zip`` (the last model) for back-compat and diagnostics. If
-    # early-stop never wrote a best checkpoint (e.g. it stopped before the
-    # first eval), fall back to the last model so downstream never breaks.
+    # always-on EvalCallback whenever val reward improves) is the canonical
+    # peak checkpoint for downstream eval; we keep ``model.zip`` (the last
+    # model) for back-compat and diagnostics. If the EvalCallback never wrote a
+    # best checkpoint (e.g. training stopped before the first eval), fall back
+    # to the last model so downstream never breaks.
     model_path = out_dir / "model.zip"
     model.save(str(model_path))
     best_model_path = out_dir / "best_model.zip"

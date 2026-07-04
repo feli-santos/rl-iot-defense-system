@@ -435,6 +435,14 @@ class EvalToJSONLCallback(BaseCallback):
         """
         env = self._eval_env
         model = self.model
+        # Deterministic checkpoint selection: re-establish the eval env's
+        # attacker-RNG base seed at the START of every eval block, so each
+        # block replays an IDENTICAL fixed set of attacker trajectories. The
+        # env's SeedSequence child-seed derivation (see adversarial_env.reset)
+        # then makes the per-episode explicit resets below reproducible. Without
+        # this, env.reset() with no seed draws fresh OS entropy and the
+        # val-reward used to pick best_model.zip varies run-to-run.
+        env.env_method("reset", seed=self._seed)
         for ep in range(self._n_eval_episodes):
             acc = _EpisodeAccumulator()
             decision_stage = 0  # BENIGN at reset, see env.reset()

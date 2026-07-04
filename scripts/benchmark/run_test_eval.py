@@ -245,8 +245,26 @@ def _assert_train_eval_contract(
         )
         return
     train_env = json.loads(manifest_path.read_text()).get("env", {})
+    # Drop legacy manifest keys that the current EnvConfigSerializable no longer
+    # accepts (e.g. the removed attacker-budget mechanism: attacker_budget,
+    # budget_step_cost, budget_reset_cost, budget_cost_model). These fields are
+    # not in _BENCHMARK_PARITY_FIELDS, so filtering them cannot weaken the parity
+    # guard; it only lets us reconstruct the training spec for the fields that
+    # still exist. Reconstructing older checkpoints under the current env is
+    # intentional here (measuring pre-redesign checkpoints on the current MDP).
+    known_fields = {f.name for f in dataclasses.fields(EnvConfigSerializable)}
+    unknown_keys = sorted(set(train_env) - known_fields)
+    if unknown_keys:
+        logger.warning(
+            "training manifest %s contains %d legacy env key(s) not in the "
+            "current schema; dropping for parity reconstruction: %s",
+            manifest_path,
+            len(unknown_keys),
+            ", ".join(unknown_keys),
+        )
+    train_env_known = {k: v for k, v in train_env.items() if k in known_fields}
     # Normalise the training reward_mode alias for an apples-to-apples compare.
-    train_spec = EnvConfigSerializable(**train_env)
+    train_spec = EnvConfigSerializable(**train_env_known)
     mismatches = []
     for name in _BENCHMARK_PARITY_FIELDS:
         if name not in train_env:

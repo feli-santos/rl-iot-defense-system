@@ -155,6 +155,10 @@ def _train_one_rl(args: argparse.Namespace, mode: str, algo: str, seed: int) -> 
     ]
     if args.smoke:
         cmd.append("--smoke")
+    # Forward the no-early-stop regime so coupling runs match the deterministic
+    # 5M contract (train the full budget, peak checkpoint carried forward).
+    if not getattr(args, "early_stop", True):
+        cmd.append("--no-early-stop")
 
     logger.info("coupling mode=%s algo=%s seed=%d → %s", mode, algo, seed, out_dir)
     t0 = time.time()
@@ -372,6 +376,14 @@ def _build_argparser() -> argparse.ArgumentParser:
     p.add_argument("--total-timesteps", type=int, default=1_000_000)
     p.add_argument("--eval-freq", type=int, default=10_000)
     p.add_argument("--n-eval-episodes", type=int, default=20)
+    p.add_argument(
+        "--no-early-stop",
+        dest="early_stop",
+        action="store_false",
+        default=True,
+        help="Train the full budget without eval-plateau early stopping "
+        "(matches the deterministic 5M contract).",
+    )
     p.add_argument("--n-deterministic-episodes", type=int, default=300)
     p.add_argument("--out-root", default="runs/ablation/reward_coupling")
     p.add_argument("--rf-path", default="artifacts/detector/random_forest.joblib")

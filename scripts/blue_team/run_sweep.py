@@ -87,6 +87,16 @@ def _build_argparser() -> argparse.ArgumentParser:
         default=None,
         help="JSON object forwarded to train_agent --reward-overrides.",
     )
+    p.add_argument(
+        "--no-early-stop",
+        dest="early_stop",
+        action="store_false",
+        default=True,
+        help=(
+            "Forward --no-early-stop to each train_agent subprocess so every "
+            "run trains the full --total-timesteps budget (no eval-plateau cutoff)."
+        ),
+    )
     return p
 
 
@@ -140,6 +150,8 @@ def _run_one(args: argparse.Namespace, algo: str, seed: int) -> dict:
         cmd.extend(["--impact-is-terminal", args.impact_is_terminal])
     if getattr(args, "reward_overrides", None) is not None:
         cmd.extend(["--reward-overrides", args.reward_overrides])
+    if not getattr(args, "early_stop", True):
+        cmd.append("--no-early-stop")
 
     logger.info("starting algo=%s seed=%d -> %s", algo, seed, out_dir)
     t0 = time.time()

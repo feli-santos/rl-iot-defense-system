@@ -102,22 +102,22 @@ def run_policy(
             policy call's wall duration (``time.perf_counter_ns``) is
             logged as one row. ``None`` disables latency capture (the
             default for the F5/F6/F8 sweeps; F7 turns it on).
-        seed: **No-op at the env layer (Step-6 F4 / Step-8 doc-fix).**
-            Pre-Step-8 the docstring claimed this was forwarded to
-            ``env.reset(seed=...)``; in fact both branches of the
-            implementation below call identical ``env.reset()`` (SB3
-            ``DummyVecEnv`` 1.x's ``reset()`` does not accept a
-            ``seed`` kwarg; the seed plumbing was never wired through).
-            The parameter is preserved for backwards compatibility but
-            has zero effect on rollout behaviour at this layer.
-            Reproducibility is delivered by *caller-side* env-construction
-            seeding — see ``scripts.benchmark.run_test_eval`` which
-            constructs each per-run env with an explicit seed via
-            ``make_eval_env(spec=..., seed=seed)``. Held-Out Benchmark numbers
-            are deterministic on a given checkpoint × split because
-            the agent runs ``deterministic=True`` and the random
-            baseline is seeded externally; this parameter does not
-            influence either path.
+        seed: **Forwarded to the env's attacker RNG (Step-9 determinism
+            fix).** When not ``None`` this is applied once before the
+            rollout loop via ``env.env_method("reset", seed=seed)``, which
+            makes ``AdversarialIoTEnv`` record it as a *base seed*. The env
+            then derives a deterministic child seed (``np.random.SeedSequence``
+            over ``[base_seed, episode_counter]``) for every subsequent
+            SB3 ``DummyVecEnv`` autoreset, so the attacker kill-chain
+            trajectory is reproducible across whole benchmark invocations —
+            not just the first episode. This fixes prior run-to-run drift
+            in the RF-Acting / random baselines (which were policy- or
+            attacker-trajectory-sensitive) despite identical env config.
+            ``make_eval_env(spec=..., seed=seed)`` additionally seeds the
+            ``RealizationEngine`` feature-sampling RNG; the two together
+            make a benchmark run fully reproducible. Trained agents still
+            run ``deterministic=True``. Passing ``None`` preserves the
+            legacy fresh-entropy behaviour (used by training).
 
     Returns:
         Dict with bookkeeping totals: ``{"n_episodes_written",
@@ -147,10 +147,15 @@ def run_policy(
     t_run_start = time.time()
 
     with out_path.open("w", encoding="utf-8") as ep_fh:
-        # First reset is the only place we may pass `seed` — Gym/SB3
-        # contract: subsequent resets are auto-seeded by the wrapper.
-        # SB3 DummyVecEnv ignores `seed=` kwarg pre-1.x; fall back to
-        # setting the action_space seed via env's RNG when supported.
+        # Establish a deterministic base seed on the underlying env so that
+        # BOTH this first reset AND every subsequent SB3-autoreset are
+        # reproducible. AdversarialIoTEnv.reset(seed=...) records the base
+        # seed and derives a deterministic child seed (via SeedSequence)
+        # for each seedless autoreset; without this call the attacker RNG
+        # falls back to fresh OS entropy on every episode, which is what
+        # made the RF-Acting / random baselines drift run-to-run.
+        if seed is not None:
+            env.env_method("reset", seed=int(seed))
         obs = env.reset()  # noqa: SIM108
 
         for episode_idx in range(n_episodes):
