@@ -1,0 +1,14 @@
+{
+  "version": "1.0",
+  "figure": "tuned_rf_stage_detection",
+  "produced_by": "scripts/detector/plot_tuned_rf_detection.py",
+  "inputs": {
+    "tuned_rf_stage_detection.json": "9540d4d53ab555be05df1c5d432df10f4f69b4abc737fb7334012a429a810df3"
+  },
+  "outputs": {
+    "tuned_rf_per_class_f1.pdf": "1de73e04cbacbe766b04dcee67a01c754923d5da169bb0dcc35c6e9436703798",
+    "tuned_rf_per_class_f1.png": "2424e45a85bcfeeb92c8bb479a196841924f5a77e3e827a15085e19e55b33593",
+    "tuned_rf_confusion.pdf": "a73585146134bd2ddc325a279fa2aa9d8a4b55fac0497cd38673aec1d5029b36",
+    "tuned_rf_confusion.png": "59eca9765464e0362af60f8e342064cae9da566e6d706b300c90e0865304e92e"
+  }
+}

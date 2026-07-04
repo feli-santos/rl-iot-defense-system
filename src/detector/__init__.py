@@ -1,9 +1,9 @@
-"""Stage Detector + supervised baselines.
+"""Stage Detector + supervised baseline.
 
 detector module. Public API:
 
-    StageDetector            — production MLP head used by the RL agent.
-    train_random_forest      — sklearn RandomForestClassifier wrapper.
+    train_random_forest      — sklearn RandomForestClassifier wrapper
+                               (the tuned RF-Acting stage detector).
     per_stage_recall, ...    — shared evaluation helpers.
 
 See ``docs/results/stage-detector/PLAN.md`` §A3 for the rationale.
@@ -18,12 +18,9 @@ from src.detector.evaluation import (
     summarize_run,
 )
 from src.detector.random_forest import RandomForestConfig, train_random_forest
-from src.detector.stage_detector import StageDetector, StageDetectorConfig
 
 __all__ = [
     # Models
-    "StageDetector",
-    "StageDetectorConfig",
     "RandomForestConfig",
     "train_random_forest",
     # Evaluation

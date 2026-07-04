@@ -95,8 +95,7 @@ class DetectorEvaluation:
     """Single-run evaluation summary for one (model, split) pair.
 
     Attributes:
-        model_name: Human-readable model id (``"StageDetector"`` /
-            ``"RandomForest"``).
+        model_name: Human-readable model id (e.g. ``"RandomForest"``).
         split_name: Split this evaluation was computed on
             (``"test_balanced"`` / ``"test"`` / ``"ood:DDoS-HTTP_Flood"`` …).
         macro_f1: Macro F1 over the ``NUM_STAGES`` classes.

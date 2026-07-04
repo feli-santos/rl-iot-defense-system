@@ -1,8 +1,8 @@
 {
   "schema_version": "2.0",
   "stage": "stage_detector",
-  "git_sha": "c02d7a0ffae3d9298e402e82d1248b68f86c5b26",
-  "completed_at": "2026-06-28T18:15:47Z",
+  "git_sha": "dcaa6288dd2c261b9ce62ca699bb02a61af7876c",
+  "completed_at": "2026-07-04T17:09:07Z",
   "evaluated_against": {
     "split": "test_balanced",
     "manifest_git_sha": "cf1ebc75c999",
@@ -30,47 +30,45 @@
     },
     {
       "id": "G4.2",
-      "description": "Detector head macro-F1 on test_balanced >= 0.75",
+      "description": "RandomForest stage-detector macro-F1 on test_balanced >= 0.75",
       "threshold": 0.75,
-      "observed": 0.834705,
+      "observed": 0.923625,
       "status": "PASS"
     },
     {
       "id": "G4.3",
-      "description": "Detector head per-stage recall >= 0.50 on every stage",
+      "description": "RandomForest stage-detector per-stage recall >= 0.50 on every stage",
       "threshold": 0.5,
-      "observed_worst": 0.612,
-      "observed_worst_at": "StageDetector/RECON",
-      "diagnostic_cross_baseline_worst": 0.612,
-      "diagnostic_cross_baseline_worst_at": "StageDetector/RECON",
+      "observed_worst": 0.822,
+      "observed_worst_at": "RandomForest/RECON",
       "status": "PASS"
     },
     {
       "id": "G4.4",
       "description": "At least one held-out OOD class fails to generalise (recall <= 0.30)",
       "threshold_min_recall": 0.3,
-      "observed_min": 0.179523,
-      "observed_max": 0.998597,
-      "observed_gap": 0.819074,
+      "observed_min": 0.200561,
+      "observed_max": 0.997855,
+      "observed_gap": 0.797294,
       "per_class": {
-        "VulnerabilityScan": 0.179523,
-        "Recon-OSScan": 0.415972,
-        "XSS": 0.904056,
-        "SqlInjection": 0.63184,
-        "Mirai-udpplain": 0.27539,
-        "DNS_Spoofing": 0.233809,
-        "DDoS-HTTP_Flood": 0.99505,
-        "DoS-SYN_Flood": 0.998597,
-        "DDoS-SlowLoris": 0.816929,
-        "DDoS-ACK_Fragmentation": 0.99439
+        "VulnerabilityScan": 0.223991,
+        "Recon-OSScan": 0.705057,
+        "XSS": 0.961258,
+        "SqlInjection": 0.246711,
+        "Mirai-udpplain": 0.996122,
+        "DNS_Spoofing": 0.200561,
+        "DDoS-HTTP_Flood": 0.992822,
+        "DoS-SYN_Flood": 0.997855,
+        "DDoS-SlowLoris": 0.656876,
+        "DDoS-ACK_Fragmentation": 0.993152
       },
-      "note": "Asymmetric OOD generalisation observed (max=0.999, min=0.180, gap=0.819). At least one held-out class falls within the ambitious threshold; the detector has a genuine blind spot for the RL agent to compensate for. Recorded as a thesis finding (PLAN \u00a78.D2 revised step 4.5).",
+      "note": "Asymmetric OOD generalisation observed for the tuned RandomForest stage detector (max=0.998, min=0.201, gap=0.797). At least one held-out class (DNS_Spoofing 0.201, VulnerabilityScan 0.224, SqlInjection 0.247) falls within the ambitious threshold; the detector has a genuine blind spot for the RL agent to compensate for. Recorded as a thesis finding (PLAN \u00a78.D2 revised step 4.5).",
       "status": "PASS-WITH-FINDING",
       "finding_id": "D2.1"
     },
     {
       "id": "G4.5",
-      "description": "StageDetector per-sample inference <= 1 ms",
+      "description": "RandomForest stage-detector per-sample inference <= 1 ms",
       "threshold_ms": 1.0,
       "observed_ms": 0.0393,
       "status": "PASS"

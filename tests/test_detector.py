@@ -8,16 +8,12 @@ baselines train on the *same* problem and the comparison is meaningful.
 
 from __future__ import annotations
 
-from pathlib import Path
-
 import numpy as np
 import pytest
 
 from src.detector import (
     DetectorEvaluation,
     RandomForestConfig,
-    StageDetector,
-    StageDetectorConfig,
     confusion_matrix,
     macro_f1,
     per_class_f1,
@@ -143,86 +139,6 @@ class TestEvaluationModule:
         assert ood.n_samples == 100
         assert ood.predicted_stage_distribution["ACCESS"] == 30
         assert ood.predicted_stage_distribution["BENIGN"] == 70
-
-
-# ---------------------------------------------------------------------------
-# stage_detector.py
-# ---------------------------------------------------------------------------
-
-
-class TestStageDetector:
-    def test_default_config(self) -> None:
-        cfg = StageDetectorConfig()
-        assert cfg.num_features == 29
-        assert cfg.num_classes == 5
-        assert cfg.hidden_sizes == (64, 32)
-
-    def test_predict_before_fit_raises(self) -> None:
-        det = StageDetector()
-        with pytest.raises(RuntimeError, match="before fit"):
-            det.predict_proba(np.zeros((1, 29), dtype=np.float32))
-
-    def test_fit_predicts_separable_clusters(self, toy_train_val_test) -> None:
-        X_tr, y_tr, X_val, y_val, X_te, y_te = toy_train_val_test
-        cfg = StageDetectorConfig(max_epochs=8, patience=3)
-        det = StageDetector(cfg).fit(X_tr, y_tr, X_val, y_val, seed=0, verbose=False)
-        y_pred = det.predict(X_te)
-        f1 = macro_f1(y_te, y_pred)
-        assert f1 > 0.90, f"toy macro-F1 = {f1:.3f}, expected > 0.90"
-
-    def test_predict_proba_sums_to_one(self, toy_train_val_test) -> None:
-        X_tr, y_tr, X_val, y_val, X_te, _ = toy_train_val_test
-        cfg = StageDetectorConfig(max_epochs=3, patience=3)
-        det = StageDetector(cfg).fit(X_tr, y_tr, X_val, y_val, seed=0, verbose=False)
-        proba = det.predict_proba(X_te)
-        assert proba.shape == (X_te.shape[0], 5)
-        np.testing.assert_allclose(proba.sum(axis=1), 1.0, atol=1e-5)
-
-    def test_save_and_load_round_trip(self, tmp_path: Path, toy_train_val_test) -> None:
-        X_tr, y_tr, X_val, y_val, X_te, _ = toy_train_val_test
-        cfg = StageDetectorConfig(max_epochs=3, patience=3)
-        det = StageDetector(cfg).fit(X_tr, y_tr, X_val, y_val, seed=0, verbose=False)
-        ckpt = tmp_path / "stage_det.pt"
-        det.save(ckpt)
-        # Sidecar JSON exists.
-        assert (ckpt.with_suffix(".run_info.json")).exists()
-        loaded = StageDetector.from_checkpoint(ckpt)
-        np.testing.assert_array_equal(det.predict(X_te), loaded.predict(X_te))
-
-    def test_run_info_populated(self, toy_train_val_test) -> None:
-        X_tr, y_tr, X_val, y_val, _, _ = toy_train_val_test
-        cfg = StageDetectorConfig(max_epochs=4, patience=3)
-        det = StageDetector(cfg).fit(X_tr, y_tr, X_val, y_val, seed=0, verbose=False)
-        assert len(det.run_info.train_loss_history) >= 1
-        assert det.run_info.best_epoch >= 1
-        assert 0.0 <= det.run_info.best_val_macro_f1 <= 1.0
-        assert det.run_info.train_time_seconds > 0
-
-    def test_inference_latency_under_one_ms(self, toy_train_val_test) -> None:
-        """Per-sample inference must be under ≈ 1 ms (PLAN G4.5).
-
-        We measure on a single 29-D vector, repeated 1 000 times. A
-        generous 5-ms budget here lets the test pass on slow CI runners
-        while still being orders of magnitude away from a real bug
-        (e.g., accidentally using a window-of-features architecture).
-        """
-        X_tr, y_tr, X_val, y_val, _, _ = toy_train_val_test
-        cfg = StageDetectorConfig(max_epochs=2, patience=3)
-        det = StageDetector(cfg).fit(X_tr, y_tr, X_val, y_val, seed=0, verbose=False)
-        x = np.random.RandomState(0).standard_normal((1, 29)).astype(np.float32)
-
-        # Warm-up
-        for _ in range(20):
-            det.predict_proba(x)
-
-        import time
-
-        n_iter = 1000
-        t0 = time.perf_counter()
-        for _ in range(n_iter):
-            det.predict_proba(x)
-        elapsed_ms = (time.perf_counter() - t0) * 1000 / n_iter
-        assert elapsed_ms < 5.0, f"per-sample inference {elapsed_ms:.2f} ms is too slow"
 
 
 # ---------------------------------------------------------------------------

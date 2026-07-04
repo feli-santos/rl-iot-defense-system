@@ -1,7 +1,7 @@
 {
   "version": "1.0",
-  "generated_at": "2026-06-17T13:33:48Z",
-  "git_sha": "cf1ebc75c999",
+  "generated_at": "2026-07-04T00:00:00Z",
+  "git_sha": "dcaa6288dd2c",
   "inputs": {
     "features.npy": "5d1ff73d8cc1dc3706db4ca0381e9b88c542ec40a5ae5d6e5fd784e4d166dcc7",
     "stages.npy": "607730a5daeb3a17ad4f3dc105247db5a34ca01f9d11be14d71887b2ec94d046",
@@ -12,10 +12,9 @@
   },
   "outputs": {
     "F11_per_stage_recall.png": "826fb76b15490d4d87a2c6e8bd52e0e2c1789faf6b515365262120b77a762a49",
-    "F11_summary.json": "7c12a2bc8248efa01c590f8e3d68bbde81593ed19d296819ea9d9bfce6c5ecdf",
-    "F11_caption.md": "0ec60863b42ee3c87f4ed5a9eab3551a3d1b19931373803e7088a4a3b39f8330",
-    "stage_detector.pt": "179e5a1e35d9d3fc9a41412406ae7f6687b9fb0f30eb718fb3ea4f06aea3cd9c",
-    "random_forest.joblib": "294b7e8c41d031e99efd235fb3ac19a145635769211e561cf0541d8bca64ba5d"
+    "F11_summary.json": "f95c98a69028e410be268efb2ec05a08665faef8bfaaacaf70ebad8e55aec2ef",
+    "F11_caption.md": "7b9dd0706c5c6cd6c4322320e1a6afcbf6612456b4698f9427c2369e4fdd2ce1",
+    "random_forest.joblib": "8fc66bca3c87f6c23e9686182052cc436af14c6df18b48eaaac8aaab8a4372e5"
   },
   "gates_status": {
     "G4.2": "PASS",

@@ -1,22 +1,21 @@
-"""detector entrypoint: train StageDetector + RF, render F11.
+"""detector entrypoint: train the RandomForest stage detector, render F11.
 
 Pipeline (deterministic given --seed):
 
     1. Load features.npy + stages.npy + dataset-prep split indices.
-    2. Train RandomForest (cheap), then StageDetector MLP.
-       Each model selects on val_balanced when applicable.
-    3. Evaluate every model on:
+    2. Train the RandomForest stage detector (selects on val_balanced).
+    3. Evaluate on:
        - test_balanced  (D1: F11 panel input, primary)
        - test           (D1: secondary, reported in summary JSON only)
        - splits/ood_attack/<class>.idx.npy  (G4.4)
-    4. Render F11: bar chart per-stage recall × 2 models | StageDetector
-       confusion matrix on test_balanced.
+    4. Render F11: per-class F1 bar chart | RandomForest confusion matrix
+       on test_balanced.
     5. Dump:
        - docs/results/stage-detector/F11_per_stage_recall.png + caption
        - docs/results/stage-detector/F11_summary.json
        - docs/results/stage-detector/manifest.json (hash chain)
-       - artifacts/detector/{stage_detector.pt, random_forest.joblib}
-          (consumed by Blue-Team Training+)
+       - artifacts/detector/random_forest.joblib
+          (the RF-Acting stage detector consumed by Blue-Team Training+)
 
 Usage
 -----
@@ -26,7 +25,7 @@ Usage
         [--ckpt-dir artifacts/detector] \
         [--seed 0]
 
-End-to-end runtime: ~3-5 min on CPU.
+End-to-end runtime: ~1-2 min on CPU.
 """
 
 from __future__ import annotations
@@ -44,7 +43,6 @@ import numpy as np
 
 from src.detector import (
     RandomForestConfig,
-    StageDetector,
     summarize_run,
     train_random_forest,
 )
@@ -137,7 +135,7 @@ def _render_f11(
     results_test_balanced: dict[str, DetectorEvaluation],
     out_path: Path,
 ) -> None:
-    """Render the F11 figure: per-stage recall bar chart + StageDetector CM."""
+    """Render the F11 figure: per-stage recall bar chart + RandomForest CM."""
     import matplotlib
 
     matplotlib.use("Agg")
@@ -145,22 +143,18 @@ def _render_f11(
 
     fig, (ax_bar, ax_cm) = plt.subplots(1, 2, figsize=(12, 4.5))
 
-    # Left panel: per-stage recall, grouped bars.
-    model_names = ["StageDetector", "RandomForest"]
-    colours = ["#1f77b4", "#ff7f0e"]
-    width = 0.38
+    # Left panel: per-stage recall for the RandomForest stage detector.
+    width = 0.5
     x = np.arange(NUM_STAGES)
-    for i, (name, colour) in enumerate(zip(model_names, colours)):
-        rec = results_test_balanced[name].per_stage_recall
-        ax_bar.bar(x + (i - 0.5) * width, rec, width=width, label=name, color=colour)
+    rf_eval = results_test_balanced["RandomForest"]
+    ax_bar.bar(x, rf_eval.per_stage_recall, width=width, label="RandomForest", color="#ff7f0e")
 
-    best = max(results_test_balanced.values(), key=lambda e: e.macro_f1)
     ax_bar.axhline(
-        best.macro_f1,
+        rf_eval.macro_f1,
         ls="--",
         color="grey",
         alpha=0.7,
-        label=f"best macro-F1 = {best.macro_f1:.2f} ({best.model_name})",
+        label=f"macro-F1 = {rf_eval.macro_f1:.2f}",
     )
     ax_bar.set_xticks(x)
     ax_bar.set_xticklabels(STAGE_NAMES, rotation=15)
@@ -170,8 +164,8 @@ def _render_f11(
     ax_bar.grid(axis="y", alpha=0.3)
     ax_bar.legend(loc="lower left", fontsize=8)
 
-    # Right panel: StageDetector confusion matrix (row-normalised %).
-    cm = results_test_balanced["StageDetector"].confusion_matrix.astype(np.float64)
+    # Right panel: RandomForest confusion matrix (row-normalised %).
+    cm = results_test_balanced["RandomForest"].confusion_matrix.astype(np.float64)
     row_sums = np.maximum(cm.sum(axis=1, keepdims=True), 1.0)
     cm_norm = cm / row_sums
 
@@ -182,7 +176,7 @@ def _render_f11(
     ax_cm.set_yticklabels(STAGE_NAMES)
     ax_cm.set_xlabel("Predicted")
     ax_cm.set_ylabel("True")
-    ax_cm.set_title("StageDetector confusion (test_balanced)")
+    ax_cm.set_title("RandomForest confusion (test_balanced)")
     for i in range(NUM_STAGES):
         for j in range(NUM_STAGES):
             ax_cm.text(
@@ -197,7 +191,7 @@ def _render_f11(
     fig.colorbar(im, ax=ax_cm, fraction=0.046, pad=0.04, label="row-normalised")
 
     fig.suptitle(
-        "F11 — Stage detection: detector head vs supervised baselines",
+        "F11 — Stage detection: RandomForest stage detector",
         fontsize=12,
         y=1.02,
     )
@@ -208,17 +202,16 @@ def _render_f11(
 
 _F11_CAPTION = """\
 **F11.** Per-stage detection recall on the balanced test split (1 000
-rows / stage). Left: stage-recall comparison across the production MLP
-detector (blue) and RandomForest baseline (orange); the dashed line
-marks the best macro-F1 achieved by either model.
-Right: row-normalised confusion matrix of the production detector on
-the same split. The diagonal-heavy structure shows the detector
-correctly identifies most stage transitions, with the bulk of confusion
-concentrated near MANEUVER↔IMPACT — exactly the boundary the RL agent
-will have to act on. Per-stage and per-attack-class numbers, plus
-results on the full (BENIGN-heavy) test split, are committed in
-`F11_summary.json`. See `docs/results/stage-detector/RESULTS.md` for the
-exit-gate scoreboard and the OOD-class generalisation analysis (G4.4).
+rows / stage) for the tuned RandomForest stage detector (the RF-Acting
+baseline). Left: per-stage recall; the dashed line marks the macro-F1.
+Right: row-normalised confusion matrix on the same split. The
+diagonal-heavy structure shows the detector correctly identifies most
+stages, with the bulk of confusion concentrated at RECON↔ACCESS — the
+ambiguous middle of the kill chain the RL agent must act through. Per-stage
+and per-attack-class numbers, plus results on the full (BENIGN-heavy) test
+split, are committed in `F11_summary.json`. See
+`docs/results/stage-detector/RESULTS.md` for the exit-gate scoreboard and
+the OOD-class generalisation analysis (G4.4).
 """
 
 
@@ -246,11 +239,10 @@ def _check_gates(
         "status": "PASS" if g42_pass else "FAIL",
     }
 
-    # G4.3 (revised in step 4.5 after first real-data run): the production
-    # StageDetector must score >= 0.50 recall on every stage. Baselines
-    # report their per-stage recall in the JSON for context but do not
-    # block the gate — F11 is about the *production* head's quality, and
-    # the baselines' weaknesses are in fact part of the thesis story.
+    # G4.3: the RandomForest stage detector must score >= 0.50 recall on
+    # every stage. (Historically this compared a production MLP head against
+    # the RF baseline; the MLP head was dropped and the tuned RandomForest is
+    # now the sole deployed detector.)
     worst = float(detector_test_balanced.per_stage_recall.min())
     worst_stage = STAGE_NAMES[int(detector_test_balanced.per_stage_recall.argmin())]
     g43_pass = worst >= 0.50
@@ -266,7 +258,7 @@ def _check_gates(
         "name": "Detector head per-stage recall >= 0.50 on every stage",
         "threshold": 0.50,
         "observed_worst": round(worst, 6),
-        "observed_worst_at": f"StageDetector/{worst_stage}",
+        "observed_worst_at": f"RandomForest/{worst_stage}",
         "diagnostic_cross_baseline_worst": round(cross_worst, 6),
         "diagnostic_cross_baseline_worst_at": cross_loc,
         "status": "PASS" if g43_pass else "FAIL",
@@ -339,7 +331,7 @@ def _check_gates(
     # G4.5: per-sample inference latency
     g45_pass = inference_latency_ms <= 1.0
     gates["G4.5"] = {
-        "name": "StageDetector per-sample inference <= 1 ms",
+        "name": "RandomForest per-sample inference <= 1 ms",
         "threshold_ms": 1.0,
         "observed_ms": round(inference_latency_ms, 4),
         "status": "PASS" if g45_pass else "FAIL",
@@ -348,19 +340,23 @@ def _check_gates(
     return gates
 
 
-def _measure_inference_latency(detector: StageDetector) -> float:
-    """Return median per-sample latency in milliseconds over 1 000 samples."""
+def _measure_inference_latency(detector: object) -> float:
+    """Return median per-sample latency in milliseconds over 1 000 samples.
+
+    ``detector`` is the tuned RandomForest (any estimator exposing
+    ``predict_proba``).
+    """
     rng = np.random.default_rng(0)
     x = rng.standard_normal((1, 29)).astype(np.float32)
     # Warm up.
     for _ in range(50):
-        detector.predict_proba(x)
+        detector.predict_proba(x)  # type: ignore[attr-defined]
     # Measure.
     n_iter = 1000
     timings: list[float] = []
     for _ in range(n_iter):
         t0 = time.perf_counter()
-        detector.predict_proba(x)
+        detector.predict_proba(x)  # type: ignore[attr-defined]
         timings.append((time.perf_counter() - t0) * 1000.0)
     return float(np.median(timings))
 
@@ -419,7 +415,6 @@ def main(argv: list[str] | None = None) -> int:
     X_train = np.ascontiguousarray(X[splits["train"]], dtype=np.float32)
     y_train = y[splits["train"]].astype(np.int64)
     X_val = np.ascontiguousarray(X[splits["val_balanced"]], dtype=np.float32)
-    y_val = y[splits["val_balanced"]].astype(np.int64)
     X_tb = np.ascontiguousarray(X[splits["test_balanced"]], dtype=np.float32)
     y_tb = y[splits["test_balanced"]].astype(np.int64)
     X_t = np.ascontiguousarray(X[splits["test"]], dtype=np.float32)
@@ -449,32 +444,17 @@ def main(argv: list[str] | None = None) -> int:
         rf.n_estimators,
     )
 
-    # ---- 2. StageDetector MLP (production head).
-    logger.info("Training StageDetector ...")
-    detector = StageDetector().fit(
-        X_train, y_train, X_val, y_val, seed=args.seed, verbose=args.verbose
-    )
-    detector_path = args.ckpt_dir / "stage_detector.pt"
-    detector.save(detector_path)
-    logger.info(
-        "  detector trained in %.1f s, best epoch %d (val macro-F1 %.4f)",
-        detector.run_info.train_time_seconds,
-        detector.run_info.best_epoch,
-        detector.run_info.best_val_macro_f1,
-    )
-
-    # ---- 4. Evaluation on test_balanced (D1 primary), test (D1 secondary).
+    # ---- 2. Evaluation on test_balanced (D1 primary), test (D1 secondary).
     logger.info("Evaluating on test_balanced and test ...")
     models: dict[str, object] = {
-        "StageDetector": detector,
         "RandomForest": rf,
     }
     test_balanced_results: dict[str, DetectorEvaluation] = {}
     test_full_results: dict[str, DetectorEvaluation] = {}
     for name, m in models.items():
-        y_pred_tb = m.predict(X_tb).astype(np.int64)
+        y_pred_tb = m.predict(X_tb).astype(np.int64)  # type: ignore[attr-defined]
         test_balanced_results[name] = summarize_run(name, "test_balanced", y_tb, y_pred_tb)
-        y_pred_t = m.predict(X_t).astype(np.int64)
+        y_pred_t = m.predict(X_t).astype(np.int64)  # type: ignore[attr-defined]
         test_full_results[name] = summarize_run(name, "test", y_t, y_pred_t)
         logger.info(
             "  %-14s  macro-F1[test_balanced]=%.4f  macro-F1[test]=%.4f",
@@ -483,38 +463,36 @@ def main(argv: list[str] | None = None) -> int:
             test_full_results[name].macro_f1,
         )
 
-    # ---- 5. OOD evaluation (G4.4).
-    # Report recall for BOTH the production MLP detector (gate metric) and the
-    # RandomForest (consumed by the RF-Acting baseline) so the recall-vs-advantage
-    # figure can read per-class RF recall straight from this provenance manifest.
+    # ---- 3. OOD evaluation (G4.4).
+    # Report per-class recall for the RandomForest stage detector consumed by the
+    # RF-Acting baseline so the recall-vs-advantage figure can read per-class RF
+    # recall straight from this provenance manifest.
     logger.info("Evaluating OOD classes ...")
     ood_results: dict[str, OODEvaluation] = {}
     ood_rf_recall: dict[str, float] = {}
     for cls, expected_stage in _OOD_EXPECTED_STAGE.items():
         idx = ood_class_to_idx[cls]
         X_ood = np.ascontiguousarray(X[idx], dtype=np.float32)
-        y_pred = detector.predict(X_ood).astype(np.int64)
+        y_pred_rf = rf.predict(X_ood).astype(np.int64)  # type: ignore[attr-defined]
         ood_results[cls] = evaluate_ood_class(
-            attack_class=cls, expected_stage=expected_stage, y_pred=y_pred
+            attack_class=cls, expected_stage=expected_stage, y_pred=y_pred_rf
         )
-        y_pred_rf = rf.predict(X_ood).astype(np.int64)
         ood_rf_recall[cls] = float(np.mean(y_pred_rf == expected_stage))
         logger.info(
-            "  %-22s  expected=%s  recall[MLP]=%.3f  recall[RF]=%.3f  n=%d",
+            "  %-22s  expected=%s  recall[RF]=%.3f  n=%d",
             cls,
             STAGE_NAMES[expected_stage],
             ood_results[cls].recall,
-            ood_rf_recall[cls],
             ood_results[cls].n_samples,
         )
 
-    # ---- 6. Inference latency (G4.5).
-    inference_ms = _measure_inference_latency(detector)
-    logger.info("StageDetector median per-sample inference: %.3f ms", inference_ms)
+    # ---- 4. Inference latency (G4.5).
+    inference_ms = _measure_inference_latency(rf)
+    logger.info("RandomForest median per-sample inference: %.3f ms", inference_ms)
 
-    # ---- 7. Gates.
+    # ---- 5. Gates.
     gates = _check_gates(
-        detector_test_balanced=test_balanced_results["StageDetector"],
+        detector_test_balanced=test_balanced_results["RandomForest"],
         all_test_balanced=test_balanced_results,
         ood_results=ood_results,
         inference_latency_ms=inference_ms,
@@ -539,19 +517,6 @@ def main(argv: list[str] | None = None) -> int:
         "n_test": int(X_t.shape[0]),
         "num_features": int(X_train.shape[1]),
         "models": {
-            "StageDetector": {
-                "config": detector.config.__dict__,
-                "run_info": {
-                    "best_epoch": detector.run_info.best_epoch,
-                    "best_val_macro_f1": detector.run_info.best_val_macro_f1,
-                    "train_time_seconds": detector.run_info.train_time_seconds,
-                    "train_loss_history": detector.run_info.train_loss_history,
-                    "val_loss_history": detector.run_info.val_loss_history,
-                    "val_macro_f1_history": detector.run_info.val_macro_f1_history,
-                },
-                "test_balanced": test_balanced_results["StageDetector"].to_dict(),
-                "test": test_full_results["StageDetector"].to_dict(),
-            },
             "RandomForest": {
                 "config": (
                     rf.run_info.__dict__  # type: ignore[attr-defined]
@@ -601,7 +566,6 @@ def main(argv: list[str] | None = None) -> int:
             f11_path.name: _sha256(f11_path),
             summary_path.name: _sha256(summary_path),
             "F11_caption.md": _sha256(args.out_dir / "F11_caption.md"),
-            "stage_detector.pt": _sha256(detector_path),
             "random_forest.joblib": _sha256(rf_path),
         },
         "gates_status": {gid: g["status"] for gid, g in gates.items()},

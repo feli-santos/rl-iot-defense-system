@@ -1,0 +1,83 @@
+{
+  "version": "1.0",
+  "kind": "tuned_rf_stage_detection",
+  "git_sha": "dcaa628",
+  "generated_at": "2026-07-03T12:51:04.104808+00:00",
+  "model": "RandomForest (tuned, RF-Acting baseline)",
+  "config": {
+    "n_estimators": 200,
+    "max_depth": 20,
+    "min_samples_leaf": 2,
+    "class_weight": "balanced"
+  },
+  "split": "test_balanced",
+  "n_samples": 5000,
+  "macro_f1": 0.923625,
+  "per_class_f1": {
+    "BENIGN": 0.924353,
+    "RECON": 0.870302,
+    "ACCESS": 0.86863,
+    "MANEUVER": 0.956341,
+    "IMPACT": 0.998499
+  },
+  "per_stage_recall": {
+    "BENIGN": 0.947,
+    "RECON": 0.822,
+    "ACCESS": 0.929,
+    "MANEUVER": 0.92,
+    "IMPACT": 0.998
+  },
+  "confusion_matrix": [
+    [
+      947,
+      18,
+      34,
+      1,
+      0
+    ],
+    [
+      45,
+      822,
+      132,
+      1,
+      0
+    ],
+    [
+      26,
+      43,
+      929,
+      2,
+      0
+    ],
+    [
+      29,
+      6,
+      44,
+      920,
+      1
+    ],
+    [
+      2,
+      0,
+      0,
+      0,
+      998
+    ]
+  ],
+  "tuning_plateau": {
+    "note": "val macro-F1 across all 54 grid configs",
+    "mean": 0.9268,
+    "sd": 0.0046,
+    "min": 0.9174,
+    "max": 0.9335,
+    "spread": 0.0161,
+    "by_n_estimators": {
+      "200": 0.9268,
+      "400": 0.9265,
+      "800": 0.9271
+    }
+  },
+  "input_hashes": {
+    "random_forest.joblib": "8fc66bca3c87f6c23e9686182052cc436af14c6df18b48eaaac8aaab8a4372e5"
+  }
+}
