@@ -1,22 +1,22 @@
-"""ablation F17 — Evasion-reactive sweep driver (prevention pivot).
+"""ablation F17 — Evasive-persistence robustness sweep driver.
 
 Sweeps ``evasion_prob ∈ {0.0, 0.25, 0.5, 0.75}`` × PPO only × 10 seeds,
 all under the LOCKED primary reward contract (``reward_mode='outcome'``,
-``impact_is_terminal=False``, ``aliasing_rate=0.4``) at a 1.5M-timestep
-cap with eval-plateau early-stopping, so F17 numbers are directly
-comparable to the Chapter 4 headline. Total: 4 × 10 runs.
+``impact_is_terminal=False``, ``aliasing_rate=0.4``, session-coherent).
+In the canonical mode (``--load-ppo-from``) the fixed deterministic-5M
+α=0.4 PPO defender is LOADED and re-evaluated (not retrained) under each
+evasion level, so the curve isolates the effect of the attacker mechanic
+on a single deployed policy. Total: 4 × 10 evaluations.
 
-``evasion_prob`` models an *evasive* attacker (adversarial_env.py
-"evasion-before-commit"): when the defender has recently applied force
-(BLOCK/ISOLATE) and the attacker is at a pre-trigger stage (RECON/ACCESS),
-with probability ``evasion_prob`` the attacker STALLS in place instead of
-progressing — coupling the attacker's transition to the defender's action.
-At ``evasion_prob=0`` this reduces to the standard Markov attacker.
-
-The cell at each evasion level both TRAINS PPO and EVALUATES it on
-``test_balanced`` under the SAME evasion_prob, so the curve shows
-how a defender that must train against an evasive attacker fares as the
-evasion coupling strengthens.
+``evasion_prob`` models an *evasive-persistence* attacker (adversarial_env.py
+"post-detection hardening"): after the attacker senses defensive force
+(BLOCK/ISOLATE) at a pre-commit stage (RECON/ACCESS), it hardens against the
+NEXT eviction — on a subsequent proportional defender step the de-escalation
+pushdown is resisted with probability ``evasion_prob``. The correct defensive
+response still holds the line (the attacker does not advance), so the mechanic
+never rewards mis-forcing; it only makes the attacker harder to remove. At
+``evasion_prob=0`` this reduces to the standard Markov attacker (byte-identical
+RNG stream).
 
 Output layout::
 
@@ -81,6 +81,31 @@ def _cell_overrides(e: float) -> dict[str, Any]:
     return merged
 
 
+# Load-mode (``--load-ppo-from``) evaluates a FIXED, already-trained defender
+# (the deterministic-5M headline PPO at alpha_04) across the evasion sweep
+# instead of retraining a fresh PPO per cell. To match that checkpoint's
+# training MDP exactly we add ``session_coherent=True`` (the det-5M alpha sweep
+# sets it; the legacy per-cell train contract above omits it). This is the
+# cleaner robustness test: does the SAME trained defender degrade gracefully
+# as the attacker becomes evasive?
+_LOAD_MODE_OVERRIDES: dict[str, Any] = {
+    "reward_mode": "outcome",
+    "aliasing_rate": 0.4,
+    "session_coherent": True,
+    "no_post_transition_leak": True,
+    "proximity_coupled": True,
+    "proximity_min_escalation": 0.4,
+    "impact_is_terminal": False,
+}
+
+
+def _load_cell_overrides(e: float) -> dict[str, Any]:
+    """On-contract override set for a load-mode F17 cell at evasion_prob=e."""
+    merged = dict(_LOAD_MODE_OVERRIDES)
+    merged["evasion_prob"] = e
+    return merged
+
+
 def _sha256(path: Path) -> str | None:
     p = Path(path)
     if not p.exists():
@@ -117,6 +142,92 @@ def _overrides_json(e: float) -> str:
 
 
 # --------------------------------------------------------------------- per-cell
+
+
+def _load_and_eval_ppo(args: argparse.Namespace, e: float, seed: int) -> dict[str, Any]:
+    """Load the fixed det-5M PPO checkpoint and evaluate it at evasion_prob=e.
+
+    No retraining: loads ``<load_ppo_from>/ppo/seed_<seed>/best_model.zip``
+    (falling back to ``model.zip``) and rolls it on ``test_balanced`` under
+    the load-mode POMDP contract at this evasion level. Writes
+    ``eval_test.jsonl`` into the normal ``ppo_e<slug>/seed_<k>/`` layout so
+    the F17 plotter is unchanged.
+    """
+    out_dir = Path(args.out_root) / f"ppo_e{_e_slug(e)}" / f"seed_{seed}"
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    ckpt_dir = Path(args.load_ppo_from) / "ppo" / f"seed_{seed}"
+    ckpt = ckpt_dir / "best_model.zip"
+    if not ckpt.exists():
+        ckpt = ckpt_dir / "model.zip"
+    test_eval_jsonl = out_dir / "eval_test.jsonl"
+
+    t0 = time.time()
+    ok = False
+    error: str | None = None
+    if not ckpt.exists():
+        error = f"checkpoint not found: {ckpt}"
+        logger.error("F17 load e=%.2f seed=%d: %s", e, seed, error)
+    else:
+        try:
+            spec = EnvConfigSerializable(
+                split="test_balanced",
+                exclude_ood=True,
+                **_load_cell_overrides(e),
+            )
+            env = make_eval_env(
+                spec=spec,
+                dataset_path=args.dataset_path,
+                splits_manifest=args.splits_manifest,
+                seed=seed,
+            )
+            try:
+                from stable_baselines3 import PPO
+
+                model = PPO.load(ckpt, env=env, device="cpu")
+                policy = SB3PolicyAdapter(model, deterministic=True)
+                run_policy(
+                    policy,
+                    env,
+                    n_episodes=2 if args.smoke else args.n_eval_episodes,
+                    jsonl_path=test_eval_jsonl,
+                    run_id=f"f17_ppo_e{_e_slug(e)}_seed_{seed}_test",
+                    policy_name="ppo",
+                    latency_path=None,
+                    seed=seed,
+                )
+                ok = test_eval_jsonl.exists()
+            finally:
+                try:  # noqa: SIM105
+                    env.close()
+                except Exception:  # noqa: BLE001
+                    pass
+        except Exception as exc:  # noqa: BLE001
+            error = str(exc)
+            logger.error("F17 load e=%.2f seed=%d eval failed: %s", e, seed, exc)
+    wallclock = time.time() - t0
+    logger.info(
+        "F17 load e=%.2f seed=%d done eval=%s wc=%.1fs",
+        e,
+        seed,
+        ok,
+        wallclock,
+    )
+    return {
+        "kind": "ppo",
+        "mode": "load",
+        "evasion_prob": e,
+        "seed": seed,
+        "ok_train": ok,  # keep key name for plotter/manifest compatibility
+        "ok_test_eval": ok,
+        "wallclock_seconds": wallclock,
+        "out_dir": str(out_dir),
+        "checkpoint": str(ckpt),
+        "checkpoint_sha256": _sha256(ckpt),
+        "test_eval_jsonl": str(test_eval_jsonl),
+        "test_eval_jsonl_sha256": _sha256(test_eval_jsonl),
+        "error": error,
+    }
 
 
 def _train_ppo(args: argparse.Namespace, e: float, seed: int) -> dict[str, Any]:
@@ -275,6 +386,17 @@ def _build_argparser() -> argparse.ArgumentParser:
     p.add_argument("--eval-freq", type=int, default=25_000)
     p.add_argument("--n-eval-episodes", type=int, default=300)
     p.add_argument("--out-root", default="runs/ablation/evasion")
+    p.add_argument(
+        "--load-ppo-from",
+        default=None,
+        help=(
+            "If set, DO NOT retrain: load the fixed PPO checkpoint at "
+            "<dir>/ppo/seed_<k>/best_model.zip and evaluate it across the "
+            "evasion sweep (fixed-policy robustness). E.g. "
+            "runs/redesign_5M_det/alpha_04. The load-mode env carries "
+            "session_coherent=True to match the det-5M training contract."
+        ),
+    )
     p.add_argument("--parallel", type=int, default=1)
     p.add_argument(
         "--dataset-path",
@@ -301,6 +423,12 @@ def main(argv: list[str] | None = None) -> int:
 
     cells = [(e, seed) for e in args.evasion_values for seed in args.seeds]
     n_workers = max(1, int(args.parallel))
+    _ppo_fn = _load_and_eval_ppo if args.load_ppo_from else _train_ppo
+    if args.load_ppo_from:
+        logger.info(
+            "F17 LOAD MODE: evaluating fixed PPO from %s (no retraining)",
+            args.load_ppo_from,
+        )
     logger.info(
         "F17 evasion sweep: %d evasion × %d seeds = %d runs (%d worker(s))",
         len(args.evasion_values),
@@ -313,10 +441,10 @@ def main(argv: list[str] | None = None) -> int:
     results: list[dict[str, Any]] = []
     if n_workers == 1:
         for e, seed in cells:
-            results.append(_train_ppo(args, e, seed))
+            results.append(_ppo_fn(args, e, seed))
     else:
         with concurrent.futures.ThreadPoolExecutor(max_workers=n_workers) as ex:
-            futs = {ex.submit(_train_ppo, args, e, seed): (e, seed) for e, seed in cells}
+            futs = {ex.submit(_ppo_fn, args, e, seed): (e, seed) for e, seed in cells}
             for fut in concurrent.futures.as_completed(futs):
                 e, seed = futs[fut]
                 try:
@@ -345,6 +473,8 @@ def main(argv: list[str] | None = None) -> int:
         "figure": "F17",
         "git_sha": _git_sha(),
         "created_utc": datetime.now(timezone.utc).isoformat(),
+        "mode": "load" if args.load_ppo_from else "train",
+        "load_ppo_from": args.load_ppo_from,
         "evasion_values": list(args.evasion_values),
         "seeds": list(args.seeds),
         "total_timesteps": args.total_timesteps,
