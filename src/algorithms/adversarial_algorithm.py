@@ -218,7 +218,7 @@ class AdversarialAlgorithm:
         self,
         model: SB3Algorithm,
         total_timesteps: Optional[int] = None,
-        progress_bar: bool = True,
+        progress_bar: bool = False,
     ) -> SB3Algorithm:
         """Train the model.
 
