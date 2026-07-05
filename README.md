@@ -188,13 +188,13 @@ rl-iot-defense-system/
 │   ├── algorithms/           # SB3-backed DQN/PPO/A2C wrappers
 │   ├── benchmark/            # Baselines + eval runner
 │   ├── blue_team/            # Env factory, callbacks, run config
-│   ├── detector/             # Supervised stage detector (RF + MLP)
+│   ├── detector/             # Supervised stage detector (RF)
 │   ├── environment/          # AdversarialIoTEnv (Gymnasium)
 │   ├── generator/            # Markov attacker (kill-chain process)
 │   └── utils/                # Dataset processor + realization engine
 ├── scripts/                  # Runners, plotters, thesis tooling
 │   ├── data/  detector/  blue_team/  benchmark/  ablation/  thesis/
-├── tests/                    # 446 unit + integration tests (pytest)
+├── tests/                    # 447 unit + integration tests (pytest)
 ├── docs/                     # Architecture, environment, dataset docs
 │   ├── results/              # Canonical figures + manifest hash-chains
 │   ├── ARCHITECTURE.md       # Module map + adversarial loop
