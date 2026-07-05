@@ -20,6 +20,11 @@
 % Table, Chapter, etc.) render in English. Portuguese is still used inside
 % the resumo environment via otherlanguage*.
 \selectlanguage{english}
+% \selectlanguage resets abnTeX2 list-title macros to lowercase English
+% ("List of abbreviations and acronyms", "List of symbols"). Override here
+% so they match the capitalized style of "List of Tables"/"List of Figures".
+\renewcommand{\listadesiglasname}{List of Abbreviations and Acronyms}
+\renewcommand{\listadesimbolosname}{List of Symbols}
 % The Portuguese resumo environment titles itself with \resumoname, which
 % \selectlanguage{english} resets to "Abstract". Restore it to "Resumo"
 % so the Portuguese abstract is titled correctly; the English abstract
