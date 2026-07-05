@@ -111,6 +111,14 @@
 \newtheorem{theorem}{Teorema}[chapter]
 \floatname{algorithm}{Algorithm}
 \renewcommand{\listalgorithmname}{List of Algorithms}
+% Override abnTeX2/babel Portuguese caption names at \begin{document},
+% after babel has set the brazilian defaults.
+\AtBeginDocument{
+  \renewcommand{\figurename}{Figure}
+  \renewcommand{\tablename}{Table}
+  \renewcommand{\listfigurename}{List of Figures}
+  \renewcommand{\listtablename}{List of Tables}
+}
 \newenvironment{proof}[1][Prova]{\begin{trivlist}
 \item[\hskip \labelsep {\bfseries #1}]}{\end{trivlist}}
 \newcommand{\qed}{\hfill \ensuremath{\Box}}

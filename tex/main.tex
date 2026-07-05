@@ -16,6 +16,11 @@
 % ---- In\'{\i}cio do documento ----
 \begin{document}
 
+% Switch main language to English so all auto-generated labels (Figure,
+% Table, Chapter, etc.) render in English. Portuguese is still used inside
+% the resumo environment via otherlanguage*.
+\selectlanguage{english}
+
 % Retira espa\c{c}o extra obsoleto entre as frases.
 \frenchspacing
 
@@ -156,6 +161,8 @@ Todos os resultados são acompanhados de intervalos de confiança por
 
     \vspace{\onelineskip}
     \vspace{\onelineskip}
+
+    \clearpage
 
     \begin{otherlanguage*}{english}
     \begin{center}{\ABNTEXchapterfont\huge Abstract}\end{center}
@@ -310,9 +317,6 @@ chain.
   \item[$\mathrm{lr}$]            Learning rate
   \item[$n_{\text{steps}}$]       On-policy rollout length (PPO, A2C)
   \item[$n_{\text{epochs}}$]      Number of PPO optimization epochs per rollout
-  \item[$\mathrm{ent\_coef}$]     Entropy coefficient (actor-critic)
-  \item[$\mathrm{vf\_coef}$]      Value-function coefficient (actor-critic)
-  \item[$\mathrm{batch\_size}$]   Mini-batch size (DQN, PPO)
 \end{simbolos}
 \cleardoublepage
 
