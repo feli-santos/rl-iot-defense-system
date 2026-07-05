@@ -83,15 +83,9 @@ derive-stages:  ## Detector prep: build stages.npy + manifest from state_indices
 dataset: build-split-indices plot-dataset  ## Run all dataset-preparation deliverables.
 
 .PHONY: detector
-detector: derive-stages  ## Detector: train MLP + RF, emit F11 (~3-5 min).
+detector: derive-stages  ## Detector: train RF, emit F11 (~3-5 min).
 	$(PYTHON) -m scripts.detector.train_detector \
 	    --processed-dir $(DATA) --seed $(SEED)
-
-.PHONY: detector-figure
-detector-figure:  ## Detector: re-plot per_stage_recall (Fig 4.3) from F11_summary.json (no retrain).
-	$(PYTHON) -m scripts.detector.plot_per_stage_recall \
-	    --summary docs/results/stage-detector/F11_summary.json \
-	    --out-dir docs/results/stage-detector
 
 # -----------------------------------------------------------------------------
 # Blue Team — DQN/PPO/A2C × 10 seeds + F3/F4/T1
