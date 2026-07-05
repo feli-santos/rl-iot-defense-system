@@ -1,7 +1,7 @@
 [
   {
     "algo": "a2c",
-    "total_timesteps": 1500000,
+    "total_timesteps": 5000000,
     "algo_hparams": {
       "learning_rate": 0.0007,
       "n_steps": 256,
@@ -24,21 +24,21 @@
       9
     ],
     "examples": [
-      "runs/redesign/alpha_04/a2c/seed_0/run_manifest.json",
-      "runs/redesign/alpha_04/a2c/seed_1/run_manifest.json",
-      "runs/redesign/alpha_04/a2c/seed_2/run_manifest.json",
-      "runs/redesign/alpha_04/a2c/seed_3/run_manifest.json",
-      "runs/redesign/alpha_04/a2c/seed_4/run_manifest.json",
-      "runs/redesign/alpha_04/a2c/seed_5/run_manifest.json",
-      "runs/redesign/alpha_04/a2c/seed_6/run_manifest.json",
-      "runs/redesign/alpha_04/a2c/seed_7/run_manifest.json",
-      "runs/redesign/alpha_04/a2c/seed_8/run_manifest.json",
-      "runs/redesign/alpha_04/a2c/seed_9/run_manifest.json"
+      "runs/redesign_5M_det/alpha_04/a2c/seed_0/run_manifest.json",
+      "runs/redesign_5M_det/alpha_04/a2c/seed_1/run_manifest.json",
+      "runs/redesign_5M_det/alpha_04/a2c/seed_2/run_manifest.json",
+      "runs/redesign_5M_det/alpha_04/a2c/seed_3/run_manifest.json",
+      "runs/redesign_5M_det/alpha_04/a2c/seed_4/run_manifest.json",
+      "runs/redesign_5M_det/alpha_04/a2c/seed_5/run_manifest.json",
+      "runs/redesign_5M_det/alpha_04/a2c/seed_6/run_manifest.json",
+      "runs/redesign_5M_det/alpha_04/a2c/seed_7/run_manifest.json",
+      "runs/redesign_5M_det/alpha_04/a2c/seed_8/run_manifest.json",
+      "runs/redesign_5M_det/alpha_04/a2c/seed_9/run_manifest.json"
     ]
   },
   {
     "algo": "dqn",
-    "total_timesteps": 1500000,
+    "total_timesteps": 5000000,
     "algo_hparams": {
       "learning_rate": 0.0005,
       "buffer_size": 200000,
@@ -64,21 +64,21 @@
       9
     ],
     "examples": [
-      "runs/redesign/alpha_04/dqn/seed_0/run_manifest.json",
-      "runs/redesign/alpha_04/dqn/seed_1/run_manifest.json",
-      "runs/redesign/alpha_04/dqn/seed_2/run_manifest.json",
-      "runs/redesign/alpha_04/dqn/seed_3/run_manifest.json",
-      "runs/redesign/alpha_04/dqn/seed_4/run_manifest.json",
-      "runs/redesign/alpha_04/dqn/seed_5/run_manifest.json",
-      "runs/redesign/alpha_04/dqn/seed_6/run_manifest.json",
-      "runs/redesign/alpha_04/dqn/seed_7/run_manifest.json",
-      "runs/redesign/alpha_04/dqn/seed_8/run_manifest.json",
-      "runs/redesign/alpha_04/dqn/seed_9/run_manifest.json"
+      "runs/redesign_5M_det/alpha_04/dqn/seed_0/run_manifest.json",
+      "runs/redesign_5M_det/alpha_04/dqn/seed_1/run_manifest.json",
+      "runs/redesign_5M_det/alpha_04/dqn/seed_2/run_manifest.json",
+      "runs/redesign_5M_det/alpha_04/dqn/seed_3/run_manifest.json",
+      "runs/redesign_5M_det/alpha_04/dqn/seed_4/run_manifest.json",
+      "runs/redesign_5M_det/alpha_04/dqn/seed_5/run_manifest.json",
+      "runs/redesign_5M_det/alpha_04/dqn/seed_6/run_manifest.json",
+      "runs/redesign_5M_det/alpha_04/dqn/seed_7/run_manifest.json",
+      "runs/redesign_5M_det/alpha_04/dqn/seed_8/run_manifest.json",
+      "runs/redesign_5M_det/alpha_04/dqn/seed_9/run_manifest.json"
     ]
   },
   {
     "algo": "ppo",
-    "total_timesteps": 1500000,
+    "total_timesteps": 5000000,
     "algo_hparams": {
       "learning_rate": 0.0003,
       "n_steps": 2048,
@@ -103,16 +103,16 @@
       9
     ],
     "examples": [
-      "runs/redesign/alpha_04/ppo/seed_0/run_manifest.json",
-      "runs/redesign/alpha_04/ppo/seed_1/run_manifest.json",
-      "runs/redesign/alpha_04/ppo/seed_2/run_manifest.json",
-      "runs/redesign/alpha_04/ppo/seed_3/run_manifest.json",
-      "runs/redesign/alpha_04/ppo/seed_4/run_manifest.json",
-      "runs/redesign/alpha_04/ppo/seed_5/run_manifest.json",
-      "runs/redesign/alpha_04/ppo/seed_6/run_manifest.json",
-      "runs/redesign/alpha_04/ppo/seed_7/run_manifest.json",
-      "runs/redesign/alpha_04/ppo/seed_8/run_manifest.json",
-      "runs/redesign/alpha_04/ppo/seed_9/run_manifest.json"
+      "runs/redesign_5M_det/alpha_04/ppo/seed_0/run_manifest.json",
+      "runs/redesign_5M_det/alpha_04/ppo/seed_1/run_manifest.json",
+      "runs/redesign_5M_det/alpha_04/ppo/seed_2/run_manifest.json",
+      "runs/redesign_5M_det/alpha_04/ppo/seed_3/run_manifest.json",
+      "runs/redesign_5M_det/alpha_04/ppo/seed_4/run_manifest.json",
+      "runs/redesign_5M_det/alpha_04/ppo/seed_5/run_manifest.json",
+      "runs/redesign_5M_det/alpha_04/ppo/seed_6/run_manifest.json",
+      "runs/redesign_5M_det/alpha_04/ppo/seed_7/run_manifest.json",
+      "runs/redesign_5M_det/alpha_04/ppo/seed_8/run_manifest.json",
+      "runs/redesign_5M_det/alpha_04/ppo/seed_9/run_manifest.json"
     ]
   }
 ]

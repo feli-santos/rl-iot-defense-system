@@ -97,7 +97,7 @@ detector-figure:  ## Detector: re-plot per_stage_recall (Fig 4.3) from F11_summa
 # Blue Team — DQN/PPO/A2C × 10 seeds + F3/F4/T1
 # -----------------------------------------------------------------------------
 BLUE_TEAM_RUNS_ROOT     ?= runs/blue_team
-BLUE_TEAM_TIMESTEPS     ?= 1500000
+BLUE_TEAM_TIMESTEPS     ?= 5000000
 BLUE_TEAM_SEEDS         ?= 0 1 2 3 4 5 6 7 8 9
 BLUE_TEAM_ALGOS         ?= dqn ppo a2c
 BLUE_TEAM_PARALLEL      ?= 1
@@ -291,7 +291,7 @@ ablation-aggressiveness: ablation-aggressiveness-sweep ablation-aggressiveness-f
 
 # F17 — Evasive-attacker sweep (on-contract outcome reward; locked overrides in runner)
 ABLATION_EVASION_RUNS_ROOT ?= runs/ablation/evasion
-ABLATION_EVASION_TIMESTEPS ?= 1500000
+ABLATION_EVASION_TIMESTEPS ?= 5000000
 
 .PHONY: ablation-evasion-smoke
 ablation-evasion-smoke:  ## Ablation F17 smoke: 2 evasion values × 1 seed × 5K (~30 s). Writes to throwaway dir, never canonical.
