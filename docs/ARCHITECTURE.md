@@ -39,7 +39,7 @@ MarkovAttacker --(stage)--> RealizationEngine.sample --> observation window
 | `src/utils/realization_engine.py` | `RealizationEngine`; `from_split_manifest` (split-aware, `exclude_ood`); `sample(stage)` draws session-coherent rows with adjacent-stage aliasing at rate α. |
 | `src/utils/label_mapper.py` | `KillChainStage(IntEnum)` (BENIGN=0..IMPACT=4); `_LABEL_TO_STAGE` (34 CICIoT labels → 5 stages). |
 | `src/algorithms/adversarial_algorithm.py` | `AdversarialAlgorithm` (DQN/PPO/A2C factory, always `MlpPolicy`). |
-| `src/detector/` | `StageDetector` (MLP), `random_forest` (`RFActingPolicy`). Baseline apparatus, not a contribution. |
+| `src/detector/` | `random_forest.py` (sklearn `RandomForestClassifier` stage detector: `train_random_forest`, save/load, `RandomForestConfig`) + `evaluation.py`. Baseline apparatus, not a contribution. |
 | `src/blue_team/` | `env_factory.py` (`make_train_env` / `make_eval_env`); `run_config.py` (`BlueTeamRunConfig` + `EnvConfigSerializable` → `run_manifest.json`); `callbacks.py` (`EpisodeJSONLCallback`); `aggregation.py` (`bootstrap_ci`). |
 | `src/benchmark/` | `baseline_policies.py` (random/always_observe/always_block/recommended_action/`RFActingPolicy`/`SB3PolicyAdapter`); `eval_runner.run_policy`. |
 

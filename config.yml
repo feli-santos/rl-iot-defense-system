@@ -164,11 +164,6 @@ models:
     save_dir: "artifacts/rl"
     checkpoint_dir: "artifacts/rl/checkpoints"
 
-# Experiment Tracking
-mlflow:
-  tracking_uri: "mlruns"
-  experiment_name: "iot_defense_system"
-
 # Logging Configuration
 logging:
   level: "INFO"

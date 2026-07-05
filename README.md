@@ -147,7 +147,7 @@ python -m scripts.reproducibility_smoke --strict  # exit 1 on any hash miss
 
 ```bash
 make dataset                 # splits + dataset overview (~1 min)
-make detector                # stage detector: RF + MLP (~3-5 min)
+make detector                # stage detector: RandomForest (~3-5 min)
 make blue-team               # full sweep DQN/PPO/A2C × 10 seeds (~3-7 h CPU)
 make benchmark               # held-out benchmark eval (~10 min)
 make ablation                # alpha-curve + coupling + OOD + sweeps (~2-4 h CPU)
@@ -210,7 +210,7 @@ rl-iot-defense-system/
 └── LICENSE                   # MIT
 ```
 
-`runs/`, `data/processed/`, `artifacts/`, `mlruns/` are gitignored and live
+`runs/`, `data/processed/`, `artifacts/` are gitignored and live
 only on the user's machine.
 
 ---

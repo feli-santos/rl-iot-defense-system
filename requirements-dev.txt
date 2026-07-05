@@ -1,0 +1,15 @@
+# Development tooling: lint, format, test, and pre-commit hooks.
+# Versions are aligned with .pre-commit-config.yaml so `make lint` and the
+# pre-commit hooks enforce identical formatting.
+#
+# Install everything:  make install-dev
+# (or:  pip install -r requirements-dev.txt )
+
+-r requirements.txt
+
+pytest==8.4.2
+pytest-cov==7.0.0
+ruff==0.6.9
+black==24.10.0
+isort==5.13.2
+pre-commit==3.8.0

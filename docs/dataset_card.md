@@ -226,9 +226,10 @@ scaler.joblib       146c8aa762e0bed97da0d5f9714515213f4b210a82737178aaaddcd1a670
 state_indices.json  83f28824e28b66dd033f3490800715de117b39b6428401e83858a34bbb079b86
 ```
 
-If any of these change, downstream MLflow runs become invalid — the
-benchmarking layer (Ablation & Robustness) will refuse to compare runs with mismatched
-data hashes.
+If any of these change, downstream experiment runs become invalid — the
+reproducibility harness (`scripts/reproducibility_smoke`) will flag manifest
+hash mismatches, and the benchmarking layer (Ablation & Robustness) will
+refuse to compare runs with mismatched data hashes.
 
 ## 7 — Limitations & caveats (declared up-front)
 

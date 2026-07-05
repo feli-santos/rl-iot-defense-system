@@ -36,8 +36,8 @@ install:  ## Install Python dependencies.
 	$(PYTHON) -m pip install -r requirements.txt
 
 .PHONY: install-dev
-install-dev: install  ## Install dev dependencies (pre-commit, lint).
-	$(PYTHON) -m pip install pre-commit ruff black isort
+install-dev: install  ## Install dev dependencies (lint, test, pre-commit).
+	$(PYTHON) -m pip install -r requirements-dev.txt
 	pre-commit install || true
 
 ##@ Quality
