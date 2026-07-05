@@ -20,11 +20,7 @@ from pathlib import Path
 
 import pytest
 
-from scripts.blue_team.train_agent import (
-    _apply_env_overrides,
-    _build_argparser,
-    build_run_config,
-)
+from scripts.blue_team.train_agent import _apply_env_overrides, _build_argparser, build_run_config
 from src.blue_team import EnvConfigSerializable
 
 # ---------------------------------------------------------------------------

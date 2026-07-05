@@ -7,10 +7,7 @@ This package provides:
 - Dataset Processor: Processes raw CICIoT2023 data
 """
 
-from src.utils.label_mapper import (
-    AbstractStateLabelMapper,
-    KillChainStage,
-)
+from src.utils.label_mapper import AbstractStateLabelMapper, KillChainStage
 from src.utils.realization_engine import RealizationEngine
 
 __all__ = [

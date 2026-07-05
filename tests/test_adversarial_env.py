@@ -112,10 +112,7 @@ class TestAdversarialEnvInitialization:
 
     def test_observation_space_shape(self, mock_generator, mock_dataset) -> None:
         """Test observation space has correct shape."""
-        from src.environment.adversarial_env import (
-            AdversarialEnvConfig,
-            AdversarialIoTEnv,
-        )
+        from src.environment.adversarial_env import AdversarialEnvConfig, AdversarialIoTEnv
 
         config = AdversarialEnvConfig(window_size=5)
         env = AdversarialIoTEnv(
@@ -387,10 +384,7 @@ class TestAdversarialEnvTermination:
         import joblib
         from sklearn.preprocessing import StandardScaler
 
-        from src.environment.adversarial_env import (
-            AdversarialEnvConfig,
-            AdversarialIoTEnv,
-        )
+        from src.environment.adversarial_env import AdversarialEnvConfig, AdversarialIoTEnv
 
         # Create dataset
         dataset_path = tmp_path / "dataset"
@@ -615,10 +609,7 @@ class TestStagePredictionAblation:
         import joblib
         from sklearn.ensemble import RandomForestClassifier
 
-        from src.environment.adversarial_env import (
-            AdversarialEnvConfig,
-            AdversarialIoTEnv,
-        )
+        from src.environment.adversarial_env import AdversarialEnvConfig, AdversarialIoTEnv
 
         dummy_clf = RandomForestClassifier(n_estimators=1, random_state=0)
         dummy_clf.fit(np.zeros((10, 46)), np.full(10, 2))
@@ -642,10 +633,7 @@ class TestStagePredictionAblation:
         import joblib
         from sklearn.ensemble import RandomForestClassifier
 
-        from src.environment.adversarial_env import (
-            AdversarialEnvConfig,
-            AdversarialIoTEnv,
-        )
+        from src.environment.adversarial_env import AdversarialEnvConfig, AdversarialIoTEnv
 
         dummy_clf = RandomForestClassifier(n_estimators=1, random_state=0)
         dummy_clf.fit(np.zeros((10, 46)), np.full(10, 2))
@@ -669,10 +657,7 @@ class TestStagePredictionAblation:
 
     def test_include_stage_pred_without_path_raises(self, mock_generator, mock_dataset):
         """include_stage_pred=True without stage_detector_path is an error."""
-        from src.environment.adversarial_env import (
-            AdversarialEnvConfig,
-            AdversarialIoTEnv,
-        )
+        from src.environment.adversarial_env import AdversarialEnvConfig, AdversarialIoTEnv
 
         config = AdversarialEnvConfig(include_stage_pred=True)
         with pytest.raises(ValueError, match="stage_detector_path"):
@@ -715,10 +700,7 @@ class TestRetreatProb:
         stages (no regression), so without the retreat override the visible
         chain never drops to an earlier non-zero stage.
         """
-        from src.environment.adversarial_env import (
-            AdversarialEnvConfig,
-            AdversarialIoTEnv,
-        )
+        from src.environment.adversarial_env import AdversarialEnvConfig, AdversarialIoTEnv
 
         config = AdversarialEnvConfig(retreat_prob=0.0)
         env = AdversarialIoTEnv(
@@ -742,10 +724,7 @@ class TestRetreatProb:
         is bypassed by the default tug-of-war dynamics, so this test pins the
         legacy path explicitly with ``tug_of_war=False``.
         """
-        from src.environment.adversarial_env import (
-            AdversarialEnvConfig,
-            AdversarialIoTEnv,
-        )
+        from src.environment.adversarial_env import AdversarialEnvConfig, AdversarialIoTEnv
 
         config = AdversarialEnvConfig(retreat_prob=0.5, tug_of_war=False)
         env = AdversarialIoTEnv(
@@ -793,10 +772,7 @@ class TestFPRPenalty:
 
     def test_fpr_penalty_zero_no_effect(self, mock_dataset):
         """fpr_penalty_beta=0 should not affect reward."""
-        from src.environment.adversarial_env import (
-            AdversarialEnvConfig,
-            AdversarialIoTEnv,
-        )
+        from src.environment.adversarial_env import AdversarialEnvConfig, AdversarialIoTEnv
 
         config = AdversarialEnvConfig(fpr_penalty_beta=0.0)
         env = AdversarialIoTEnv(
@@ -815,10 +791,7 @@ class TestFPRPenalty:
 
     def _build_env(self, mock_dataset, beta):
         """Construct an env with a given fpr_penalty_beta."""
-        from src.environment.adversarial_env import (
-            AdversarialEnvConfig,
-            AdversarialIoTEnv,
-        )
+        from src.environment.adversarial_env import AdversarialEnvConfig, AdversarialIoTEnv
 
         config = AdversarialEnvConfig(fpr_penalty_beta=beta)
         env = AdversarialIoTEnv(
@@ -883,10 +856,7 @@ class TestEvasion:
         return dataset_path
 
     def _build_env(self, mock_dataset, **config_kwargs):
-        from src.environment.adversarial_env import (
-            AdversarialEnvConfig,
-            AdversarialIoTEnv,
-        )
+        from src.environment.adversarial_env import AdversarialEnvConfig, AdversarialIoTEnv
 
         config = AdversarialEnvConfig(**config_kwargs)
         env = AdversarialIoTEnv(
@@ -1020,10 +990,7 @@ class TestEvasivePersistence:
         return dataset_path
 
     def _build_env(self, mock_dataset, **config_kwargs):
-        from src.environment.adversarial_env import (
-            AdversarialEnvConfig,
-            AdversarialIoTEnv,
-        )
+        from src.environment.adversarial_env import AdversarialEnvConfig, AdversarialIoTEnv
 
         # tug_of_war=True is the default headline contract; make it explicit.
         config_kwargs.setdefault("tug_of_war", True)
@@ -1182,10 +1149,7 @@ class TestRewardMode:
         return dataset_path
 
     def _build_env(self, mock_dataset, **config_kwargs):
-        from src.environment.adversarial_env import (
-            AdversarialEnvConfig,
-            AdversarialIoTEnv,
-        )
+        from src.environment.adversarial_env import AdversarialEnvConfig, AdversarialIoTEnv
 
         config = AdversarialEnvConfig(**config_kwargs)
         env = AdversarialIoTEnv(
@@ -1313,10 +1277,7 @@ class TestPartialObservabilityRedesign:
         return dataset_path
 
     def _build_env(self, mock_dataset, **config_kwargs):
-        from src.environment.adversarial_env import (
-            AdversarialEnvConfig,
-            AdversarialIoTEnv,
-        )
+        from src.environment.adversarial_env import AdversarialEnvConfig, AdversarialIoTEnv
 
         config = AdversarialEnvConfig(**config_kwargs)
         env = AdversarialIoTEnv(

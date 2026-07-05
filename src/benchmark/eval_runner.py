@@ -30,11 +30,7 @@ from typing import Any, Callable
 
 import numpy as np
 
-from src.blue_team.callbacks import (
-    _SCHEMA_VERSION,
-    EpisodeRecord,
-    _EpisodeAccumulator,
-)
+from src.blue_team.callbacks import _SCHEMA_VERSION, EpisodeRecord, _EpisodeAccumulator
 from src.utils.label_mapper import KillChainStage
 
 logger = logging.getLogger(__name__)

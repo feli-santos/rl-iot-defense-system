@@ -21,10 +21,7 @@ import numpy as np
 import pytest
 from sklearn.preprocessing import StandardScaler
 
-from src.environment.adversarial_env import (
-    AdversarialEnvConfig,
-    AdversarialIoTEnv,
-)
+from src.environment.adversarial_env import AdversarialEnvConfig, AdversarialIoTEnv
 from src.utils.label_mapper import KillChainStage
 
 # ---------------------------------------------------------------------------

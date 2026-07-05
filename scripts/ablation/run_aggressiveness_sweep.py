@@ -62,10 +62,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from src.benchmark.baseline_policies import (
-    SB3PolicyAdapter,
-    recommended_action_policy,
-)
+from src.benchmark.baseline_policies import SB3PolicyAdapter, recommended_action_policy
 from src.benchmark.eval_runner import run_policy
 from src.blue_team.env_factory import make_eval_env
 from src.blue_team.run_config import EnvConfigSerializable

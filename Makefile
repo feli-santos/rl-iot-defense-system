@@ -43,14 +43,14 @@ install-dev: install  ## Install dev dependencies (lint, test, pre-commit).
 ##@ Quality
 .PHONY: lint
 lint:  ## Run ruff + black --check.
-	ruff check src tests scripts main.py
-	black --check src tests scripts main.py
+	$(PYTHON) -m ruff check src tests scripts main.py
+	$(PYTHON) -m black --check src tests scripts main.py
 
 .PHONY: format
-format:  ## Auto-format with black + ruff --fix + isort.
-	black src tests scripts main.py
-	ruff check --fix src tests scripts main.py
-	isort src tests scripts main.py
+format:  ## Auto-format with ruff --fix + isort + black.
+	$(PYTHON) -m ruff check --fix src tests scripts main.py
+	$(PYTHON) -m isort src tests scripts main.py
+	$(PYTHON) -m black src tests scripts main.py
 
 .PHONY: test
 test:  ## Run pytest with quiet output.

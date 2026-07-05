@@ -18,10 +18,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from scripts.data.derive_stage_labels import (
-    derive_stage_labels,
-    write_outputs,
-)
+from scripts.data.derive_stage_labels import derive_stage_labels, write_outputs
 
 # ---------------------------------------------------------------------------
 # Synthetic fixtures

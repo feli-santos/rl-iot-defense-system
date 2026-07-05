@@ -96,7 +96,9 @@ def _plot_class_distribution(
                 bar.get_x() + bar.get_width() / 2,
                 val * 1.05,
                 f"{val:,}",
-                ha="center", va="bottom", fontsize=7,
+                ha="center",
+                va="bottom",
+                fontsize=7,
             )
 
     fig.tight_layout()
@@ -129,13 +131,19 @@ def _plot_stage_distribution(
             continue
         xs = np.arange(len(stages)) + offsets[split_name]
         bars = ax.bar(
-            xs, vals, width=width, label=split_name,
-            edgecolor="black", linewidth=0.4,
+            xs,
+            vals,
+            width=width,
+            label=split_name,
+            edgecolor="black",
+            linewidth=0.4,
             color=[STAGE_COLORS[s] for s in stages],
             hatch=hatches[split_name],
         )
         for b, v in zip(bars, vals):
-            ax.text(b.get_x() + b.get_width() / 2, v, f"{v:,}", ha="center", va="bottom", fontsize=7)
+            ax.text(
+                b.get_x() + b.get_width() / 2, v, f"{v:,}", ha="center", va="bottom", fontsize=7
+            )
 
     ax.set_xticks(np.arange(len(stages)))
     ax.set_xticklabels([f"{s}\n{STAGE_NAMES[s]}" for s in stages])
@@ -152,7 +160,9 @@ def _plot_stage_distribution(
 
 
 def _parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
-    p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    p = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     p.add_argument("--processed-dir", type=Path, default=Path("data/processed/ciciot2023"))
     p.add_argument("--out-dir", type=Path, default=Path("docs/results/dataset"))
     p.add_argument("-v", "--verbose", action="store_true")
@@ -173,10 +183,7 @@ def main(argv: Optional[list[str]] = None) -> int:
         )
 
     string_labels, stage_ids = _load(args.processed_dir)
-    splits = {
-        name: np.load(splits_dir / f"{name}.idx.npy")
-        for name in ("train", "val", "test")
-    }
+    splits = {name: np.load(splits_dir / f"{name}.idx.npy") for name in ("train", "val", "test")}
 
     class_counts = _plot_class_distribution(
         string_labels, stage_ids, args.out_dir / "F0_class_distribution.png"

@@ -7,11 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from src.blue_team.run_config import (
-    _SCHEMA_VERSION,
-    BlueTeamRunConfig,
-    EnvConfigSerializable,
-)
+from src.blue_team.run_config import _SCHEMA_VERSION, BlueTeamRunConfig, EnvConfigSerializable
 
 
 class TestBlueTeamRunConfig:

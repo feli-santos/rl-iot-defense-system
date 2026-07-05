@@ -41,11 +41,7 @@ from pathlib import Path
 import joblib
 import numpy as np
 
-from src.detector import (
-    RandomForestConfig,
-    summarize_run,
-    train_random_forest,
-)
+from src.detector import RandomForestConfig, summarize_run, train_random_forest
 from src.detector.evaluation import (
     NUM_STAGES,
     STAGE_NAMES,

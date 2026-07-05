@@ -1,14 +1,19 @@
 # Pre-commit hooks for the RL IoT Defense System.
 # Install: `pip install pre-commit && pre-commit install`
 # Run on all files: `pre-commit run --all-files`
+#
+# Tool roles: ruff (lint + autofix), isort (import ordering), black (formatting).
+# Order matters: isort runs before black so black gets the final formatting pass.
+# ruff-format is intentionally omitted — it conflicts with black on edge cases.
 
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.6.0
     hooks:
       - id: trailing-whitespace
-        exclude: "\\.md$"
+        exclude: "\\.(md|json|tex|sty)$"
       - id: end-of-file-fixer
+        exclude: "(docs/results/|tex/)"
       - id: check-yaml
       - id: check-toml
       - id: check-added-large-files
@@ -16,20 +21,20 @@ repos:
       - id: check-merge-conflict
       - id: debug-statements
       - id: mixed-line-ending
+        exclude: "(docs/results/|tex/)"
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.6.9
     hooks:
       - id: ruff
         args: [ --fix ]
-      - id: ruff-format
-
-  - repo: https://github.com/psf/black
-    rev: 24.10.0
-    hooks:
-      - id: black
 
   - repo: https://github.com/pycqa/isort
     rev: 5.13.2
     hooks:
       - id: isort
+
+  - repo: https://github.com/psf/black
+    rev: 24.10.0
+    hooks:
+      - id: black

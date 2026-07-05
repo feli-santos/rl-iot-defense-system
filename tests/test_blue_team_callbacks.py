@@ -9,11 +9,7 @@ from typing import Any
 import numpy as np
 import pytest
 
-from src.blue_team.callbacks import (
-    _SCHEMA_VERSION,
-    EpisodeJSONLCallback,
-    EpisodeRecord,
-)
+from src.blue_team.callbacks import _SCHEMA_VERSION, EpisodeJSONLCallback, EpisodeRecord
 
 # --------------------------------------------------------------------- harness
 

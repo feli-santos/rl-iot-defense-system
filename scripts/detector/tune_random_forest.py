@@ -69,11 +69,7 @@ from scripts.detector.train_detector import (
     _sha256,
     _verify_disjoint,
 )
-from src.detector.random_forest import (
-    RandomForestConfig,
-    save_random_forest,
-    train_random_forest,
-)
+from src.detector.random_forest import RandomForestConfig, save_random_forest, train_random_forest
 
 logger = logging.getLogger("tune_random_forest")
 

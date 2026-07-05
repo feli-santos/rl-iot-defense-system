@@ -17,10 +17,7 @@ from pathlib import Path
 
 import pytest
 
-from scripts.benchmark.run_test_eval import (
-    _assert_train_eval_contract,
-    _eval_env_spec,
-)
+from scripts.benchmark.run_test_eval import _assert_train_eval_contract, _eval_env_spec
 from src.blue_team.run_config import BlueTeamRunConfig, EnvConfigSerializable
 
 

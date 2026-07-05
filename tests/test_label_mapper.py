@@ -7,11 +7,7 @@ CICIoT2023 attack labels to Kill Chain abstract states (0-4).
 
 import pytest
 
-from src.utils.label_mapper import (
-    STAGE_NAMES,
-    AbstractStateLabelMapper,
-    KillChainStage,
-)
+from src.utils.label_mapper import STAGE_NAMES, AbstractStateLabelMapper, KillChainStage
 
 
 class TestKillChainStage:

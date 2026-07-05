@@ -27,10 +27,7 @@ _ROOT = Path(__file__).resolve().parents[2]
 if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
-from src.blue_team.aggregation import (  # noqa: E402
-    read_runs_directory,
-    summarise_last_window,
-)
+from src.blue_team.aggregation import read_runs_directory, summarise_last_window  # noqa: E402
 
 logger = logging.getLogger("scripts.blue_team.evaluate_gates")
 

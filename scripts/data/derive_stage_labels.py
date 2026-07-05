@@ -124,9 +124,7 @@ def write_outputs(data_path: Path, stages: np.ndarray) -> Path:
     out_manifest = data_path / "stages.manifest.json"
 
     np.save(out_npy, stages, allow_pickle=False)
-    counts: dict[int, int] = {
-        int(s): int((stages == s).sum()) for s in sorted(np.unique(stages))
-    }
+    counts: dict[int, int] = {int(s): int((stages == s).sum()) for s in sorted(np.unique(stages))}
 
     manifest = {
         "version": "1.0",
@@ -160,9 +158,7 @@ def main(argv: list[str] | None = None) -> int:
         default=Path("data/processed/ciciot2023"),
         help="Directory containing features.npy and state_indices.json.",
     )
-    parser.add_argument(
-        "-v", "--verbose", action="store_true", help="Verbose logging."
-    )
+    parser.add_argument("-v", "--verbose", action="store_true", help="Verbose logging.")
     args = parser.parse_args(argv)
     logging.basicConfig(
         level=logging.DEBUG if args.verbose else logging.INFO,
