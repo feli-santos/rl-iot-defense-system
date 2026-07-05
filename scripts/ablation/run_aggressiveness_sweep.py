@@ -1,12 +1,13 @@
 """ablation F10 — Environment-difficulty sweep driver (PLAN §3.1.5).
 
 Sweeps the tug-of-war de-escalation success probability
-``p_down ∈ {0.0, 0.2, 0.4, 0.6, 0.8, 1.0}`` × PPO only (D7.2) × 10 seeds.
-Each cell trains under the LOCKED primary reward contract
-(``reward_mode='outcome'``, ``impact_is_terminal=False``,
-``attacker_budget=None``, ``aliasing_rate=0.4``) at a 1.5M-timestep cap
-with eval-plateau early-stopping, so F10 numbers are directly comparable
-to the Chapter 4 headline.
+``p_down ∈ {0.0, 0.2, 0.4, 0.6, 0.8, 1.0}`` × PPO only (D7.2) × 10 seeds,
+all under the LOCKED primary reward contract (``reward_mode='outcome'``,
+``impact_is_terminal=False``, ``aliasing_rate=0.4``, session-coherent).
+In the canonical mode (``--load-ppo-from``) the fixed deterministic-5M
+α=0.4 PPO defender is LOADED and re-evaluated (not retrained) under each
+shifted ``p_down``, so the curve isolates how a single deployed defender
+generalizes as the attacker's de-escalation behavior drifts.
 
 ``p_down`` is the live tug-of-war knob that governs how *forgiving the
 environment is to a correct defender*: when the defender plays the
@@ -17,15 +18,16 @@ parameter, which is INERT under the headline ``tug_of_war=True``
 dynamics (it only affects the deprecated ``tug_of_war=False`` path).
 
 Conceptually aligned with IoTWarden Fig. 6 (Bhattacharjee et al.,
-2023): how does the defender's value function shift as the
+2023): how does the fixed defender's realized reward shift as the
 environment difficulty varies? ``p_down=0.0`` means a correct
 defender action NEVER pushes the attacker back (harshest environment —
 the attacker can only be held, never reversed); ``p_down=1.0`` means a
-correct action ALWAYS reverses one stage (easiest environment). We
-expect achievable RL reward to rise monotonically with ``p_down``.
+correct action ALWAYS reverses one stage (easiest environment). A fixed
+policy trained at the headline ``p_down=0.90`` therefore earns more as
+``p_down`` rises and can go negative at the harshest setting.
 
-Each cell trains PPO with the on-contract override set merged with
-``{"p_down": P}`` and evaluates on test_balanced AT THE SAME P. The
+Each cell evaluates the fixed PPO defender on test_balanced under the
+on-contract override set merged with ``{"p_down": P}``. The
 recommended-action
 oracle baseline is rolled separately under each p as a reference
 curve (its mean reward shifts with p because the de-escalation success
