@@ -30,8 +30,6 @@ The CICIoT2023 dataset is projected onto the five kill-chain stages using the pe
 
 After reserving the ten held-out attack classes (Section~\ref{ssec:splits}), the \texttt{train} partition contains $235{,}324$ rows. The disjointness of the partitions is enforced by explicit assertions in \texttt{tests/test\_build\_split\_indices.py} ($\texttt{train} \cap \texttt{ood} = \texttt{val} \cap \texttt{ood} = \texttt{test} \cap \texttt{ood} = \emptyset$), which are part of the \NumTests{}-test suite.
 
-\paragraph{The data-leakage fix as a methodological contribution.} A subtle leakage bug in the original splits-construction script was discovered during supervised stage-detector training: a disjointness assertion in the split-generation pipeline aborted before any model training began, reporting that a held-out class was simultaneously present in the training pool. The root cause was that the original script computed the held-out-class indices but did not remove them from the stratified-split index pools, so the majority of every ``held-out'' class was also a training row. The fix reorders the operations: the held-out indices are computed first and masked out of the pool, and only then are the in-distribution rows stratified and split. This bug would have inflated every downstream out-of-distribution number. Surfacing it through an explicit verification check, rather than discovering it after publication, exemplifies the defensive practice this dissertation argues for. The attacker model is unaffected by the fix, because it consumes only kill-chain stage tokens rather than per-flow features.
-
 % --- Subsection 4.2 ---
 \clearpage
 \section{Supervised Stage Detector}\label{sec:detector_results}

@@ -121,41 +121,30 @@
 \begin{resumo}
 A proliferação exponencial da Internet das Coisas (IoT) produziu uma vasta
 superfície de ataque enquanto as restrições computacionais de muitos dispositivos
-tornam ineficazes as soluções de segurança tradicionais, motivando mecanismos de
-defesa adaptativos capazes de operar autonomamente. Esta dissertação projeta,
-implementa e avalia um arcabouço de defesa adaptativo ciente da
-cadeia de eliminação cibernética (\emph{kill-chain-aware}) para redes IoT,
-baseado em Aprendizado por Reforço Profundo (DRL). O sistema é avaliado sobre
-linhas de características reais do \emph{dataset} CICIoT2023 amostradas em uma
-trajetória de \emph{kill chain} simulada sobre cinco estágios. O adversário reage
-à força do defensor num \emph{cabo de guerra} (\emph{tug-of-war}) sobre a cadeia,
-com pressão de escalada acoplada à sua proximidade do estágio de impacto. De
-forma central, formulamos a defesa como um problema genuíno de
-\emph{observabilidade parcial}: o defensor nunca observa o verdadeiro estágio e
-age sobre linhas de características brutas amostradas de forma \emph{coerente por
-sessão}, enquanto estágios adjacentes são estatisticamente \emph{aliasados} (uma
-taxa controlável governa a ambiguidade por linha), de modo que o estágio só pode
-ser inferido ao longo de uma janela temporal. Treinamos um agente de RL com janela
-temporal (PPO, com DQN e A2C como \emph{baselines}) sobre dez sementes e o
-comparamos a uma Floresta Aleatória acoplada a detector (RF-Acting), a um oráculo
-de observabilidade total e a políticas triviais. Três resultados sustentam a
-contribuição. Primeiro, à medida que a taxa de ambiguidade aumenta, o
-classificador por fluxo degrada monotonicamente enquanto o PPO com janela
-permanece estável: no regime sem ambiguidade os dois empatam (evidenciando
-ausência de vantagem artificial do RL), e a partir do ponto de operação principal
-o PPO supera a RF com intervalos de confiança disjuntos.
-Segundo, uma ablação de recompensa acoplada-versus-desacoplada mostra que o melhor
-agente de RL supera a RF em \emph{ambos} os regimes, refutando a objeção de que
-uma recompensa com informação privilegiada reduziria a tarefa a classificação.
-Terceiro, sob \emph{distribuição deslocada} (dez classes de ataque retidas), o PPO
-previne uma fração maior de ataques que a RF em todas as dez classes, sem
-dependência negativa detectável da acurácia do detector sobre as dez classes
-retidas. Sob um
-orçamento fixo de 5.000.000 de passos sem parada antecipada, os três algoritmos
-saem do regime negativo, mas apenas o PPO o faz de forma confiável: DQN e A2C
-alcançam retornos de melhor \emph{checkpoint} comparáveis, porém com variância
-entre sementes várias vezes maior que a do PPO. A vantagem \emph{on-policy} é,
-portanto, de confiabilidade de treino, não de retorno máximo alcançável.
+tornam ineficazes as soluções tradicionais, motivando mecanismos de defesa
+adaptativos e autônomos. Esta dissertação projeta, implementa e avalia um
+arcabouço de defesa adaptativo ciente da cadeia de eliminação cibernética
+(\emph{kill-chain-aware}) para redes IoT, baseado em Aprendizado por Reforço
+Profundo (DRL) e avaliado a partir de linhas de características reais do
+\emph{dataset} CICIoT2023 amostradas em uma trajetória de \emph{kill chain}
+simulada sobre cinco estágios. O adversário reage à força do defensor num
+\emph{cabo de guerra} sobre a cadeia. De forma central, a defesa é formulada
+como um problema genuíno de \emph{observabilidade parcial}: o defensor nunca
+observa o verdadeiro estágio, de modo que este só pode ser inferido ao longo de
+uma janela temporal. Treinamos um agente de RL com janela (PPO, com DQN e A2C
+como \emph{baselines}) e o comparamos a uma Floresta Aleatória acoplada a
+detector (RF-Acting), a um oráculo de observabilidade total e a políticas
+triviais. Três resultados sustentam a contribuição: (i) à medida que a
+ambiguidade da observação aumenta, o classificador por fluxo degrada
+monotonicamente enquanto o PPO permanece estável, empatando no regime sem
+ambiguidade e superando a RF com intervalos de confiança disjuntos a partir do
+ponto de operação principal; (ii) uma ablação de recompensa mostra que o melhor
+agente de RL supera a RF em ambos os regimes, refutando a objeção de informação
+privilegiada; (iii) sob distribuição deslocada (dez classes de ataque retidas),
+o PPO previne uma fração maior de ataques em todas as classes, sem dependência
+detectável da acurácia do detector. Apenas o PPO treina de forma confiável; DQN
+e A2C alcançam retornos comparáveis com variância várias vezes maior, de modo
+que a vantagem \emph{on-policy} é de confiabilidade, não de retorno máximo.
 Todos os resultados são acompanhados de intervalos de confiança por
 \emph{bootstrap} e de uma cadeia de artefatos reprodutível.
 
@@ -173,37 +162,29 @@ Todos os resultados são acompanhados de intervalos de confiança por
 
 The exponential proliferation of the Internet of Things (IoT) has produced a
 vast attack surface while the computational constraints of many devices render
-traditional security solutions ineffective, motivating adaptive defense
-mechanisms capable of operating autonomously. This dissertation designs,
-implements, and evaluates a kill-chain-aware adaptive defense
-framework for IoT networks, built on Deep Reinforcement Learning (DRL). The
-framework is evaluated on real CICIoT2023 feature rows sampled into a simulated
-kill-chain trajectory over five stages. The adversary reacts to defender force
-in a \emph{tug-of-war} on the kill chain, with escalation pressure coupled to
-its proximity to the impact stage. Centrally, we cast the defense as a genuine
-\emph{partially observable} problem: the defender never observes the true stage
-and acts on raw feature rows drawn \emph{session-coherently}, while adjacent
-stages are statistically \emph{aliased} (a controllable rate governs per-row
-ambiguity), so the stage can be inferred only across a temporal window. We train
-a windowed RL agent (PPO, with DQN and A2C as baselines) over ten seeds and
-compare it against a detector-coupled Random-Forest policy (RF-Acting), a
-full-observability oracle, and trivial baselines. Three results support the
-contribution. First, as the aliasing rate rises the per-flow classifier degrades
-monotonically while windowed PPO stays flat: in the unaliased regime the two tie
-(evidencing no built-in RL advantage), and from the headline operating point
-onward PPO wins with disjoint confidence intervals. Second, a reward-coupling
-ablation shows the best RL agent beats RF-Acting under \emph{both} reward regimes,
-refuting the objection that a privileged-information reward reduces the task to
-classification. Third, under distribution shift (ten held-out attack classes),
-PPO prevents a larger fraction of attacks than RF-Acting on every class, with no
-detectable negative dependence on detector accuracy across the ten held-out
-classes. Under a fixed
-5{,}000{,}000-step budget with no early stopping, all three algorithms clear the
-negative regime, but only PPO does so reliably: DQN and A2C reach comparable
-best-checkpoint returns yet with several times PPO's across-seed variance, so the
+traditional security solutions ineffective, motivating adaptive, autonomous
+defense mechanisms. This dissertation designs, implements, and evaluates a
+kill-chain-aware adaptive defense framework for IoT networks, built on Deep
+Reinforcement Learning (DRL) and evaluated on real CICIoT2023 feature rows
+sampled into a simulated kill-chain trajectory over five stages. The adversary
+reacts to defender force in a \emph{tug-of-war} on the kill chain. Centrally,
+the defense is cast as a genuine \emph{partially observable} problem: the
+defender never observes the true stage, so the stage can be inferred only across
+a temporal window. We train a windowed RL agent (PPO, with DQN and A2C as
+baselines) and compare it against a detector-coupled Random-Forest policy
+(RF-Acting), a full-observability oracle, and trivial baselines. Three results
+support the contribution: (i) as observation ambiguity rises the per-flow
+classifier degrades monotonically while windowed PPO stays flat, tying in the
+unaliased regime and beating RF with disjoint confidence intervals from the
+headline operating point onward; (ii) a reward ablation shows the best RL agent
+beats RF-Acting under both reward regimes, refuting the privileged-information
+objection; (iii) under distribution shift (ten held-out attack classes), PPO
+prevents a larger fraction of attacks on every class, with no detectable
+dependence on detector accuracy. Only PPO trains reliably; DQN and A2C reach
+comparable returns with several times the across-seed variance, so the
 on-policy advantage is one of training reliability, not achievable peak return.
-All results carry bootstrap confidence intervals and a
-reproducible artifact chain.
+All results carry bootstrap confidence intervals and a reproducible artifact
+chain.
 
     \vspace{\onelineskip}
 
@@ -241,6 +222,7 @@ reproducible artifact chain.
   \item[HMM]        Hidden Markov Model
   \item[IDS]        Intrusion Detection System
   \item[IoT]        Internet of Things
+  \item[IT]         Information Technology
   \item[LSTM]       Long Short-Term Memory
   \item[MDP]        Markov Decision Process
   \item[MLP]        Multi-Layer Perceptron
@@ -361,6 +343,7 @@ reproducible artifact chain.
 \bibliography{thesis}
 
 % --- Ap\^{e}ndices ---
+\renewcommand{\apendicename}{Appendix}
 \begin{apendicesenv}
     \include{appendix}
 \end{apendicesenv}

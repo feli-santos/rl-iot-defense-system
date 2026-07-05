@@ -126,6 +126,8 @@ PPO & $3\!\cdot\!10^{-4}$ & 2048 & 0.99 & 0.95 & 0.010 & 0.50 & 64   & 10   \\
 \end{table}
 \par\smallskip\noindent{\small\textit{Note: N/A = hyperparameter not defined for that algorithm family. $n_{\text{steps}}$ applies only to on-policy methods (PPO/A2C); batch\_size applies to DQN and PPO; $n_{\text{epochs}}$ applies only to PPO; $\lambda_{\text{GAE}}$, ent\_coef, vf\_coef apply only to actor-critic methods. DQN off-policy fields are listed below.}}
 
+\paragraph{Network architecture.} All three algorithms use the Stable Baselines3 \texttt{MlpPolicy}, a multi-layer perceptron with two hidden layers of 64 units each and ReLU activations, shared across policy and value networks for PPO/A2C and used as the Q-network for DQN. The same architecture is used across all seeds and algorithms to isolate the learning-rule comparison from network-capacity effects.
+
 For DQN-specific off-policy hyperparameters, the values used were: replay buffer $200{,}000$, learning starts $5000$, target update interval $5000$, exploration fraction $0.20$, initial/final exploration $1.0/0.05$, and max gradient norm $0.5$.
 
 The reward-coupling and out-of-distribution evaluations re-use these hyperparameters unchanged; only the environment contract (reward mode, observation aliasing, held-out classes) is perturbed.
