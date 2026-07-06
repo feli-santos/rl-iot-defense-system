@@ -47,11 +47,11 @@ Kill-chain stages (5): `0 BENIGN, 1 RECON, 2 ACCESS, 3 MANEUVER, 4 IMPACT`
 `benchmark/`=baselines + eval runner, `algorithms/`=SB3 wrappers,
 `utils/`=dataset + realization engine.
 
-**Canonical blue-team checkpoints (current contract): `runs/redesign/alpha_<NN>/<algo>/seed_<n>/best_model.zip`** (`alpha_00/02/04/06`; headline = `alpha_04`,
+**Canonical blue-team checkpoints (current contract): `runs/redesign_5M_det/alpha_<NN>/<algo>/seed_<n>/best_model.zip`** (`alpha_00/02/04/06/08/10`; headline = `alpha_04`,
 matching HeadlineAlpha=0.4). The legacy `runs/blue_team/` path is **pre-redesign
 and absent on fresh checkouts** — do NOT point eval at it. The OOD eval target
 `make ablation-ood-eval` is wired to `ABLATION_OOD_BLUE_TEAM_RUNS ?=
-runs/redesign/alpha_04` and passes the partial-observability flags
+runs/redesign_5M_det/alpha_04` and passes the partial-observability flags
 (`--aliasing-rate 0.4 --session-coherent --no-post-transition-leak
 --proximity-coupled --proximity-min-escalation 0.4`) via
 `ABLATION_OOD_POMDP_FLAGS`; these flags are **mandatory** — omitting them makes
@@ -61,10 +61,12 @@ parity assertion.
 
 ## Conventions / gotchas
 
-- **`config.yml` is the single source of hyperparameters.** `main.py` reads it
-  and passes values into dataclass configs; there are many `.get(key, default)`
-  fallbacks, so a missing key silently uses the code default — grep both places
-  when changing a param.
+- **`config.yml` `dataset:` section is live** (consumed by `main.py
+  process-data`); all RL/env/reward sections are **documentation-only** (the
+  training pipeline uses `DEFAULT_HPARAMS` in `scripts/blue_team/train_agent.py`
+  + Makefile overrides + dataclass defaults in `run_config.py`). There are many
+  `.get(key, default)` fallbacks, so a missing key silently uses the code
+  default — grep both places when changing a param.
 - **Reproducibility = hash chains.** Every thesis figure under
   `docs/results/<area>/` ships a sibling `manifest.json` (git SHA + input/output
   SHA-256). Verify via `python -m scripts.reproducibility_smoke` (`--strict` to
@@ -142,4 +144,4 @@ These are fixed contracts; do not silently change them.
   F10 (aggressiveness) and F17 (evasion) load the fixed det-5M α=0.4 PPO and
   evaluate across the swept knob (no retraining); F17 uses the **evasive-
   persistence** (post-detection hardening) attacker coupling. Test suite:
-  **447 passed**.
+  **451 passed**.

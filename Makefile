@@ -181,10 +181,10 @@ ABLATION_OOD_N_DET_EPISODES ?= 300
 # held-out benchmark, else OOD reward is on an incomparable (unbounded) axis.
 ABLATION_OOD_REWARD_MODE ?= outcome
 # Canonical current-contract blue-team checkpoints live under
-# runs/redesign/alpha_<NN>/<algo>/seed_<n>/best_model.zip (NOT runs/blue_team,
+# runs/redesign_5M_det/alpha_<NN>/<algo>/seed_<n>/best_model.zip (NOT runs/blue_team,
 # which is the legacy/pre-redesign path and is absent on fresh checkouts). The
 # headline operating point is alpha=0.4, so OOD eval loads from alpha_04.
-ABLATION_OOD_BLUE_TEAM_RUNS ?= runs/redesign/alpha_04
+ABLATION_OOD_BLUE_TEAM_RUNS ?= runs/redesign_5M_det/alpha_04
 # Partial-observability operating point: these flags MUST be passed or the
 # runner falls back to a fully-observable MDP (aliasing_rate=0, no session
 # coherence) that mismatches the trained checkpoints' contract and trips the

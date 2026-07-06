@@ -40,7 +40,7 @@ either will not merge.
 - `docs/results/` — canonical experiment outputs; each figure ships a sibling
   `manifest.json` (git SHA + I/O SHA-256).
 - `tex/` — LaTeX thesis (built with Podman via `make thesis`).
-- `config.yml` — single source of hyperparameters.
+- `config.yml` — dataset processing config (live); RL hparams in `train_agent.py` DEFAULT_HPARAMS + Makefile.
 
 See `AGENTS.md` for the full architecture map, locked experiment contracts,
 and gotchas. **Read `AGENTS.md` before touching the environment, reward, or

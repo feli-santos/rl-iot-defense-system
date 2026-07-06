@@ -59,4 +59,4 @@ tug-of-war attacker walks the kill chain against a POMDP blue-team agent
 - 10 seeds `{0..9}` for DRL; baselines/oracle run 1 seed. n=300 episodes for
   all policies. Tug-of-war `p_down=0.90` (ISOLATE 0.98) / `p_up=0.90`;
   BENIGN onset `p_onset=0.35`, `p_onset_access=0.10`. Prevention bonus +50.
-- Canonical checkpoints: `runs/redesign/alpha_{00,02,04,06}/<algo>/seed_<n>/best_model.zip`.
+- Canonical checkpoints: `runs/redesign_5M_det/alpha_{00,02,04,06,08,10}/<algo>/seed_<n>/best_model.zip`.
