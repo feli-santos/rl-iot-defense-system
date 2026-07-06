@@ -76,7 +76,7 @@ _DEFAULT_P_VALUES: list[float] = [0.0, 0.2, 0.4, 0.6, 0.8, 1.0]
 
 
 # Locked primary reward contract (matches the headline redesign sweep:
-# runs/redesign/*/sweep_manifest.json). F10 MUST train + evaluate under this
+# runs/redesign_5M_det/*/sweep_manifest.json). F10 MUST train + evaluate under this
 # contract so its numbers are directly comparable to Chapter 4; the swept
 # knob (p_down) is merged on top per cell. Previously this sweep inherited the
 # EnvConfigSerializable dataclass defaults (reward_mode='proportional',
