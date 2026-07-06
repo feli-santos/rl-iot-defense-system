@@ -149,20 +149,25 @@ simulada sobre cinco estágios. O adversário reage à força do defensor num
 \emph{cabo de guerra} sobre a cadeia. De forma central, a defesa é formulada
 como um problema genuíno de \emph{observabilidade parcial}: o defensor nunca
 observa o verdadeiro estágio, de modo que este só pode ser inferido ao longo de
-uma janela temporal. Treinamos um agente de RL com janela (PPO, com DQN e A2C
-como \emph{baselines}) e o comparamos a uma Floresta Aleatória acoplada a
-detector (RF-Acting), a um oráculo de observabilidade total e a políticas
-triviais. Três resultados sustentam a contribuição: (i) à medida que a
-ambiguidade da observação aumenta, o classificador por fluxo degrada
-monotonicamente enquanto o PPO permanece estável, empatando no regime sem
-ambiguidade e superando a RF com intervalos de confiança disjuntos a partir do
-ponto de operação principal; (ii) uma ablação de recompensa mostra que o melhor
-agente de RL supera a RF em ambos os regimes, refutando a objeção de informação
-privilegiada; (iii) sob distribuição deslocada (dez classes de ataque retidas),
-o PPO previne uma fração maior de ataques em todas as classes, sem dependência
-detectável da acurácia do detector. Apenas o PPO treina de forma confiável; DQN
-e A2C alcançam retornos comparáveis com variância várias vezes maior, de modo
-que a vantagem \emph{on-policy} é de confiabilidade, não de retorno máximo.
+uma janela temporal. Treinamos agentes de RL com janela (PPO e A2C, com DQN
+como \emph{baseline} \emph{off-policy}) e os comparamos a uma Floresta
+Aleatória acoplada a detector (RF-Acting), a um oráculo de observabilidade
+total e a políticas triviais. Três resultados sustentam a contribução: (i) à
+medida que a ambiguidade da observação aumenta, o classificador por fluxo
+degrada monotonicamente enquanto o PPO permanece estável, empatando no regime
+sem ambiguidade e superando a RF com intervalos de confiança disjuntos a
+partir do ponto de operação principal; (ii) uma ablação de recompensa mostra
+que o melhor agente de RL supera a RF em ambos os regimes, refutando a objeção
+de informação privilegiada; (iii) sob distribuição deslocada (dez classes de
+ataque retidas), o melhor agente de RL com janela previne uma fração maior de
+ataques em todas as classes, sem dependência detectável da acurácia do
+detector. Ambos os algoritmos \emph{on-policy} (PPO e A2C) treinam de forma
+confiável sob a recompensa esparsa (desvio-padrão entre sementes $\approx 15$
+e $\approx 9$, respectivamente, frente a $\approx 52$ para o DQN), e o A2C
+atinge o maior retorno de \emph{best-checkpoint} na taxa de \emph{aliasing}
+principal; o DQN \emph{off-policy}, sem modelagem por etapa, degrada-se a
+retorno negativo com variância várias vezes maior, de modo que a vantagem
+\emph{on-policy} é de estabilidade de treinamento, não de retorno máximo.
 Todos os resultados são acompanhados de intervalos de confiança por
 \emph{bootstrap} e de uma cadeia de artefatos reprodutível.
 
@@ -190,21 +195,25 @@ sampled into a simulated kill-chain trajectory over five stages. The adversary
 reacts to defender force in a \emph{tug-of-war} on the kill chain. Centrally,
 the defense is cast as a genuine \emph{partially observable} problem: the
 defender never observes the true stage, so the stage can be inferred only across
-a temporal window. We train a windowed RL agent (PPO, with DQN and A2C as
-baselines) and compare it against a detector-coupled Random-Forest policy
-(RF-Acting), a full-observability oracle, and trivial baselines. Three results
-support the contribution: (i) as observation ambiguity rises the per-flow
-classifier degrades monotonically while windowed PPO stays flat, tying in the
-unaliased regime and beating RF with disjoint confidence intervals from the
-headline operating point onward; (ii) a reward ablation shows the best RL agent
-beats RF-Acting under both reward regimes, refuting the privileged-information
-objection; (iii) under distribution shift (ten held-out attack classes), PPO
-prevents a larger fraction of attacks on every class, with no detectable
-dependence on detector accuracy. Only PPO trains reliably; DQN and A2C reach
-comparable returns with several times the across-seed variance, so the
-on-policy advantage is one of training reliability, not achievable peak return.
-All results carry bootstrap confidence intervals and a reproducible artifact
-chain.
+a temporal window. We train windowed RL agents (PPO and A2C, with DQN as an
+off-policy baseline) and compare them against a detector-coupled
+Random-Forest policy (RF-Acting), a full-observability oracle, and trivial
+baselines. Three results support the contribution: (i) as observation
+ambiguity rises the per-flow classifier degrades monotonically while windowed
+PPO stays flat, tying in the unaliased regime and beating RF with disjoint
+confidence intervals from the headline operating point onward; (ii) a reward
+ablation shows the best RL agent beats RF-Acting under both reward regimes,
+refuting the privileged-information objection; (iii) under distribution shift
+(ten held-out attack classes), the best windowed RL agent prevents a larger
+fraction of attacks on every class, with no detectable dependence on detector
+accuracy. Both on-policy algorithms (PPO and A2C) train reliably under the
+sparse outcome reward (across-seed sd $\approx 15$ and $\approx 9$
+respectively, against $\approx 52$ for DQN), and A2C reaches the highest
+best-checkpoint outcome reward at the headline aliasing rate; the off-policy
+DQN --- without per-step shaping --- degrades to negative reward with
+several times the across-seed variance, so the on-policy advantage is one of
+training-time stability rather than achievable peak return. All results carry
+bootstrap confidence intervals and a reproducible artifact chain.
 
     \vspace{\onelineskip}
 
