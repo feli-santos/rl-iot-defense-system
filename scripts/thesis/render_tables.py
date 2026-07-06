@@ -44,6 +44,17 @@ _ALPHA_WORD = {
     "1.0": "One",
 }
 
+# Spelled-out algorithm tokens for macro names. LaTeX control sequences must
+# be all-letters after the backslash, so "A2C" (which contains the digit 2)
+# is emitted as "ATwoC". "PPO"/"DQN" carry no digits and are kept verbatim.
+# NB: this mapping is only for MACRO NAMES; rendered table columns use the
+# literal algorithm labels ("A2C") via \texttt in the table body.
+_MACRO_ALGO = {
+    "ppo": "PPO",
+    "dqn": "DQN",
+    "a2c": "ATwoC",
+}
+
 # Spelled-out p_down sweep points (LaTeX macro names cannot contain digits/dots).
 _PDOWN_WORD = {
     0.0: "Zero",
@@ -162,9 +173,17 @@ def _render_ood_numbers() -> list[str]:
     lines: list[str] = ["% --- F15 OOD-robustness (detector-independence) ---"]
 
     # Prevention ranges across the ten OOD classes (best-RL vs. tuned RF-Acting).
+    # ``best_rl_metric`` is max{dqn, ppo, a2c} prevention per class, so the macros
+    # report the *best* windowed RL agent's range, not PPO's alone. Historically
+    # this was PPO (the only trained on-policy agent worth quoting); after the
+    # A2C n_steps fix the best-RL agent at the headline regime is A2C. The legacy
+    # ``FfifteenPPOPreventionLow/High`` macro names are kept alongside the new
+    # ``FfifteenBestRLPreventionLow/High`` so existing prose continues to compile.
     rl_prev = [p["best_rl_metric"] for p in points]
     rf_prev = [p["rf_metric"] for p in points]
     adv = [p["advantage"] for p in points]
+    lines.append(_newcmd("FfifteenBestRLPreventionLow", f"{min(rl_prev):0.2f}"))
+    lines.append(_newcmd("FfifteenBestRLPreventionHigh", f"{max(rl_prev):0.2f}"))
     lines.append(_newcmd("FfifteenPPOPreventionLow", f"{min(rl_prev):0.2f}"))
     lines.append(_newcmd("FfifteenPPOPreventionHigh", f"{max(rl_prev):0.2f}"))
     lines.append(_newcmd("FfifteenRFPreventionLow", f"{min(rf_prev):0.2f}"))
@@ -226,21 +245,34 @@ def _render_numbers() -> str:
         "% Regenerate with: PYTHONPATH=. .venv/bin/python -m scripts.thesis.render_tables",
     ]
 
-    # Headline agent + seed count (PPO is the sole headline RL agent).
+    # Seed count (PPO is the pinned headline defender for F10/F17; A2C carries
+    # the highest outcome-reward policy at the headline aliasing rate).
     n_seeds = per_alpha["0.0"]["ppo"].get("n_seeds", 10)
-    lines.append(_newcmd("BestAgentName", "PPO"))
     lines.append(_newcmd("NumSeeds", f"{n_seeds:d}"))
 
-    # Per-alpha reward macros for PPO (headline), tuned RF-Acting, and the oracle
-    # ceiling, plus the PPO-minus-RF crossover gap and its significance verdict.
+    # Per-alpha reward macros for PPO (headline), A2C, DQN, tuned RF-Acting, and
+    # the oracle ceiling, plus the PPO-minus-RF crossover gap and its significance
+    # verdict. A2C/DQN means and CIs are emitted alongside PPO so the prose can
+    # cite all three learned agents' headline numbers mechanically from the JSON.
     for akey, word in _ALPHA_WORD.items():
         cell = per_alpha[akey]
         ppo = cell["ppo"]
+        dqn = cell.get("dqn", {})
+        a2c = cell.get("a2c", {})
         rf = cell["rf_acting"]
         orc = cell["recommended_action"]
         lines.append(_newcmd(f"Alpha{word}PPO", f"{ppo['mean']:+0.1f}"))
         lines.append(_newcmd(f"Alpha{word}PPOCILow", f"{ppo['ci_low']:+0.1f}"))
         lines.append(_newcmd(f"Alpha{word}PPOCIHigh", f"{ppo['ci_high']:+0.1f}"))
+        if dqn:
+            lines.append(_newcmd(f"Alpha{word}DQN", f"{dqn['mean']:+0.1f}"))
+            lines.append(_newcmd(f"Alpha{word}DQNCILow", f"{dqn['ci_low']:+0.1f}"))
+            lines.append(_newcmd(f"Alpha{word}DQNCIHigh", f"{dqn['ci_high']:+0.1f}"))
+        if a2c:
+            macro_a2c = _MACRO_ALGO["a2c"]
+            lines.append(_newcmd(f"Alpha{word}{macro_a2c}", f"{a2c['mean']:+0.1f}"))
+            lines.append(_newcmd(f"Alpha{word}{macro_a2c}CILow", f"{a2c['ci_low']:+0.1f}"))
+            lines.append(_newcmd(f"Alpha{word}{macro_a2c}CIHigh", f"{a2c['ci_high']:+0.1f}"))
         lines.append(_newcmd(f"Alpha{word}RF", f"{rf['mean']:+0.1f}"))
         lines.append(_newcmd(f"Alpha{word}Oracle", f"{orc['mean']:+0.1f}"))
         cr = crossover[float(akey)]
@@ -262,20 +294,25 @@ def _render_numbers() -> str:
     go = fc["gap_outcome"]
     lines.append(_newcmd("CouplingGapCoupled", f"{gc:+0.1f}"))
     lines.append(_newcmd("CouplingGapOutcome", f"{go:+0.1f}"))
-    lines.append(_newcmd("CouplingBestCoupled", fc["per_mode"]["coupled"]["best_algo"].upper()))
-    lines.append(_newcmd("CouplingBestOutcome", fc["per_mode"]["outcome"]["best_algo"].upper()))
     lines.append(
-        _newcmd(
-            "CouplingDQNCoupled",
-            f"{fc['per_mode']['coupled']['per_algo']['dqn']['mean_reward']:+0.1f}",
-        )
+        _newcmd("CouplingBestCoupled", _MACRO_ALGO[fc["per_mode"]["coupled"]["best_algo"]])
     )
     lines.append(
-        _newcmd(
-            "CouplingDQNOutcome",
-            f"{fc['per_mode']['outcome']['per_algo']['dqn']['mean_reward']:+0.1f}",
-        )
+        _newcmd("CouplingBestOutcome", _MACRO_ALGO[fc["per_mode"]["outcome"]["best_algo"]])
     )
+    # Emit every (mode, algo) reward so prose can cite each learned agent's
+    # performance under both reward contracts, not only the historical DQN
+    # coupled / DQN and PPO outcome cells.
+    for mode in ("coupled", "outcome"):
+        m = fc["per_mode"][mode]
+        for algo, cell in m["per_algo"].items():
+            macro_algo = _MACRO_ALGO[algo]
+            lines.append(
+                _newcmd(
+                    f"Coupling{macro_algo}{mode.capitalize()}",
+                    f"{cell['mean_reward']:+0.1f}",
+                )
+            )
 
     # Environment-difficulty (F10) and evasion (F17) sweep macros, emitted only
     # when their canonical summaries exist (regenerated after the sweeps re-run).

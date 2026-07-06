@@ -1,5 +1,7 @@
 """Tests for the JSON->LaTeX render_tables generator."""
 
+import re
+
 from scripts.thesis.render_tables import (
     FALPHA,
     FCOUPLING,
@@ -24,7 +26,6 @@ class TestRenderTables:
 
     def test_render_numbers_headline_macros(self):
         tex = _render_numbers()
-        assert r"\newcommand{\BestAgentName}{PPO}" in tex
         assert r"\newcommand{\NumSeeds}" in tex
         assert r"\newcommand{\OracleCeiling}" in tex
         assert r"\newcommand{\NumTests}" in tex
@@ -72,6 +73,32 @@ class TestRenderTables:
         for mode in ("coupled", "outcome"):
             best = fc["per_mode"][mode]["best_algo"].upper()
             assert f"  {mode.capitalize()} & {best} &" in body
+
+    def test_no_macro_name_contains_digit(self):
+        """LaTeX control sequences must be all-letters after the backslash; a
+        digit ends the name and turns the rest into literal text (e.g.
+        ``\\AlphaFourA2C`` parses as ``\\AlphaFourA`` followed by ``2C``),
+        which silently corrupts every macro that names the A2C algorithm.
+        Regression for the silent-LaTeX-failure bug observed when
+        ``render_tables`` first learned to emit A2C per-alpha macros.
+        """
+        tex = _render_numbers()
+        macro_names = re.findall(r"\\newcommand\{\\(\w+)\}", tex)
+        assert macro_names, "expected at least one \\newcommand macro"
+        bad = [n for n in macro_names if any(ch.isdigit() for ch in n)]
+        assert not bad, f"macro names with digits are invalid LaTeX: {bad}"
+
+    def test_a2c_macronames_spelled_out(self):
+        """The A2C algorithm token is emitted as ATwoC in macro names, never
+        the literal ``A2C`` (whose ``2`` ends the LaTeX control sequence)."""
+        tex = _render_numbers()
+        assert r"\newcommand{\AlphaFourATwoC}" in tex
+        assert r"\newcommand{\AlphaFourATwoCCILow}" in tex
+        assert r"\newcommand{\AlphaFourATwoCCIHigh}" in tex
+        assert r"\newcommand{\CouplingATwoCOutcome}" in tex
+        assert r"\newcommand{\CouplingBestOutcome}{ATwoC}" in tex
+        assert r"\newcommand{\AlphaFourA2C}" not in tex
+        assert r"\newcommand{\CouplingA2C" not in tex
 
 
 def _newcmd_value(tex: str, name: str) -> str:
