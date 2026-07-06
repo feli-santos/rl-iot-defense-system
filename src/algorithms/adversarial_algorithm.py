@@ -195,7 +195,7 @@ class AdversarialAlgorithm:
                 self._config.policy,
                 env,
                 learning_rate=lr,
-                n_steps=min(self._config.n_steps, 5),  # A2C uses smaller n_steps
+                n_steps=self._config.n_steps,
                 gamma=self._config.gamma,
                 gae_lambda=self._config.gae_lambda,
                 ent_coef=self._config.ent_coef,

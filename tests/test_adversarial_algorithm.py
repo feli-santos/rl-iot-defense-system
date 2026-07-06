@@ -213,6 +213,39 @@ class TestAdversarialAlgorithm:
         model = alg.create_model(mock_env)
         assert model is not None
 
+    def test_a2c_honors_configured_n_steps(self, mock_env) -> None:
+        """Regression: A2C rollout length must equal the configured n_steps.
+
+        Guards against a past bug where ``create_model`` clamped A2C's
+        ``n_steps`` to ``min(n_steps, 5)``, silently overriding the configured
+        value (e.g. 256 -> 5). The run manifest recorded the *config* value
+        while the instantiated model used 5, producing a train/manifest/thesis
+        inconsistency. A2C must behave like PPO and pass ``n_steps`` through.
+        """
+        from src.algorithms.adversarial_algorithm import (
+            AdversarialAlgorithm,
+            AdversarialAlgorithmConfig,
+        )
+
+        config = AdversarialAlgorithmConfig(algorithm_type="a2c", n_steps=256)
+        alg = AdversarialAlgorithm(config)
+
+        model = alg.create_model(mock_env)
+        assert model.n_steps == 256
+
+    def test_ppo_honors_configured_n_steps(self, mock_env) -> None:
+        """PPO rollout length must equal the configured n_steps (parity check)."""
+        from src.algorithms.adversarial_algorithm import (
+            AdversarialAlgorithm,
+            AdversarialAlgorithmConfig,
+        )
+
+        config = AdversarialAlgorithmConfig(algorithm_type="ppo", n_steps=2048)
+        alg = AdversarialAlgorithm(config)
+
+        model = alg.create_model(mock_env)
+        assert model.n_steps == 2048
+
     def test_train_model(self, mock_env, tmp_path) -> None:
         """Test training a model."""
         from src.algorithms.adversarial_algorithm import (

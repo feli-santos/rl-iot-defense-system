@@ -418,6 +418,9 @@ class AdversarialEnvConfig:
     # horizon (awarded at truncation), not by draining a counter. This removes the
     # "any forcing policy prevents once the budget is small" degeneracy and the
     # "B is cherry-picked" critique.
+    # Default ``False`` reproduces the legacy budget-based contract; the headline
+    # POMDP regime enables this via ``reward_overrides`` (see ``env_factory`` and
+    # ``run_config.EnvConfigSerializable``).
     proximity_coupled: bool = True
     # Floor on the proximity-scaled under-force escalation probability, as a
     # fraction of ``p_up``. At stage RECON (lambda=0.25) escalation probability is
