@@ -1,18 +1,18 @@
 {
   "schema_version": "1.0",
   "kind": "alpha_curve_plot_manifest",
-  "git_sha": "dcaa6288dd2c261b9ce62ca699bb02a61af7876c",
+  "git_sha": "05acac4c839f124f200153bcc0d05d4520163935",
   "inputs": {
-    "eval_manifest_alpha_00": "cf1a7428191e957dc5390e5b1d1a358df60e968df1465bfbbba7a38a4c6d1355",
-    "eval_manifest_alpha_02": "80c7747515d05ac18220a82e9b90efc8a20d759f7b698cd14d843181df135eb6",
-    "eval_manifest_alpha_04": "5235130f26ea3e6b7824c772a2717d2b616659a6cf09c8fcf603b54eaaee7d91",
-    "eval_manifest_alpha_06": "5a06dc2b54ee5adec24496c81365d26a5495711902d409ba3f38167e6f0e24e9",
-    "eval_manifest_alpha_08": "ecc4afc6d9172eb7cc1711b122f17bc5e82fa97b8cf7295e5cb88a3afae5b932",
-    "eval_manifest_alpha_10": "d30a32022030dc2765ae438ce7a273267ea220e25987a42d0e967ff54d531e9f"
+    "eval_manifest_alpha_00": "05613aef9ec3ced191af46da33b2a5ed55d0be87865a8714935d26940beb2f58",
+    "eval_manifest_alpha_02": "4f4d04673af7bee6cd04a8f0397559e30d8257baef67bac376801683fc355ce2",
+    "eval_manifest_alpha_04": "85b1bda8f88486b33b59e75e06dbca78b8d7ecd73741ea0dce552feb141a59f9",
+    "eval_manifest_alpha_06": "a2aaa49116ceb35a0648966f1d478e2b99a1eebcd08f34d7355c14f745b3040b",
+    "eval_manifest_alpha_08": "70f5a42b13e2cbeff647c1fc482ee850c630b1a32d945d29098815f4ece40e7a",
+    "eval_manifest_alpha_10": "086fe13e1c4f7661e6a720d51eb1ec31fdb7aabef59d404b86a9c5f956339405"
   },
   "outputs": {
-    "summary_json": "f0ad98280fa76e2be02f4664ff95ed189650ed67c7e1e3b173b8fe8c4d093b91",
-    "curve_png": "4491605063d444a6be1d1977e9ff403253f5cee7ef2ef45f2d879140fcab42d3",
-    "curve_pdf": "49cb390567bee411ca54b6ab27733af92bea60bb2a772c94ceabe065348a9a01"
+    "summary_json": "cdc5df1bbb182b74786c332b9a35e642756913d008d7fc3e0a6727c2a6dd552d",
+    "curve_png": "8bdd4e53becab49827dda61cb4e10b50e7667667cafec36b119e97adb1654078",
+    "curve_pdf": "52c63af1e0e0a64a77fc31a544102082793c2825f83fb9593f93770e00e5cb55"
   }
 }

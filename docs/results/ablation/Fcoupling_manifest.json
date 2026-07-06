@@ -1,13 +1,13 @@
 {
   "schema_version": "1.0",
   "kind": "reward_coupling_plot_manifest",
-  "git_sha": "dcaa6288dd2c261b9ce62ca699bb02a61af7876c",
+  "git_sha": "05acac4c839f124f200153bcc0d05d4520163935",
   "inputs": {
-    "sweep_manifest": "e1f7946d9692425760459ea1bbf61be353e17af45b4cd17ddfee258d2afd56ea"
+    "sweep_manifest": "a897af69881f52600698711bc97c6006fcf1df73e15a3d0140db8656e82802d9"
   },
   "outputs": {
-    "summary_json": "366a29717f854a06076e148d64d6fcee0daf1e85dd6ade0ee8dcbe18c4536ec1",
-    "reward_gap_png": "791d84632bf6ceb3919d12219f37a887ef9e5a12b41e9801f88e2c895c60ee9a",
-    "reward_gap_pdf": "e610a3ee17c9b1bf7515f4a7e3a22f1705fe1b594e5aad6a161711e138614e12"
+    "summary_json": "c3a8707297aef5b2e20bebdf4a45ad26be8328f852768f7ad0881d90e2504362",
+    "reward_gap_png": "5d66bf38b4314c3f7e4a3192dffa6d2d20e181003daf77eb90ccac17344e045a",
+    "reward_gap_pdf": "855dd7a5134e9d81be0033ae3c0ae88fd093d167d0b2d446ee5229270c5d2283"
   }
 }

@@ -14,62 +14,62 @@
       "mode": "coupled",
       "per_algo": {
         "dqn": {
-          "mean_reward": 274.7721,
-          "ci_low": 265.9794283333333,
-          "ci_high": 283.8850966666667,
+          "mean_reward": 226.18223333333333,
+          "ci_low": 217.51906249999996,
+          "ci_high": 235.09700416666666,
           "n_episodes": 3000
         },
         "ppo": {
-          "mean_reward": 239.17069999999998,
-          "ci_low": 230.71581583333338,
-          "ci_high": 247.03555333333333,
+          "mean_reward": 162.3906,
+          "ci_low": 154.44869333333332,
+          "ci_high": 170.5181,
           "n_episodes": 3000
         },
         "a2c": {
-          "mean_reward": 225.63623333333337,
-          "ci_low": 216.82884,
-          "ci_high": 233.86483666666666,
+          "mean_reward": 144.76573333333332,
+          "ci_low": 136.1343225,
+          "ci_high": 152.99982333333332,
           "n_episodes": 3000
         }
       },
       "best_algo": "dqn",
-      "best_rl_reward": 274.7721,
+      "best_rl_reward": 226.18223333333333,
       "rf_acting_reward": 146.82266666666666,
       "rf_acting_ci_low": 125.98734999999999,
       "rf_acting_ci_high": 165.61998333333335,
-      "rf_minus_rl_gap": -127.94943333333336
+      "rf_minus_rl_gap": -79.35956666666667
     },
     "outcome": {
       "mode": "outcome",
       "per_algo": {
         "dqn": {
-          "mean_reward": 71.2608,
-          "ci_low": 65.46933,
-          "ci_high": 77.420925,
+          "mean_reward": -8.610233333333332,
+          "ci_low": -15.19989333333333,
+          "ci_high": -1.718366666666666,
           "n_episodes": 3000
         },
         "ppo": {
-          "mean_reward": 123.79853333333332,
-          "ci_low": 119.66859333333335,
-          "ci_high": 127.44256666666666,
+          "mean_reward": 126.17403333333333,
+          "ci_low": 122.25632333333333,
+          "ci_high": 129.79940750000003,
           "n_episodes": 3000
         },
         "a2c": {
-          "mean_reward": 22.212433333333333,
-          "ci_low": 15.0723525,
-          "ci_high": 29.302496666666663,
+          "mean_reward": 146.09939999999997,
+          "ci_low": 143.6884325,
+          "ci_high": 148.3383241666667,
           "n_episodes": 3000
         }
       },
-      "best_algo": "ppo",
-      "best_rl_reward": 123.79853333333332,
+      "best_algo": "a2c",
+      "best_rl_reward": 146.09939999999997,
       "rf_acting_reward": 80.92266666666666,
       "rf_acting_ci_low": 65.92968333333334,
       "rf_acting_ci_high": 94.91120833333332,
-      "rf_minus_rl_gap": -42.87586666666667
+      "rf_minus_rl_gap": -65.17673333333332
     }
   },
-  "gap_coupled": -127.94943333333336,
-  "gap_outcome": -42.87586666666667,
-  "gap_reduction": -85.0735666666667
+  "gap_coupled": -79.35956666666667,
+  "gap_outcome": -65.17673333333332,
+  "gap_reduction": -14.182833333333349
 }
