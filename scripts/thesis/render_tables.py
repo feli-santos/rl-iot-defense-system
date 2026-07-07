@@ -323,9 +323,9 @@ def _render_numbers() -> str:
 
     # Test count (sidecar JSON; canonical pytest count).
     if TEST_COUNT.exists():
-        num_tests = json.loads(TEST_COUNT.read_text()).get("num_tests", 452)
+        num_tests = json.loads(TEST_COUNT.read_text()).get("num_tests", 455)
     else:
-        num_tests = 452
+        num_tests = 455
     lines.append(_newcmd("NumTests", f"{num_tests:d}"))
 
     return "\n".join(lines) + "\n"

@@ -146,4 +146,4 @@ These are fixed contracts; do not silently change them.
   F10 (aggressiveness) and F17 (evasion) load the fixed det-5M α=0.4 PPO and
   evaluate across the swept knob (no retraining); F17 uses the **evasive-
   persistence** (post-detection hardening) attacker coupling. Test suite:
-  **452 passed**.
+  **455 passed**.

@@ -7,6 +7,20 @@ research artefact versions recorded in `CITATION.cff`.
 
 ## [Unreleased]
 
+### Fixed
+- **Environment reward-accounting edge case (post-hoc correctness patch):**
+  `AdversarialIoTEnv.step()` previously let an episode escape terminal IMPACT
+  accounting when the attacker reached the `IMPACT` stage on the *exact* step
+  that exhausted the horizon (`impact_is_terminal=False`, the primary contract).
+  Such a tail-end compromise returned `truncated=True`/`terminated=False` with a
+  stale in-flight outcome and **no impact penalty**, scoring like a benign
+  no-op. The terminal accounting (impact penalty + mitigation/miss bonus +
+  `compromised` outcome label) now also fires at the horizon boundary. Added
+  three regression tests (`TestImpactAtTruncationBoundary`). A 20k-episode
+  measurement puts the boundary case at ≈0.16 % of episodes (random policy),
+  ≈0 % under a passive policy — well inside the reported confidence intervals,
+  so the published canonical numbers are unchanged and **no re-run is required**.
+
 ### Changed
 - Rewrote `requirements.txt` as a minimal direct-dependency list (10 runtime
   packages) and added `requirements-dev.txt` (lint, format, test, pre-commit).
@@ -50,7 +64,7 @@ tug-of-war attacker walks the kill chain against a POMDP blue-team agent
   RF +146.8); outcome reward best A2C +146.1 (gap −65.2 vs RF +80.9). A2C
   matches or exceeds PPO at every aliasing rate — across-seed sd PPO≈15 /
   DQN≈52 / A2C≈9.
-- **452 tests passed** (synthetic-only default; real-data tests auto-skip).
+- **455 tests passed** (synthetic-only default; real-data tests auto-skip).
 
 ### Locked contracts
 

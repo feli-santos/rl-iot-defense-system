@@ -24,8 +24,8 @@ Component & Path & Key artifacts \\
 \midrule
 Dataset prep. & \texttt{dataset/} & \texttt{class\_distribution.png}, \texttt{stage\_distribution.png}, \texttt{dataset\_summary.json}, \texttt{manifest.json} \\
 Markov attacker & --- & Closed-form $5\times5$ transition matrix; no trained artifacts (requires no training) \\
-Stage detector & \texttt{stage-detector/} & \texttt{F11\_per\_stage\_recall.png}, \texttt{F11\_summary.json}, \texttt{manifest.json} \\
-Blue-team training & \texttt{blue-team-training/} & \texttt{F3/F4\_*.png}, per-figure \texttt{summary.json} + \texttt{manifest.json} \\
+Stage detector & \texttt{stage-detector/} & \texttt{tuned\_rf\_per\_class\_f1.pdf}, \texttt{tuned\_rf\_confusion.pdf}, \texttt{tuned\_rf\_stage\_detection.json}, \texttt{manifest.json} \\
+Blue-team training & \texttt{blue-team-training/} & \texttt{F3/F4\_*.pdf}, per-figure \texttt{summary.json} + \texttt{manifest.json} \\
 Alpha-curve benchmark & \texttt{ablation/} & \texttt{Falpha\_curve.pdf}, \texttt{Falpha\_summary.json}, \texttt{Falpha\_manifest.json} \\
 Ablation \& robustness & \texttt{ablation/} & \texttt{Fcoupling\_*}, \texttt{F10/F15/F17\_*}, per-figure \texttt{summary.json} + \texttt{manifest.json} \\
 \bottomrule
@@ -43,7 +43,7 @@ git clone <repo-url> rl-iot-defense-system
 cd rl-iot-defense-system
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
-pytest -q                             # expect: 452 passed
+pytest -q                             # expect: 455 passed
 python -m scripts.reproducibility_smoke
 # expect: VERDICT PASS (no unexplained hash mismatches)
 \end{verbatim}

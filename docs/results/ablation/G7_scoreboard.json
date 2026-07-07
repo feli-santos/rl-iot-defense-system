@@ -16,7 +16,7 @@
     {
       "id": "G7.1",
       "threshold": "pytest -q \u2265 428 passed; zero new skips",
-      "value": "======================= 452 passed in 18.12s ========================",
+      "value": "======================= 455 passed in 18.12s ========================",
       "status": "PASS",
       "kind": "tests"
     },

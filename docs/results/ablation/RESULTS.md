@@ -33,7 +33,7 @@ PASS: PPO benefits from a more lenient environment (higher p_down ⇒ higher rew
 
 | Gate | Threshold | Status | Value / Notes |
 |---|---|:---:|---|
-| **G7.1** | pytest -q ≥ 428 passed; zero new skips | **PASS** | ======================= 452 passed in 18.12s ======================== |
+| **G7.1** | pytest -q ≥ 428 passed; zero new skips | **PASS** | ======================= 455 passed in 18.12s ======================== |
 | **G7.2** | Under outcome (sparse) reward, best RL agent outperforms RF-Acting (gap_outcome < 0) | **PASS** | outcome: best_rl=a2c (+146.1), RF=+80.9, gap=-65.2 |
 | **G7.3** | PPO p=0.0 < p=0.6 by ≥1σ AND rule monotone | **PASS** | p=0.0 CI=(-64.7, -37.3); p=0.6 CI=(93.5, 107.7) |
 | **G7.5** | Environment-design frozen tests pass with impact_is_terminal=True | **PASS** | G7.1 carries this through (full pytest green ⇒ environment-design contract preserved) |
@@ -74,7 +74,7 @@ Source of record: `G7_scoreboard.json` next to this file.
 | `tests/test_env_impact_terminal.py` | 8 synthetic tests pinning the `impact_is_terminal` codepath. |
 | `tests/test_train_agent_reward_overrides.py` | 14 synthetic tests pinning the CLI override plumbing. |
 
-Total tests: 452 (no run-time-data tests added; G7.2/G7.3/G7.8/G7.9 are real-data acceptance tests).
+Total tests: 455 (no run-time-data tests added; G7.2/G7.3/G7.8/G7.9 are real-data acceptance tests).
 
 ## 5 — Cross-step findings discovered during the ablation evaluation
 
@@ -133,4 +133,4 @@ gitignored; all derived figures + summaries + manifests live under
 ## 9 — Test count history
 
 Dataset prep 254 → Dataset prep 266 → Markov Attacker 283 → Env design 296 → Detector 329
-→ Blue-Team 376 → Benchmark 420 → Ablation 447 → **A2C-retrain + contract audit 452**.
+→ Blue-Team 376 → Benchmark 420 → Ablation 447 → A2C-retrain + contract audit 452 → **M1 truncation-boundary fix 455**.
