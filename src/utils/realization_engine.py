@@ -312,6 +312,15 @@ class RealizationEngine:
             return stage_id
         return int(self._rng.choice(candidates))
 
+    def reset_session_cursor(self) -> None:
+        """Clear the per-stage without-replacement cursor.
+
+        Must be called on episode reset so a session that was mid-way through a
+        stage at the end of episode N does not leak into episode N+1. The cursor
+        is lazily repopulated on the next ``_next_session_index`` call.
+        """
+        self._session_cursor.clear()
+
     def _next_session_index(self, stage_id: int) -> int:
         """Return the next row index for a stage via a without-replacement cursor.
 

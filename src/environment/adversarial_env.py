@@ -100,7 +100,10 @@ def _load_stage_detector(path: Path) -> Any:
 
         clf = joblib.load(path)
         return _DetectorWrapper(clf.predict)
-    raise ValueError(f"Unsupported stage-detector checkpoint format: {path} (expected .joblib)")
+    raise ValueError(
+        f"Unsupported stage-detector checkpoint format: {path} "
+        "(expected .joblib, .pkl, or .pickle)"
+    )
 
 
 class _DetectorWrapper:
@@ -418,8 +421,9 @@ class AdversarialEnvConfig:
     # horizon (awarded at truncation), not by draining a counter. This removes the
     # "any forcing policy prevents once the budget is small" degeneracy and the
     # "B is cherry-picked" critique.
-    # Default ``False`` reproduces the legacy budget-based contract; the headline
-    # POMDP regime enables this via ``reward_overrides`` (see ``env_factory`` and
+    # Default ``True`` enables the headline POMDP regime (proximity-coupled
+    # escalation); the legacy budget-based contract is obtained by setting
+    # ``proximity_coupled=False`` (see ``env_factory`` and
     # ``run_config.EnvConfigSerializable``).
     proximity_coupled: bool = True
     # Floor on the proximity-scaled under-force escalation probability, as a
@@ -658,9 +662,12 @@ class AdversarialIoTEnv(gym.Env):
             self._rng = np.random.default_rng(effective_seed)
             # Also seed the realization engine
             self._realization_engine._rng = np.random.default_rng(effective_seed)
-            np.random.seed(effective_seed)
         else:
             self._rng = np.random.default_rng()
+
+        # Clear the session-coherent cursor so episode boundaries are true
+        # session boundaries (no cross-episode cursor leakage).
+        self._realization_engine.reset_session_cursor()
 
         # Reset episode state
         self._step_count = 0
@@ -724,7 +731,8 @@ class AdversarialIoTEnv(gym.Env):
            that step too via ``_check_terminated``. Truncation fires at
            ``max_steps``.
         """
-        assert self.action_space.contains(action), f"Invalid action: {action}"
+        if not self.action_space.contains(action):
+            raise ValueError(f"Invalid action: {action} (must be in {self.action_space})")
 
         self._step_count += 1
         previous_attack_stage = self._current_attack_stage
@@ -826,7 +834,11 @@ class AdversarialIoTEnv(gym.Env):
             and self._step_count >= self._config.min_episode_length
         )
         if impact_arrived and self._config.impact_is_terminal:
-            # environment-design frozen contract (default).
+            # Legacy/case-study branch (impact_is_terminal=True). The primary
+            # training+benchmark contract uses impact_is_terminal=False (see
+            # AdversarialEnvConfig), which gives the agent an explicit IMPACT-row
+            # decision on the next step via _step_at_impact. True is retained
+            # only as a reward-mis-specification case study.
             # Apply the terminal IMPACT penalty inline. The kill chain has
             # consummated this step; we do *not* hand the agent a separate
             # "_step_at_impact" turn for OBSERVE/LOG -> the missed defense
@@ -1113,32 +1125,33 @@ class AdversarialIoTEnv(gym.Env):
     def _advance_attack(self) -> None:
         """Advance attack sequence using the Markov attacker."""
         # Sample the next attack stage from the first-order Markov chain.
-        if len(self._attack_history) >= 1:
-            next_stage = self._attacker.sample_next(self._current_attack_stage, self._rng)
-            current_stage = self._current_attack_stage
-            # Evasion-before-commit: if the defender just applied force and the
-            # attacker is still at a pre-trigger stage (RECON/ACCESS), it stalls
-            # in anticipation instead of progressing. This is coupled to the
-            # defender's action, unlike the random ``retreat_prob`` override.
-            if (
-                self._config.evasion_prob > 0.0
-                and self._recent_block
-                and current_stage in (KillChainStage.RECON.value, KillChainStage.ACCESS.value)
-                and self._rng is not None
-                and self._rng.random() < self._config.evasion_prob
-            ):
-                next_stage = current_stage  # stall (do not progress)
-            # Non-monotonic stress-test: independently override with a
-            # retreat to a random earlier stage (review 2.4.3).
-            if (
-                self._config.retreat_prob > 0.0
-                and current_stage > 0
-                and self._rng is not None
-                and self._rng.random() < self._config.retreat_prob
-            ):
-                next_stage = int(self._rng.integers(0, current_stage))
-            self._current_attack_stage = next_stage
-            self._attack_history.append(next_stage)
+        # ``_attack_history`` is always non-empty (seeded in ``reset``), so no
+        # length guard is needed here.
+        next_stage = self._attacker.sample_next(self._current_attack_stage, self._rng)
+        current_stage = self._current_attack_stage
+        # Evasion-before-commit: if the defender just applied force and the
+        # attacker is still at a pre-trigger stage (RECON/ACCESS), it stalls
+        # in anticipation instead of progressing. This is coupled to the
+        # defender's action, unlike the random ``retreat_prob`` override.
+        if (
+            self._config.evasion_prob > 0.0
+            and self._recent_block
+            and current_stage in (KillChainStage.RECON.value, KillChainStage.ACCESS.value)
+            and self._rng is not None
+            and self._rng.random() < self._config.evasion_prob
+        ):
+            next_stage = current_stage  # stall (do not progress)
+        # Non-monotonic stress-test: independently override with a
+        # retreat to a random earlier stage (review 2.4.3).
+        if (
+            self._config.retreat_prob > 0.0
+            and current_stage > 0
+            and self._rng is not None
+            and self._rng.random() < self._config.retreat_prob
+        ):
+            next_stage = int(self._rng.integers(0, current_stage))
+        self._current_attack_stage = next_stage
+        self._attack_history.append(next_stage)
 
     def _build_observation(self) -> np.ndarray:
         """Build observation from feature window."""
@@ -1245,10 +1258,6 @@ class AdversarialIoTEnv(gym.Env):
                 reward -= self._config.penalty_block_benign
         elif decision_stage == KillChainStage.RECON.value and action >= 3:
             reward -= self._config.penalty_block_recon
-        if decision_stage == KillChainStage.IMPACT.value and action <= 1:
-            # Normally _step_at_impact handles IMPACT, but keep a safety
-            # net so a pathological caller doesn't escape the penalty.
-            reward -= self._config.penalty_missed_impact
 
         # 3) Positive signal for the canonical "do nothing on benign" case.
         if decision_stage == KillChainStage.BENIGN.value and action <= 1:
