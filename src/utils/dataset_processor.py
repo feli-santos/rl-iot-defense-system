@@ -142,7 +142,7 @@ class CICIoTProcessor:
         for col in X.columns:
             if X[col].isna().any():
                 median_val = X[col].median()
-                X[col].fillna(median_val, inplace=True)
+                X[col] = X[col].fillna(median_val)
 
         inf_count = np.isinf(X.values).sum()
         nan_count = X.isna().sum().sum()
@@ -591,7 +591,7 @@ class CICIoTProcessor:
                 "num_stages": 5,
                 "split_info": self.split_info,
                 "stage_counts": {int(k): len(v) for k, v in state_indices.items()},
-                "class_names": list(set(labels)),
+                "class_names": sorted(set(labels)),
                 "sampling": self.sampling_info,
                 "feature_selection_info": self.feature_selection_info,
             }
@@ -737,11 +737,6 @@ class CICIoTProcessor:
         scaler_path = self.output_path / "scaler.joblib"
         if scaler_path.exists():
             artifacts["scaler"] = joblib.load(scaler_path)
-
-        # Load label encoder
-        encoder_path = self.output_path / "label_encoder.joblib"
-        if encoder_path.exists():
-            artifacts["label_encoder"] = joblib.load(encoder_path)
 
         # Load metadata
         metadata_path = self.output_path / "metadata.json"
