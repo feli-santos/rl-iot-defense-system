@@ -97,6 +97,20 @@ def test_ood_eval_spec_default_reward_mode_is_outcome():
     assert spec.proximity_coupled is True
 
 
+def test_ood_eval_argparser_defaults_match_locked_contract():
+    """The argparse defaults (not just the function defaults) must match the
+    locked contract so direct ``python -m scripts.ablation.run_ood_eval``
+    invocation does not silently run a different MDP than training."""
+    from scripts.ablation.run_ood_eval import _build_argparser
+
+    args = _build_argparser().parse_args([])
+    assert args.proximity_coupled is True
+    assert args.seeds == [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+    assert args.n_deterministic_episodes == 300
+    assert args.blue_team_runs == "runs/redesign_5M_det/alpha_04"
+    assert args.reward_mode == "outcome"
+
+
 # ------------------------------------------- detector-independence figure
 
 

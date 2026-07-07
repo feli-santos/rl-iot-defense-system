@@ -1,10 +1,10 @@
 """Ablation: ``impact_is_terminal`` env-config flag (D7.3).
 
 Pins the ``AdversarialEnvConfig.impact_is_terminal`` codepath. The default
-value is ``True``, which preserves the environment-design frozen contract
-byte-for-byte; ``False`` enables a separate explicit IMPACT-row decision
-step before termination, used as one binary axis of the F9 reward-component
-sweep (PLAN §3.1.4 / D7.3).
+value is ``False``, which is the primary training+benchmark contract: the
+agent receives an explicit IMPACT-row decision step before termination.
+``True`` is the legacy/case-study branch that terminates inline at IMPACT
+arrival, retained only as a reward-mis-specification case study.
 
 Synthetic-only — uses the same tiny untrained LSTM + 100-row dataset
 fixture as ``tests/test_env_design_gates.py``. No real-data dependency.

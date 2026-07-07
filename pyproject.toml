@@ -91,3 +91,13 @@ exclude_lines = [
     "if TYPE_CHECKING:",
 ]
 show_missing = true
+
+[tool.pytest.ini_options]
+min_version = "7.0"
+testpaths = ["tests"]
+addopts = "-q"
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests as integration tests requiring the full pipeline",
+    "gpu: marks tests that require a GPU",
+]
