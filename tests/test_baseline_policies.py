@@ -192,3 +192,19 @@ class TestSB3PolicyAdapter:
     def test_non_predict_object_raises(self) -> None:
         with pytest.raises(TypeError, match="must expose .predict"):
             SB3PolicyAdapter(object())
+
+
+# ------------------------------------------------------- mapping sync guard
+
+
+class TestRecommendedActionMappingSync:
+    """The env and baseline_policies each keep a private copy of the
+    IoTWarden recommended-action mapping. This pins them in lock-step so
+    a drift in one is caught by the other (the env copy drives the reward
+    and the tug-of-war dynamics; the baseline copy drives RFActingPolicy)."""
+
+    def test_recommended_action_mapping_matches_env(self) -> None:
+        from src.environment.adversarial_env import _RECOMMENDED_ACTION_BY_STAGE
+
+        for stage in range(5):
+            assert _RECOMMENDED_ACTION_BY_STAGE[stage] == _RECOMMENDED_BY_STAGE[stage]

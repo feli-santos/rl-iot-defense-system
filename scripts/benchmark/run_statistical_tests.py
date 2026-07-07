@@ -231,9 +231,12 @@ def run_tests(
         else:
             logger.warning("No data for %s — skipping", algo)
 
-    # Load RF-Acting rewards (single seed=0, 150 episodes)
-    rf_jsonl = benchmark_root / "rf_acting" / "seed_0" / "eval_test.jsonl"
-    rf_rewards_list = _load_episode_rewards(rf_jsonl)
+    # Load RF-Acting rewards (pooled across all seed_* dirs, matching the
+    # multi-seed contract of learned agents).
+    rf_rewards_list: list[float] = []
+    for rf_seed_dir in sorted((benchmark_root / "rf_acting").glob("seed_*")):
+        rf_jsonl = rf_seed_dir / "eval_test.jsonl"
+        rf_rewards_list.extend(_load_episode_rewards(rf_jsonl))
     if rf_rewards_list:
         algo_rewards["rf_acting"] = np.array(rf_rewards_list, dtype=float)
         lo, hi = _bootstrap_ci(algo_rewards["rf_acting"])

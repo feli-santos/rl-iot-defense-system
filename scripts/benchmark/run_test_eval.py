@@ -213,7 +213,7 @@ def _eval_env_spec_from_args(args: argparse.Namespace) -> EnvConfigSerializable:
         aliasing_rate=getattr(args, "aliasing_rate", 0.0),
         session_coherent=getattr(args, "session_coherent", False),
         no_post_transition_leak=getattr(args, "no_post_transition_leak", False),
-        proximity_coupled=getattr(args, "proximity_coupled", False),
+        proximity_coupled=getattr(args, "proximity_coupled", True),
         proximity_min_escalation=getattr(args, "proximity_min_escalation", 0.4),
     )
 
@@ -538,18 +538,21 @@ def _roll_random(args: argparse.Namespace, seed: int) -> dict[str, Any]:
 def _roll_deterministic(
     args: argparse.Namespace,
     policy_name: str,
+    seed: int = 0,
 ) -> dict[str, Any]:
-    """Roll a deterministic baseline once (single seed=0, n=150 episodes).
+    """Roll a deterministic baseline for one seed × n_deterministic_episodes.
 
-    Per D6.3, deterministic baselines (always-X, recommended-action,
-    rf-acting) get one seed × 150 episodes for the same total n=150 as
-    the seeded random baseline (5 × 30).
+    Per D6.3, deterministic baselines (always-X, recommended-action) get
+    one seed (seed=0) × n_deterministic_episodes.  rf_acting is the
+    deployable comparison baseline and is rolled across the same
+    multi-seed contract as learned agents (10 seeds × n_episodes) so
+    that the RL-vs-RF comparison uses the same effective sample size.
     """
-    out_dir = Path(args.out_root) / policy_name / "seed_0"
+    out_dir = Path(args.out_root) / policy_name / f"seed_{seed}"
     out_dir.mkdir(parents=True, exist_ok=True)
     eval_jsonl = out_dir / "eval_test.jsonl"
     latency_jsonl = out_dir / "latency.jsonl"
-    run_id = f"{policy_name}_seed_0_test"
+    run_id = f"{policy_name}_seed_{seed}_test"
 
     n_ep = 2 if args.smoke else args.n_deterministic_episodes
 
@@ -567,7 +570,7 @@ def _roll_deterministic(
             return {
                 "kind": "baseline",
                 "policy": policy_name,
-                "seed": 0,
+                "seed": seed,
                 "run_id": run_id,
                 "ok": False,
                 "error": msg,
@@ -579,7 +582,7 @@ def _roll_deterministic(
         # F is whatever the env reports at construction; use a probe
         # rollout instead of hard-coding 29 to stay robust to a
         # smaller-feature-matrix split.
-        probe_env = _build_eval_env(args, seed=0)
+        probe_env = _build_eval_env(args, seed=seed)
         try:  # noqa: SIM105
             obs0 = probe_env.reset()
             obs_dim = int(np.asarray(obs0).reshape(-1).size)
@@ -599,7 +602,7 @@ def _roll_deterministic(
     else:
         raise ValueError(f"unknown deterministic baseline {policy_name!r}")
 
-    env = _build_eval_env(args, seed=0)
+    env = _build_eval_env(args, seed=seed)
     try:  # noqa: SIM105
         t0 = time.time()
         stats = run_policy(
@@ -610,7 +613,7 @@ def _roll_deterministic(
             run_id=run_id,
             policy_name=policy_name,
             latency_path=latency_jsonl,
-            seed=0,
+            seed=seed,
         )
         wallclock = time.time() - t0
     finally:
@@ -622,7 +625,7 @@ def _roll_deterministic(
     out: dict[str, Any] = {
         "kind": "baseline",
         "policy": policy_name,
-        "seed": 0,
+        "seed": seed,
         "run_id": run_id,
         "ok": True,
         "eval_jsonl": str(eval_jsonl),
@@ -687,13 +690,27 @@ def main(argv: list[str] | None = None) -> int:
                     results[-1].get("wallclock_seconds", 0.0),
                 )
         elif name in {"always_observe", "always_block", "recommended_action", "rf_acting"}:
-            results.append(_roll_deterministic(args, name))
-            logger.info(
-                "%s done: ok=%s wallclock=%.1fs",
-                name,
-                results[-1]["ok"],
-                results[-1].get("wallclock_seconds", 0.0),
-            )
+            if name == "rf_acting":
+                # rf_acting is the deployable comparison baseline; roll it
+                # across the same multi-seed contract as learned agents so
+                # the RL-vs-RF comparison uses the same effective n.
+                for seed in args.seeds:
+                    results.append(_roll_deterministic(args, name, seed))
+                    logger.info(
+                        "%s seed=%d done: ok=%s wallclock=%.1fs",
+                        name,
+                        seed,
+                        results[-1]["ok"],
+                        results[-1].get("wallclock_seconds", 0.0),
+                    )
+            else:
+                results.append(_roll_deterministic(args, name))
+                logger.info(
+                    "%s done: ok=%s wallclock=%.1fs",
+                    name,
+                    results[-1]["ok"],
+                    results[-1].get("wallclock_seconds", 0.0),
+                )
         else:
             logger.warning("unknown baseline %r; skipping", name)
 

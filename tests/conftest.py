@@ -55,6 +55,7 @@ CICIOT_TO_STAGE_MAPPING = {
     "DNS_Spoofing": 3,
     "Mirai-greeth_flood": 3,
     "Mirai-greip_flood": 3,
+    "Mirai-udpplain": 3,
     # Stage 4: IMPACT - Service degradation/Denial
     "DDoS-ICMP_Flood": 4,
     "DDoS-UDP_Flood": 4,

@@ -12,14 +12,19 @@ Key Design
   their first-order deltas).
 - **Action space**. ``Discrete(5)`` force-continuum:
   ``OBSERVE=0`` < ``LOG=1`` < ``RESTRICT=2`` < ``BLOCK=3`` < ``ISOLATE=4``.
-- **Reward**. *Stage-action proportionality* relative to the IoTWarden
-  recommended-action mapping (see :func:`_recommended_action`):
+- **Reward**. Gated by ``reward_mode`` (see :func:`_recommended_action`
+  for the stage-action proportionality mapping):
 
-      R_t = R_proportional - C_action - P_overreact - P_underreact +
-            R_progress_blocked
-
-  This replaces the previous action-vs-previous-action heuristic; see
-  ``docs/results/environment/PLAN.md`` (B2 fix).
+    - ``reward_mode="outcome"`` (primary training/benchmark contract):
+      the per-step reward is *only* ``-action_cost``; all stage-conditioned
+      shaping (proportionality, guardrails, benign-passive bonus) is
+      stripped. Learning signal comes from realized outcomes — prevention
+      bonus (+50), impact penalty (-200), missed-impact (-150),
+      defense-success (+250), and a capped de-escalation bonus (+15,
+      cap 150).
+    - ``reward_mode="coupled"`` (reward-coupling ablation only): adds
+      per-step shaping — proportionality bonus (±5), benign guardrails,
+      benign-passive bonus — on top of the outcome terms.
 - **Lifecycle (environment-design v2).**
     - The episode runs for **at least** ``min_episode_length`` steps and at
       most ``max_steps`` (truncation). Choosing BLOCK or ISOLATE on an
@@ -233,15 +238,16 @@ class AdversarialEnvConfig:
     # =====================================================================
     # Tug-of-war attacker dynamics (environment-design v3, headline)
     # =====================================================================
-    # The attacker's stage transition is driven by the *proportionality gap*
-    # between the defender's action ``a`` and the stage-recommended action
-    # ``rec = recommended(s)``, with ``gap = |a - rec|``:
+    # The attacker's stage transition is driven by the *signed proportionality
+    # difference* ``d = action - recommended(stage)`` between the defender's
+    # force and the stage-recommended action ``rec = recommended(s)``:
     #
-    #   gap == 0 (correctly calibrated force)  -> attacker DE-ESCALATES
-    #                                             s -> max(0, s-1) w.p. p_down
-    #   gap == 1 (adjacent / tolerable)        -> attacker HOLDS at s
-    #   gap >= 2 (mis-calibrated force)        -> attacker ESCALATES
-    #                                             s -> min(IMPACT, s+1) w.p. p_up
+    #   d <= -1 (under-force, defender too weak) -> ESCALATE
+    #                                          s -> min(IMPACT, s+1) w.p. p_up_eff
+    #   d ==  0 (proportional, exactly right)   -> DE-ESCALATE
+    #                                          s -> max(0, s-1) w.p. p_down
+    #                                          (or p_down_isolate when action == ISOLATE)
+    #   d >=  1 (over-force, wasteful)          -> HOLD (stage unchanged)
     #
     # The residual ``1 - p_*`` mass is a "hold" (nothing happens this step),
     # which deliberately prevents a degenerate, perfectly deterministic

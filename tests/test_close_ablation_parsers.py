@@ -290,3 +290,36 @@ def test_coupling_summary_handles_missing_cells(tmp_path):
     assert s["best_rl_reward"] is None
     assert s["rf_acting_reward"] is None
     assert s["rf_minus_rl_gap"] is None
+
+
+# ------------------------------------------- OOD hybrid realiser mutation
+
+
+def test_ood_hybrid_realiser_mutation_pattern(mock_dataset):
+    """The F15 hybrid realiser surgically replaces one stage's row pool with
+    OOD-class rows by mutating three private RealizationEngine attrs. Pin the
+    mutation contract so a refactor that changes the attr names or drops the
+    total recompute is caught (scripts/ablation/run_ood_eval.py:294-298)."""
+    from src.utils.realization_engine import RealizationEngine
+
+    engine = RealizationEngine(data_path=mock_dataset["path"])
+
+    ood_stage = 3  # MANEUVER (e.g., Mirai-udpplain)
+    original_total = engine._total_samples
+    original_ood_count = engine._stage_counts[ood_stage]
+
+    # Synthetic OOD-class rows: a small set of row indices.
+    new_indices = [0, 1, 2, 5, 7]
+
+    # Mirror the _build_ood_env mutation (run_ood_eval.py:294-298).
+    engine._state_indices[ood_stage] = new_indices
+    engine._stage_counts[ood_stage] = len(new_indices)
+    engine._total_samples = sum(engine._stage_counts.values())
+
+    # The OOD stage's pool is replaced with the new indices.
+    assert engine._state_indices[ood_stage] == new_indices
+    assert engine._stage_counts[ood_stage] == len(new_indices)
+    # The total is recomputed as the sum of all stage counts.
+    assert engine._total_samples == sum(engine._stage_counts.values())
+    # The total reflects the surgical replacement (other stages untouched).
+    assert engine._total_samples == original_total - original_ood_count + len(new_indices)

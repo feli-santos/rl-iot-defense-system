@@ -1458,3 +1458,168 @@ class TestPartialObservabilityRedesign:
         assert truncated is True
         assert info["outcome"] == "prevented"
         assert info["compromised"] is False
+
+
+@pytest.fixture
+def canonical_dataset(tmp_path):
+    import json
+
+    import joblib
+    from sklearn.preprocessing import StandardScaler
+
+    dataset_path = tmp_path / "dataset"
+    dataset_path.mkdir(parents=True)
+    rng = np.random.default_rng(0)
+    labels = np.repeat(np.arange(5), 40)
+    features = rng.standard_normal((labels.size, 46)).astype(np.float32)
+    features[:, 0] = labels.astype(np.float32)
+    np.save(dataset_path / "features.npy", features)
+    np.save(dataset_path / "labels.npy", labels)
+    state_indices = {str(i): [] for i in range(5)}
+    for idx, label in enumerate(labels):
+        state_indices[str(int(label))].append(int(idx))
+    with open(dataset_path / "state_indices.json", "w") as f:
+        json.dump(state_indices, f)
+    scaler = StandardScaler()
+    scaler.fit(features)
+    joblib.dump(scaler, dataset_path / "scaler.joblib")
+    return dataset_path
+
+
+def test_proximity_escalation_formula_canonical_values(canonical_dataset):
+    from src.environment.adversarial_env import AdversarialEnvConfig, AdversarialIoTEnv
+    from src.utils.label_mapper import KillChainStage
+
+    config = AdversarialEnvConfig(
+        p_up=0.90,
+        proximity_coupled=True,
+        proximity_min_escalation=0.4,
+        tug_of_war=True,
+    )
+    env = AdversarialIoTEnv(dataset_path=canonical_dataset, config=config)
+    env.reset(seed=123)
+
+    n_trials = 2000
+    tol = 0.03
+    expected = {
+        KillChainStage.RECON.value: 0.495,
+        KillChainStage.ACCESS.value: 0.630,
+        KillChainStage.MANEUVER.value: 0.765,
+    }
+    for stage, exp_p in expected.items():
+        escalations = 0
+        for _ in range(n_trials):
+            env._current_attack_stage = stage
+            env._attack_history = [stage]
+            env._advance_tug_of_war(0, stage)
+            if env._current_attack_stage == stage + 1:
+                escalations += 1
+        rate = escalations / n_trials
+        assert abs(rate - exp_p) <= tol, (
+            f"stage {stage}: empirical p_up_eff {rate:.4f} "
+            f"not within +-{tol} of canonical {exp_p}"
+        )
+
+    lam_impact = KillChainStage.IMPACT.value / KillChainStage.IMPACT.value
+    p_up_eff_impact = config.p_up * (
+        config.proximity_min_escalation + (1.0 - config.proximity_min_escalation) * lam_impact
+    )
+    assert p_up_eff_impact == pytest.approx(0.90)
+
+
+def test_p_down_isolate_higher_than_p_down(canonical_dataset):
+    from src.environment.adversarial_env import AdversarialEnvConfig, AdversarialIoTEnv
+    from src.utils.label_mapper import KillChainStage
+
+    config = AdversarialEnvConfig(
+        p_down=0.90,
+        p_down_isolate=0.98,
+        tug_of_war=True,
+    )
+    env = AdversarialIoTEnv(dataset_path=canonical_dataset, config=config)
+    env.reset(seed=123)
+
+    n_trials = 1000
+    tol = 0.03
+
+    isolate_deescalations = 0
+    impact = KillChainStage.IMPACT.value
+    for _ in range(n_trials):
+        env._current_attack_stage = impact
+        env._attack_history = [impact]
+        env._advance_tug_of_war(4, impact)
+        if env._current_attack_stage == impact - 1:
+            isolate_deescalations += 1
+    isolate_rate = isolate_deescalations / n_trials
+
+    block_deescalations = 0
+    maneuver = KillChainStage.MANEUVER.value
+    for _ in range(n_trials):
+        env._current_attack_stage = maneuver
+        env._attack_history = [maneuver]
+        env._advance_tug_of_war(3, maneuver)
+        if env._current_attack_stage == maneuver - 1:
+            block_deescalations += 1
+    block_rate = block_deescalations / n_trials
+
+    assert config.p_down_isolate > config.p_down
+    assert (
+        abs(isolate_rate - 0.98) <= tol
+    ), f"ISOLATE de-escalation rate {isolate_rate:.4f} not within +-{tol} of 0.98"
+    assert (
+        abs(block_rate - 0.90) <= tol
+    ), f"BLOCK de-escalation rate {block_rate:.4f} not within +-{tol} of 0.90"
+    assert isolate_rate > block_rate
+
+
+def test_benign_onset_probabilities_statistical(canonical_dataset):
+    from src.environment.adversarial_env import AdversarialEnvConfig, AdversarialIoTEnv
+    from src.utils.label_mapper import KillChainStage
+
+    config = AdversarialEnvConfig(
+        p_onset=0.35,
+        p_onset_access=0.10,
+        tug_of_war=True,
+    )
+    env = AdversarialIoTEnv(dataset_path=canonical_dataset, config=config)
+    env.reset(seed=123)
+
+    n_trials = 10000
+    benign = KillChainStage.BENIGN.value
+    recon = KillChainStage.RECON.value
+    access = KillChainStage.ACCESS.value
+    counts = {benign: 0, recon: 0, access: 0}
+    for _ in range(n_trials):
+        env._current_attack_stage = benign
+        env._attack_history = [benign]
+        env._advance_tug_of_war(0, benign)
+        counts[env._current_attack_stage] += 1
+
+    p_recon = counts[recon] / n_trials
+    p_access = counts[access] / n_trials
+    p_stay = counts[benign] / n_trials
+
+    assert 0.32 <= p_recon <= 0.38, f"P(BENIGN->RECON)={p_recon:.4f} outside [0.32, 0.38]"
+    assert 0.07 <= p_access <= 0.13, f"P(BENIGN->ACCESS)={p_access:.4f} outside [0.07, 0.13]"
+    assert 0.52 <= p_stay <= 0.58, f"P(stay BENIGN)={p_stay:.4f} outside [0.52, 0.58]"
+
+
+def test_cross_episode_cursor_reset(canonical_dataset):
+    from src.environment.adversarial_env import AdversarialEnvConfig, AdversarialIoTEnv
+
+    config = AdversarialEnvConfig(session_coherent=True)
+    env = AdversarialIoTEnv(dataset_path=canonical_dataset, config=config)
+    env.reset(seed=42)
+
+    engine = env._realization_engine
+    stage = 3
+    rows_ep1 = [engine.sample_by_id(stage, session_coherent=True) for _ in range(5)]
+    assert len({tuple(r.tolist()) for r in rows_ep1}) == 5
+    assert stage in engine._session_cursor
+    assert engine._session_cursor[stage][1] == 5
+
+    env.reset(seed=42)
+    assert stage not in engine._session_cursor
+
+    first_row_ep2 = engine.sample_by_id(stage, session_coherent=True)
+    np.testing.assert_array_equal(first_row_ep2, rows_ep1[0])

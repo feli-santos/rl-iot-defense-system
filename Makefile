@@ -119,6 +119,16 @@ blue-team-sweep:  ## Blue-team: train DQN/PPO/A2C × 10 seeds (~3-7 h CPU).
 	    $(if $(BLUE_TEAM_REWARD_OVERRIDES),--reward-overrides '$(BLUE_TEAM_REWARD_OVERRIDES)',) \
 	    --continue-on-failure
 
+.PHONY: blue-team-alpha-sweep
+blue-team-alpha-sweep:  ## Blue-team: train DQN/PPO/A2C × 10 seeds × 6 alphas (canonical alpha-sweep, ~20-40 h CPU).
+	@for alpha in 00 02 04 06 08 10; do \
+	    rate=$$((10#$$alpha / 10)).$$((10#$$alpha % 10)); \
+	    echo ">>> alpha_$$alpha (aliasing_rate=$$rate)"; \
+	    $(MAKE) blue-team-sweep \
+	        BLUE_TEAM_RUNS_ROOT=runs/redesign_5M_det/alpha_$$alpha \
+	        BLUE_TEAM_REWARD_OVERRIDES='{"aliasing_rate":'"$$rate"',"session_coherent":true,"no_post_transition_leak":true,"proximity_coupled":true,"proximity_min_escalation":0.4}'; \
+	done
+
 .PHONY: blue-team-figures
 blue-team-figures:  ## Blue-team: render F3, F4, T1 from $(BLUE_TEAM_RUNS_ROOT).
 	$(PYTHON) -m scripts.blue_team.plot_learning_curves \
