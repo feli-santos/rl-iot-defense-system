@@ -836,12 +836,21 @@ class AdversarialIoTEnv(gym.Env):
             self._current_attack_stage == KillChainStage.IMPACT.value
             and self._step_count >= self._config.min_episode_length
         )
-        if impact_arrived and self._config.impact_is_terminal:
-            # Legacy/case-study branch (impact_is_terminal=True). The primary
-            # training+benchmark contract uses impact_is_terminal=False (see
-            # AdversarialEnvConfig), which gives the agent an explicit IMPACT-row
-            # decision on the next step via _step_at_impact. True is retained
-            # only as a reward-mis-specification case study.
+        truncated = self._step_count >= self._config.max_steps
+        if impact_arrived and (self._config.impact_is_terminal or truncated):
+            # Two situations funnel here:
+            #   (a) impact_is_terminal=True — legacy/case-study branch. The
+            #       primary training+benchmark contract uses
+            #       impact_is_terminal=False (see AdversarialEnvConfig), which
+            #       normally gives the agent an explicit IMPACT-row decision on
+            #       the next step via _step_at_impact. True is retained only as
+            #       a reward-mis-specification case study.
+            #   (b) impact_is_terminal=False *and* the horizon is exhausted this
+            #       exact step (truncated). The deferred _step_at_impact turn can
+            #       never fire because the episode ends now; without this branch
+            #       the tail compromise would escape the IMPACT penalty entirely
+            #       and score like a benign no-op. Apply the terminal accounting
+            #       inline so a boundary compromise is penalised consistently.
             # Apply the terminal IMPACT penalty inline. The kill chain has
             # consummated this step; we do *not* hand the agent a separate
             # "_step_at_impact" turn for OBSERVE/LOG -> the missed defense
@@ -857,18 +866,20 @@ class AdversarialIoTEnv(gym.Env):
                 outcome = "impact_missed"
             else:
                 outcome = "compromised"
-            terminated = True
+            # Natural termination only for the terminal-contract branch; a
+            # horizon-boundary compromise remains a *truncation* (terminated
+            # stays False) to preserve Gym truncated-vs-terminated semantics.
+            terminated = bool(self._config.impact_is_terminal)
         else:
-            # Either IMPACT has not arrived OR impact_is_terminal=False.
-            # When False and IMPACT just arrived this step, do NOT terminate
-            # and do NOT apply the inline terminal reward — the agent will
-            # get an explicit IMPACT-row decision on the *next* step via
-            # ``_step_at_impact`` (path 1 at the top of step()). The
-            # "ongoing"/"defended" outcome label set above is preserved
-            # so the F9 ablation sees this step as a normal pre-IMPACT
+            # Either IMPACT has not arrived OR impact_is_terminal=False with the
+            # horizon still open. When False and IMPACT just arrived this step
+            # (and we are NOT truncating), do NOT terminate and do NOT apply the
+            # inline terminal reward — the agent will get an explicit IMPACT-row
+            # decision on the *next* step via ``_step_at_impact`` (path 1 at the
+            # top of step()). The "ongoing"/"defended" outcome label set above is
+            # preserved so the F9 ablation sees this step as a normal pre-IMPACT
             # step that *just happened* to land on IMPACT.
             terminated = False
-        truncated = self._step_count >= self._config.max_steps
 
         # Proximity-coupled prevention: with no finite budget, the defender
         # wins by holding the attacker below IMPACT for the entire horizon.

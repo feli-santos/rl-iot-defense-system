@@ -295,3 +295,136 @@ class TestImpactIsTerminalFalse:
             f"IMPACT response); got '{info['outcome']}'. The terminal "
             f"label is set on the explicit IMPACT-row step."
         )
+
+
+def _force_impact_on_truncation_boundary(
+    env: AdversarialIoTEnv,
+    action_into_impact: int,
+    *,
+    seed: int = 0,
+) -> tuple:
+    """Drive ``env`` so the attacker reaches IMPACT on the *exact* step where
+    the horizon is exhausted (``_step_count >= max_steps``).
+
+    This exercises the truncation-boundary terminal-accounting branch: with
+    ``impact_is_terminal=False`` the deferred ``_step_at_impact`` turn can
+    never fire (the episode ends now), so the IMPACT penalty must be applied
+    inline on this step. Mirrors ``_force_into_impact`` but rolls BENIGN all
+    the way to ``max_steps - 1`` before flipping to IMPACT on the final step.
+    """
+    obs, info = env.reset(seed=seed)
+    original_advance = env._advance_attack
+
+    def _stay_benign() -> None:
+        env._current_attack_stage = KillChainStage.BENIGN.value
+        env._attack_history.append(env._current_attack_stage)
+
+    env._advance_attack = _stay_benign  # type: ignore[method-assign]
+    try:
+        # Roll BENIGN right up to the last step before the horizon closes.
+        while env._step_count < env._config.max_steps - 1:
+            obs, r, term, trunc, info = env.step(0)  # OBSERVE
+            if term or trunc:
+                raise RuntimeError(
+                    "Env ended before the boundary step; the _stay_benign "
+                    "stub should keep it BENIGN until max_steps."
+                )
+
+        # Final step: MANEUVER -> IMPACT lands exactly as the horizon closes.
+        env._current_attack_stage = KillChainStage.MANEUVER.value
+        env._attack_history.append(env._current_attack_stage)
+
+        def _force_impact_advance() -> None:
+            env._current_attack_stage = KillChainStage.IMPACT.value
+            env._attack_history.append(env._current_attack_stage)
+
+        env._advance_attack = _force_impact_advance  # type: ignore[method-assign]
+        result = env.step(action_into_impact)
+    finally:
+        env._advance_attack = original_advance  # type: ignore[method-assign]
+    return result
+
+
+class TestImpactAtTruncationBoundary:
+    """Regression for the IMPACT-at-truncation-boundary accounting gap.
+
+    When ``impact_is_terminal=False`` and the attacker reaches IMPACT on the
+    exact step the horizon is exhausted, the deferred ``_step_at_impact`` turn
+    can never fire. Without inline accounting the tail compromise would escape
+    the IMPACT penalty entirely and score like a benign no-op. The env must
+    instead apply the terminal IMPACT accounting inline on this step while
+    keeping ``terminated=False`` (it is a truncation, not natural termination).
+    """
+
+    def test_boundary_impact_applies_penalty_isolate_outcome(self, env_factory):
+        """ISOLATE on the boundary-IMPACT step earns the inline terminal shape
+        (-impact_penalty +defense_success_bonus), labelled impact_mitigated,
+        and truncates (terminated stays False)."""
+        env = env_factory(impact_is_terminal=False, max_steps=30)
+        obs, reward, terminated, truncated, info = _force_impact_on_truncation_boundary(
+            env, action_into_impact=4  # ISOLATE
+        )
+        assert truncated is True, "Boundary IMPACT must truncate (horizon exhausted)."
+        assert terminated is False, (
+            "A horizon-boundary compromise is a truncation, not a natural "
+            "termination; terminated must stay False."
+        )
+        assert info["outcome"] == "impact_mitigated", (
+            f"ISOLATE on the boundary-IMPACT step must be labelled "
+            f"'impact_mitigated'; got '{info['outcome']}'."
+        )
+        assert info["compromised"] is True, "The attacker reached IMPACT; compromised must be True."
+        # MANEUVER -> ISOLATE: action_cost=-0.8, prop_band(|4-3|=1)=+5,
+        # then -impact_penalty(200) +defense_success_bonus(250) inline.
+        assert reward == pytest.approx(54.2, abs=0.5), (
+            f"Expected ~+54.2 (decision reward + inline terminal mitigation) "
+            f"for ISOLATE on the boundary-IMPACT step; got {reward:+.4f}."
+        )
+
+    def test_boundary_impact_observe_takes_full_penalty(self, env_factory):
+        """OBSERVE on the boundary-IMPACT step takes the missed-impact hit
+        (-impact_penalty -penalty_missed_impact), labelled impact_missed —
+        it must NOT score like a benign no-op."""
+        env = env_factory(impact_is_terminal=False, max_steps=30)
+        obs, reward, terminated, truncated, info = _force_impact_on_truncation_boundary(
+            env, action_into_impact=0  # OBSERVE
+        )
+        assert truncated is True
+        assert terminated is False
+        assert info["outcome"] == "impact_missed", (
+            f"OBSERVE on the boundary-IMPACT step must be labelled "
+            f"'impact_missed'; got '{info['outcome']}'."
+        )
+        assert info["compromised"] is True
+        # MANEUVER -> OBSERVE: action_cost=0.0, prop_band(|0-3|=3) penalty,
+        # then -impact_penalty(200) -penalty_missed_impact(150) inline. The
+        # dominant, decisive term is the -350 terminal hit: the episode must
+        # be heavily penalised, never near zero.
+        assert reward < -300.0, (
+            f"OBSERVE on the boundary-IMPACT step must incur the full "
+            f"terminal penalty (well below zero); got {reward:+.4f}. Before "
+            f"the fix this episode scored like a benign no-op."
+        )
+
+    def test_boundary_impact_penalised_under_outcome_reward(self, env_factory):
+        """The gap must also be closed under the primary sparse ``outcome``
+        reward: a boundary compromise is penalised, not scored as benign."""
+        env = env_factory(
+            impact_is_terminal=False,
+            max_steps=30,
+            reward_mode="outcome",
+        )
+        obs, reward, terminated, truncated, info = _force_impact_on_truncation_boundary(
+            env, action_into_impact=0  # OBSERVE
+        )
+        assert truncated is True
+        assert terminated is False
+        assert info["outcome"] == "impact_missed"
+        assert info["compromised"] is True
+        # Sparse outcome mode: action cost + inline -impact_penalty(200)
+        # -penalty_missed_impact(150). No proportionality shaping. The
+        # terminal penalty must dominate.
+        assert reward < -300.0, (
+            f"Under sparse outcome reward a boundary compromise must still "
+            f"take the terminal IMPACT penalty; got {reward:+.4f}."
+        )
