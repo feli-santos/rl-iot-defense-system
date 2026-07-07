@@ -11,8 +11,8 @@ Usage:
         [--out-dir runs/<algo>/seed_<N>] \\
         [--smoke]
 
-The ``--smoke`` flag drops the run to 50 K timesteps with eval every
-10 K — useful for the smoke test in ``tests/test_blue_team_train_agent.py``
+The ``--smoke`` flag drops the run to 5 K timesteps with eval every
+1 K — useful for the smoke test in ``tests/test_blue_team_train_agent.py``
 and for the Blue-Team step 5.4 audit (run a smoke before committing the
 full sweep).
 

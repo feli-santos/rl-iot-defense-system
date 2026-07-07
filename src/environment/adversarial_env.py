@@ -601,6 +601,9 @@ class AdversarialIoTEnv(gym.Env):
         # FPR-penalty accumulator (review 2.2 / Direction 6)
         self._benign_steps: int = 0
         self._benign_blocks: int = 0
+        # one-shot per-episode bonus latches (also (re)set in reset())
+        self._proportional_bonus_paid: float = 0.0
+        self._deescalation_bonus_paid: float = 0.0
 
         logger.info(
             f"AdversarialIoTEnv initialized: "

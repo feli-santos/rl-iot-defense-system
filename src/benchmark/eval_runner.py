@@ -142,71 +142,72 @@ def run_policy(
     n_latency_rows = 0
     t_run_start = time.time()
 
-    with out_path.open("w", encoding="utf-8") as ep_fh:
-        # Establish a deterministic base seed on the underlying env so that
-        # BOTH this first reset AND every subsequent SB3-autoreset are
-        # reproducible. AdversarialIoTEnv.reset(seed=...) records the base
-        # seed and derives a deterministic child seed (via SeedSequence)
-        # for each seedless autoreset; without this call the attacker RNG
-        # falls back to fresh OS entropy on every episode, which is what
-        # made the RF-Acting / random baselines drift run-to-run.
-        if seed is not None:
-            env.env_method("reset", seed=int(seed))
-        obs = env.reset()  # noqa: SIM108
+    try:
+        with out_path.open("w", encoding="utf-8") as ep_fh:
+            # Establish a deterministic base seed on the underlying env so that
+            # BOTH this first reset AND every subsequent SB3-autoreset are
+            # reproducible. AdversarialIoTEnv.reset(seed=...) records the base
+            # seed and derives a deterministic child seed (via SeedSequence)
+            # for each seedless autoreset; without this call the attacker RNG
+            # falls back to fresh OS entropy on every episode, which is what
+            # made the RF-Acting / random baselines drift run-to-run.
+            if seed is not None:
+                env.env_method("reset", seed=int(seed))
+            obs = env.reset()  # noqa: SIM108
 
-        for episode_idx in range(n_episodes):
-            acc = _EpisodeAccumulator()
-            decision_stage = 0  # BENIGN at reset, see env.reset()
-            step_idx = 0
-            done = False
-            # `obs` carries over: on episode 0 from the initial reset
-            # above; on subsequent episodes from the autoreset that
-            # SB3 does inside the previous env.step (the obs returned
-            # by step() *is* the post-reset obs).
-            while not done:
-                info_for_policy = _info_seed(decision_stage, step_idx)
-                t0 = time.perf_counter_ns() if lat_fh is not None else 0
-                action = int(policy(_squeeze(obs), info_for_policy))
-                t1 = time.perf_counter_ns() if lat_fh is not None else 0
+            for episode_idx in range(n_episodes):
+                acc = _EpisodeAccumulator()
+                decision_stage = 0  # BENIGN at reset, see env.reset()
+                step_idx = 0
+                done = False
+                # `obs` carries over: on episode 0 from the initial reset
+                # above; on subsequent episodes from the autoreset that
+                # SB3 does inside the previous env.step (the obs returned
+                # by step() *is* the post-reset obs).
+                while not done:
+                    info_for_policy = _info_seed(decision_stage, step_idx)
+                    t0 = time.perf_counter_ns() if lat_fh is not None else 0
+                    action = int(policy(_squeeze(obs), info_for_policy))
+                    t1 = time.perf_counter_ns() if lat_fh is not None else 0
 
-                obs, reward, dones, infos = env.step(np.asarray([action]))
-                r = float(np.asarray(reward).reshape(-1)[0])
-                acc.update(action, r, decision_stage)
-                done = bool(np.asarray(dones).reshape(-1)[0])
-                info = infos[0] if isinstance(infos, (list, tuple)) else infos
-                if not done:
-                    decision_stage = int(info.get("attack_stage", 0))
-                else:
-                    _emit_episode(
-                        ep_fh,
-                        acc,
-                        info,
-                        episode_idx,
-                        run_id,
-                        pol_name,
-                        n_steps_total + step_idx + 1,
-                        t_run_start,
-                    )
+                    obs, reward, dones, infos = env.step(np.asarray([action]))
+                    r = float(np.asarray(reward).reshape(-1)[0])
+                    acc.update(action, r, decision_stage)
+                    done = bool(np.asarray(dones).reshape(-1)[0])
+                    info = infos[0] if isinstance(infos, (list, tuple)) else infos
+                    if not done:
+                        decision_stage = int(info.get("attack_stage", 0))
+                    else:
+                        _emit_episode(
+                            ep_fh,
+                            acc,
+                            info,
+                            episode_idx,
+                            run_id,
+                            pol_name,
+                            n_steps_total + step_idx + 1,
+                            t_run_start,
+                        )
 
-                if lat_fh is not None:
-                    lat = LatencyRecord(
-                        schema_version=_SCHEMA_VERSION,
-                        run_id=run_id,
-                        policy_name=pol_name,
-                        episode_idx=episode_idx,
-                        step_idx=step_idx,
-                        duration_ns=int(t1 - t0),
-                    )
-                    lat_fh.write(lat.to_jsonl())
-                    lat_fh.write("\n")
-                    n_latency_rows += 1
+                    if lat_fh is not None:
+                        lat = LatencyRecord(
+                            schema_version=_SCHEMA_VERSION,
+                            run_id=run_id,
+                            policy_name=pol_name,
+                            episode_idx=episode_idx,
+                            step_idx=step_idx,
+                            duration_ns=int(t1 - t0),
+                        )
+                        lat_fh.write(lat.to_jsonl())
+                        lat_fh.write("\n")
+                        n_latency_rows += 1
 
-                step_idx += 1
-            n_steps_total += step_idx
-
-    if lat_fh is not None:
-        lat_fh.flush()
-        lat_fh.close()
+                    step_idx += 1
+                n_steps_total += step_idx
+    finally:
+        if lat_fh is not None:
+            lat_fh.flush()
+            lat_fh.close()
 
     logger.info(
         "run_policy completed: run_id=%s policy=%s episodes=%d steps=%d latency_rows=%d",
