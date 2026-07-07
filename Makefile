@@ -115,11 +115,12 @@ blue-team-sweep:  ## Blue-team: train DQN/PPO/A2C × 10 seeds (~3-7 h CPU).
 	    --out-root $(BLUE_TEAM_RUNS_ROOT) \
 	    --parallel $(BLUE_TEAM_PARALLEL) \
 	    --impact-is-terminal $(BLUE_TEAM_IMPACT_TERM) \
+	    --no-early-stop \
 	    $(if $(BLUE_TEAM_REWARD_OVERRIDES),--reward-overrides '$(BLUE_TEAM_REWARD_OVERRIDES)',) \
 	    --continue-on-failure
 
 .PHONY: blue-team-figures
-blue-team-figures:  ## Blue-team: render F3, F4, T1 from runs/blue_team/.
+blue-team-figures:  ## Blue-team: render F3, F4, T1 from $(BLUE_TEAM_RUNS_ROOT).
 	$(PYTHON) -m scripts.blue_team.plot_learning_curves \
 	    --runs-root $(BLUE_TEAM_RUNS_ROOT) \
 	    --out-dir docs/results/blue-team-training
@@ -132,7 +133,7 @@ blue-team-figures:  ## Blue-team: render F3, F4, T1 from runs/blue_team/.
 	    --out-dir docs/results/blue-team-training
 
 .PHONY: blue-team-gates
-blue-team-gates:  ## Blue-team: evaluate G5.2-G5.7 against runs/blue_team/.
+blue-team-gates:  ## Blue-team: evaluate G5.2-G5.7 against $(BLUE_TEAM_RUNS_ROOT).
 	$(PYTHON) -m scripts.blue_team.evaluate_gates \
 	    --runs-root $(BLUE_TEAM_RUNS_ROOT) \
 	    --out-dir docs/results/blue-team-training
@@ -266,10 +267,10 @@ ablation-aggressiveness-smoke:  ## Ablation F10 smoke: 2 p values × 1 seed × 5
 	    --smoke --out-root runs/ablation/_smoke/aggressiveness
 
 .PHONY: ablation-aggressiveness-sweep
-ablation-aggressiveness-sweep:  ## Ablation F10: PPO × 6 p values × 10 seeds + oracle rule (~1.5 h CPU).
+ablation-aggressiveness-sweep:  ## Ablation F10: load fixed det-5M PPO, eval across 6 p values × 10 seeds + oracle rule (no retraining, ~20 min CPU).
 	$(PYTHON) -m scripts.ablation.run_aggressiveness_sweep \
 	    --seeds $(BLUE_TEAM_SEEDS) \
-	    --total-timesteps $(ABLATION_AGGR_TIMESTEPS) \
+	    --load-ppo-from $(ABLATION_OOD_BLUE_TEAM_RUNS) \
 	    --out-root $(ABLATION_AGGR_RUNS_ROOT) \
 	    --parallel $(ABLATION_PARALLEL) \
 	    --continue-on-failure
@@ -293,10 +294,10 @@ ablation-evasion-smoke:  ## Ablation F17 smoke: 2 evasion values × 1 seed × 5K
 	    --smoke --out-root runs/ablation/_smoke/evasion
 
 .PHONY: ablation-evasion-sweep
-ablation-evasion-sweep:  ## Ablation F17: PPO × 4 evasion values × 10 seeds (~1 h CPU).
+ablation-evasion-sweep:  ## Ablation F17: load fixed det-5M PPO, eval across 4 evasion values × 10 seeds (no retraining, ~15 min CPU).
 	$(PYTHON) -m scripts.ablation.run_evasion_sweep \
 	    --seeds $(BLUE_TEAM_SEEDS) \
-	    --total-timesteps $(ABLATION_EVASION_TIMESTEPS) \
+	    --load-ppo-from $(ABLATION_OOD_BLUE_TEAM_RUNS) \
 	    --out-root $(ABLATION_EVASION_RUNS_ROOT) \
 	    --parallel $(ABLATION_PARALLEL) \
 	    --continue-on-failure
@@ -324,16 +325,16 @@ ablation-figures: ablation-ood-figure ablation-aggressiveness-figure ablation-ev
 ablation: ablation-ood ablation-aggressiveness ablation-evasion  ## Ablation: full F10 + F15 + F17 (~8.5 h CPU walk-away).
 
 .PHONY: train-rl
-train-rl:  ## Train a single RL agent (override ALGO=ppo|dqn|a2c).
-	$(PYTHON) main.py --mode train-rl --config $(CONFIG) \
-	    --algorithm $(ALGO) --timesteps $(TIMESTEPS) \
-	    --generator-path $(GEN_DIR) --data-path $(DATA)
+train-rl:  ## Train a single RL agent (override ALGO=ppo|dqn|a2c, SEED=0).
+	$(PYTHON) -m scripts.blue_team.train_agent \
+	    --algo $(ALGO) --seed $(SEED) \
+	    --total-timesteps $(BLUE_TEAM_TIMESTEPS) \
+	    --impact-is-terminal $(BLUE_TEAM_IMPACT_TERM) \
+	    --out-dir $(BLUE_TEAM_RUNS_ROOT)/$(ALGO)/seed_$(SEED)
 
 .PHONY: train-all-rl
-train-all-rl:  ## Train DQN, PPO, A2C sequentially (single seed).
-	$(PYTHON) main.py --mode train-all-rl --config $(CONFIG) \
-	    --timesteps $(TIMESTEPS) \
-	    --generator-path $(GEN_DIR) --data-path $(DATA)
+train-all-rl:  ## Train DQN, PPO, A2C sequentially (single seed) — thin wrapper over blue-team-sweep.
+	$(MAKE) blue-team-sweep BLUE_TEAM_ALGOS="dqn ppo a2c" BLUE_TEAM_SEEDS="$(SEED)"
 
 ##@ Thesis (Podman, Docker fallback — FEEC CCPG 001-2015 / abnTeX2 template)
 THESIS_IMAGE ?= rl-iot-thesis
@@ -414,6 +415,9 @@ reproduce-thesis:  ## End-to-end thesis reproduction (full chain).
 	@echo ">>> 5/6 ablation";        $(MAKE) ablation
 	@echo ">>> 6/6 smoke";           $(MAKE) smoke
 	@echo "Done. Figures in docs/results/, raw data in $(RUNS_DIR)/."
+
+.PHONY: smoke
+smoke: blue-team-smoke benchmark-smoke ablation-ood-smoke ablation-aggressiveness-smoke ablation-evasion-smoke ablation-reward-coupling-smoke  ## Run every pipeline smoke target (fast env/config drift canary).
 
 ##@ Maintenance
 .PHONY: clean
