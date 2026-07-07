@@ -60,10 +60,10 @@ class AdversarialAlgorithmConfig:
 
     algorithm_type: str = "ppo"
     policy: str = "MlpPolicy"
-    total_timesteps: int = 50000
+    total_timesteps: int = 5_000_000
     learning_rate: float = 3e-4
     gamma: float = 0.99
-    verbose: int = 1
+    verbose: int = 0
     tensorboard_log: Optional[str] = None
 
     # DQN-specific

@@ -150,12 +150,13 @@ class EnvConfigSerializable:
     # (prevention is awarded for holding the attacker below IMPACT for the horizon,
     # not for draining a counter); ``proximity_min_escalation`` floors the
     # proximity-scaled under-force escalation probability. Defaults reproduce the
-    # legacy fully-observable, budget-based contract byte-for-byte. Must match
-    # between train and eval.
+    # canonical POMDP regime (proximity-coupled escalation on); the legacy
+    # budget-based contract is obtained by setting ``proximity_coupled=False``.
+    # Must match between train and eval.
     aliasing_rate: float = 0.0
     session_coherent: bool = False
     no_post_transition_leak: bool = False
-    proximity_coupled: bool = False
+    proximity_coupled: bool = True
     proximity_min_escalation: float = 0.4
 
     def __post_init__(self) -> None:
@@ -194,7 +195,7 @@ class BlueTeamRunConfig:
     early_stop: bool = True
     early_stop_patience: int = 10
     early_stop_min_evals: int = 10
-    out_dir: str = "runs/ppo/seed_0"
+    out_dir: str = "runs/blue_team/seed_0"
     dataset_path: str = "data/processed/ciciot2023"
     splits_manifest: str = "data/processed/ciciot2023/splits/manifest.json"
     env: EnvConfigSerializable = field(default_factory=EnvConfigSerializable)
