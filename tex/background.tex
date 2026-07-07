@@ -23,7 +23,7 @@ The kill chain is more than narrative scaffolding: it provides a discrete decisi
 
 % --- Subsection 2.2 — RL primer (preserved with one targeted fix) ---
 \section{Reinforcement Learning for Autonomous Systems}\label{sec:rl_concepts}
-Reinforcement Learning (RL) is a computational paradigm focused on goal-directed learning from interaction. An intelligent agent learns to make optimal decisions not by being shown labeled examples, but by exploring an environment and discovering which sequences of actions yield the greatest cumulative reward \cite{Sutton2018}. The agent and the environment interact at a sequence of discrete time steps: at step $t$ the agent observes the state and selects an action, and the environment responds with a new state and a scalar reward. This closed loop, illustrated in Figure~\ref{fig:rl_agent_loop}, is the canonical RL setting. In certain cases, this learning process may be formalized through the mathematical framework of Markov Decision Processes (MDPs).
+Reinforcement Learning (RL) is a computational paradigm focused on goal-directed learning from interaction. An intelligent agent learns to make optimal decisions not by being shown labeled examples, but by exploring an environment and discovering which sequences of actions yield the greatest cumulative reward \cite{Sutton2018}. The agent and the environment interact at a sequence of discrete time steps: at step $t$ the agent observes the state and selects an action, and the environment responds with a new state and a scalar reward. This closed loop, illustrated in Figure~\ref{fig:rl_agent_loop}, is the canonical RL setting. This learning process is formalized through the mathematical framework of Markov Decision Processes (MDPs).
 
 \begin{figure}[!htbp]
     \centering
@@ -33,7 +33,7 @@ Reinforcement Learning (RL) is a computational paradigm focused on goal-directed
 \end{figure}
 
 \subsection{Markov Decision Processes}\label{ssec:mdp}
-An MDP provides a formal model for sequential decision-making under uncertainty. The core principle is the \textbf{Markov Property}, which asserts that the current state provides all necessary information to make an optimal decision, so that the current state contains sufficient information from the history for optimal decisions and there is no need to consult previous states \cite{Sutton2018}. An MDP is defined as a five-tuple $(S, A, P, R, \gamma)$:
+An MDP provides a formal model for sequential decision-making under uncertainty. The core principle is the \textbf{Markov Property}, which asserts that the current state contains all information from the history necessary for optimal decisions, so previous states need not be consulted \cite{Sutton2018}. An MDP is defined as a five-tuple $(S, A, P, R, \gamma)$:
 \begin{itemize}
     \item $\boldsymbol{S}$: A set of states, representing all possible configurations of the environment.
     \item $\boldsymbol{A}$: A set of actions available to the agent. For this work, $A$ is the five-action defender menu derived from the kill chain in Section~\ref{sec:kill_chain}: $A = \{\textsc{observe}, \textsc{log}, \textsc{restrict}, \textsc{block}, \textsc{isolate}\}$, ordered by escalating defensive force and operational disruption.
@@ -102,7 +102,7 @@ A2C is a synchronous variant of the foundational Asynchronous Advantage Actor-Cr
 \begin{equation}\label{eq:a2c_loss}
 L_{\text{A2C}}(\theta, \phi) \;=\; \underbrace{-\log \pi_\theta(a_t \mid s_t)\,\hat{A}_t}_{\text{actor (policy gradient)}} \;+\; \underbrace{c_v\big(V_\phi(s_t) - \hat{R}_t\big)^2}_{\text{critic (value regression)}} \;-\; \underbrace{\beta\, H\big(\pi_\theta(\cdot \mid s_t)\big)}_{\text{entropy bonus}},
 \end{equation}
-where $c_v$ is the value-loss coefficient, $\hat{R}_t$ a return estimate, and $\beta$ the entropy coefficient. A2C typically employs multiple parallel workers that collect experience simultaneously; these experiences are then aggregated to compute a single synchronous gradient update for both actor and critic. While often faster to converge than PPO on simpler problems, it can be markedly less stable on standard benchmarks --- a general-literature characterization that the present results complicate: under the sparse outcome reward of Chapter~\ref{cap:results}, both on-policy methods train reliably, and A2C exhibits the tightest across-seed dispersion of the three algorithms rather than the marked instability this expectation would predict. Algorithm~\ref{alg:a2c} summarizes the A2C training loop.
+where $c_v$ is the value-loss coefficient, $\hat{R}_t$ a return estimate, and $\beta$ the entropy coefficient. A2C typically employs multiple parallel workers that collect experience simultaneously; these experiences are then aggregated to compute a single synchronous gradient update for both actor and critic. While often faster to converge than PPO on simpler problems, it can be markedly less stable on standard benchmarks --- a general-literature characterization that is revisited in Chapter~\ref{cap:results}. Algorithm~\ref{alg:a2c} summarizes the A2C training loop.
 
 \begin{algorithm}[!htbp]
 \caption{Advantage Actor-Critic (A2C) --- synchronous training loop \cite{Mnih2016}}

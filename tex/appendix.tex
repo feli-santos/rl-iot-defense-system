@@ -43,7 +43,7 @@ git clone <repo-url> rl-iot-defense-system
 cd rl-iot-defense-system
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
-pytest -q                             # expect: 451 passed
+pytest -q                             # expect: 452 passed
 python -m scripts.reproducibility_smoke
 # expect: VERDICT PASS (no unexplained hash mismatches)
 \end{verbatim}
@@ -73,7 +73,7 @@ make ablation                # reward-coupling, OOD, sensitivity
 After a full re-train the \texttt{manifest.json} files are re-emitted with new input hashes corresponding to the freshly trained checkpoints; the harness then verifies the new chain end-to-end.
 
 \section{Hardware and Environment}\label{app:hardware}
-All experiments reported in this dissertation were run on a CPU-only commodity workstation. No GPU is required: the tuned random-forest stage detector and the three DRL agents all train within minutes-to-hours on commodity CPU, and the $5\times5$ tug-of-war attacker is closed-form and requires no training. The DRL agents are trained CPU-only; the random-forest baseline uses scikit-learn's default multi-core fit (\texttt{n\_jobs}=$-1$). Software environment: Python 3.10--3.11 (CI-verified), PyTorch (CPU build), scikit-learn, Stable~Baselines3, Gymnasium. Each learned agent is trained for a fixed $5{,}000{,}000$-step budget with no early stopping, under a fully seeded pipeline that makes both training and checkpoint selection bit-reproducible from the seed. The full evaluation chain completes in a few hours on this commodity CPU, dominated by the reward-coupling sweep.
+All experiments reported in this dissertation were run on a CPU-only commodity workstation. No GPU is required: the tuned random-forest stage detector and the three DRL agents all train within minutes-to-hours on commodity CPU, and the $5\times5$ tug-of-war attacker is closed-form and requires no training. The DRL agents are trained CPU-only; the random-forest baseline uses scikit-learn's default multi-core fit (\texttt{n\_jobs}=$-1$). Software environment: Python 3.9 (CI-verified), PyTorch (CPU build), scikit-learn, Stable~Baselines3, Gymnasium. Each learned agent is trained for a fixed $5{,}000{,}000$-step budget with no early stopping, under a fully seeded pipeline that makes both training and checkpoint selection bit-reproducible from the seed. The full evaluation chain completes in a few hours on this commodity CPU, dominated by the reward-coupling sweep.
 
 % ====================================================================
 \chapter{CICIoT2023 Label to Kill Chain Stage Mapping}\label{app:kc_mapping}
