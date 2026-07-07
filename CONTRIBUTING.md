@@ -24,7 +24,7 @@ Before pushing, run:
 ```bash
 make format          # black + ruff --fix + isort
 make lint            # ruff check + black --check
-make test            # pytest -q (447 tests, ~18s, synthetic-only by default)
+make test            # pytest -q (452 tests, ~18s, synthetic-only by default)
 ```
 
 CI runs `make lint` then `pytest -q --cov` on Python 3.9. A PR that fails
