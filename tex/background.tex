@@ -98,17 +98,17 @@ Algorithm~\ref{alg:dqn} summarizes the DQN training loop.
 \end{algorithm}
 
 \paragraph{Advantage Actor-Critic (A2C).}
-A2C is a synchronous variant of the foundational Asynchronous Advantage Actor-Critic (A3C) algorithm \cite{Mnih2016}, and it is the algorithm that introduces the \textbf{actor-critic} architecture used by the subsequent methods. The agent maintains two networks: an \emph{actor} $\pi_\theta(a \mid s)$ that parameterizes the policy, and a \emph{critic} $V_\phi(s)$ that estimates the state-value function. The actor learns by policy-gradient ascent on the advantage, while the critic learns by temporal-difference regression. The \textbf{advantage function} $A^\pi(s, a) = Q^\pi(s, a) - V^\pi(s)$ measures how much better action $a$ is than the average action under $\pi$; in practice it is estimated with the temporal-difference residual $\hat{A}_t = r_t + \gamma V_\phi(s_{t+1}) - V_\phi(s_t)$. The combined A2C loss, with an entropy regularization term $H(\pi_\theta)$ weighted by $\beta$ to encourage exploration, is
+A2C is a synchronous variant of the foundational Asynchronous Advantage Actor-Critic (A3C) algorithm \cite{Mnih2016}, and it is the algorithm that introduces the \textbf{actor-critic} architecture used by the subsequent methods. The agent maintains two networks: an \emph{actor} $\pi_\theta(a \mid s)$ that parameterizes the policy, and a \emph{critic} $V_\phi(s)$ that estimates the state-value function. The actor learns by policy-gradient ascent on the advantage, while the critic learns by temporal-difference regression. The \textbf{advantage function} $A^\pi(s, a) = Q^\pi(s, a) - V^\pi(s)$ measures how much better action $a$ is than the average action under $\pi$; in practice it is estimated with the temporal-difference residual $\hat{A}_t = r_t + \gamma V_\phi(s_{t+1}) - V_\phi(s_t)$. The combined A2C loss, with an entropy regularization term $H(\pi_\theta)$ weighted by $c_{\mathrm{ent}}$ to encourage exploration, is
 \begin{equation}\label{eq:a2c_loss}
-L_{\text{A2C}}(\theta, \phi) \;=\; \underbrace{-\log \pi_\theta(a_t \mid s_t)\,\hat{A}_t}_{\text{actor (policy gradient)}} \;+\; \underbrace{c_v\big(V_\phi(s_t) - \hat{R}_t\big)^2}_{\text{critic (value regression)}} \;-\; \underbrace{\beta\, H\big(\pi_\theta(\cdot \mid s_t)\big)}_{\text{entropy bonus}},
+L_{\text{A2C}}(\theta, \phi) \;=\; \underbrace{-\log \pi_\theta(a_t \mid s_t)\,\hat{A}_t}_{\text{actor (policy gradient)}} \;+\; \underbrace{c_v\big(V_\phi(s_t) - \hat{R}_t\big)^2}_{\text{critic (value regression)}} \;-\; \underbrace{c_{\mathrm{ent}}\, H\big(\pi_\theta(\cdot \mid s_t)\big)}_{\text{entropy bonus}},
 \end{equation}
-where $c_v$ is the value-loss coefficient, $\hat{R}_t$ a return estimate, and $\beta$ the entropy coefficient. A2C typically employs multiple parallel workers that collect experience simultaneously; these experiences are then aggregated to compute a single synchronous gradient update for both actor and critic. While often faster to converge than PPO on simpler problems, it can be markedly less stable on standard benchmarks --- a general-literature characterization that is revisited in Chapter~\ref{cap:results}. Algorithm~\ref{alg:a2c} summarizes the A2C training loop.
+where $c_v$ is the value-loss coefficient, $\hat{R}_t$ a return estimate, and $c_{\mathrm{ent}}$ the entropy coefficient. A2C typically employs multiple parallel workers that collect experience simultaneously; these experiences are then aggregated to compute a single synchronous gradient update for both actor and critic. While often faster to converge than PPO on simpler problems, it can be markedly less stable on standard benchmarks --- a general-literature characterization that is revisited in Chapter~\ref{cap:results}. Algorithm~\ref{alg:a2c} summarizes the A2C training loop.
 
 \begin{algorithm}[!htbp]
 \caption{Advantage Actor-Critic (A2C) --- synchronous training loop \cite{Mnih2016}}
 \label{alg:a2c}
 \begin{algorithmic}
-\REQUIRE step size $\alpha$, value coefficient $c_v$, entropy coefficient $\beta$, discount $\gamma$, $n$ parallel workers, rollout length $n_{\text{steps}}$
+\REQUIRE learning rate $\mathrm{lr}$, value coefficient $c_v$, entropy coefficient $c_{\mathrm{ent}}$, discount $\gamma$, $n$ parallel workers, rollout length $n_{\text{steps}}$
 \STATE Initialize actor $\pi_\theta$ and critic $V_\phi$ with random weights
 \FOR{each iteration}
     \FOR{each worker $k = 1, \ldots, n$ \textbf{in parallel}}
@@ -135,7 +135,7 @@ L^{\mathrm{CLIP}}(\theta) = \hat{\mathbb{E}}_t \left[ \min \left( r_t(\theta)\ha
 \end{equation}
 where $\epsilon$ is a small hyperparameter that constrains the policy ratio to $[1-\epsilon, 1+\epsilon]$. The critic loss is the squared value error $L^{\mathrm{VF}}(\phi) = \hat{\mathbb{E}}_t\big[(V_\phi(s_t) - \hat{R}_t)^2\big]$, and the full PPO objective combines actor, critic, and an entropy bonus:
 \begin{equation}\label{eq:ppo_objective}
-L^{\mathrm{PPO}}(\theta, \phi) \;=\; -L^{\mathrm{CLIP}}(\theta) \;+\; c_v\, L^{\mathrm{VF}}(\phi) \;-\; \beta\, H\big(\pi_\theta(\cdot \mid s_t)\big).
+L^{\mathrm{PPO}}(\theta, \phi) \;=\; -L^{\mathrm{CLIP}}(\theta) \;+\; c_v\, L^{\mathrm{VF}}(\phi) \;-\; c_{\mathrm{ent}}\, H\big(\pi_\theta(\cdot \mid s_t)\big).
 \end{equation}
 This approach prevents destructive policy updates and is known for its reliability and performance. Algorithm~\ref{alg:ppo} summarizes the PPO training loop.
 
@@ -143,7 +143,7 @@ This approach prevents destructive policy updates and is known for its reliabili
 \caption{Proximal Policy Optimization (PPO) --- training loop \cite{Schulman2017}}
 \label{alg:ppo}
 \begin{algorithmic}
-\REQUIRE clip range $\epsilon$, value coefficient $c_v$, entropy coefficient $\beta$, discount $\gamma$, GAE parameter $\lambda$, rollout length $n_{\text{steps}}$, epochs per update $K$, minibatch size $B$
+\REQUIRE clip range $\epsilon$, value coefficient $c_v$, entropy coefficient $c_{\mathrm{ent}}$, discount $\gamma$, GAE parameter $\lambda$, rollout length $n_{\text{steps}}$, epochs per update $K$, minibatch size $B$
 \STATE Initialize actor $\pi_\theta$ and critic $V_\phi$ with random weights
 \FOR{each iteration}
     \STATE Collect rollout $\{(s_t, a_t, r_t, s_{t+1})\}_{t=0}^{n_{\text{steps}}-1}$ using $\pi_{\theta_{\text{old}}}$
