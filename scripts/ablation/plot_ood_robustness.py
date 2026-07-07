@@ -764,7 +764,7 @@ def _build_argparser() -> argparse.ArgumentParser:
     )
     p.add_argument(
         "--blue-team-sweep-manifest",
-        default="runs/blue_team/sweep_manifest.json",
+        default="runs/redesign_5M_det/alpha_04/sweep_manifest.json",
     )
     # Step-8 F2 (07_HANDOFF.md §5): explicit upstream-manifest SHA pin
     # for the dataset-prep splits manifest so the F15 hash chain is

@@ -62,6 +62,7 @@ import numpy as np
 from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.vec_env import DummyVecEnv
 
+from scripts.benchmark.run_test_eval import _assert_train_eval_contract
 from src.benchmark.baseline_policies import (
     RFActingPolicy,
     SB3PolicyAdapter,
@@ -341,7 +342,7 @@ def _build_argparser() -> argparse.ArgumentParser:
         "--seeds",
         nargs="+",
         type=int,
-        default=[0, 1, 2, 3, 4],
+        default=[0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
         help="Seeds for non-deterministic policies (RL + random). "
         "Deterministic baselines always use seed=0.",
     )
@@ -354,12 +355,12 @@ def _build_argparser() -> argparse.ArgumentParser:
     p.add_argument(
         "--n-deterministic-episodes",
         type=int,
-        default=150,
+        default=300,
         help="Episodes per (ood_class, deterministic_baseline) cell (single seed=0).",
     )
     p.add_argument(
         "--blue-team-runs",
-        default="runs/blue_team",
+        default="runs/redesign_5M_det/alpha_04",
         help="Where the trained Blue-Team model.zip files live.",
     )
     p.add_argument("--out-root", default="runs/ablation/ood")
@@ -391,9 +392,11 @@ def _build_argparser() -> argparse.ArgumentParser:
     )
     p.add_argument(
         "--proximity-coupled",
-        action="store_true",
+        action=argparse.BooleanOptionalAction,
+        default=True,
         help="Use proximity-coupled attacker escalation + truncation-prevention; "
-        "must match the trained checkpoints' contract.",
+        "must match the trained checkpoints' contract. Default True (canonical "
+        "POMDP regime); --no-proximity-coupled selects the legacy budget contract.",
     )
     p.add_argument(
         "--proximity-min-escalation",
@@ -468,6 +471,22 @@ def _roll_rl(
         }
 
     n_ep = 2 if args.smoke else args.n_episodes
+    # Cross-script parity: the OOD eval contract must match what this
+    # checkpoint was trained under, or the F15 reward measures a different MDP
+    # than training (mirrors scripts/benchmark/run_test_eval.py::_roll_trained).
+    _assert_train_eval_contract(
+        _ood_eval_env_spec(
+            reward_mode=getattr(args, "reward_mode", "outcome"),
+            aliasing_rate=getattr(args, "aliasing_rate", 0.0),
+            session_coherent=getattr(args, "session_coherent", False),
+            no_post_transition_leak=getattr(args, "no_post_transition_leak", False),
+            proximity_coupled=getattr(args, "proximity_coupled", True),
+            proximity_min_escalation=getattr(args, "proximity_min_escalation", 0.4),
+        ),
+        _run_root,
+        algo=algo,
+        seed=seed,
+    )
     env = _build_ood_env(args, ood_class, seed=seed)
     try:  # noqa: SIM105
         model = _load_sb3_model(algo, model_path, env)

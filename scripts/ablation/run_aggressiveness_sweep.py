@@ -496,7 +496,7 @@ def _build_argparser() -> argparse.ArgumentParser:
     p.add_argument(
         "--n-deterministic-episodes",
         type=int,
-        default=150,
+        default=300,
         help="Episodes for the recommended-action rule per p.",
     )
     p.add_argument("--out-root", default="runs/ablation/aggressiveness")

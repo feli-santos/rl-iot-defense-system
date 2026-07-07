@@ -273,7 +273,7 @@ def main(argv: list | None = None) -> int:  # type: ignore[type-arg]
     p.add_argument("--parallel", type=int, default=3)
     p.add_argument(
         "--blue-team-primary-root",
-        default="runs/blue_team_primary",
+        default="runs/redesign_5M_det/alpha_04",
         help="Root of the primary Blue-Team training runs (for scale=1.0 reuse).",
     )
     p.add_argument("--smoke", action="store_true")

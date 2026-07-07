@@ -43,11 +43,11 @@ _ROOT = Path(__file__).resolve().parents[2]
 def _build_argparser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(description="Blue-team algo x seed sweep driver.")
     p.add_argument("--algos", nargs="+", default=["dqn", "ppo", "a2c"])
-    p.add_argument("--seeds", nargs="+", type=int, default=[0, 1, 2, 3, 4])
-    p.add_argument("--total-timesteps", type=int, default=250_000)
+    p.add_argument("--seeds", nargs="+", type=int, default=[0, 1, 2, 3, 4, 5, 6, 7, 8, 9])
+    p.add_argument("--total-timesteps", type=int, default=5_000_000)
     p.add_argument("--eval-freq", type=int, default=25_000)
     p.add_argument("--n-eval-episodes", type=int, default=30)
-    p.add_argument("--out-root", default="runs/blue_team")
+    p.add_argument("--out-root", default="runs/redesign_5M_det/alpha_04")
     p.add_argument(
         "--parallel",
         type=int,
@@ -77,8 +77,10 @@ def _build_argparser() -> argparse.ArgumentParser:
         default=None,
         help=(
             "Forwarded to train_agent --impact-is-terminal. "
-            "Use 'false' to enable the explicit IMPACT-row decision step. "
-            "Default None preserves the environment-design frozen contract (True)."
+            "Use 'true' to terminate inline at IMPACT arrival (legacy/case-study "
+            "branch); 'false' enables the explicit IMPACT-row decision step that "
+            "is the primary training+benchmark contract. "
+            "Default None preserves the environment default (False = primary contract)."
         ),
     )
     p.add_argument(

@@ -90,7 +90,7 @@ detector: derive-stages  ## Detector: train RF, emit F11 (~3-5 min).
 # -----------------------------------------------------------------------------
 # Blue Team — DQN/PPO/A2C × 10 seeds + F3/F4/T1
 # -----------------------------------------------------------------------------
-BLUE_TEAM_RUNS_ROOT     ?= runs/blue_team
+BLUE_TEAM_RUNS_ROOT     ?= runs/redesign_5M_det/alpha_04
 BLUE_TEAM_TIMESTEPS     ?= 5000000
 BLUE_TEAM_SEEDS         ?= 0 1 2 3 4 5 6 7 8 9
 BLUE_TEAM_ALGOS         ?= dqn ppo a2c

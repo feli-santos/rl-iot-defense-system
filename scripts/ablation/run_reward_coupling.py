@@ -371,7 +371,12 @@ def _build_argparser() -> argparse.ArgumentParser:
     p.add_argument("--aliasing-rate", type=float, default=0.0)
     p.add_argument("--session-coherent", action="store_true")
     p.add_argument("--no-post-transition-leak", action="store_true")
-    p.add_argument("--proximity-coupled", action="store_true")
+    p.add_argument(
+        "--proximity-coupled",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Default True (canonical POMDP regime); --no-proximity-coupled for legacy.",
+    )
     p.add_argument("--proximity-min-escalation", type=float, default=0.4)
     p.add_argument("--total-timesteps", type=int, default=1_000_000)
     p.add_argument("--eval-freq", type=int, default=10_000)

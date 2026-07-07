@@ -300,7 +300,7 @@ def _build_argparser() -> argparse.ArgumentParser:
         "and non-RL baselines on test_balanced.",
     )
     p.add_argument("--algos", nargs="+", default=["dqn", "ppo", "a2c"])
-    p.add_argument("--seeds", nargs="+", type=int, default=[0, 1, 2, 3, 4])
+    p.add_argument("--seeds", nargs="+", type=int, default=[0, 1, 2, 3, 4, 5, 6, 7, 8, 9])
     p.add_argument(
         "--n-episodes",
         type=int,
@@ -310,12 +310,12 @@ def _build_argparser() -> argparse.ArgumentParser:
     p.add_argument(
         "--n-deterministic-episodes",
         type=int,
-        default=150,
+        default=300,
         help="Episodes per deterministic baseline (D6.3); single seed.",
     )
     p.add_argument(
         "--blue-team-runs-root",
-        default="runs/blue_team",
+        default="runs/redesign_5M_det/alpha_04",
         help="Where the trained Blue-Team model.zip files live.",
     )
     p.add_argument("--out-root", default="runs/benchmark")
@@ -348,8 +348,11 @@ def _build_argparser() -> argparse.ArgumentParser:
     )
     p.add_argument(
         "--proximity-coupled",
-        action="store_true",
-        help="RESTRAIN-style proximity-coupled escalation/prevention; MUST match training.",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="RESTRAIN-style proximity-coupled escalation/prevention; MUST match "
+        "training. Default True (canonical POMDP regime); "
+        "--no-proximity-coupled selects the legacy budget contract.",
     )
     p.add_argument(
         "--proximity-min-escalation",
