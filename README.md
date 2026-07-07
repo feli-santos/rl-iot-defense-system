@@ -2,7 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
-[![Tests: 451 passed](https://img.shields.io/badge/tests-451%20passed-brightgreen.svg)](#)
+[![Tests: 452 passed](https://img.shields.io/badge/tests-452%20passed-brightgreen.svg)](#)
 [![Thesis: 84 pages](https://img.shields.io/badge/thesis-84%20pages-blue.svg)](#thesis)
 
 > A reproducible MSc-thesis codebase: an adversarial reinforcement-learning
@@ -31,23 +31,25 @@ artefacts under [`docs/results/`](docs/results/):
    making a supervised classifier sufficient. We test this by training under
    both a **coupled** (shaped) and a **decoupled** (sparse outcome-only) reward.
    The best RL agent beats the tuned RF under **both** contracts (coupled gap
-   −128.0, DQN +274.8 vs RF +146.8; outcome gap −42.9, PPO +123.8 vs RF +80.9),
+   −79.4, DQN +226.2 vs RF +146.8; outcome gap −65.2, A2C +146.1 vs RF +80.9),
    so the RL advantage is not an artefact of reward shaping.
 
 3. **Out-of-distribution generalisation.** On 10 held-out zero-day attack
-   classes, the windowed PPO defender prevents a substantially larger fraction
-   of intrusions than RF-Acting on **every** class (PPO 0.30–0.59 vs RF
+   classes, the windowed RL defender prevents a substantially larger fraction
+   of intrusions than RF-Acting on **every** class (best RL 0.70–0.84 vs RF
    0.00–0.15), and the advantage is **independent of the upstream detector's
    per-class recall** — a temporal-control property no memoryless per-flow
    classifier can reproduce.
 
 **Honest finding.** Under a fixed 5,000,000-step budget with no early stopping,
 all three DRL agents clear the negative-return regime on their best checkpoint
-(at α=0.4, DQN +72.5 and A2C +22.7 alongside PPO +121.3) — the earlier "only
-on-policy converges" claim does not hold. The on-policy advantage is one of
-**training reliability, not achievable peak return**: only PPO reaches its
-best policy dependably, with far lower across-seed variance (sd ≈15 vs DQN ≈52
-and A2C ≈38). This is reported as such rather than overstated.
+(at α=0.4, DQN +72.5, PPO +121.3, and A2C +149.6). A2C matches or exceeds PPO
+at every aliasing rate, with the tightest across-seed dispersion of the three
+(sd A2C≈9 vs PPO≈15 vs DQN≈52); the off-policy DQN is the only algorithm whose
+across-seed variance inflates sharply when the per-step shaping is removed. The
+on-policy advantage is therefore one of **training reliability and defensive
+doctrine**, not a unique PPO-specific claim. This is reported as such rather
+than overstated.
 
 ---
 
@@ -105,7 +107,7 @@ cd rl-iot-defense-system
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
-make test                    # 451 passed in ~60-90 s on CPU
+make test                    # 452 passed in ~60-90 s on CPU
 ```
 
 ### Dataset
@@ -194,7 +196,7 @@ rl-iot-defense-system/
 │   └── utils/                # Dataset processor + realization engine
 ├── scripts/                  # Runners, plotters, thesis tooling
 │   ├── data/  detector/  blue_team/  benchmark/  ablation/  thesis/
-├── tests/                    # 451 unit + integration tests (pytest)
+├── tests/                    # 452 unit + integration tests (pytest)
 ├── docs/                     # Architecture, environment, dataset docs
 │   ├── results/              # Canonical figures + manifest hash-chains
 │   ├── ARCHITECTURE.md       # Module map + adversarial loop

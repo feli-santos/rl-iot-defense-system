@@ -42,15 +42,15 @@ tug-of-war attacker walks the kill chain against a POMDP blue-team agent
   +138.6 → +113.3 vs tuned RF +137.5 → +73.6. Tie at α=0 (overlapping CIs);
   disjoint CIs from α=0.4 (PPO +121.3 vs RF +80.9, significant by +40.3).
   Oracle ceiling +194.9. Source: `docs/results/ablation/Falpha_summary.json`.
-- **OOD robustness (10 held-out zero-day classes):** PPO prevents 0.30–0.59
+- **OOD robustness (10 held-out zero-day classes):** best RL (A2C) prevents 0.70–0.84
   vs RF 0.00–0.15 on every class, with no detectable dependence on detector
-  recall (Spearman ρ=0.16, p=0.66; Pearson r=0.38, p=0.28; OLS slope CI
+  recall (Spearman ρ=0.37, p=0.29; Pearson r=0.50, p=0.14; OLS slope CI
   spans zero).
-- **Reward-coupling ablation:** coupled reward best DQN +274.8 (gap −128.0 vs
-  RF +146.8); outcome reward best PPO +123.8 (gap −42.9 vs RF +80.9). The
-  on-policy advantage is training reliability, not peak return — across-seed
-  sd PPO≈15 / DQN≈52 / A2C≈38.
-- **447 tests passed** (synthetic-only default; real-data tests auto-skip).
+- **Reward-coupling ablation:** coupled reward best DQN +226.2 (gap −79.4 vs
+  RF +146.8); outcome reward best A2C +146.1 (gap −65.2 vs RF +80.9). A2C
+  matches or exceeds PPO at every aliasing rate — across-seed sd PPO≈15 /
+  DQN≈52 / A2C≈9.
+- **452 tests passed** (synthetic-only default; real-data tests auto-skip).
 
 ### Locked contracts
 

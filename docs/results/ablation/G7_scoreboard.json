@@ -16,17 +16,17 @@
     {
       "id": "G7.1",
       "threshold": "pytest -q \u2265 428 passed; zero new skips",
-      "value": "======================= 447 passed, 1 warning in 16.45s ========================",
+      "value": "======================= 452 passed in 18.12s ========================",
       "status": "PASS",
       "kind": "tests"
     },
     {
       "id": "G7.2",
       "threshold": "Under outcome (sparse) reward, best RL agent outperforms RF-Acting (gap_outcome < 0)",
-      "value": "outcome: best_rl=ppo (+123.8), RF=+80.9, gap=-42.9",
+      "value": "outcome: best_rl=a2c (+146.1), RF=+80.9, gap=-65.2",
       "status": "PASS",
       "kind": "fcoupling",
-      "interpretation": "PASS: under the sparse outcome reward the best RL agent (ppo, +123.8) outperforms the memoryless RF-Acting baseline (+80.9) by +42.9 points \u2014 the RL advantage is not an artefact of dense per-step shaping."
+      "interpretation": "PASS: under the sparse outcome reward the best RL agent (a2c, +146.1) outperforms the memoryless RF-Acting baseline (+80.9) by +65.2 points \u2014 the RL advantage is not an artefact of dense per-step shaping."
     },
     {
       "id": "G7.3",
@@ -68,7 +68,7 @@
     {
       "id": "G7.9",
       "threshold": "On VulnerabilityScan, best trained RL CI_low > RF-Acting CI_high (\u22651\u03c3 separation, RL > RF)",
-      "value": "best_rl=ppo (+127.8), RF=(+90.1), \u0394=+37.6",
+      "value": "best_rl=a2c (+157.5), RF=(+90.1), \u0394=+67.4",
       "status": "PASS",
       "kind": "f15",
       "audit_finding": "AF1 (HEADLINE)",
