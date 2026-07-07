@@ -92,12 +92,6 @@ exclude_lines = [
 ]
 show_missing = true
 
-[tool.pytest.ini_options]
-min_version = "7.0"
-testpaths = ["tests"]
-addopts = "-q"
-markers = [
-    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
-    "integration: marks tests as integration tests requiring the full pipeline",
-    "gpu: marks tests that require a GPU",
-]
+# NOTE: pytest configuration lives in pytest.ini (single source of truth).
+# pytest ignores [tool.pytest.ini_options] whenever pytest.ini is present, so
+# duplicating it here would silently drift; keep pytest settings in pytest.ini.

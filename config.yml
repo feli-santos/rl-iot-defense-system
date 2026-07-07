@@ -118,7 +118,7 @@ rl:
   training:
     total_timesteps: 5000000 # 5M-step deterministic regime (Makefile BLUE_TEAM_TIMESTEPS)
     eval_freq: 25000
-    n_eval_episodes: 50
+    n_eval_episodes: 30 # matches train_agent.py / run_config.py default
     save_freq: 12500
 
   # Algorithm-specific hyperparameters
