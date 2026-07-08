@@ -1,7 +1,7 @@
 {
   "version": "1.0",
-  "git_sha": "f21f8740b7f9-dirty",
-  "timestamp": "2026-07-08T00:30:36Z",
+  "git_sha": "14ab396a90a5",
+  "timestamp": "2026-07-08T00:51:50Z",
   "produced_by": "scripts/blue_team/plot_learning_curves.py",
   "inputs": {
     "runs/redesign_5M_det/alpha_04/a2c/seed_0/episodes.jsonl": "304631f7c5648285808e78a14c08e5aff82c3dd8d1042949bc3c5d2236c9d6cc",
@@ -14,16 +14,6 @@
     "runs/redesign_5M_det/alpha_04/a2c/seed_7/episodes.jsonl": "68c507ea8e3fdf0603cdad726301a85851b94798109298330838b2a054b5d8f4",
     "runs/redesign_5M_det/alpha_04/a2c/seed_8/episodes.jsonl": "311b04bde70bb112b3eb38f034bb5bfa74a34e6ad1d73c338a7a3308389b73d9",
     "runs/redesign_5M_det/alpha_04/a2c/seed_9/episodes.jsonl": "016aa90e2beb991c3973e74058cbff3317aafb8663bd5a5c70e9e265ff4c3b7d",
-    "runs/redesign_5M_det/alpha_04/a2c_stale/seed_0/episodes.jsonl": "b4340789e3a02fbac6a960bd14a86873181eecb081c3d9072557abcee2121b70",
-    "runs/redesign_5M_det/alpha_04/a2c_stale/seed_1/episodes.jsonl": "4ac11e2a24631edde5b77018e7b366bdf2f9a799d9cfe3cb6885f766dc625008",
-    "runs/redesign_5M_det/alpha_04/a2c_stale/seed_2/episodes.jsonl": "9993d365a271b6ee454fb65676644a6da110c464992170593816ffc62e70d730",
-    "runs/redesign_5M_det/alpha_04/a2c_stale/seed_3/episodes.jsonl": "d2509d3d050bfc066d72497d4ce93b94130105b7a71666856b4d161b031ae249",
-    "runs/redesign_5M_det/alpha_04/a2c_stale/seed_4/episodes.jsonl": "ba80e5444e9616494237bb867b8d809d935270448a3f43e60221b9ebf9c66810",
-    "runs/redesign_5M_det/alpha_04/a2c_stale/seed_5/episodes.jsonl": "ed0ed159c281e484306ea3c922f20a50230c5e77b665b0c07690adcc129aa377",
-    "runs/redesign_5M_det/alpha_04/a2c_stale/seed_6/episodes.jsonl": "05b9c0d6d792645f5f448a2a2d2cd5f4f68bae3a9631dd22af9e82958138139f",
-    "runs/redesign_5M_det/alpha_04/a2c_stale/seed_7/episodes.jsonl": "7e0e217b886c3b9718a09eeef91dc2e9341b3830d604c26ba3ee8a694d53d769",
-    "runs/redesign_5M_det/alpha_04/a2c_stale/seed_8/episodes.jsonl": "d97b6c0b65804059904321d01619b2b0c537f3bfd766aaaf92e20b1366265c90",
-    "runs/redesign_5M_det/alpha_04/a2c_stale/seed_9/episodes.jsonl": "39f3b7bca8384ff2c5b598b51a2465a59eed8c86f021ba061c668c1fbd110341",
     "runs/redesign_5M_det/alpha_04/dqn/seed_0/episodes.jsonl": "28f806e7d4042093c0797435600a757108bb767c95b42a27584d5258ce04416b",
     "runs/redesign_5M_det/alpha_04/dqn/seed_1/episodes.jsonl": "46659a822be6445f18a478d5eeacb9516cb36b6f0ed4beffee48efc7439cb725",
     "runs/redesign_5M_det/alpha_04/dqn/seed_2/episodes.jsonl": "54895197059834fb18efdcec31bce8b39823e70e2d0e41b0b1d4e4795c131454",
@@ -54,16 +44,6 @@
     "runs/redesign_5M_det/alpha_04/a2c/seed_7/eval.jsonl": "661a6bc9b6434a7602c915a2988f29afdc1f9a92a9388ff32d78f32d126ccae9",
     "runs/redesign_5M_det/alpha_04/a2c/seed_8/eval.jsonl": "7b4ff70c24755fa5dda78e37451d38885c5e439e5dc20704482844544db9697b",
     "runs/redesign_5M_det/alpha_04/a2c/seed_9/eval.jsonl": "9b4dd20e9aad5a69258874f73d147aad240f387bdfb4607612548c5146b5b3b5",
-    "runs/redesign_5M_det/alpha_04/a2c_stale/seed_0/eval.jsonl": "0b885e179e5e03c5450dbd0c6ea9c1e0405c1913f14b1fa6ff4f1e0520ff8c39",
-    "runs/redesign_5M_det/alpha_04/a2c_stale/seed_1/eval.jsonl": "859c3242f873283046c4190eec9e5204100b4a1a9e60385d4a89ad6a7204aefe",
-    "runs/redesign_5M_det/alpha_04/a2c_stale/seed_2/eval.jsonl": "5722144aafd64871e0290a28021c89d069739d5c619aff467aada5eac7a32024",
-    "runs/redesign_5M_det/alpha_04/a2c_stale/seed_3/eval.jsonl": "075eb7b9e5d8fcb1e6e107e776cde91608fd9d130d811309731d676a94e261e3",
-    "runs/redesign_5M_det/alpha_04/a2c_stale/seed_4/eval.jsonl": "4c7a369ee753c15beb1129d30ad3ac814b2084f048ccc4f966df52117d157c54",
-    "runs/redesign_5M_det/alpha_04/a2c_stale/seed_5/eval.jsonl": "8a0dcc102fe173e82a2e1536c9a1cd01c1afaeb5cc5659645467059a6d2a8585",
-    "runs/redesign_5M_det/alpha_04/a2c_stale/seed_6/eval.jsonl": "c966b6cf51d213f06d6c5a7a0cb92e343c1257af0df5e6111ac4d925c1cc0175",
-    "runs/redesign_5M_det/alpha_04/a2c_stale/seed_7/eval.jsonl": "2b40d5f9f167b730c680372dfdf7eb43cd75bc6f4e700c16ec4c5efced5fe55f",
-    "runs/redesign_5M_det/alpha_04/a2c_stale/seed_8/eval.jsonl": "e6095822d5200c1a3be09d3c33805a5060ea14967c5399ff20f57f662f542b80",
-    "runs/redesign_5M_det/alpha_04/a2c_stale/seed_9/eval.jsonl": "1a0396446babea7d0d18637d7c6b84c511304e1e3ab5b0dfa35144ce58b69bea",
     "runs/redesign_5M_det/alpha_04/dqn/seed_0/eval.jsonl": "a3fd392f1bf0d28d3a9b4d659ef25fc02a9f23a12eae4fa000247a4381f474ed",
     "runs/redesign_5M_det/alpha_04/dqn/seed_1/eval.jsonl": "4ee8b6a09a6966b8f5a215b3fec22f42922b80362d38ae76c1ac9d7c96e3d789",
     "runs/redesign_5M_det/alpha_04/dqn/seed_2/eval.jsonl": "fefee5071f9f83b94d9c1f9fb94e0614c02f2da1b986e1014c044d5ccc66d617",
@@ -86,8 +66,8 @@
     "runs/redesign_5M_det/alpha_04/ppo/seed_9/eval.jsonl": "2e3433fe82334926ea348def30aa12a10027ca3a289c5ad2b1aebc99e9061de4"
   },
   "outputs": {
-    "F3_learning_curves.pdf": "684ef54ce3bfa55e85cf92443485ecd4c74ab4fc153bb3bdf30caf75572a5457",
-    "F3_learning_curves.png": "ea8d44ee57238d30403f592412e01b55cc8b7bec1f0dc927e23dcf9408d98c58",
-    "F3_summary.json": "ffe9685826233d8f2720cf8fbe71e20f83cbe31a3e0a742f2b83b2b7b566f365"
+    "F3_learning_curves.pdf": "00cc7b067b3c3737a0839b8e34db5650b4b2becea507837f002ade0542268d92",
+    "F3_learning_curves.png": "91f42ad07f20fd57d359167536a5f823d76de7c9c25f3bbbc8034657509cd1dc",
+    "F3_summary.json": "3b25300758c1a599478a45a26d3f2045be7a6683d1fbbdc303de6153fe3699ae"
   }
 }

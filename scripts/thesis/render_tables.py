@@ -55,6 +55,15 @@ _MACRO_ALGO = {
     "a2c": "ATwoC",
 }
 
+# Human-readable algorithm labels for use in macro *bodies* (typeset in prose),
+# where the digit in "A2C" is fine. Distinct from _MACRO_ALGO, which is only for
+# building all-letter macro NAMES.
+_DISPLAY_ALGO = {
+    "ppo": "PPO",
+    "dqn": "DQN",
+    "a2c": "A2C",
+}
+
 # Spelled-out p_down sweep points (LaTeX macro names cannot contain digits/dots).
 _PDOWN_WORD = {
     0.0: "Zero",
@@ -295,10 +304,10 @@ def _render_numbers() -> str:
     lines.append(_newcmd("CouplingGapCoupled", f"{gc:+0.1f}"))
     lines.append(_newcmd("CouplingGapOutcome", f"{go:+0.1f}"))
     lines.append(
-        _newcmd("CouplingBestCoupled", _MACRO_ALGO[fc["per_mode"]["coupled"]["best_algo"]])
+        _newcmd("CouplingBestCoupled", _DISPLAY_ALGO[fc["per_mode"]["coupled"]["best_algo"]])
     )
     lines.append(
-        _newcmd("CouplingBestOutcome", _MACRO_ALGO[fc["per_mode"]["outcome"]["best_algo"]])
+        _newcmd("CouplingBestOutcome", _DISPLAY_ALGO[fc["per_mode"]["outcome"]["best_algo"]])
     )
     # Emit every (mode, algo) reward so prose can cite each learned agent's
     # performance under both reward contracts, not only the historical DQN

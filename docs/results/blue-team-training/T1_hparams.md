@@ -4,9 +4,6 @@ Generated from 30 runs across 3 algorithms (seeds: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9
 
 All values are PLAN §8 D5.4 defaults. Ablation & Robustness may revisit
 hyperparameters; Blue-Team Training reports them as a frozen reference.
-`total_timesteps` is the deterministic-5M regime (5,000,000 steps, no early
-stopping) that produced the canonical `runs/redesign_5M_det/alpha_04`
-checkpoints.
 
 | algo | total_timesteps | learning_rate | n_steps | gamma | gae_lambda | ent_coef | vf_coef | max_grad_norm | buffer_size | learning_starts | batch_size | tau | target_update_interval | exploration_fraction | exploration_initial_eps | exploration_final_eps | n_epochs |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |

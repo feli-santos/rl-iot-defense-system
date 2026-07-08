@@ -89,16 +89,30 @@ class TestRenderTables:
         assert not bad, f"macro names with digits are invalid LaTeX: {bad}"
 
     def test_a2c_macronames_spelled_out(self):
-        """The A2C algorithm token is emitted as ATwoC in macro names, never
-        the literal ``A2C`` (whose ``2`` ends the LaTeX control sequence)."""
+        """The A2C algorithm token is spelled out as ATwoC in macro *names*
+        (the ``2`` would end the LaTeX control sequence), but macro *bodies*
+        that are typeset into prose must carry the human-readable label
+        ``A2C``.  Names and bodies are distinct concerns: a name is a control
+        sequence (all-letters), a body is displayed text."""
         tex = _render_numbers()
+        # Macro NAMES: spelled out (no digits).
         assert r"\newcommand{\AlphaFourATwoC}" in tex
         assert r"\newcommand{\AlphaFourATwoCCILow}" in tex
         assert r"\newcommand{\AlphaFourATwoCCIHigh}" in tex
         assert r"\newcommand{\CouplingATwoCOutcome}" in tex
-        assert r"\newcommand{\CouplingBestOutcome}{ATwoC}" in tex
         assert r"\newcommand{\AlphaFourA2C}" not in tex
         assert r"\newcommand{\CouplingA2C" not in tex
+
+    def test_display_label_macros_use_readable_a2c(self):
+        """The ``\\CouplingBest*`` macros expand to a label that is typeset in
+        prose (e.g. "the best learned agent now A2C"), so their *body* must be
+        the readable ``A2C`` -- never the macro-name spelling ``ATwoC``.
+        Regression for the ``ATwoC`` prose-leak bug where the macro-name
+        spelling escaped into the compiled body text."""
+        tex = _render_numbers()
+        assert r"\newcommand{\CouplingBestOutcome}{A2C}" in tex
+        assert r"\newcommand{\CouplingBestCoupled}{DQN}" in tex
+        assert r"\newcommand{\CouplingBestOutcome}{ATwoC}" not in tex
 
 
 def _newcmd_value(tex: str, name: str) -> str:
