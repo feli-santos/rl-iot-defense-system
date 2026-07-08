@@ -136,7 +136,7 @@ blue-team-figures:  ## Blue-team: render F3, F4, T1 from $(BLUE_TEAM_RUNS_ROOT).
 	    --out-dir docs/results/blue-team-training
 	$(PYTHON) -m scripts.blue_team.plot_action_dist \
 	    --runs-root $(BLUE_TEAM_RUNS_ROOT) \
-	    --force-algo ppo \
+	    --algos a2c ppo dqn \
 	    --out-dir docs/results/blue-team-training
 	$(PYTHON) -m scripts.blue_team.dump_hparams \
 	    --runs-root $(BLUE_TEAM_RUNS_ROOT) \

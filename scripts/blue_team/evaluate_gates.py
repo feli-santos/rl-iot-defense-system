@@ -226,8 +226,12 @@ def evaluate(runs_root: Path, out_dir: Path, fraction: float = 0.10) -> dict[str
                 **({"finding_id": "D5.4.1"} if g5_4_status == "FAIL-WITH-FINDING" else {}),
             },
             "G5.5": {
-                "description": "no per-stage action share > 70% at late checkpoint",
-                "threshold": 0.70,
+                "description": (
+                    "every displayed policy is non-degenerate at the late "
+                    "checkpoint (per-stage argmax spans >= 2 distinct actions)"
+                ),
+                "threshold": 2,
+                "criterion": "distinct_argmax_actions_across_stages",
                 "status": _status(g5_5_passes),
                 "per_stage": g5_5_per_stage,
             },

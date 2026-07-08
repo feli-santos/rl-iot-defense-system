@@ -1,7 +1,7 @@
 {
   "version": "1.0",
-  "git_sha": "14ab396a90a5-dirty",
-  "timestamp": "2026-07-08T00:53:44Z",
+  "git_sha": "d3a81c1f7573-dirty",
+  "timestamp": "2026-07-08T05:11:07Z",
   "produced_by": "scripts/blue_team/plot_action_dist.py",
   "inputs": {
     "runs/redesign_5M_det/alpha_04/a2c/seed_0/episodes.jsonl": "304631f7c5648285808e78a14c08e5aff82c3dd8d1042949bc3c5d2236c9d6cc",
@@ -66,8 +66,8 @@
     "runs/redesign_5M_det/alpha_04/ppo/seed_9/eval.jsonl": "2e3433fe82334926ea348def30aa12a10027ca3a289c5ad2b1aebc99e9061de4"
   },
   "outputs": {
-    "F4_action_distribution.png": "dea1e8e8f5bed3c62010de8e590e3da1221ba0633790649dc285e3c5f03af647",
-    "F4_action_distribution.pdf": "b311ac5d564c4a2ecc50062a924ded2b350f4f9135d0659d804fc482f54de9ae",
-    "F4_summary.json": "d88b1585b28e1d763bb1cad395b57ea169fa75005e9d75a52ad2af94db51f909"
+    "F4_action_distribution.png": "7ae92c08bb21826bcf802e43532c482615b3b055fdfb3e00504e1300fd35df3e",
+    "F4_action_distribution.pdf": "443bbdc61b6243604bf0d8b992957eed14b87157b1a94fab318e466726e2980e",
+    "F4_summary.json": "90683857db0bd124a2a56570f1318c82c5c2ef15ddbcf34628f508ee0d579602"
   }
 }
