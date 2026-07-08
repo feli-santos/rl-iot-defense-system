@@ -131,17 +131,18 @@ These are fixed contracts; do not silently change them.
   Prevention bonus `b_prevent = +50`.
 - **Canonical headline numbers (deterministic-5M regime)** (from
   `docs/results/ablation/Falpha_summary.json`): PPO flat +138.6→+113.3 vs tuned
-  RF +137.5→+73.6 across α=0.0/0.2/0.4/0.6; tie at α=0 (overlapping CIs), disjoint
-  CIs from α=0.4 (PPO +121.3 vs RF +80.9, sig +40.3). Oracle ceiling +194.9.
-  Reward-coupling: coupled best DQN +226.2 (gap −79.4 vs RF +146.8), outcome
-  best A2C +146.1 (gap −65.2 vs RF +80.9; DQN −8.6). **On-policy advantage is
+  RF +136.5→+64.0 across α=0.0/0.2/0.4/0.6 (RF continues to −29.3 at α=1.0);
+  tie at α=0 (overlapping CIs), disjoint CIs from α=0.4 (PPO +121.3 vs RF +94.4,
+  sig +26.9). Oracle ceiling +194.8.
+  Reward-coupling: coupled best DQN +226.2 (gap −63.1 vs RF +163.1), outcome
+  best A2C +146.1 (gap −63.0 vs RF +83.1; DQN −8.6). **On-policy advantage is
   training reliability and defensive doctrine**: at α=0.4 all three clear the
-  negative regime on best checkpoint (DQN +72.5, PPO +121.3, A2C +149.6) and
+  negative regime on best checkpoint (DQN +72.5, PPO +121.3, A2C +138.7) and
   A2C matches or exceeds PPO at every aliasing rate; across-seed sd PPO≈15 /
-  DQN≈52 / A2C≈9; the same DQN's sd inflates ≈17→≈51 switching coupled→outcome.
-  OOD (10 held-out zero-day classes): best RL (A2C) prevents 0.70–0.84 vs RF
+  DQN≈52 / A2C≈9; the same DQN's sd inflates ≈17→≈52 switching coupled→outcome.
+  OOD (10 held-out zero-day classes): best RL (A2C) prevents 0.71–0.85 vs RF
   0.00–0.15 on every class, with **no detectable dependence** of RL advantage
-  on detector recall (Spearman ρ=0.37 p=0.29, Pearson r=0.50 p=0.14, OLS slope
+  on detector recall (Spearman ρ=0.22 p=0.54, Pearson r=−0.02 p=0.95, OLS slope
   CI spans zero).
   F10 (aggressiveness) and F17 (evasion) load the fixed det-5M α=0.4 PPO and
   evaluate across the swept knob (no retraining); F17 uses the **evasive-

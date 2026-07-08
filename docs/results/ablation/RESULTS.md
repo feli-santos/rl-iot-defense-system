@@ -10,21 +10,21 @@
 ## 1 — Headline numbers
 
 **Fcoupling — reward-coupling ablation (D7.1):**
-PASS: under the sparse outcome reward the best RL agent (a2c, +146.1) outperforms the memoryless RF-Acting baseline (+80.9) by +65.2 points — the RL advantage is not an artefact of dense per-step shaping.
+PASS: under the sparse outcome reward the best RL agent (a2c, +146.1) outperforms the memoryless RF-Acting baseline (+83.1) by +63.0 points — the RL advantage is not an artefact of dense per-step shaping.
 
-  - Outcome gap (RL − RF): **-65.2**
-  - Coupled gap (RL − RF): **-79.4**
-  - Gap reduction (coupled → outcome): **-14.2**
+  - Outcome gap (RL − RF): **-63.0**
+  - Coupled gap (RL − RF): **-63.1**
+  - Gap reduction (coupled → outcome): **-0.02**
 
 **F15 — OOD-class robustness (audit-AF1, HEADLINE):**
 Trained RL recovers some of the supervised RF blind spot on VulnerabilityScan.
 
-  - On `VulnerabilityScan` (RF detector recall = 0.001):
-    - Best trained RL: `a2c` mean = +157.5
-      (CI [154.98493333333333, 160.35998333333333])
+  - On `VulnerabilityScan` (RF detector recall = 0.224):
+    - Best trained RL: `a2c` mean = +150.3
+      (CI [138.27604166666669, 159.74618333333333])
     - RF-Acting mean = +90.1
       (CI [76.60926666666667, 102.57432499999997])
-    - Δ = **+67.4**
+    - Δ = **+60.2**
 
 **F10 — attack-aggressiveness (fixed-policy sweep; conceptually aligned with IoTWarden Fig. 6):**
 PASS: PPO benefits from a more lenient environment (higher p_down ⇒ higher reward) by ≥ 1σ between p_down=0.0 and p_down=0.6, and the rule curve is monotone non-decreasing in p_down — the value function shifts with environment difficulty as expected (conceptually aligned with IoTWarden Fig. 6).
@@ -33,14 +33,14 @@ PASS: PPO benefits from a more lenient environment (higher p_down ⇒ higher rew
 
 | Gate | Threshold | Status | Value / Notes |
 |---|---|:---:|---|
-| **G7.1** | pytest -q ≥ 428 passed; zero new skips | **PASS** | ======================= 455 passed in 18.12s ======================== |
-| **G7.2** | Under outcome (sparse) reward, best RL agent outperforms RF-Acting (gap_outcome < 0) | **PASS** | outcome: best_rl=a2c (+146.1), RF=+80.9, gap=-65.2 |
+| **G7.1** | pytest -q ≥ 428 passed; zero new skips | **PASS** | ======================= 462 passed in 18.12s ======================== |
+| **G7.2** | Under outcome (sparse) reward, best RL agent outperforms RF-Acting (gap_outcome < 0) | **PASS** | outcome: best_rl=a2c (+146.1), RF=+83.1, gap=-63.0 |
 | **G7.3** | PPO p=0.0 < p=0.6 by ≥1σ AND rule monotone | **PASS** | p=0.0 CI=(-64.7, -37.3); p=0.6 CI=(93.5, 107.7) |
 | **G7.5** | Environment-design frozen tests pass with impact_is_terminal=True | **PASS** | G7.1 carries this through (full pytest green ⇒ environment-design contract preserved) |
 | **G7.6** | No regression on environment-design/detector/Blue-Team/benchmark frozen tests overall | **PASS** | G7.1 carries this through |
 | **G7.7** | Fcoupling/F10/F15/F17 manifest.json all present + SHA-pinned | **PASS** | all 4 manifests present |
 | **G7.8** | F15 4-class × 8-policy matrix complete, no NaN means | **PASS** | 80/80 cells; n_missing=0; n_nan=0 |
-| **G7.9** | On VulnerabilityScan, best trained RL CI_low > RF-Acting CI_high (≥1σ separation, RL > RF) | **PASS** | best_rl=a2c (+157.5), RF=(+90.1), Δ=+67.4 |
+| **G7.9** | On VulnerabilityScan, best trained RL CI_low > RF-Acting CI_high (≥1σ separation, RL > RF) | **PASS** | best_rl=a2c (+150.3), RF=(+90.1), Δ=+60.2 |
 | **G7.10** | F17 max-evasion (0.75) mean test reward within robust_tol=0.25 of evasion=0 reference (graceful degradation, no collapse) | **PASS** | ref(e=0)=+123.8, max(e=0.75)=+96.4, ci_low_degradation=30.9 (tol_abs=30.9) |
 
 Tally: **9 PASS / 0 FAIL-WITH-FINDING**.
@@ -74,7 +74,7 @@ Source of record: `G7_scoreboard.json` next to this file.
 | `tests/test_env_impact_terminal.py` | 8 synthetic tests pinning the `impact_is_terminal` codepath. |
 | `tests/test_train_agent_reward_overrides.py` | 14 synthetic tests pinning the CLI override plumbing. |
 
-Total tests: 455 (no run-time-data tests added; G7.2/G7.3/G7.8/G7.9 are real-data acceptance tests).
+Total tests: 462 (no run-time-data tests added; G7.2/G7.3/G7.8/G7.9 are real-data acceptance tests).
 
 ## 5 — Cross-step findings discovered during the ablation evaluation
 
@@ -133,4 +133,5 @@ gitignored; all derived figures + summaries + manifests live under
 ## 9 — Test count history
 
 Dataset prep 254 → Dataset prep 266 → Markov Attacker 283 → Env design 296 → Detector 329
-→ Blue-Team 376 → Benchmark 420 → Ablation 447 → A2C-retrain + contract audit 452 → **M1 truncation-boundary fix 455**.
+→ Blue-Team 376 → Benchmark 420 → Ablation 447 → A2C-retrain + contract audit 452 → M1 truncation-boundary fix 455
+→ canonical-value + sync-guard tests 461 → display-label macro regression test **462**.

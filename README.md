@@ -2,8 +2,8 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
-[![Tests: 455 passed](https://img.shields.io/badge/tests-455%20passed-brightgreen.svg)](#)
-[![Thesis: 84 pages](https://img.shields.io/badge/thesis-84%20pages-blue.svg)](#thesis)
+[![Tests: 462 passed](https://img.shields.io/badge/tests-462%20passed-brightgreen.svg)](#)
+[![Thesis: 102 pages](https://img.shields.io/badge/thesis-102%20pages-blue.svg)](#thesis)
 
 > A reproducible MSc-thesis codebase: an adversarial reinforcement-learning
 > framework for kill-chain-aware defense on real IoT traffic (CICIoT2023).
@@ -20,30 +20,30 @@ artefacts under [`docs/results/`](docs/results/):
 
 1. **Partial-observability crossover.** Sweeping the observation-aliasing rate
    α traces a clean crossover: at α=0 a windowed PPO defender and a tuned
-   RandomForest classifier **tie** (PPO +138.6 vs RF +137.5, overlapping CIs),
+   RandomForest classifier **tie** (PPO +138.6 vs RF +136.5, overlapping CIs),
    proving the environment does not favour RL by construction. As α rises, PPO
-   holds flat (→+113.3) while RF degrades monotonically (→+73.6). From α=0.4
-   onward the CIs are disjoint. The α=0 tie is the anchor; the crossover shape
-   is the contribution.
+   holds flat (→+113.3) while RF degrades monotonically (→+64.0, and on to
+   −29.3 at α=1.0). From α=0.4 onward the CIs are disjoint. The α=0 tie is the
+   anchor; the crossover shape is the contribution.
 
 2. **Reward-coupling ablation.** A reward shaped by a stage-action
    proportionality term hands the agent a privileged classification target,
    making a supervised classifier sufficient. We test this by training under
    both a **coupled** (shaped) and a **decoupled** (sparse outcome-only) reward.
    The best RL agent beats the tuned RF under **both** contracts (coupled gap
-   −79.4, DQN +226.2 vs RF +146.8; outcome gap −65.2, A2C +146.1 vs RF +80.9),
+   −63.1, DQN +226.2 vs RF +163.1; outcome gap −63.0, A2C +146.1 vs RF +83.1),
    so the RL advantage is not an artefact of reward shaping.
 
 3. **Out-of-distribution generalisation.** On 10 held-out zero-day attack
    classes, the windowed RL defender prevents a substantially larger fraction
-   of intrusions than RF-Acting on **every** class (best RL 0.70–0.84 vs RF
+   of intrusions than RF-Acting on **every** class (best RL 0.71–0.85 vs RF
    0.00–0.15), and the advantage is **independent of the upstream detector's
    per-class recall** — a temporal-control property no memoryless per-flow
    classifier can reproduce.
 
 **Honest finding.** Under a fixed 5,000,000-step budget with no early stopping,
 all three DRL agents clear the negative-return regime on their best checkpoint
-(at α=0.4, DQN +72.5, PPO +121.3, and A2C +149.6). A2C matches or exceeds PPO
+(at α=0.4, DQN +72.5, PPO +121.3, and A2C +138.7). A2C matches or exceeds PPO
 at every aliasing rate, with the tightest across-seed dispersion of the three
 (sd A2C≈9 vs PPO≈15 vs DQN≈52); the off-policy DQN is the only algorithm whose
 across-seed variance inflates sharply when the per-step shaping is removed. The
@@ -107,7 +107,7 @@ cd rl-iot-defense-system
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
-make test                    # 455 passed in ~60-90 s on CPU
+make test                    # 462 passed in ~60-90 s on CPU
 ```
 
 ### Dataset
@@ -173,7 +173,7 @@ with Podman/TeXLive via `make thesis` (wraps `bash tex/build.sh`). The root
 file is `tex/main.tex` (abnTeX2/FEEC template).
 
 ```bash
-make thesis                  # build tex/main.pdf (~84 pages)
+make thesis                  # build tex/main.pdf (~102 pages)
 ```
 
 Numbers in the thesis are **macro-driven, never hand-typed**. Canonical
@@ -196,7 +196,7 @@ rl-iot-defense-system/
 │   └── utils/                # Dataset processor + realization engine
 ├── scripts/                  # Runners, plotters, thesis tooling
 │   ├── data/  detector/  blue_team/  benchmark/  ablation/  thesis/
-├── tests/                    # 455 unit + integration tests (pytest)
+├── tests/                    # 462 unit + integration tests (pytest)
 ├── docs/                     # Architecture, environment, dataset docs
 │   ├── results/              # Canonical figures + manifest hash-chains
 │   ├── ARCHITECTURE.md       # Module map + adversarial loop
