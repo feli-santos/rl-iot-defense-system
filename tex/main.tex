@@ -162,8 +162,8 @@ de informação privilegiada; (iii) sob distribuição deslocada (dez classes de
 ataque retidas), o melhor agente de RL com janela previne uma fração maior de
 ataques em todas as classes, sem dependência detectável da acurácia do
 detector. Ambos os algoritmos \emph{on-policy} (PPO e A2C) treinam de forma
-confiável sob a recompensa esparsa (desvio-padrão entre sementes $\approx 15$
-e $\approx 9$, respectivamente, frente a $\approx 52$ para o DQN), e o A2C
+confiável sob a recompensa esparsa, com desvio-padrão entre sementes
+substancialmente menor que o do DQN, e o A2C
 atinge o maior retorno de \emph{best-checkpoint} na taxa de \emph{aliasing}
 principal; o DQN \emph{off-policy}, sem modelagem por etapa, degrada-se a
 retorno negativo com variância várias vezes maior, de modo que a vantagem
@@ -207,8 +207,8 @@ refuting the privileged-reward objection; (iii) under distribution shift
 (ten held-out attack classes), the best windowed RL agent prevents a larger
 fraction of attacks on every class, with no detectable dependence on detector
 accuracy. Both on-policy algorithms (PPO and A2C) train reliably under the
-sparse outcome reward (across-seed sd $\approx 15$ and $\approx 9$
-respectively, against $\approx 52$ for DQN), and A2C reaches the highest
+sparse outcome reward, with substantially lower across-seed variability than
+DQN, and A2C reaches the highest
 best-checkpoint outcome reward at the headline aliasing rate; the off-policy
 DQN --- without per-step shaping --- destabilizes, with several times the
 across-seed variance, so the on-policy advantage is one of
