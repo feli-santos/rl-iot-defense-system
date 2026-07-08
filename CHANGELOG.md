@@ -7,70 +7,228 @@ research artefact versions recorded in `CITATION.cff`.
 
 ## [Unreleased]
 
-### Fixed
-- **Environment reward-accounting edge case (post-hoc correctness patch):**
-  `AdversarialIoTEnv.step()` previously let an episode escape terminal IMPACT
-  accounting when the attacker reached the `IMPACT` stage on the *exact* step
-  that exhausted the horizon (`impact_is_terminal=False`, the primary contract).
-  Such a tail-end compromise returned `truncated=True`/`terminated=False` with a
-  stale in-flight outcome and **no impact penalty**, scoring like a benign
-  no-op. The terminal accounting (impact penalty + mitigation/miss bonus +
-  `compromised` outcome label) now also fires at the horizon boundary. Added
-  three regression tests (`TestImpactAtTruncationBoundary`). A 20k-episode
-  measurement puts the boundary case at ≈0.16 % of episodes (random policy),
-  ≈0 % under a passive policy — well inside the reported confidence intervals,
-  so the published canonical numbers are unchanged and **no re-run is required**.
+Post-`v0.7.0` consolidation around the A2C on-policy result and the canonical
+deterministic-5M numbers.
+
+### Added
+- F10 (aggressiveness) and F17 (evasion) robustness sweeps extended to all
+  three DRL agents (PPO/A2C/DQN), loading the fixed det-5M α=0.4 checkpoints
+  (no retraining).
+- OOD train/eval parity guard and canonical eval defaults in the eval scripts.
 
 ### Changed
-- Rewrote `requirements.txt` as a minimal direct-dependency list (10 runtime
-  packages) and added `requirements-dev.txt` (lint, format, test, pre-commit).
-- Removed the unused `mlflow` integration and the dead `src/training/` package,
-  dropping ~100 transitive dependencies (docker, fastapi, flask, sqlalchemy,
-  alembic, opentelemetry-*, …).
-- Removed stale `MLP` detector references from `README.md` and
-  `docs/ARCHITECTURE.md` (the MLP detector was dropped in `5d2bb2c`; only the
-  `RandomForest` stage detector remains).
-- `Makefile` `install-dev` now installs from `requirements-dev.txt`.
+- Consolidated the A2C result paths and re-ran the matched-contract RF eval;
+  regenerated the F3 learning-curve and F4 per-stage action-distribution
+  figures as a 3-row A2C/PPO/DQN grid (stale A2C series purged).
+- Synced headline numbers and the test count to canonical post-A2C truth
+  (**462 tests**); removed math notation from the resumo/abstract prose.
+
+### Fixed
+- Isolated the environment RNG, raise on invalid actions, reset the session
+  cursor on `reset()`, and made the latency file write exception-safe.
+- Deterministic dataset labels and pandas-3.0-safe `fillna`; dropped dead
+  branches. Corrected stale docstrings, the eval-parity fallback, the
+  reproducibility-smoke target, and canonical test wiring.
+
+## [0.7.0] — 2026-07-06
+
+Open-source hardening pass plus a post-hoc environment correctness fix, on top
+of the deterministic-5M A2C consolidation.
 
 ### Added
 - `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `SECURITY.md`.
 - GitHub Actions CI (`.github/workflows/ci.yml`): Python 3.9, `make lint` +
   `pytest -q --cov`.
+- Evasive-persistence (post-detection hardening) attacker coupling used by the
+  F17 sweep.
+
+### Changed
+- Rewrote `requirements.txt` as a minimal direct-dependency list (10 runtime
+  packages) and added `requirements-dev.txt` (lint, format, test, pre-commit);
+  `Makefile` `install-dev` now installs from it. Fixed the dev toolchain to be
+  venv-resolved (lint/format, pre-commit hook, isort cleanup).
+- Removed the unused `mlflow` integration and dead `src/training/` package,
+  dropping ~100 transitive dependencies (docker, fastapi, flask, sqlalchemy,
+  alembic, opentelemetry-*, …).
+- Removed stale `MLP` detector references from `README.md` and
+  `docs/ARCHITECTURE.md`; repointed checkpoints to `runs/redesign_5M_det`.
+- Fixed the A2C `n_steps` clamp that silently trained at 5 instead of 256, and
+  regenerated all figures + manifests after the retrain.
+
+### Fixed
+- **Environment reward-accounting edge case:** `AdversarialIoTEnv.step()`
+  previously let an episode escape terminal IMPACT accounting when the attacker
+  reached `IMPACT` on the *exact* step that exhausted the horizon
+  (`impact_is_terminal=False`). Such a tail-end compromise returned
+  `truncated=True`/`terminated=False` with a stale outcome and **no impact
+  penalty**. Terminal accounting now also fires at the horizon boundary. Added
+  three regression tests (`TestImpactAtTruncationBoundary`); a 20k-episode
+  measurement puts the boundary case at ≈0.16 % (random policy), so canonical
+  numbers are unchanged and **no re-run is required**.
+- Digit-free LaTeX macro names for A2C (`ATwoC`); removed dead `BestAgentName`.
 
 ### Removed
 - Dead code: `src/training/training_manager.py`, `src/training/__init__.py`.
 - Orphan/personal artifacts: `scripts/review/redesign_smoke.py`,
-  `scripts/run_alpha_sweep_5M_det.sh`, `tex/cover_letter.md`,
-  `data/img/cic-{topology,diagram3}-2023.jpg`, `tex/figs/F15b_recall_vs_advantage.png`.
+  `scripts/run_alpha_sweep_5M_det.sh`, `tex/cover_letter.md`, MLP-era orphan
+  figures, and stale dataset images.
 
+## [0.6.7] — 2026-06-30
 
-## [0.2.0] — 2026-06-21
+### Fixed
+- Detector macro-F1 split error; made the affected thesis numbers macro-driven.
 
-First open-source release. Adversarial-RL IoT defense system: a reactive
-tug-of-war attacker walks the kill chain against a POMDP blue-team agent
-(DQN/PPO/A2C) that never observes the true attack stage.
+## [0.6.6] — 2026-06-30
 
-### Headline empirical findings (deterministic-5M regime)
+### Changed
+- Phase-1 journal framing tightened; thesis prose/figure polish.
 
-- **PPO dominates across the adversarial-strength sweep (α=0.0/0.2/0.4/0.6):**
-  +138.6 → +113.3 vs tuned RF +137.5 → +73.6. Tie at α=0 (overlapping CIs);
-  disjoint CIs from α=0.4 (PPO +121.3 vs RF +80.9, significant by +40.3).
-  Oracle ceiling +194.9. Source: `docs/results/ablation/Falpha_summary.json`.
-- **OOD robustness (10 held-out zero-day classes):** best RL (A2C) prevents 0.70–0.84
-  vs RF 0.00–0.15 on every class, with no detectable dependence on detector
-  recall (Spearman ρ=0.37, p=0.29; Pearson r=0.50, p=0.14; OLS slope CI
-  spans zero).
-- **Reward-coupling ablation:** coupled reward best DQN +226.2 (gap −79.4 vs
-  RF +146.8); outcome reward best A2C +146.1 (gap −65.2 vs RF +80.9). A2C
-  matches or exceeds PPO at every aliasing rate — across-seed sd PPO≈15 /
-  DQN≈52 / A2C≈9.
-- **455 tests passed** (synthetic-only default; real-data tests auto-skip).
+## [0.6.5] — 2026-06-28
 
-### Locked contracts
+### Changed
+- Journal-quality prose revisions across the thesis chapters.
 
-- Primary reward: `reward_mode=outcome` (sparse, outcome-only) for training +
-  benchmark. `coupled` used only in the reward-coupling ablation.
-- 10 seeds `{0..9}` for DRL; baselines/oracle run 1 seed. n=300 episodes for
-  all policies. Tug-of-war `p_down=0.90` (ISOLATE 0.98) / `p_up=0.90`;
-  BENIGN onset `p_onset=0.35`, `p_onset_access=0.10`. Prevention bonus +50.
-- Canonical checkpoints: `runs/redesign_5M_det/alpha_{00,02,04,06,08,10}/<algo>/seed_<n>/best_model.zip`.
+## [0.6.4] — 2026-06-25
+
+### Changed
+- Journal-revision pass: citation integrity, threats-to-validity section,
+  honest framing, figure refinements, and cover letter.
+
+## [0.6.3] — 2026-06-25
+
+### Fixed
+- Incorporated all three-review fixes into the thesis.
+
+## [0.6.2] — 2026-06-24
+
+### Fixed
+- Resolved all 7 reviewer defects; OOD eval re-run at 10 seeds × 300 episodes;
+  updated reported ranges; added RESTRAIN / RL-IoTIDS references; documented the
+  durable-checkpoint note.
+
+## [0.6.1] — 2026-06-24
+
+### Changed
+- Updates to `Makefile`, docs, and thesis files following the redesign.
+
+## [0.6.0] — 2026-06-23
+
+Redesign for genuine partial observability (the POMDP central thesis).
+
+### Added
+- Session-coherent feature sampling, adjacent-stage observation aliasing at
+  configurable rate α, proximity-coupled escalation (replacing the finite
+  intrusion budget), outcome-only reward mode, and no post-transition feature
+  leakage. Comprehensive tests for the redesigned environment.
+- Alpha-curve and reward-coupling ablation scripts; redesigned eval pipeline
+  and Makefile targets.
+
+### Changed
+- Aligned tooling to Python 3.9; consolidated pytest config; rewrote README,
+  AGENTS, and architecture docs for the redesign; regenerated thesis figures
+  under the locked outcome contract.
+- Replaced Phase-N identifiers with semantic stage names throughout.
+
+### Removed
+- RecurrentPPO (LSTM belief-state) agent; retired the finite intrusion budget
+  and dead `generator_path`; removed dead code and legacy LSTM remnants.
+
+## [0.5.0] — 2026-06-17
+
+Tug-of-war attacker dynamics.
+
+### Added
+- Reactive **tug-of-war** kill-chain attacker: signed proportionality rule
+  `d = action − rec(stage)` — proportionate (`d==0`) de-escalates
+  (`p_down=0.90`, ISOLATE 0.98), under-force escalates (`p_up=0.90`),
+  over-force holds; BENIGN autonomous multi-rung onset (`p_onset=0.35`,
+  `p_onset_access=0.10`). `prevention_rate` promoted to primary KPI.
+
+### Changed
+- `THROTTLE` action renamed `RESTRICT` (index unchanged). Re-ran all
+  ablation/benchmark/training/detector results under the new dynamics; rewrote
+  thesis prose and docs to match. Suite updated to 428 tests.
+
+### Removed
+- CNN1D detector (MLP + RandomForest only at this point).
+
+## [0.4.0] — 2026-06-05
+
+Prevention pivot.
+
+### Added
+- Finite attacker budget (prevention model), evasion-before-commit reactive
+  attacker, and outcome-only reward mode. Phase-D ablation suite (F9/F10/F12/
+  F15/F16) and F17 evasion-reactive sweep.
+- Machine-readable `feature_provenance.json` (29-col provenance).
+
+### Changed
+- Pivoted thesis prose from the LSTM red-team to a finite-budget Markov
+  attacker + prevention spine; centralized PNG→PDF figure export with F-named
+  figure assets; drove benchmark/latency/benign-FPR tables from generated
+  macros. Consolidated docs to AGENTS/README + `docs/{ARCHITECTURE,ENVIRONMENT,
+  RESULTS,STATUS}.md`.
+
+### Removed
+- LSTM red-team modules and training pipeline; dangling G1–G5 tooling; dead
+  `tex/figs` JSON sidecars.
+
+## [0.3.0] — 2026-06-04
+
+Pre-pivot baseline: thesis revision complete (86 pp, 459 tests). Snapshot
+before the finite-budget / Markov-attacker re-centering.
+
+### Added
+- First-order Markov attacker (replacing the LSTM red-team); JSON→`.tex`
+  generator with anti-drift macros + tables; freshness gate, results index, and
+  resume/skip support in the blue-team sweep driver.
+- Env ablations: Lagrangian FPR penalty, non-monotonic attacker retreat, RF
+  tree-count sweep, and detector-in-obs.
+
+### Changed
+- Full thesis prose rewrite to canonical 10-seed / 300-episode numbers; migrated
+  to `\citeonline` (abnTeX2cite); locked Phase-3 contract decisions.
+
+## [0.2.0] — 2026-05-25
+
+FEEC CCPG 001-2015 (abnTeX2) template migration.
+
+### Changed
+- Migrated the dissertation to the FEEC CCPG 001-2015 (abnTeX2) template,
+  resolving the Overleaf compile-loop/timeout (font/math fixes, PNG→PDF,
+  `\clearpage`). Phase-5 full manuscript rewrite (PPO-primary 10-seed, 81 %
+  oracle, 141× latency); Phase-6 QA release.
+
+### Removed
+- Deprecated/dead code, unused one-shot scripts, and Copilot instructions.
+
+## [0.1.0] — 2026-05-12
+
+First thesis release: *Adversarial Reinforcement Learning for Kill-Chain-Aware
+IoT Defense* (MSc Thesis, FEEC/UNICAMP, 2026).
+
+### Added
+- CICIoT2023-backed pipeline: 442,237 rows, 29 features, 5-stage kill-chain
+  abstraction with immutable stratified train/val/test/OOD split-index
+  manifests (SHA-256 hash chain). Figures F0a/F0b.
+- Eight-phase audit chain (dataset → red team → environment → detector →
+  blue-team training → benchmark → ablations), closed via the ten-step
+  thesis-mentor walkthrough in `docs/mentor_review/`.
+- `--impact-is-terminal` / `--reward-overrides` passthrough and the R1
+  smoke-reproducibility harness.
+
+[Unreleased]: https://github.com/feli-santos/rl-iot-defense-system/compare/v0.7.0...HEAD
+[0.7.0]: https://github.com/feli-santos/rl-iot-defense-system/compare/v0.6.7...v0.7.0
+[0.6.7]: https://github.com/feli-santos/rl-iot-defense-system/compare/v0.6.6...v0.6.7
+[0.6.6]: https://github.com/feli-santos/rl-iot-defense-system/compare/v0.6.5...v0.6.6
+[0.6.5]: https://github.com/feli-santos/rl-iot-defense-system/compare/v0.6.4...v0.6.5
+[0.6.4]: https://github.com/feli-santos/rl-iot-defense-system/compare/v0.6.3...v0.6.4
+[0.6.3]: https://github.com/feli-santos/rl-iot-defense-system/compare/v0.6.2...v0.6.3
+[0.6.2]: https://github.com/feli-santos/rl-iot-defense-system/compare/v0.6.1...v0.6.2
+[0.6.1]: https://github.com/feli-santos/rl-iot-defense-system/compare/v0.6.0...v0.6.1
+[0.6.0]: https://github.com/feli-santos/rl-iot-defense-system/compare/v0.5.0...v0.6.0
+[0.5.0]: https://github.com/feli-santos/rl-iot-defense-system/compare/v0.4.0...v0.5.0
+[0.4.0]: https://github.com/feli-santos/rl-iot-defense-system/compare/v0.3.0...v0.4.0
+[0.3.0]: https://github.com/feli-santos/rl-iot-defense-system/compare/v0.2.0...v0.3.0
+[0.2.0]: https://github.com/feli-santos/rl-iot-defense-system/compare/v0.1.0...v0.2.0
+[0.1.0]: https://github.com/feli-santos/rl-iot-defense-system/releases/tag/v0.1.0
