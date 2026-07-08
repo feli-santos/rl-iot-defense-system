@@ -1,8 +1,8 @@
 {
   "version": "1.0",
-  "git_sha": "05acac4c839f-dirty",
-  "timestamp": "2026-07-06T21:54:25Z",
-  "runs_root": "runs/redesign_5M_det_merged/alpha_04",
+  "git_sha": "f21f8740b7f9-dirty",
+  "timestamp": "2026-07-08T00:33:07Z",
+  "runs_root": "runs/redesign_5M_det/alpha_04",
   "best_algo": "ppo",
   "display_algo": "ppo",
   "best_algo_by_eval_reward": "a2c",

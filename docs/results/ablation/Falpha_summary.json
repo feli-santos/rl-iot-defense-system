@@ -34,24 +34,24 @@
         "n_seeds": 10
       },
       "a2c": {
-        "mean": 145.7397,
-        "ci_low": 135.19,
-        "ci_high": 155.4563,
+        "mean": 147.1367,
+        "ci_low": 137.8519,
+        "ci_high": 156.2238,
         "n": 300,
         "n_seeds": 10
       },
       "rf_acting": {
-        "mean": 137.5097,
-        "ci_low": 127.5848,
-        "ci_high": 146.2224,
+        "mean": 136.516,
+        "ci_low": 126.1022,
+        "ci_high": 145.2697,
         "n": 300,
-        "n_seeds": 1
+        "n_seeds": 10
       },
       "recommended_action": {
-        "mean": 194.8643,
-        "ci_low": 194.7743,
-        "ci_high": 194.947,
-        "n": 300,
+        "mean": 194.7867,
+        "ci_low": 194.5166,
+        "ci_high": 195.0434,
+        "n": 30,
         "n_seeds": 1
       }
     },
@@ -71,24 +71,24 @@
         "n_seeds": 10
       },
       "a2c": {
-        "mean": 161.1187,
-        "ci_low": 154.9633,
-        "ci_high": 165.74,
+        "mean": 153.6317,
+        "ci_low": 145.3952,
+        "ci_high": 161.3832,
         "n": 300,
         "n_seeds": 10
       },
       "rf_acting": {
-        "mean": 107.012,
-        "ci_low": 92.7889,
-        "ci_high": 119.7678,
+        "mean": 113.1913,
+        "ci_low": 99.4353,
+        "ci_high": 125.5921,
         "n": 300,
-        "n_seeds": 1
+        "n_seeds": 10
       },
       "recommended_action": {
-        "mean": 194.8643,
-        "ci_low": 194.7743,
-        "ci_high": 194.947,
-        "n": 300,
+        "mean": 194.7867,
+        "ci_low": 194.5166,
+        "ci_high": 195.0434,
+        "n": 30,
         "n_seeds": 1
       }
     },
@@ -108,24 +108,24 @@
         "n_seeds": 10
       },
       "a2c": {
-        "mean": 149.5853,
-        "ci_low": 139.8355,
-        "ci_high": 158.0738,
+        "mean": 138.6627,
+        "ci_low": 127.9976,
+        "ci_high": 149.9756,
         "n": 300,
         "n_seeds": 10
       },
       "rf_acting": {
-        "mean": 80.9227,
-        "ci_low": 65.9297,
-        "ci_high": 94.9112,
+        "mean": 94.3507,
+        "ci_low": 81.4009,
+        "ci_high": 107.5169,
         "n": 300,
-        "n_seeds": 1
+        "n_seeds": 10
       },
       "recommended_action": {
-        "mean": 194.8643,
-        "ci_low": 194.7743,
-        "ci_high": 194.947,
-        "n": 300,
+        "mean": 194.7867,
+        "ci_low": 194.5166,
+        "ci_high": 195.0434,
+        "n": 30,
         "n_seeds": 1
       }
     },
@@ -145,24 +145,24 @@
         "n_seeds": 10
       },
       "a2c": {
-        "mean": 149.46,
-        "ci_low": 140.1804,
-        "ci_high": 157.8492,
+        "mean": 151.4177,
+        "ci_low": 141.8778,
+        "ci_high": 159.7547,
         "n": 300,
         "n_seeds": 10
       },
       "rf_acting": {
-        "mean": 73.587,
-        "ci_low": 58.4166,
-        "ci_high": 87.9612,
+        "mean": 64.0267,
+        "ci_low": 49.7314,
+        "ci_high": 78.5395,
         "n": 300,
-        "n_seeds": 1
+        "n_seeds": 10
       },
       "recommended_action": {
-        "mean": 194.8643,
-        "ci_low": 194.7743,
-        "ci_high": 194.947,
-        "n": 300,
+        "mean": 194.7867,
+        "ci_low": 194.5166,
+        "ci_high": 195.0434,
+        "n": 30,
         "n_seeds": 1
       }
     },
@@ -182,24 +182,24 @@
         "n_seeds": 10
       },
       "a2c": {
-        "mean": 131.76,
-        "ci_low": 119.3572,
-        "ci_high": 143.0438,
+        "mean": 137.5247,
+        "ci_low": 126.5018,
+        "ci_high": 148.0118,
         "n": 300,
         "n_seeds": 10
       },
       "rf_acting": {
-        "mean": 46.414,
-        "ci_low": 32.3179,
-        "ci_high": 60.7474,
+        "mean": 20.5437,
+        "ci_low": 5.4428,
+        "ci_high": 35.4475,
         "n": 300,
-        "n_seeds": 1
+        "n_seeds": 10
       },
       "recommended_action": {
-        "mean": 194.8643,
-        "ci_low": 194.7743,
-        "ci_high": 194.947,
-        "n": 300,
+        "mean": 194.7867,
+        "ci_low": 194.5166,
+        "ci_high": 195.0434,
+        "n": 30,
         "n_seeds": 1
       }
     },
@@ -219,24 +219,24 @@
         "n_seeds": 10
       },
       "a2c": {
-        "mean": 145.6073,
-        "ci_low": 134.0926,
-        "ci_high": 155.7544,
+        "mean": 141.9553,
+        "ci_low": 130.7407,
+        "ci_high": 153.3553,
         "n": 300,
         "n_seeds": 10
       },
       "rf_acting": {
-        "mean": -15.0853,
-        "ci_low": -31.5179,
-        "ci_high": 0.1037,
+        "mean": -29.3117,
+        "ci_low": -46.2561,
+        "ci_high": -12.5078,
         "n": 300,
-        "n_seeds": 1
+        "n_seeds": 10
       },
       "recommended_action": {
-        "mean": 194.8643,
-        "ci_low": 194.7743,
-        "ci_high": 194.947,
-        "n": 300,
+        "mean": 194.7867,
+        "ci_low": 194.5166,
+        "ci_high": 195.0434,
+        "n": 30,
         "n_seeds": 1
       }
     }
@@ -245,32 +245,32 @@
     "per_alpha": [
       {
         "alpha": 0.0,
-        "ppo_minus_rf": 1.0826,
+        "ppo_minus_rf": 2.0763,
         "verdict": "tie_overlap"
       },
       {
         "alpha": 0.2,
-        "ppo_minus_rf": 14.5717,
+        "ppo_minus_rf": 8.3924,
         "verdict": "tie_overlap"
       },
       {
         "alpha": 0.4,
-        "ppo_minus_rf": 40.3496,
+        "ppo_minus_rf": 26.9216,
         "verdict": "ppo_significant"
       },
       {
         "alpha": 0.6,
-        "ppo_minus_rf": 39.7373,
+        "ppo_minus_rf": 49.2976,
         "verdict": "ppo_significant"
       },
       {
         "alpha": 0.8,
-        "ppo_minus_rf": 88.8187,
+        "ppo_minus_rf": 114.689,
         "verdict": "ppo_significant"
       },
       {
         "alpha": 1.0,
-        "ppo_minus_rf": 146.9523,
+        "ppo_minus_rf": 161.1787,
         "verdict": "ppo_significant"
       }
     ]

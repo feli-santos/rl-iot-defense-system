@@ -21,9 +21,9 @@
     "dqn",
     "ppo",
     "a2c",
-    "always_block",
     "random",
-    "always_observe"
+    "always_observe",
+    "always_block"
   ],
   "rows": [
     {
@@ -83,26 +83,13 @@
       "policy": "a2c",
       "n_seeds": 10,
       "n_episodes": 300,
-      "mean_reward": 157.49033333333335,
-      "ci_low": 154.97944166666667,
-      "ci_high": 160.39168333333333,
-      "compromise_rate": 0.15666666666666668,
-      "prevention_rate": 0.8433333333333334,
-      "mitigated_impact_rate": 0.12666666666666668,
-      "mean_episode_length": 93.75
-    },
-    {
-      "ood_class": "VulnerabilityScan",
-      "policy": "always_block",
-      "n_seeds": 1,
-      "n_episodes": 300,
-      "mean_reward": 0.0,
-      "ci_low": 0.0,
-      "ci_high": 0.0,
-      "compromise_rate": 0.0,
-      "prevention_rate": 1.0,
-      "mitigated_impact_rate": 0.0,
-      "mean_episode_length": 100.0
+      "mean_reward": 150.332,
+      "ci_low": 138.27604166666669,
+      "ci_high": 159.74618333333333,
+      "compromise_rate": 0.14666666666666667,
+      "prevention_rate": 0.8533333333333334,
+      "mitigated_impact_rate": 0.10333333333333333,
+      "mean_episode_length": 93.28333333333333
     },
     {
       "ood_class": "VulnerabilityScan",
@@ -129,6 +116,19 @@
       "prevention_rate": 0.0,
       "mitigated_impact_rate": 0.0,
       "mean_episode_length": 21.336666666666666
+    },
+    {
+      "ood_class": "VulnerabilityScan",
+      "policy": "always_block",
+      "n_seeds": 1,
+      "n_episodes": 300,
+      "mean_reward": 0.0,
+      "ci_low": 0.0,
+      "ci_high": 0.0,
+      "compromise_rate": 0.0,
+      "prevention_rate": 1.0,
+      "mitigated_impact_rate": 0.0,
+      "mean_episode_length": 100.0
     },
     {
       "ood_class": "Recon-OSScan",
@@ -187,26 +187,13 @@
       "policy": "a2c",
       "n_seeds": 10,
       "n_episodes": 300,
-      "mean_reward": 143.221,
-      "ci_low": 135.84895833333334,
-      "ci_high": 151.17592499999998,
-      "compromise_rate": 0.24,
-      "prevention_rate": 0.76,
-      "mitigated_impact_rate": 0.16333333333333333,
-      "mean_episode_length": 90.86333333333333
-    },
-    {
-      "ood_class": "Recon-OSScan",
-      "policy": "always_block",
-      "n_seeds": 1,
-      "n_episodes": 300,
-      "mean_reward": 0.0,
-      "ci_low": 0.0,
-      "ci_high": 0.0,
-      "compromise_rate": 0.0,
-      "prevention_rate": 1.0,
-      "mitigated_impact_rate": 0.0,
-      "mean_episode_length": 100.0
+      "mean_reward": 149.97633333333332,
+      "ci_low": 141.22142499999998,
+      "ci_high": 157.6361916666667,
+      "compromise_rate": 0.19666666666666666,
+      "prevention_rate": 0.8033333333333333,
+      "mitigated_impact_rate": 0.14666666666666667,
+      "mean_episode_length": 91.85666666666667
     },
     {
       "ood_class": "Recon-OSScan",
@@ -233,6 +220,19 @@
       "prevention_rate": 0.0,
       "mitigated_impact_rate": 0.0,
       "mean_episode_length": 21.336666666666666
+    },
+    {
+      "ood_class": "Recon-OSScan",
+      "policy": "always_block",
+      "n_seeds": 1,
+      "n_episodes": 300,
+      "mean_reward": 0.0,
+      "ci_low": 0.0,
+      "ci_high": 0.0,
+      "compromise_rate": 0.0,
+      "prevention_rate": 1.0,
+      "mitigated_impact_rate": 0.0,
+      "mean_episode_length": 100.0
     },
     {
       "ood_class": "XSS",
@@ -291,26 +291,13 @@
       "policy": "a2c",
       "n_seeds": 10,
       "n_episodes": 300,
-      "mean_reward": 145.80233333333334,
-      "ci_low": 136.11182499999998,
-      "ci_high": 154.542775,
-      "compromise_rate": 0.22666666666666666,
-      "prevention_rate": 0.7733333333333333,
-      "mitigated_impact_rate": 0.16333333333333333,
-      "mean_episode_length": 91.57
-    },
-    {
-      "ood_class": "XSS",
-      "policy": "always_block",
-      "n_seeds": 1,
-      "n_episodes": 300,
-      "mean_reward": 0.0,
-      "ci_low": 0.0,
-      "ci_high": 0.0,
-      "compromise_rate": 0.0,
-      "prevention_rate": 1.0,
-      "mitigated_impact_rate": 0.0,
-      "mean_episode_length": 100.0
+      "mean_reward": 140.74933333333334,
+      "ci_low": 128.08720000000002,
+      "ci_high": 153.65679999999998,
+      "compromise_rate": 0.25666666666666665,
+      "prevention_rate": 0.7433333333333333,
+      "mitigated_impact_rate": 0.18333333333333332,
+      "mean_episode_length": 89.71666666666667
     },
     {
       "ood_class": "XSS",
@@ -337,6 +324,19 @@
       "prevention_rate": 0.0,
       "mitigated_impact_rate": 0.0,
       "mean_episode_length": 21.336666666666666
+    },
+    {
+      "ood_class": "XSS",
+      "policy": "always_block",
+      "n_seeds": 1,
+      "n_episodes": 300,
+      "mean_reward": 0.0,
+      "ci_low": 0.0,
+      "ci_high": 0.0,
+      "compromise_rate": 0.0,
+      "prevention_rate": 1.0,
+      "mitigated_impact_rate": 0.0,
+      "mean_episode_length": 100.0
     },
     {
       "ood_class": "SqlInjection",
@@ -395,26 +395,13 @@
       "policy": "a2c",
       "n_seeds": 10,
       "n_episodes": 300,
-      "mean_reward": 144.244,
-      "ci_low": 135.8461166666667,
-      "ci_high": 153.43419166666666,
+      "mean_reward": 144.50766666666667,
+      "ci_low": 134.57449166666666,
+      "ci_high": 154.44535,
       "compromise_rate": 0.23666666666666666,
       "prevention_rate": 0.7633333333333333,
-      "mitigated_impact_rate": 0.17333333333333334,
-      "mean_episode_length": 89.50333333333333
-    },
-    {
-      "ood_class": "SqlInjection",
-      "policy": "always_block",
-      "n_seeds": 1,
-      "n_episodes": 300,
-      "mean_reward": 0.0,
-      "ci_low": 0.0,
-      "ci_high": 0.0,
-      "compromise_rate": 0.0,
-      "prevention_rate": 1.0,
-      "mitigated_impact_rate": 0.0,
-      "mean_episode_length": 100.0
+      "mitigated_impact_rate": 0.17,
+      "mean_episode_length": 90.91333333333333
     },
     {
       "ood_class": "SqlInjection",
@@ -441,6 +428,19 @@
       "prevention_rate": 0.0,
       "mitigated_impact_rate": 0.0,
       "mean_episode_length": 21.336666666666666
+    },
+    {
+      "ood_class": "SqlInjection",
+      "policy": "always_block",
+      "n_seeds": 1,
+      "n_episodes": 300,
+      "mean_reward": 0.0,
+      "ci_low": 0.0,
+      "ci_high": 0.0,
+      "compromise_rate": 0.0,
+      "prevention_rate": 1.0,
+      "mitigated_impact_rate": 0.0,
+      "mean_episode_length": 100.0
     },
     {
       "ood_class": "Mirai-udpplain",
@@ -499,26 +499,13 @@
       "policy": "a2c",
       "n_seeds": 10,
       "n_episodes": 300,
-      "mean_reward": 145.00533333333334,
-      "ci_low": 132.45071666666666,
-      "ci_high": 156.60729999999998,
-      "compromise_rate": 0.22666666666666666,
-      "prevention_rate": 0.7733333333333333,
-      "mitigated_impact_rate": 0.16333333333333333,
-      "mean_episode_length": 91.31
-    },
-    {
-      "ood_class": "Mirai-udpplain",
-      "policy": "always_block",
-      "n_seeds": 1,
-      "n_episodes": 300,
-      "mean_reward": 0.0,
-      "ci_low": 0.0,
-      "ci_high": 0.0,
-      "compromise_rate": 0.0,
-      "prevention_rate": 1.0,
-      "mitigated_impact_rate": 0.0,
-      "mean_episode_length": 100.0
+      "mean_reward": 150.335,
+      "ci_low": 142.27699166666667,
+      "ci_high": 158.06950833333335,
+      "compromise_rate": 0.25,
+      "prevention_rate": 0.75,
+      "mitigated_impact_rate": 0.19666666666666666,
+      "mean_episode_length": 89.88333333333334
     },
     {
       "ood_class": "Mirai-udpplain",
@@ -545,6 +532,19 @@
       "prevention_rate": 0.0,
       "mitigated_impact_rate": 0.0,
       "mean_episode_length": 21.336666666666666
+    },
+    {
+      "ood_class": "Mirai-udpplain",
+      "policy": "always_block",
+      "n_seeds": 1,
+      "n_episodes": 300,
+      "mean_reward": 0.0,
+      "ci_low": 0.0,
+      "ci_high": 0.0,
+      "compromise_rate": 0.0,
+      "prevention_rate": 1.0,
+      "mitigated_impact_rate": 0.0,
+      "mean_episode_length": 100.0
     },
     {
       "ood_class": "DNS_Spoofing",
@@ -603,26 +603,13 @@
       "policy": "a2c",
       "n_seeds": 10,
       "n_episodes": 300,
-      "mean_reward": 129.475,
-      "ci_low": 119.40366666666667,
-      "ci_high": 140.10758333333334,
-      "compromise_rate": 0.3,
-      "prevention_rate": 0.7,
-      "mitigated_impact_rate": 0.18666666666666668,
-      "mean_episode_length": 89.6
-    },
-    {
-      "ood_class": "DNS_Spoofing",
-      "policy": "always_block",
-      "n_seeds": 1,
-      "n_episodes": 300,
-      "mean_reward": 0.0,
-      "ci_low": 0.0,
-      "ci_high": 0.0,
-      "compromise_rate": 0.0,
-      "prevention_rate": 1.0,
-      "mitigated_impact_rate": 0.0,
-      "mean_episode_length": 100.0
+      "mean_reward": 133.712,
+      "ci_low": 116.16985833333334,
+      "ci_high": 149.64170000000001,
+      "compromise_rate": 0.29,
+      "prevention_rate": 0.71,
+      "mitigated_impact_rate": 0.19,
+      "mean_episode_length": 89.57333333333334
     },
     {
       "ood_class": "DNS_Spoofing",
@@ -649,6 +636,19 @@
       "prevention_rate": 0.0,
       "mitigated_impact_rate": 0.0,
       "mean_episode_length": 21.336666666666666
+    },
+    {
+      "ood_class": "DNS_Spoofing",
+      "policy": "always_block",
+      "n_seeds": 1,
+      "n_episodes": 300,
+      "mean_reward": 0.0,
+      "ci_low": 0.0,
+      "ci_high": 0.0,
+      "compromise_rate": 0.0,
+      "prevention_rate": 1.0,
+      "mitigated_impact_rate": 0.0,
+      "mean_episode_length": 100.0
     },
     {
       "ood_class": "DDoS-HTTP_Flood",
@@ -707,26 +707,13 @@
       "policy": "a2c",
       "n_seeds": 10,
       "n_episodes": 300,
-      "mean_reward": 143.64600000000002,
-      "ci_low": 135.15896666666666,
-      "ci_high": 151.66321666666664,
-      "compromise_rate": 0.23333333333333334,
-      "prevention_rate": 0.7666666666666667,
-      "mitigated_impact_rate": 0.16333333333333333,
-      "mean_episode_length": 90.43666666666667
-    },
-    {
-      "ood_class": "DDoS-HTTP_Flood",
-      "policy": "always_block",
-      "n_seeds": 1,
-      "n_episodes": 300,
-      "mean_reward": 0.0,
-      "ci_low": 0.0,
-      "ci_high": 0.0,
-      "compromise_rate": 0.0,
-      "prevention_rate": 1.0,
-      "mitigated_impact_rate": 0.0,
-      "mean_episode_length": 100.0
+      "mean_reward": 142.94733333333332,
+      "ci_low": 134.4939416666667,
+      "ci_high": 152.16966666666667,
+      "compromise_rate": 0.24,
+      "prevention_rate": 0.76,
+      "mitigated_impact_rate": 0.16666666666666666,
+      "mean_episode_length": 90.86666666666666
     },
     {
       "ood_class": "DDoS-HTTP_Flood",
@@ -753,6 +740,19 @@
       "prevention_rate": 0.0,
       "mitigated_impact_rate": 0.0,
       "mean_episode_length": 21.336666666666666
+    },
+    {
+      "ood_class": "DDoS-HTTP_Flood",
+      "policy": "always_block",
+      "n_seeds": 1,
+      "n_episodes": 300,
+      "mean_reward": 0.0,
+      "ci_low": 0.0,
+      "ci_high": 0.0,
+      "compromise_rate": 0.0,
+      "prevention_rate": 1.0,
+      "mitigated_impact_rate": 0.0,
+      "mean_episode_length": 100.0
     },
     {
       "ood_class": "DoS-SYN_Flood",
@@ -811,26 +811,13 @@
       "policy": "a2c",
       "n_seeds": 10,
       "n_episodes": 300,
-      "mean_reward": 145.66433333333333,
-      "ci_low": 136.389975,
-      "ci_high": 154.76626666666664,
-      "compromise_rate": 0.21666666666666667,
-      "prevention_rate": 0.7833333333333333,
-      "mitigated_impact_rate": 0.15333333333333332,
-      "mean_episode_length": 90.92666666666666
-    },
-    {
-      "ood_class": "DoS-SYN_Flood",
-      "policy": "always_block",
-      "n_seeds": 1,
-      "n_episodes": 300,
-      "mean_reward": 0.0,
-      "ci_low": 0.0,
-      "ci_high": 0.0,
-      "compromise_rate": 0.0,
-      "prevention_rate": 1.0,
-      "mitigated_impact_rate": 0.0,
-      "mean_episode_length": 100.0
+      "mean_reward": 143.847,
+      "ci_low": 130.58540000000002,
+      "ci_high": 156.039075,
+      "compromise_rate": 0.23666666666666666,
+      "prevention_rate": 0.7633333333333333,
+      "mitigated_impact_rate": 0.16666666666666666,
+      "mean_episode_length": 90.79666666666667
     },
     {
       "ood_class": "DoS-SYN_Flood",
@@ -857,6 +844,19 @@
       "prevention_rate": 0.0,
       "mitigated_impact_rate": 0.0,
       "mean_episode_length": 21.336666666666666
+    },
+    {
+      "ood_class": "DoS-SYN_Flood",
+      "policy": "always_block",
+      "n_seeds": 1,
+      "n_episodes": 300,
+      "mean_reward": 0.0,
+      "ci_low": 0.0,
+      "ci_high": 0.0,
+      "compromise_rate": 0.0,
+      "prevention_rate": 1.0,
+      "mitigated_impact_rate": 0.0,
+      "mean_episode_length": 100.0
     },
     {
       "ood_class": "DDoS-SlowLoris",
@@ -915,26 +915,13 @@
       "policy": "a2c",
       "n_seeds": 10,
       "n_episodes": 300,
-      "mean_reward": 140.849,
-      "ci_low": 132.01893333333334,
-      "ci_high": 149.88157499999997,
-      "compromise_rate": 0.23333333333333334,
-      "prevention_rate": 0.7666666666666667,
-      "mitigated_impact_rate": 0.15,
-      "mean_episode_length": 91.02666666666667
-    },
-    {
-      "ood_class": "DDoS-SlowLoris",
-      "policy": "always_block",
-      "n_seeds": 1,
-      "n_episodes": 300,
-      "mean_reward": 0.0,
-      "ci_low": 0.0,
-      "ci_high": 0.0,
-      "compromise_rate": 0.0,
-      "prevention_rate": 1.0,
-      "mitigated_impact_rate": 0.0,
-      "mean_episode_length": 100.0
+      "mean_reward": 142.08700000000002,
+      "ci_low": 131.95869166666662,
+      "ci_high": 152.45570833333332,
+      "compromise_rate": 0.24,
+      "prevention_rate": 0.76,
+      "mitigated_impact_rate": 0.16666666666666666,
+      "mean_episode_length": 91.04333333333334
     },
     {
       "ood_class": "DDoS-SlowLoris",
@@ -961,6 +948,19 @@
       "prevention_rate": 0.0,
       "mitigated_impact_rate": 0.0,
       "mean_episode_length": 21.336666666666666
+    },
+    {
+      "ood_class": "DDoS-SlowLoris",
+      "policy": "always_block",
+      "n_seeds": 1,
+      "n_episodes": 300,
+      "mean_reward": 0.0,
+      "ci_low": 0.0,
+      "ci_high": 0.0,
+      "compromise_rate": 0.0,
+      "prevention_rate": 1.0,
+      "mitigated_impact_rate": 0.0,
+      "mean_episode_length": 100.0
     },
     {
       "ood_class": "DDoS-ACK_Fragmentation",
@@ -1019,26 +1019,13 @@
       "policy": "a2c",
       "n_seeds": 10,
       "n_episodes": 300,
-      "mean_reward": 140.72633333333334,
-      "ci_low": 127.25738333333334,
-      "ci_high": 153.60215833333336,
-      "compromise_rate": 0.22333333333333333,
-      "prevention_rate": 0.7766666666666666,
-      "mitigated_impact_rate": 0.13666666666666666,
-      "mean_episode_length": 91.87666666666667
-    },
-    {
-      "ood_class": "DDoS-ACK_Fragmentation",
-      "policy": "always_block",
-      "n_seeds": 1,
-      "n_episodes": 300,
-      "mean_reward": 0.0,
-      "ci_low": 0.0,
-      "ci_high": 0.0,
-      "compromise_rate": 0.0,
-      "prevention_rate": 1.0,
-      "mitigated_impact_rate": 0.0,
-      "mean_episode_length": 100.0
+      "mean_reward": 145.37800000000004,
+      "ci_low": 133.21568333333335,
+      "ci_high": 155.98781666666665,
+      "compromise_rate": 0.25,
+      "prevention_rate": 0.75,
+      "mitigated_impact_rate": 0.18333333333333332,
+      "mean_episode_length": 89.97666666666667
     },
     {
       "ood_class": "DDoS-ACK_Fragmentation",
@@ -1065,6 +1052,19 @@
       "prevention_rate": 0.0,
       "mitigated_impact_rate": 0.0,
       "mean_episode_length": 21.336666666666666
+    },
+    {
+      "ood_class": "DDoS-ACK_Fragmentation",
+      "policy": "always_block",
+      "n_seeds": 1,
+      "n_episodes": 300,
+      "mean_reward": 0.0,
+      "ci_low": 0.0,
+      "ci_high": 0.0,
+      "compromise_rate": 0.0,
+      "prevention_rate": 1.0,
+      "mitigated_impact_rate": 0.0,
+      "mean_episode_length": 100.0
     }
   ],
   "per_class_rf_recall": {
@@ -1086,22 +1086,22 @@
         "ood_class": "VulnerabilityScan",
         "rf_recall": 0.22399141984984738,
         "rf_metric": 0.15,
-        "best_rl_metric": 0.8433333333333334,
-        "advantage": 0.6933333333333334
+        "best_rl_metric": 0.8533333333333334,
+        "advantage": 0.7033333333333334
       },
       {
         "ood_class": "Recon-OSScan",
         "rf_recall": 0.7050573385034238,
         "rf_metric": 0.02666666666666667,
-        "best_rl_metric": 0.76,
-        "advantage": 0.7333333333333334
+        "best_rl_metric": 0.8033333333333333,
+        "advantage": 0.7766666666666667
       },
       {
         "ood_class": "XSS",
         "rf_recall": 0.9612584503380135,
         "rf_metric": 0.03333333333333333,
-        "best_rl_metric": 0.7733333333333333,
-        "advantage": 0.74
+        "best_rl_metric": 0.7433333333333333,
+        "advantage": 0.71
       },
       {
         "ood_class": "SqlInjection",
@@ -1114,55 +1114,55 @@
         "ood_class": "Mirai-udpplain",
         "rf_recall": 0.9961224321425625,
         "rf_metric": 0.03,
-        "best_rl_metric": 0.7733333333333333,
-        "advantage": 0.7433333333333333
+        "best_rl_metric": 0.75,
+        "advantage": 0.72
       },
       {
         "ood_class": "DNS_Spoofing",
         "rf_recall": 0.2005610098176718,
         "rf_metric": 0.006666666666666667,
-        "best_rl_metric": 0.7,
-        "advantage": 0.6933333333333332
+        "best_rl_metric": 0.71,
+        "advantage": 0.7033333333333333
       },
       {
         "ood_class": "DDoS-HTTP_Flood",
         "rf_recall": 0.9928223743915519,
         "rf_metric": 0.03333333333333333,
-        "best_rl_metric": 0.7666666666666667,
-        "advantage": 0.7333333333333334
+        "best_rl_metric": 0.76,
+        "advantage": 0.7266666666666667
       },
       {
         "ood_class": "DoS-SYN_Flood",
         "rf_recall": 0.9978549624618431,
         "rf_metric": 0.03333333333333333,
-        "best_rl_metric": 0.7833333333333333,
-        "advantage": 0.75
+        "best_rl_metric": 0.7633333333333333,
+        "advantage": 0.73
       },
       {
         "ood_class": "DDoS-SlowLoris",
         "rf_recall": 0.6568764953386684,
         "rf_metric": 0.01,
-        "best_rl_metric": 0.7666666666666667,
-        "advantage": 0.7566666666666667
+        "best_rl_metric": 0.76,
+        "advantage": 0.75
       },
       {
         "ood_class": "DDoS-ACK_Fragmentation",
         "rf_recall": 0.993152380166653,
         "rf_metric": 0.03,
-        "best_rl_metric": 0.7766666666666666,
-        "advantage": 0.7466666666666666
+        "best_rl_metric": 0.75,
+        "advantage": 0.72
       }
     ],
     "stats": {
       "n": 10,
-      "spearman_rho": 0.3708223816448394,
-      "spearman_p": 0.2914682712989585,
-      "pearson_r": 0.5028348907524427,
-      "pearson_p": 0.13851192160951037,
-      "ols_slope": 0.03459262517708827,
-      "ols_intercept": 0.7112070250986823,
-      "ols_slope_ci_low": -0.030406131231352062,
-      "ols_slope_ci_high": 0.0685651019331868,
+      "spearman_rho": 0.21884599572482327,
+      "spearman_p": 0.5435509174040241,
+      "pearson_r": -0.022814813827582374,
+      "pearson_p": 0.950118564229597,
+      "ols_slope": -0.001645614283090578,
+      "ols_intercept": 0.7314810518781371,
+      "ols_slope_ci_low": -0.08342091866265698,
+      "ols_slope_ci_high": 0.037063059252773506,
       "bootstrap_n": 10000,
       "interpretation": "No detractor-supporting dependence: the Spearman rank correlation is non-significant and the bootstrap OLS-slope CI spans zero, so the advantage does not diminish as detector recall rises. Any weak linear association (Pearson) is in the positive direction, opposite to the 'RL only rescues the detector's blind spots' hypothesis."
     }
@@ -1188,9 +1188,9 @@
         "dqn",
         "ppo",
         "a2c",
-        "always_block",
         "random",
-        "always_observe"
+        "always_observe",
+        "always_block"
       ],
       "n_cells_expected": 80,
       "n_cells_present": 80,
@@ -1201,17 +1201,17 @@
       "ood_class": "VulnerabilityScan",
       "passes": true,
       "best_rl_algo": "a2c",
-      "best_rl_mean_reward": 157.49033333333335,
+      "best_rl_mean_reward": 150.332,
       "best_rl_ci": [
-        154.97944166666667,
-        160.39168333333333
+        138.27604166666669,
+        159.74618333333333
       ],
       "rf_acting_mean_reward": 90.12833333333333,
       "rf_acting_ci": [
         76.60926666666667,
         102.57432499999997
       ],
-      "delta_mean": 67.36200000000002,
+      "delta_mean": 60.20366666666666,
       "interpretation": "Trained RL recovers some of the supervised RF blind spot on VulnerabilityScan."
     }
   },

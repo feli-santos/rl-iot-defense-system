@@ -34,10 +34,10 @@
       },
       "best_algo": "dqn",
       "best_rl_reward": 226.18223333333333,
-      "rf_acting_reward": 146.82266666666666,
-      "rf_acting_ci_low": 125.98734999999999,
-      "rf_acting_ci_high": 165.61998333333335,
-      "rf_minus_rl_gap": -79.35956666666667
+      "rf_acting_reward": 163.1163333333333,
+      "rf_acting_ci_low": 146.46959166666667,
+      "rf_acting_ci_high": 181.47617499999998,
+      "rf_minus_rl_gap": -63.06590000000003
     },
     "outcome": {
       "mode": "outcome",
@@ -63,13 +63,13 @@
       },
       "best_algo": "a2c",
       "best_rl_reward": 146.09939999999997,
-      "rf_acting_reward": 80.92266666666666,
-      "rf_acting_ci_low": 65.92968333333334,
-      "rf_acting_ci_high": 94.91120833333332,
-      "rf_minus_rl_gap": -65.17673333333332
+      "rf_acting_reward": 83.05766666666666,
+      "rf_acting_ci_low": 69.71582500000001,
+      "rf_acting_ci_high": 97.80373333333334,
+      "rf_minus_rl_gap": -63.04173333333331
     }
   },
-  "gap_coupled": -79.35956666666667,
-  "gap_outcome": -65.17673333333332,
-  "gap_reduction": -14.182833333333349
+  "gap_coupled": -63.06590000000003,
+  "gap_outcome": -63.04173333333331,
+  "gap_reduction": -0.02416666666671574
 }
