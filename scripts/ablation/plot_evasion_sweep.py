@@ -1,14 +1,15 @@
 """ablation F17 — Evasion-reactive sensitivity plot (prevention pivot).
 
-Reads ``runs/ablation/evasion/ppo_e<e>/seed_<k>/eval_test.jsonl`` (produced
+Reads ``runs/ablation/evasion/<algo>_e<e>/seed_<k>/eval_test.jsonl`` (produced
 by ``scripts.ablation.run_evasion_sweep``) and renders how the fixed det-5M
-alpha-04 PPO defender — *evaluated against an increasingly evasive attacker*
-— fares as the evasion coupling strengthens, all under the primary
-``impact_is_terminal=False`` contract:
+alpha-04 defenders (PPO, A2C, DQN) — *evaluated against an increasingly
+evasive attacker* — fare as the evasion coupling strengthens, all under the
+primary ``impact_is_terminal=False`` contract:
 
   x-axis:  evasion_prob ∈ {0.0, 0.25, 0.5, 0.75}
   y-axis:  mean episodic reward on test_balanced (95 % bootstrap CI)
-  curve:   fixed PPO (across N seeds, on-contract outcome reward)
+  curves:  fixed PPO / A2C / DQN (across N seeds each, on-contract outcome
+           reward) overlaid for a cross-algorithm robustness comparison
 
 ``evasion_prob`` models an *evasive* attacker via evasive persistence
 (adversarial_env.py "post-detection hardening"): once the attacker senses
@@ -29,12 +30,14 @@ Outputs:
 
 Gate evaluation:
 
-- **G7.10** — pass iff the trained PPO defender stays ROBUST to a stronger
-  evasive attacker: mean test reward at the highest evasion level is within
-  a tolerance band of the reward at evasion=0 (the highest-evasion low-CI is
-  not below the e=0 low-CI by more than ``--robust-tol`` of the e=0 mean).
-  Otherwise FAIL-WITH-FINDING (D7.10.1): evasion materially degrades the
-  trained defender — a documented robustness limit, not a hard failure.
+- **G7.10** — evaluated per-algorithm (ppo/a2c/dqn). For each algo, pass iff
+  the trained defender stays ROBUST to a stronger evasive attacker: mean test
+  reward at the highest evasion level is within a tolerance band of the reward
+  at evasion=0 (the highest-evasion low-CI is not below the e=0 low-CI by more
+  than ``--robust-tol`` of the e=0 mean). Otherwise FAIL-WITH-FINDING
+  (D7.10.1): evasion materially degrades that defender — a documented
+  robustness limit, not a hard failure. PPO retains the headline pass
+  semantics; A2C/DQN are reported alongside as cross-algorithm findings.
 """
 
 from __future__ import annotations
@@ -50,7 +53,7 @@ from typing import Any
 
 import numpy as np
 
-from scripts._plot_style import ACCENT, apply_house_style, save_figure
+from scripts._plot_style import ACCENT, apply_house_style, policy_label, policy_style, save_figure
 from src.blue_team.aggregation import bootstrap_ci, read_episodes_jsonl
 
 logger = logging.getLogger("scripts.ablation.plot_evasion_sweep")
@@ -58,6 +61,7 @@ logger = logging.getLogger("scripts.ablation.plot_evasion_sweep")
 _ROOT = Path(__file__).resolve().parents[2]
 
 _DEFAULT_EVASION_VALUES: list[float] = [0.0, 0.25, 0.5, 0.75]
+_DEFAULT_ALGOS: list[str] = ["ppo", "a2c", "dqn"]
 
 
 def _sha256(path: Path) -> str | None:
@@ -96,12 +100,13 @@ def _e_slug(e: float) -> str:
 
 def _summarise(
     runs_root: Path,
+    algo: str,
     e: float,
     *,
     sha_collector: dict[str, str],
 ) -> dict[str, Any]:
-    """Aggregate one evasion-level cell across all seeds."""
-    base = runs_root / f"ppo_e{_e_slug(e)}"
+    """Aggregate one (algo, evasion-level) cell across all seeds."""
+    base = runs_root / f"{algo}_e{_e_slug(e)}"
     seed_dirs = (
         sorted(
             d
@@ -128,6 +133,7 @@ def _summarise(
 
     if not all_records:
         return {
+            "algo": algo,
             "evasion_prob": e,
             "n_seeds": len(seed_dirs),
             "n_episodes": 0,
@@ -157,6 +163,7 @@ def _summarise(
 
     compromised = [bool(r.get("compromised")) for r in all_records]
     return {
+        "algo": algo,
         "evasion_prob": e,
         "n_seeds": len(seed_dirs),
         "n_episodes": len(all_records),
@@ -167,21 +174,28 @@ def _summarise(
     }
 
 
-def _evaluate_g710(
+def _evaluate_g710_algo(
+    algo: str,
     rows: list[dict[str, Any]],
     *,
     robust_tol: float,
 ) -> dict[str, Any]:
-    """G7.10: PPO stays robust as the evasive attacker strengthens.
+    """G7.10 for a single algorithm: stays robust as evasion strengthens.
 
     Pass iff the highest-evasion cell's reward is within a tolerance band of
     the evasion=0 reference: the highest-evasion low-CI is not below the e=0
     low-CI by more than ``robust_tol`` × |e=0 mean|.
     """
+    label = algo.upper()
     by_e = {r["evasion_prob"]: r for r in rows}
     es = sorted(by_e.keys())
     if not es:
-        return {"passes": False, "reason": "no evasion cells", "interpretation": "FAIL"}
+        return {
+            "algo": algo,
+            "passes": False,
+            "reason": "no evasion cells",
+            "interpretation": "FAIL",
+        }
 
     e_ref = by_e[es[0]]
     e_max = by_e[es[-1]]
@@ -190,13 +204,14 @@ def _evaluate_g710(
     )
     if not finite:
         return {
+            "algo": algo,
             "passes": False,
             "reference_evasion": es[0],
             "max_evasion": es[-1],
             "reason": "NaN reference or max-evasion cell",
             "interpretation": (
-                "FAIL-WITH-FINDING (D7.10.1): missing/NaN cell prevented the "
-                "robustness comparison."
+                f"FAIL-WITH-FINDING (D7.10.1): missing/NaN {label} cell "
+                f"prevented the robustness comparison."
             ),
         }
 
@@ -204,6 +219,7 @@ def _evaluate_g710(
     degradation = e_ref["ci_low"] - e_max["ci_low"]
     passes = bool(degradation <= tol_abs)
     return {
+        "algo": algo,
         "passes": passes,
         "reference_evasion": es[0],
         "max_evasion": es[-1],
@@ -217,7 +233,7 @@ def _evaluate_g710(
         "reference_compromise_rate": e_ref.get("compromise_rate"),
         "max_evasion_compromise_rate": e_max.get("compromise_rate"),
         "interpretation": (
-            f"PASS: the PPO defender stays robust to an evasive attacker — "
+            f"PASS: the {label} defender stays robust to an evasive attacker — "
             f"mean test reward at evasion={es[-1]} "
             f"({e_max['mean_reward']:.1f}) is within {robust_tol:.0%} of the "
             f"evasion=0 reference ({e_ref['mean_reward']:.1f}); evasive "
@@ -226,8 +242,8 @@ def _evaluate_g710(
             if passes
             else (
                 f"FAIL-WITH-FINDING (D7.10.1): an evasive attacker materially "
-                f"degrades the trained defender — mean test reward falls from "
-                f"{e_ref['mean_reward']:.1f} (evasion=0) to "
+                f"degrades the trained {label} defender — mean test reward "
+                f"falls from {e_ref['mean_reward']:.1f} (evasion=0) to "
                 f"{e_max['mean_reward']:.1f} (evasion={es[-1]}), a CI-low drop "
                 f"of {degradation:.1f} exceeding the {robust_tol:.0%} band "
                 f"({tol_abs:.1f}). This is a documented robustness limit of "
@@ -238,38 +254,96 @@ def _evaluate_g710(
     }
 
 
-def _render(rows: list[dict[str, Any]], out_path: Path) -> None:
+def _evaluate_g710(
+    algo_rows_by_algo: dict[str, list[dict[str, Any]]],
+    *,
+    robust_tol: float,
+) -> dict[str, Any]:
+    """G7.10 across algorithms; PPO cell carries the headline pass semantics.
+
+    Returns a dict with a top-level ``passes`` (mirroring the PPO cell for
+    back-compat with older readers / close_ablation.py), a ``per_algo`` map of
+    per-algorithm evaluations, and flat mirrors of the PPO cell's key fields.
+    """
+    per_algo = {
+        algo: _evaluate_g710_algo(algo, rows, robust_tol=robust_tol)
+        for algo, rows in algo_rows_by_algo.items()
+    }
+    ppo_cell = per_algo.get("ppo", {})
+    out: dict[str, Any] = {
+        "passes": bool(ppo_cell.get("passes", False)),
+        "headline_algo": "ppo",
+        "robust_tol": robust_tol,
+        "per_algo": per_algo,
+    }
+    # Flat back-compat mirrors of the PPO cell (older readers / render_tables).
+    for key in (
+        "reference_evasion",
+        "max_evasion",
+        "reference_mean_reward",
+        "reference_ci",
+        "max_evasion_mean_reward",
+        "max_evasion_ci",
+        "tolerance_abs",
+        "ci_low_degradation",
+        "reference_compromise_rate",
+        "max_evasion_compromise_rate",
+        "interpretation",
+    ):
+        if key in ppo_cell:
+            out[key] = ppo_cell[key]
+    return out
+
+
+def _render(
+    algo_rows_by_algo: dict[str, list[dict[str, Any]]],
+    out_path: Path,
+) -> None:
     apply_house_style()
     import matplotlib.pyplot as plt
 
-    rows = sorted(rows, key=lambda r: r["evasion_prob"])
-    n_seeds = max((int(r.get("n_seeds", 0) or 0) for r in rows), default=0)
-    seed_lbl = f"PPO ({n_seeds} seeds)" if n_seeds else "PPO"
-
     fig, ax = plt.subplots(figsize=(7.0, 4.6))
 
-    xs = [r["evasion_prob"] for r in rows]
-    means = [r["mean_reward"] for r in rows]
-    lo = [r["ci_low"] for r in rows]
-    hi = [r["ci_high"] for r in rows]
-    ax.plot(
-        xs,
-        means,
-        marker="o",
-        color=ACCENT["primary"],
-        label=seed_lbl,
-        linewidth=2.4,
-        zorder=5,
-    )
-    ax.fill_between(xs, lo, hi, alpha=0.18, color=ACCENT["primary"], zorder=1)
+    all_xs: list[float] = []
+    for algo in _DEFAULT_ALGOS:
+        rows = algo_rows_by_algo.get(algo)
+        if not rows:
+            continue
+        rows = sorted(rows, key=lambda r: r["evasion_prob"])
+        n_seeds = max((int(r.get("n_seeds", 0) or 0) for r in rows), default=0)
+        style = policy_style(algo)
+        label = policy_label(algo) + (f", {n_seeds} seeds" if n_seeds else "")
+
+        xs = [r["evasion_prob"] for r in rows]
+        means = [r["mean_reward"] for r in rows]
+        lo = [r["ci_low"] for r in rows]
+        hi = [r["ci_high"] for r in rows]
+        all_xs = xs or all_xs
+        ax.plot(
+            xs,
+            means,
+            marker=style.get("marker", "o"),
+            color=style["color"],
+            label=label,
+            linewidth=style.get("lw", 2.0),
+            zorder=style.get("zorder", 3),
+        )
+        ax.fill_between(
+            xs,
+            lo,
+            hi,
+            alpha=0.15,
+            color=style["color"],
+            zorder=1,
+        )
 
     ax.axhline(0.0, color=ACCENT["muted"], lw=0.8, ls=":", zorder=0)
     ax.set_xlabel("Attacker evasion probability (stall-on-force at RECON/ACCESS)")
     ax.set_ylabel("Mean episodic reward on test_balanced")
     ax.set_title("Defender robustness to an evasive attacker")
     ax.legend(loc="best", framealpha=0.9)
-    if xs:
-        ax.set_xticks(xs)
+    if all_xs:
+        ax.set_xticks(all_xs)
 
     save_figure(fig, out_path)
     plt.close(fig)
@@ -281,6 +355,13 @@ def _build_argparser() -> argparse.ArgumentParser:
     )
     p.add_argument("--runs-root", default="runs/ablation/evasion")
     p.add_argument("--out-dir", default="docs/results/ablation")
+    p.add_argument(
+        "--algos",
+        nargs="+",
+        choices=("ppo", "a2c", "dqn"),
+        default=list(_DEFAULT_ALGOS),
+        help="Algorithms to overlay (must have matching <algo>_e<e> run dirs).",
+    )
     p.add_argument(
         "--evasion-values",
         nargs="+",
@@ -308,22 +389,32 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     sha_collector: dict[str, str] = {}
-    rows = [_summarise(runs_root, e, sha_collector=sha_collector) for e in args.evasion_values]
+    algo_rows_by_algo: dict[str, list[dict[str, Any]]] = {
+        algo: [
+            _summarise(runs_root, algo, e, sha_collector=sha_collector) for e in args.evasion_values
+        ]
+        for algo in args.algos
+    }
+    # Back-compat: top-level ``rows`` mirrors the PPO curve for older readers
+    # (render_tables.py macros, close_ablation.py).
+    rows = algo_rows_by_algo.get("ppo", [])
 
     out_dir = Path(args.out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     fig_base = out_dir / "F17_evasion_sweep"
-    _render(rows, fig_base)
+    _render(algo_rows_by_algo, fig_base)
     pdf_path = fig_base.with_suffix(".pdf")
     png_path = fig_base.with_suffix(".png")
 
-    g710 = _evaluate_g710(rows, robust_tol=args.robust_tol)
+    g710 = _evaluate_g710(algo_rows_by_algo, robust_tol=args.robust_tol)
     summary = {
         "schema_version": "1.0",
         "stage": "ablation",
         "figure": "F17",
+        "algos": list(args.algos),
         "evasion_values": list(args.evasion_values),
         "rows": rows,
+        "algo_rows": algo_rows_by_algo,
         "gates": {"G7.10": g710},
         "headline": g710.get("interpretation", "?"),
     }
@@ -355,19 +446,22 @@ def main(argv: list[str] | None = None) -> int:
         caption_path.write_text(
             "**F17 — Defender robustness to an evasive-persistence attacker.** "
             "Mean episodic reward on `test_balanced` for the fixed "
-            "deterministic-5M α=0.4 PPO defender, evaluated (not retrained) "
-            "against an attacker exhibiting *evasive persistence* "
-            "(post-detection hardening) as a function of `evasion_prob` (the "
-            "probability that, after sensing defensive force at RECON/ACCESS, "
-            "the attacker resists the next eviction attempt). Shaded band: "
-            "95 % bootstrap CI. The `evasion_prob=0` cell is the standard "
-            "Markov-attacker reference. (PLAN §3.1.6; D7.10.)\n"
+            "deterministic-5M α=0.4 defenders (PPO, A2C, DQN; N seeds each), "
+            "evaluated (not retrained) against an attacker exhibiting *evasive "
+            "persistence* (post-detection hardening) as a function of "
+            "`evasion_prob` (the probability that, after sensing defensive "
+            "force at RECON/ACCESS, the attacker resists the next eviction "
+            "attempt). Shaded bands: 95 % bootstrap CI. The `evasion_prob=0` "
+            "cell is the standard Markov-attacker reference. (PLAN §3.1.6; "
+            "D7.10.)\n"
         )
 
+    per_algo_pass = {algo: cell.get("passes") for algo, cell in g710.get("per_algo", {}).items()}
     logger.info(
-        "F17 written to %s — G7.10 passes=%s",
+        "F17 written to %s — G7.10 passes=%s per_algo=%s",
         out_dir,
         g710.get("passes"),
+        per_algo_pass,
     )
     return 0
 

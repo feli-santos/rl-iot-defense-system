@@ -267,19 +267,21 @@ ablation-reward-coupling-figure:  ## Coupling: render coupled-vs-outcome gap fig
 .PHONY: ablation-reward-coupling
 ablation-reward-coupling: ablation-reward-coupling-sweep ablation-reward-coupling-figure  ## Coupling: full sweep + figure.
 
-# F10 — Attack-aggressiveness sweep (PPO + oracle rule × 6 p values × 10 seeds)
+# F10 — Attack-aggressiveness sweep (PPO/A2C/DQN + oracle rule × 6 p values × 10 seeds)
 ABLATION_AGGR_RUNS_ROOT ?= runs/ablation/aggressiveness
 ABLATION_AGGR_TIMESTEPS ?= 250000
+# Fixed det-5M defenders overlaid in the F10/F17 fixed-policy sweeps (headline PPO first).
+ABLATION_SWEEP_ALGOS    ?= ppo a2c dqn
 
 .PHONY: ablation-aggressiveness-smoke
 ablation-aggressiveness-smoke:  ## Ablation F10 smoke: 2 p values × 1 seed × 5K (~30 s). Writes to throwaway dir, never canonical.
 	$(PYTHON) -m scripts.ablation.run_aggressiveness_sweep \
-	    --smoke --out-root runs/ablation/_smoke/aggressiveness
+	    --smoke --algos $(ABLATION_SWEEP_ALGOS) --out-root runs/ablation/_smoke/aggressiveness
 
 .PHONY: ablation-aggressiveness-sweep
-ablation-aggressiveness-sweep:  ## Ablation F10: load fixed det-5M PPO, eval across 6 p values × 10 seeds + oracle rule (no retraining, ~20 min CPU).
+ablation-aggressiveness-sweep:  ## Ablation F10: load fixed det-5M PPO/A2C/DQN, eval across 6 p values × 10 seeds + oracle rule (no retraining, ~60 min CPU).
 	$(PYTHON) -m scripts.ablation.run_aggressiveness_sweep \
-	    --seeds $(BLUE_TEAM_SEEDS) \
+	    --algos $(ABLATION_SWEEP_ALGOS) --seeds $(BLUE_TEAM_SEEDS) \
 	    --load-ppo-from $(ABLATION_OOD_BLUE_TEAM_RUNS) \
 	    --out-root $(ABLATION_AGGR_RUNS_ROOT) \
 	    --parallel $(ABLATION_PARALLEL) \
@@ -289,6 +291,7 @@ ablation-aggressiveness-sweep:  ## Ablation F10: load fixed det-5M PPO, eval acr
 ablation-aggressiveness-figure:  ## Ablation: render F10 from runs/ablation/aggressiveness/.
 	$(PYTHON) -m scripts.ablation.plot_aggressiveness \
 	    --runs-root $(ABLATION_AGGR_RUNS_ROOT) \
+	    --algos $(ABLATION_SWEEP_ALGOS) \
 	    --out-dir $(ABLATION_OUT_DIR)
 
 .PHONY: ablation-aggressiveness
@@ -301,12 +304,12 @@ ABLATION_EVASION_TIMESTEPS ?= 5000000
 .PHONY: ablation-evasion-smoke
 ablation-evasion-smoke:  ## Ablation F17 smoke: 2 evasion values × 1 seed × 5K (~30 s). Writes to throwaway dir, never canonical.
 	$(PYTHON) -m scripts.ablation.run_evasion_sweep \
-	    --smoke --out-root runs/ablation/_smoke/evasion
+	    --smoke --algos $(ABLATION_SWEEP_ALGOS) --out-root runs/ablation/_smoke/evasion
 
 .PHONY: ablation-evasion-sweep
-ablation-evasion-sweep:  ## Ablation F17: load fixed det-5M PPO, eval across 4 evasion values × 10 seeds (no retraining, ~15 min CPU).
+ablation-evasion-sweep:  ## Ablation F17: load fixed det-5M PPO/A2C/DQN, eval across 4 evasion values × 10 seeds (no retraining, ~45 min CPU).
 	$(PYTHON) -m scripts.ablation.run_evasion_sweep \
-	    --seeds $(BLUE_TEAM_SEEDS) \
+	    --algos $(ABLATION_SWEEP_ALGOS) --seeds $(BLUE_TEAM_SEEDS) \
 	    --load-ppo-from $(ABLATION_OOD_BLUE_TEAM_RUNS) \
 	    --out-root $(ABLATION_EVASION_RUNS_ROOT) \
 	    --parallel $(ABLATION_PARALLEL) \
@@ -316,6 +319,7 @@ ablation-evasion-sweep:  ## Ablation F17: load fixed det-5M PPO, eval across 4 e
 ablation-evasion-figure:  ## Ablation: render F17 from runs/ablation/evasion/.
 	$(PYTHON) -m scripts.ablation.plot_evasion_sweep \
 	    --runs-root $(ABLATION_EVASION_RUNS_ROOT) \
+	    --algos $(ABLATION_SWEEP_ALGOS) \
 	    --out-dir $(ABLATION_OUT_DIR)
 
 .PHONY: ablation-evasion

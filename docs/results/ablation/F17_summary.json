@@ -2,6 +2,11 @@
   "schema_version": "1.0",
   "stage": "ablation",
   "figure": "F17",
+  "algos": [
+    "ppo",
+    "a2c",
+    "dqn"
+  ],
   "evasion_values": [
     0.0,
     0.25,
@@ -10,64 +15,265 @@
   ],
   "rows": [
     {
+      "algo": "ppo",
       "evasion_prob": 0.0,
       "n_seeds": 10,
       "n_episodes": 3000,
-      "mean_reward": 123.79853333333332,
-      "ci_low": 119.7439025,
-      "ci_high": 128.09260916666665,
-      "compromise_rate": 0.45066666666666666
+      "mean_reward": 123.20883333333333,
+      "ci_low": 118.95141083333334,
+      "ci_high": 128.196175,
+      "compromise_rate": 0.451
     },
     {
+      "algo": "ppo",
       "evasion_prob": 0.25,
       "n_seeds": 10,
       "n_episodes": 3000,
-      "mean_reward": 118.83319999999999,
-      "ci_low": 115.3730725,
-      "ci_high": 121.861195,
-      "compromise_rate": 0.47733333333333333
+      "mean_reward": 114.27133333333333,
+      "ci_low": 107.82755083333335,
+      "ci_high": 120.73771583333334,
+      "compromise_rate": 0.48966666666666664
     },
     {
+      "algo": "ppo",
       "evasion_prob": 0.5,
       "n_seeds": 10,
       "n_episodes": 3000,
-      "mean_reward": 107.7311,
-      "ci_low": 101.46074,
-      "ci_high": 113.58710916666665,
-      "compromise_rate": 0.5216666666666666
+      "mean_reward": 105.36196666666667,
+      "ci_low": 98.96982333333334,
+      "ci_high": 110.9796725,
+      "compromise_rate": 0.5336666666666666
     },
     {
+      "algo": "ppo",
       "evasion_prob": 0.75,
       "n_seeds": 10,
       "n_episodes": 3000,
-      "mean_reward": 96.36896666666665,
-      "ci_low": 88.82014166666669,
-      "ci_high": 102.89711333333334,
-      "compromise_rate": 0.5493333333333333
+      "mean_reward": 91.90576666666666,
+      "ci_low": 85.07242083333333,
+      "ci_high": 97.53637916666668,
+      "compromise_rate": 0.5556666666666666
     }
   ],
+  "algo_rows": {
+    "ppo": [
+      {
+        "algo": "ppo",
+        "evasion_prob": 0.0,
+        "n_seeds": 10,
+        "n_episodes": 3000,
+        "mean_reward": 123.20883333333333,
+        "ci_low": 118.95141083333334,
+        "ci_high": 128.196175,
+        "compromise_rate": 0.451
+      },
+      {
+        "algo": "ppo",
+        "evasion_prob": 0.25,
+        "n_seeds": 10,
+        "n_episodes": 3000,
+        "mean_reward": 114.27133333333333,
+        "ci_low": 107.82755083333335,
+        "ci_high": 120.73771583333334,
+        "compromise_rate": 0.48966666666666664
+      },
+      {
+        "algo": "ppo",
+        "evasion_prob": 0.5,
+        "n_seeds": 10,
+        "n_episodes": 3000,
+        "mean_reward": 105.36196666666667,
+        "ci_low": 98.96982333333334,
+        "ci_high": 110.9796725,
+        "compromise_rate": 0.5336666666666666
+      },
+      {
+        "algo": "ppo",
+        "evasion_prob": 0.75,
+        "n_seeds": 10,
+        "n_episodes": 3000,
+        "mean_reward": 91.90576666666666,
+        "ci_low": 85.07242083333333,
+        "ci_high": 97.53637916666668,
+        "compromise_rate": 0.5556666666666666
+      }
+    ],
+    "a2c": [
+      {
+        "algo": "a2c",
+        "evasion_prob": 0.0,
+        "n_seeds": 10,
+        "n_episodes": 3000,
+        "mean_reward": 142.57763333333335,
+        "ci_low": 136.67477666666665,
+        "ci_high": 148.6385025,
+        "compromise_rate": 0.23266666666666666
+      },
+      {
+        "algo": "a2c",
+        "evasion_prob": 0.25,
+        "n_seeds": 10,
+        "n_episodes": 3000,
+        "mean_reward": 135.53036666666665,
+        "ci_low": 133.19911499999995,
+        "ci_high": 138.26977250000002,
+        "compromise_rate": 0.311
+      },
+      {
+        "algo": "a2c",
+        "evasion_prob": 0.5,
+        "n_seeds": 10,
+        "n_episodes": 3000,
+        "mean_reward": 124.76810000000002,
+        "ci_low": 119.59526166666666,
+        "ci_high": 129.78865333333331,
+        "compromise_rate": 0.3863333333333333
+      },
+      {
+        "algo": "a2c",
+        "evasion_prob": 0.75,
+        "n_seeds": 10,
+        "n_episodes": 3000,
+        "mean_reward": 112.70863333333334,
+        "ci_low": 107.91010083333332,
+        "ci_high": 116.95257666666666,
+        "compromise_rate": 0.4116666666666667
+      }
+    ],
+    "dqn": [
+      {
+        "algo": "dqn",
+        "evasion_prob": 0.0,
+        "n_seeds": 10,
+        "n_episodes": 3000,
+        "mean_reward": 68.66493333333332,
+        "ci_low": 39.9138225,
+        "ci_high": 97.6699858333333,
+        "compromise_rate": 0.6766666666666666
+      },
+      {
+        "algo": "dqn",
+        "evasion_prob": 0.25,
+        "n_seeds": 10,
+        "n_episodes": 3000,
+        "mean_reward": 57.76706666666667,
+        "ci_low": 29.201512499999993,
+        "ci_high": 87.75467666666667,
+        "compromise_rate": 0.689
+      },
+      {
+        "algo": "dqn",
+        "evasion_prob": 0.5,
+        "n_seeds": 10,
+        "n_episodes": 3000,
+        "mean_reward": 56.36253333333334,
+        "ci_low": 29.38018583333334,
+        "ci_high": 85.60784583333331,
+        "compromise_rate": 0.7023333333333334
+      },
+      {
+        "algo": "dqn",
+        "evasion_prob": 0.75,
+        "n_seeds": 10,
+        "n_episodes": 3000,
+        "mean_reward": 50.4811,
+        "ci_low": 23.09762,
+        "ci_high": 80.70997583333333,
+        "compromise_rate": 0.706
+      }
+    ]
+  },
   "gates": {
     "G7.10": {
-      "passes": true,
+      "passes": false,
+      "headline_algo": "ppo",
+      "robust_tol": 0.25,
+      "per_algo": {
+        "ppo": {
+          "algo": "ppo",
+          "passes": false,
+          "reference_evasion": 0.0,
+          "max_evasion": 0.75,
+          "reference_mean_reward": 123.20883333333333,
+          "reference_ci": [
+            118.95141083333334,
+            128.196175
+          ],
+          "max_evasion_mean_reward": 91.90576666666666,
+          "max_evasion_ci": [
+            85.07242083333333,
+            97.53637916666668
+          ],
+          "robust_tol": 0.25,
+          "tolerance_abs": 30.802208333333333,
+          "ci_low_degradation": 33.878990000000016,
+          "reference_compromise_rate": 0.451,
+          "max_evasion_compromise_rate": 0.5556666666666666,
+          "interpretation": "FAIL-WITH-FINDING (D7.10.1): an evasive attacker materially degrades the trained PPO defender \u2014 mean test reward falls from 123.2 (evasion=0) to 91.9 (evasion=0.75), a CI-low drop of 33.9 exceeding the 25% band (30.8). This is a documented robustness limit of the prevention spine under attacker evasion, not a hard failure; flag in prose (threats-to-validity)."
+        },
+        "a2c": {
+          "algo": "a2c",
+          "passes": true,
+          "reference_evasion": 0.0,
+          "max_evasion": 0.75,
+          "reference_mean_reward": 142.57763333333335,
+          "reference_ci": [
+            136.67477666666665,
+            148.6385025
+          ],
+          "max_evasion_mean_reward": 112.70863333333334,
+          "max_evasion_ci": [
+            107.91010083333332,
+            116.95257666666666
+          ],
+          "robust_tol": 0.25,
+          "tolerance_abs": 35.64440833333334,
+          "ci_low_degradation": 28.764675833333328,
+          "reference_compromise_rate": 0.23266666666666666,
+          "max_evasion_compromise_rate": 0.4116666666666667,
+          "interpretation": "PASS: the A2C defender stays robust to an evasive attacker \u2014 mean test reward at evasion=0.75 (112.7) is within 25% of the evasion=0 reference (142.6); evasive persistence (post-detection hardening) degrades but does not collapse the learned defense."
+        },
+        "dqn": {
+          "algo": "dqn",
+          "passes": true,
+          "reference_evasion": 0.0,
+          "max_evasion": 0.75,
+          "reference_mean_reward": 68.66493333333332,
+          "reference_ci": [
+            39.9138225,
+            97.6699858333333
+          ],
+          "max_evasion_mean_reward": 50.4811,
+          "max_evasion_ci": [
+            23.09762,
+            80.70997583333333
+          ],
+          "robust_tol": 0.25,
+          "tolerance_abs": 17.16623333333333,
+          "ci_low_degradation": 16.816202500000003,
+          "reference_compromise_rate": 0.6766666666666666,
+          "max_evasion_compromise_rate": 0.706,
+          "interpretation": "PASS: the DQN defender stays robust to an evasive attacker \u2014 mean test reward at evasion=0.75 (50.5) is within 25% of the evasion=0 reference (68.7); evasive persistence (post-detection hardening) degrades but does not collapse the learned defense."
+        }
+      },
       "reference_evasion": 0.0,
       "max_evasion": 0.75,
-      "reference_mean_reward": 123.79853333333332,
+      "reference_mean_reward": 123.20883333333333,
       "reference_ci": [
-        119.7439025,
-        128.09260916666665
+        118.95141083333334,
+        128.196175
       ],
-      "max_evasion_mean_reward": 96.36896666666665,
+      "max_evasion_mean_reward": 91.90576666666666,
       "max_evasion_ci": [
-        88.82014166666669,
-        102.89711333333334
+        85.07242083333333,
+        97.53637916666668
       ],
-      "robust_tol": 0.25,
-      "tolerance_abs": 30.94963333333333,
-      "ci_low_degradation": 30.92376083333332,
-      "reference_compromise_rate": 0.45066666666666666,
-      "max_evasion_compromise_rate": 0.5493333333333333,
-      "interpretation": "PASS: the PPO defender stays robust to an evasive attacker \u2014 mean test reward at evasion=0.75 (96.4) is within 25% of the evasion=0 reference (123.8); evasive persistence (post-detection hardening) degrades but does not collapse the learned defense."
+      "tolerance_abs": 30.802208333333333,
+      "ci_low_degradation": 33.878990000000016,
+      "reference_compromise_rate": 0.451,
+      "max_evasion_compromise_rate": 0.5556666666666666,
+      "interpretation": "FAIL-WITH-FINDING (D7.10.1): an evasive attacker materially degrades the trained PPO defender \u2014 mean test reward falls from 123.2 (evasion=0) to 91.9 (evasion=0.75), a CI-low drop of 33.9 exceeding the 25% band (30.8). This is a documented robustness limit of the prevention spine under attacker evasion, not a hard failure; flag in prose (threats-to-validity)."
     }
   },
-  "headline": "PASS: the PPO defender stays robust to an evasive attacker \u2014 mean test reward at evasion=0.75 (96.4) is within 25% of the evasion=0 reference (123.8); evasive persistence (post-detection hardening) degrades but does not collapse the learned defense."
+  "headline": "FAIL-WITH-FINDING (D7.10.1): an evasive attacker materially degrades the trained PPO defender \u2014 mean test reward falls from 123.2 (evasion=0) to 91.9 (evasion=0.75), a CI-low drop of 33.9 exceeding the 25% band (30.8). This is a documented robustness limit of the prevention spine under attacker evasion, not a hard failure; flag in prose (threats-to-validity)."
 }

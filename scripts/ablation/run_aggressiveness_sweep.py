@@ -1,13 +1,15 @@
 """ablation F10 — Environment-difficulty sweep driver (PLAN §3.1.5).
 
 Sweeps the tug-of-war de-escalation success probability
-``p_down ∈ {0.0, 0.2, 0.4, 0.6, 0.8, 1.0}`` × PPO only (D7.2) × 10 seeds,
-all under the LOCKED primary reward contract (``reward_mode='outcome'``,
-``impact_is_terminal=False``, ``aliasing_rate=0.4``, session-coherent).
-In the canonical mode (``--load-ppo-from``) the fixed deterministic-5M
-α=0.4 PPO defender is LOADED and re-evaluated (not retrained) under each
-shifted ``p_down``, so the curve isolates how a single deployed defender
-generalizes as the attacker's de-escalation behavior drifts.
+``p_down ∈ {0.0, 0.2, 0.4, 0.6, 0.8, 1.0}`` × blue-team algorithm
+(``ppo``/``a2c``/``dqn``) × 10 seeds, all under the LOCKED primary reward
+contract (``reward_mode='outcome'``, ``impact_is_terminal=False``,
+``aliasing_rate=0.4``, session-coherent). In the canonical mode
+(``--load-ppo-from`` + ``--algos``) the fixed deterministic-5M α=0.4
+defenders are LOADED and re-evaluated (not retrained) under each shifted
+``p_down``, so the curves isolate how each deployed defender generalizes as
+the attacker's de-escalation behavior drifts — a cross-algorithm robustness
+comparison (PPO vs A2C vs DQN) rather than a PPO-only reading.
 
 ``p_down`` is the live tug-of-war knob that governs how *forgiving the
 environment is to a correct defender*: when the defender plays the
@@ -37,13 +39,10 @@ Output layout::
 
     runs/ablation/aggressiveness/
         sweep_manifest.json           — top-level F10 manifest
-        ppo_p<p>/seed_<k>/
-            episodes.jsonl
-            eval.jsonl
-            run_manifest.json
-            model.zip
-            eval_test.jsonl           — test_balanced at this p
-            train.log
+        <algo>_p<p>/seed_<k>/         — algo ∈ {ppo, a2c, dqn}
+            eval_test.jsonl           — test_balanced at this p (load mode)
+            (train mode also: episodes.jsonl, eval.jsonl,
+             run_manifest.json, model.zip, train.log)
         rule_p<p>/seed_0/
             eval_test.jsonl           — oracle rule at this p
 """
@@ -62,10 +61,17 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from src.algorithms.adversarial_algorithm import AdversarialAlgorithm
 from src.benchmark.baseline_policies import SB3PolicyAdapter, recommended_action_policy
 from src.benchmark.eval_runner import run_policy
 from src.blue_team.env_factory import make_eval_env
 from src.blue_team.run_config import EnvConfigSerializable
+
+# SB3 class map keyed by algo name ({"ppo": PPO, "a2c": A2C, "dqn": DQN}); reused
+# for the algorithm-generic load-mode loader so F10 can overlay all three.
+ALGORITHMS = AdversarialAlgorithm.ALGORITHMS
+
+_DEFAULT_ALGOS: list[str] = ["ppo", "a2c", "dqn"]
 
 logger = logging.getLogger("scripts.ablation.run_aggressiveness_sweep")
 
@@ -161,23 +167,28 @@ def _p_slug(p: float) -> str:
 # --------------------------------------------------------------------- per-cell
 
 
-def _load_and_eval_ppo(
+def _load_and_eval_algo(
     args: argparse.Namespace,
+    algo: str,
     p: float,
     seed: int,
 ) -> dict[str, Any]:
-    """Load the fixed det-5M PPO checkpoint and evaluate it at p_down=p.
+    """Load a fixed det-5M checkpoint for ``algo`` and evaluate it at p_down=p.
 
-    No retraining: loads ``<load_ppo_from>/ppo/seed_<seed>/best_model.zip``
+    No retraining: loads ``<load_ppo_from>/<algo>/seed_<seed>/best_model.zip``
     (falling back to ``model.zip``) and rolls it on ``test_balanced`` under
     the load-mode POMDP contract at this p_down. Writes ``eval_test.jsonl``
-    into the normal ``ppo_p<slug>/seed_<k>/`` layout so the F10 plotter is
-    unchanged.
+    into the ``<algo>_p<slug>/seed_<k>/`` layout so the F10 plotter can
+    overlay all three algorithms.
+
+    ``algo`` is one of ``{"ppo", "a2c", "dqn"}``; the correct Stable-Baselines3
+    class is resolved via ``AdversarialAlgorithm.ALGORITHMS`` so the loader is
+    fully algorithm-generic.
     """
-    out_dir = Path(args.out_root) / f"ppo_p{_p_slug(p)}" / f"seed_{seed}"
+    out_dir = Path(args.out_root) / f"{algo}_p{_p_slug(p)}" / f"seed_{seed}"
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    ckpt_dir = Path(args.load_ppo_from) / "ppo" / f"seed_{seed}"
+    ckpt_dir = Path(args.load_ppo_from) / algo / f"seed_{seed}"
     ckpt = ckpt_dir / "best_model.zip"
     if not ckpt.exists():
         ckpt = ckpt_dir / "model.zip"
@@ -188,7 +199,7 @@ def _load_and_eval_ppo(
     error: str | None = None
     if not ckpt.exists():
         error = f"checkpoint not found: {ckpt}"
-        logger.error("F10 load p=%.1f seed=%d: %s", p, seed, error)
+        logger.error("F10 load %s p=%.1f seed=%d: %s", algo, p, seed, error)
     else:
         try:
             spec = EnvConfigSerializable(
@@ -203,17 +214,16 @@ def _load_and_eval_ppo(
                 seed=seed,
             )
             try:
-                from stable_baselines3 import PPO
-
-                model = PPO.load(ckpt, env=env, device="cpu")
+                alg_class = ALGORITHMS[algo]
+                model = alg_class.load(ckpt, env=env, device="cpu")
                 policy = SB3PolicyAdapter(model, deterministic=True)
                 run_policy(
                     policy,
                     env,
                     n_episodes=2 if args.smoke else args.n_eval_episodes,
                     jsonl_path=test_eval_jsonl,
-                    run_id=f"f10_ppo_p{_p_slug(p)}_seed_{seed}_test",
-                    policy_name="ppo",
+                    run_id=f"f10_{algo}_p{_p_slug(p)}_seed_{seed}_test",
+                    policy_name=algo,
                     latency_path=None,
                     seed=seed,
                 )
@@ -225,17 +235,19 @@ def _load_and_eval_ppo(
                     pass
         except Exception as exc:  # noqa: BLE001
             error = str(exc)
-            logger.error("F10 load p=%.1f seed=%d eval failed: %s", p, seed, exc)
+            logger.error("F10 load %s p=%.1f seed=%d eval failed: %s", algo, p, seed, exc)
     wallclock = time.time() - t0
     logger.info(
-        "F10 load p=%.1f seed=%d done eval=%s wc=%.1fs",
+        "F10 load %s p=%.1f seed=%d done eval=%s wc=%.1fs",
+        algo,
         p,
         seed,
         ok,
         wallclock,
     )
     return {
-        "kind": "ppo",
+        "kind": algo,
+        "algo": algo,
         "mode": "load",
         "p_down": p,
         "seed": seed,
@@ -474,7 +486,7 @@ def _roll_rule_baseline(
 def _build_argparser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         description="ablation F10 — environment-difficulty (p_down) sweep "
-        "(PLAN §3.1.5; PPO + oracle rule × 6 p_down values × seeds, ~1.5 h CPU).",
+        "(PLAN §3.1.5; PPO/A2C/DQN + oracle rule × 6 p_down values × seeds).",
     )
     p.add_argument(
         "--p-values",
@@ -488,7 +500,17 @@ def _build_argparser() -> argparse.ArgumentParser:
         nargs="+",
         type=int,
         default=[0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
-        help="PPO seeds (recommended-action rule uses single seed=0).",
+        help="Blue-team seeds (recommended-action rule uses single seed=0).",
+    )
+    p.add_argument(
+        "--algos",
+        nargs="+",
+        choices=("ppo", "a2c", "dqn"),
+        default=_DEFAULT_ALGOS,
+        help=(
+            "Blue-team algorithms to overlay in LOAD mode (default: all three). "
+            "Only takes effect with --load-ppo-from; train mode is PPO-only."
+        ),
     )
     p.add_argument("--total-timesteps", type=int, default=1_500_000)
     p.add_argument("--eval-freq", type=int, default=25_000)
@@ -544,26 +566,46 @@ def main(argv: list[str] | None = None) -> int:
     ppo_results: list[dict[str, Any]] = []
     rule_results: list[dict[str, Any]] = []
 
-    # PPO sweep. In load mode we evaluate a fixed checkpoint across the sweep
-    # instead of retraining a fresh PPO per cell.
-    _ppo_fn = _load_and_eval_ppo if args.load_ppo_from else _train_ppo
+    # Blue-team sweep. In load mode we evaluate fixed checkpoints across the
+    # sweep instead of retraining per cell, and we can overlay multiple
+    # algorithms (PPO/A2C/DQN) so the robustness curve is cross-algorithm.
+    # Train mode remains PPO-only (retraining A2C/DQN per cell is out of scope);
+    # the ``--algos`` knob only takes effect in load mode.
     if args.load_ppo_from:
+        algos = list(args.algos)
         logger.info(
-            "F10 LOAD MODE: evaluating fixed PPO from %s (no retraining)",
+            "F10 LOAD MODE: evaluating fixed %s from %s (no retraining)",
+            "/".join(a.upper() for a in algos),
             args.load_ppo_from,
         )
-    grid = [(p, s) for p in args.p_values for s in args.seeds]
-    if args.parallel <= 1:
-        for p, seed in grid:
-            ppo_results.append(_ppo_fn(args, p, seed))
-            if not ppo_results[-1]["ok_train"] and not args.continue_on_failure:
-                logger.error("aborting sweep (use --continue-on-failure)")
-                break
+        grid = [(a, p, s) for a in algos for p in args.p_values for s in args.seeds]
+        if args.parallel <= 1:
+            for algo, p, seed in grid:
+                ppo_results.append(_load_and_eval_algo(args, algo, p, seed))
+                if not ppo_results[-1]["ok_train"] and not args.continue_on_failure:
+                    logger.error("aborting sweep (use --continue-on-failure)")
+                    break
+        else:
+            with concurrent.futures.ThreadPoolExecutor(max_workers=args.parallel) as ex:
+                futs = {
+                    ex.submit(_load_and_eval_algo, args, a, p, s): (a, p, s) for a, p, s in grid
+                }
+                for fut in concurrent.futures.as_completed(futs):
+                    ppo_results.append(fut.result())
     else:
-        with concurrent.futures.ThreadPoolExecutor(max_workers=args.parallel) as ex:
-            futs = {ex.submit(_ppo_fn, args, p, s): (p, s) for p, s in grid}
-            for fut in concurrent.futures.as_completed(futs):
-                ppo_results.append(fut.result())
+        # Train mode: retrain a fresh PPO per cell (single algorithm).
+        grid_train = [(p, s) for p in args.p_values for s in args.seeds]
+        if args.parallel <= 1:
+            for p, seed in grid_train:
+                ppo_results.append(_train_ppo(args, p, seed))
+                if not ppo_results[-1]["ok_train"] and not args.continue_on_failure:
+                    logger.error("aborting sweep (use --continue-on-failure)")
+                    break
+        else:
+            with concurrent.futures.ThreadPoolExecutor(max_workers=args.parallel) as ex:
+                futs = {ex.submit(_train_ppo, args, p, s): (p, s) for p, s in grid_train}
+                for fut in concurrent.futures.as_completed(futs):
+                    ppo_results.append(fut.result())
 
     # Rule baseline at each p.
     for p in args.p_values:
@@ -573,6 +615,18 @@ def main(argv: list[str] | None = None) -> int:
             p,
             rule_results[-1]["wallclock_seconds"],
         )
+
+    # Per-algo OK/failed tallies (load mode overlays multiple algos).
+    algos_run = sorted({r.get("algo", "ppo") for r in ppo_results})
+    per_algo_counts = {
+        a: {
+            "n_ok": sum(1 for r in ppo_results if r.get("algo", "ppo") == a and r["ok_train"]),
+            "n_failed": sum(
+                1 for r in ppo_results if r.get("algo", "ppo") == a and not r["ok_train"]
+            ),
+        }
+        for a in algos_run
+    }
 
     sweep_manifest = {
         "schema_version": "1.0",
@@ -587,16 +641,18 @@ def main(argv: list[str] | None = None) -> int:
         "args": vars(args),
         "mode": "load" if args.load_ppo_from else "train",
         "load_ppo_from": args.load_ppo_from,
+        "algos": algos_run,
         "p_values": list(args.p_values),
         "ppo_runs": ppo_results,
         "rule_runs": rule_results,
+        "per_algo_counts": per_algo_counts,
         "n_ppo_ok": sum(1 for r in ppo_results if r["ok_train"]),
         "n_ppo_failed": sum(1 for r in ppo_results if not r["ok_train"]),
     }
     sweep_manifest_path = out_root / "sweep_manifest.json"
     sweep_manifest_path.write_text(json.dumps(sweep_manifest, indent=2))
     logger.info(
-        "F10 sweep done: %d/%d ppo trained, %d rule p-values rolled in %.1fs; -> %s",
+        "F10 sweep done: %d/%d blue-team runs ok, %d rule p-values rolled in " "%.1fs; -> %s",
         sweep_manifest["n_ppo_ok"],
         len(ppo_results),
         len(rule_results),

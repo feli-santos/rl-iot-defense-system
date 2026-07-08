@@ -1,12 +1,14 @@
 """ablation F17 — Evasive-persistence robustness sweep driver.
 
-Sweeps ``evasion_prob ∈ {0.0, 0.25, 0.5, 0.75}`` × PPO only × 10 seeds,
-all under the LOCKED primary reward contract (``reward_mode='outcome'``,
-``impact_is_terminal=False``, ``aliasing_rate=0.4``, session-coherent).
-In the canonical mode (``--load-ppo-from``) the fixed deterministic-5M
-α=0.4 PPO defender is LOADED and re-evaluated (not retrained) under each
-evasion level, so the curve isolates the effect of the attacker mechanic
-on a single deployed policy. Total: 4 × 10 evaluations.
+Sweeps ``evasion_prob ∈ {0.0, 0.25, 0.5, 0.75}`` × blue-team algorithm
+(``ppo``/``a2c``/``dqn``) × 10 seeds, all under the LOCKED primary reward
+contract (``reward_mode='outcome'``, ``impact_is_terminal=False``,
+``aliasing_rate=0.4``, session-coherent). In the canonical mode
+(``--load-ppo-from`` + ``--algos``) the fixed deterministic-5M α=0.4
+defenders are LOADED and re-evaluated (not retrained) under each evasion
+level, so the curves isolate the effect of the attacker mechanic on each
+deployed policy — a cross-algorithm robustness comparison rather than a
+PPO-only reading.
 
 ``evasion_prob`` models an *evasive-persistence* attacker (adversarial_env.py
 "post-detection hardening"): after the attacker senses defensive force
@@ -22,13 +24,10 @@ Output layout::
 
     runs/ablation/evasion/
         sweep_manifest.json
-        ppo_e<e>/seed_<k>/
-            episodes.jsonl
-            eval.jsonl
-            run_manifest.json
-            model.zip
-            eval_test.jsonl
-            train.log
+        <algo>_e<e>/seed_<k>/         — algo ∈ {ppo, a2c, dqn}
+            eval_test.jsonl           — test_balanced at this e (load mode)
+            (train mode also: episodes.jsonl, eval.jsonl,
+             run_manifest.json, model.zip, train.log)
 """
 
 from __future__ import annotations
@@ -45,6 +44,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from src.algorithms.adversarial_algorithm import AdversarialAlgorithm
 from src.benchmark.baseline_policies import SB3PolicyAdapter
 from src.benchmark.eval_runner import run_policy
 from src.blue_team.env_factory import make_eval_env
@@ -55,6 +55,12 @@ logger = logging.getLogger("scripts.ablation.run_evasion_sweep")
 _ROOT = Path(__file__).resolve().parents[2]
 
 _DEFAULT_EVASION_VALUES: list[float] = [0.0, 0.25, 0.5, 0.75]
+
+# SB3 class map keyed by algo name ({"ppo": PPO, "a2c": A2C, "dqn": DQN}); reused
+# for the algorithm-generic load-mode loader so F17 can overlay all three.
+ALGORITHMS = AdversarialAlgorithm.ALGORITHMS
+
+_DEFAULT_ALGOS: list[str] = ["ppo", "a2c", "dqn"]
 
 
 # Locked primary reward contract (matches the headline redesign sweep). F17
@@ -144,19 +150,23 @@ def _overrides_json(e: float) -> str:
 # --------------------------------------------------------------------- per-cell
 
 
-def _load_and_eval_ppo(args: argparse.Namespace, e: float, seed: int) -> dict[str, Any]:
-    """Load the fixed det-5M PPO checkpoint and evaluate it at evasion_prob=e.
+def _load_and_eval_algo(args: argparse.Namespace, algo: str, e: float, seed: int) -> dict[str, Any]:
+    """Load a fixed det-5M checkpoint for ``algo`` and evaluate it at
+    evasion_prob=e.
 
-    No retraining: loads ``<load_ppo_from>/ppo/seed_<seed>/best_model.zip``
+    No retraining: loads ``<load_ppo_from>/<algo>/seed_<seed>/best_model.zip``
     (falling back to ``model.zip``) and rolls it on ``test_balanced`` under
     the load-mode POMDP contract at this evasion level. Writes
-    ``eval_test.jsonl`` into the normal ``ppo_e<slug>/seed_<k>/`` layout so
-    the F17 plotter is unchanged.
+    ``eval_test.jsonl`` into the ``<algo>_e<slug>/seed_<k>/`` layout so the F17
+    plotter can overlay all three algorithms.
+
+    ``algo`` is one of ``{"ppo", "a2c", "dqn"}``; the correct Stable-Baselines3
+    class is resolved via ``AdversarialAlgorithm.ALGORITHMS``.
     """
-    out_dir = Path(args.out_root) / f"ppo_e{_e_slug(e)}" / f"seed_{seed}"
+    out_dir = Path(args.out_root) / f"{algo}_e{_e_slug(e)}" / f"seed_{seed}"
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    ckpt_dir = Path(args.load_ppo_from) / "ppo" / f"seed_{seed}"
+    ckpt_dir = Path(args.load_ppo_from) / algo / f"seed_{seed}"
     ckpt = ckpt_dir / "best_model.zip"
     if not ckpt.exists():
         ckpt = ckpt_dir / "model.zip"
@@ -167,7 +177,7 @@ def _load_and_eval_ppo(args: argparse.Namespace, e: float, seed: int) -> dict[st
     error: str | None = None
     if not ckpt.exists():
         error = f"checkpoint not found: {ckpt}"
-        logger.error("F17 load e=%.2f seed=%d: %s", e, seed, error)
+        logger.error("F17 load %s e=%.2f seed=%d: %s", algo, e, seed, error)
     else:
         try:
             spec = EnvConfigSerializable(
@@ -182,17 +192,16 @@ def _load_and_eval_ppo(args: argparse.Namespace, e: float, seed: int) -> dict[st
                 seed=seed,
             )
             try:
-                from stable_baselines3 import PPO
-
-                model = PPO.load(ckpt, env=env, device="cpu")
+                alg_class = ALGORITHMS[algo]
+                model = alg_class.load(ckpt, env=env, device="cpu")
                 policy = SB3PolicyAdapter(model, deterministic=True)
                 run_policy(
                     policy,
                     env,
                     n_episodes=2 if args.smoke else args.n_eval_episodes,
                     jsonl_path=test_eval_jsonl,
-                    run_id=f"f17_ppo_e{_e_slug(e)}_seed_{seed}_test",
-                    policy_name="ppo",
+                    run_id=f"f17_{algo}_e{_e_slug(e)}_seed_{seed}_test",
+                    policy_name=algo,
                     latency_path=None,
                     seed=seed,
                 )
@@ -204,17 +213,19 @@ def _load_and_eval_ppo(args: argparse.Namespace, e: float, seed: int) -> dict[st
                     pass
         except Exception as exc:  # noqa: BLE001
             error = str(exc)
-            logger.error("F17 load e=%.2f seed=%d eval failed: %s", e, seed, exc)
+            logger.error("F17 load %s e=%.2f seed=%d eval failed: %s", algo, e, seed, exc)
     wallclock = time.time() - t0
     logger.info(
-        "F17 load e=%.2f seed=%d done eval=%s wc=%.1fs",
+        "F17 load %s e=%.2f seed=%d done eval=%s wc=%.1fs",
+        algo,
         e,
         seed,
         ok,
         wallclock,
     )
     return {
-        "kind": "ppo",
+        "kind": algo,
+        "algo": algo,
         "mode": "load",
         "evasion_prob": e,
         "seed": seed,
@@ -373,7 +384,8 @@ def _eval_ppo_on_test(
 
 def _build_argparser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
-        description="ablation F17 — evasion-reactive sweep.",
+        description="ablation F17 — evasive-persistence sweep "
+        "(PPO/A2C/DQN + evasion_prob values × seeds).",
     )
     p.add_argument(
         "--evasion-values",
@@ -382,6 +394,16 @@ def _build_argparser() -> argparse.ArgumentParser:
         default=_DEFAULT_EVASION_VALUES,
     )
     p.add_argument("--seeds", nargs="+", type=int, default=[0, 1, 2, 3, 4, 5, 6, 7, 8, 9])
+    p.add_argument(
+        "--algos",
+        nargs="+",
+        choices=("ppo", "a2c", "dqn"),
+        default=_DEFAULT_ALGOS,
+        help=(
+            "Blue-team algorithms to overlay in LOAD mode (default: all three). "
+            "Only takes effect with --load-ppo-from; train mode is PPO-only."
+        ),
+    )
     p.add_argument("--total-timesteps", type=int, default=1_500_000)
     p.add_argument("--eval-freq", type=int, default=25_000)
     p.add_argument("--n-eval-episodes", type=int, default=300)
@@ -421,52 +443,111 @@ def main(argv: list[str] | None = None) -> int:
     out_root = Path(args.out_root)
     out_root.mkdir(parents=True, exist_ok=True)
 
-    cells = [(e, seed) for e in args.evasion_values for seed in args.seeds]
     n_workers = max(1, int(args.parallel))
-    _ppo_fn = _load_and_eval_ppo if args.load_ppo_from else _train_ppo
-    if args.load_ppo_from:
-        logger.info(
-            "F17 LOAD MODE: evaluating fixed PPO from %s (no retraining)",
-            args.load_ppo_from,
-        )
-    logger.info(
-        "F17 evasion sweep: %d evasion × %d seeds = %d runs (%d worker(s))",
-        len(args.evasion_values),
-        len(args.seeds),
-        len(cells),
-        n_workers,
-    )
-
     t0 = time.time()
     results: list[dict[str, Any]] = []
-    if n_workers == 1:
-        for e, seed in cells:
-            results.append(_ppo_fn(args, e, seed))
+
+    if args.load_ppo_from:
+        # LOAD mode: overlay fixed checkpoints for each algorithm (no retraining).
+        algos = list(args.algos)
+        cells = [(a, e, seed) for a in algos for e in args.evasion_values for seed in args.seeds]
+        logger.info(
+            "F17 LOAD MODE: evaluating fixed %s from %s (no retraining)",
+            "/".join(a.upper() for a in algos),
+            args.load_ppo_from,
+        )
+        logger.info(
+            "F17 evasion sweep: %d algo × %d evasion × %d seeds = %d runs " "(%d worker(s))",
+            len(algos),
+            len(args.evasion_values),
+            len(args.seeds),
+            len(cells),
+            n_workers,
+        )
+        if n_workers == 1:
+            for a, e, seed in cells:
+                results.append(_load_and_eval_algo(args, a, e, seed))
+        else:
+            with concurrent.futures.ThreadPoolExecutor(max_workers=n_workers) as ex:
+                futs = {
+                    ex.submit(_load_and_eval_algo, args, a, e, seed): (a, e, seed)
+                    for a, e, seed in cells
+                }
+                for fut in concurrent.futures.as_completed(futs):
+                    a, e, seed = futs[fut]
+                    try:
+                        results.append(fut.result())
+                    except Exception as exc:  # noqa: BLE001
+                        logger.error("F17 %s e=%.2f seed=%d crashed: %s", a, e, seed, exc)
+                        if not args.continue_on_failure:
+                            raise
+                        results.append(
+                            {
+                                "kind": a,
+                                "algo": a,
+                                "evasion_prob": e,
+                                "seed": seed,
+                                "ok_train": False,
+                                "ok_test_eval": False,
+                                "error": str(exc),
+                            }
+                        )
     else:
-        with concurrent.futures.ThreadPoolExecutor(max_workers=n_workers) as ex:
-            futs = {ex.submit(_ppo_fn, args, e, seed): (e, seed) for e, seed in cells}
-            for fut in concurrent.futures.as_completed(futs):
-                e, seed = futs[fut]
-                try:
-                    results.append(fut.result())
-                except Exception as exc:  # noqa: BLE001
-                    logger.error("F17 ppo e=%.2f seed=%d crashed: %s", e, seed, exc)
-                    if not args.continue_on_failure:
-                        raise
-                    results.append(
-                        {
-                            "kind": "ppo",
-                            "evasion_prob": e,
-                            "seed": seed,
-                            "ok_train": False,
-                            "ok_test_eval": False,
-                            "error": str(exc),
-                        }
-                    )
+        # TRAIN mode: retrain a fresh PPO per cell (single algorithm).
+        cells = [(e, seed) for e in args.evasion_values for seed in args.seeds]
+        logger.info(
+            "F17 evasion sweep (train): %d evasion × %d seeds = %d runs " "(%d worker(s))",
+            len(args.evasion_values),
+            len(args.seeds),
+            len(cells),
+            n_workers,
+        )
+        if n_workers == 1:
+            for e, seed in cells:
+                results.append(_train_ppo(args, e, seed))
+        else:
+            with concurrent.futures.ThreadPoolExecutor(max_workers=n_workers) as ex:
+                futs = {ex.submit(_train_ppo, args, e, seed): (e, seed) for e, seed in cells}
+                for fut in concurrent.futures.as_completed(futs):
+                    e, seed = futs[fut]
+                    try:
+                        results.append(fut.result())
+                    except Exception as exc:  # noqa: BLE001
+                        logger.error("F17 ppo e=%.2f seed=%d crashed: %s", e, seed, exc)
+                        if not args.continue_on_failure:
+                            raise
+                        results.append(
+                            {
+                                "kind": "ppo",
+                                "algo": "ppo",
+                                "evasion_prob": e,
+                                "seed": seed,
+                                "ok_train": False,
+                                "ok_test_eval": False,
+                                "error": str(exc),
+                            }
+                        )
 
     elapsed = time.time() - t0
     n_ok = sum(1 for r in results if r.get("ok_train") and r.get("ok_test_eval"))
     n_fail = len(results) - n_ok
+
+    algos_run = sorted({r.get("algo", "ppo") for r in results})
+    per_algo_counts = {
+        a: {
+            "n_ok": sum(
+                1
+                for r in results
+                if r.get("algo", "ppo") == a and r.get("ok_train") and r.get("ok_test_eval")
+            ),
+            "n_fail": sum(
+                1
+                for r in results
+                if r.get("algo", "ppo") == a and not (r.get("ok_train") and r.get("ok_test_eval"))
+            ),
+        }
+        for a in algos_run
+    }
 
     manifest = {
         "schema_version": "1.0",
@@ -475,11 +556,13 @@ def main(argv: list[str] | None = None) -> int:
         "created_utc": datetime.now(timezone.utc).isoformat(),
         "mode": "load" if args.load_ppo_from else "train",
         "load_ppo_from": args.load_ppo_from,
+        "algos": algos_run,
         "evasion_values": list(args.evasion_values),
         "seeds": list(args.seeds),
         "total_timesteps": args.total_timesteps,
         "n_episodes": args.n_eval_episodes,
         "elapsed_seconds": elapsed,
+        "per_algo_counts": per_algo_counts,
         "n_ok": n_ok,
         "n_fail": n_fail,
         "runs": results,

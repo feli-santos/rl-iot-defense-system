@@ -104,38 +104,59 @@ def _newcmd(name: str, value: str) -> str:
 
 
 def _render_aggressiveness_numbers() -> list[str]:
-    """F10 environment-difficulty sweep: PPO reward + CI at each p_down point.
+    """F10 environment-difficulty sweep: per-algo reward + CI at each p_down point.
 
-    Emits ``\\Ften<Word>{PPO,PPOCILow,PPOCIHigh}`` for every swept p_down so the
-    Section 4.6 prose (results.tex) can cite the harshest, an intermediate, and
-    the easiest setting mechanically instead of by hand.
+    Emits ``\\Ften<Word><Algo>{,,CILow,CIHigh}`` for every swept p_down and every
+    fixed defender (PPO/A2C/DQN) so the Section 4.6 prose (results.tex) can cite
+    the harshest, an intermediate, and the easiest setting mechanically instead of
+    by hand, and can contrast the three algorithms' off-distribution behaviour.
+    Also emits the per-algo G7.3 monotonicity findings (``\\FtenGSevenThree<Algo>``).
     """
     if not FTEN.exists():
         return []
     f10 = _load(FTEN)
-    lines: list[str] = ["% --- F10 environment-difficulty sweep (PPO) ---"]
-    ppo_by_p = {round(float(r["p"]), 2): r for r in f10.get("ppo_rows", [])}
-    for p, word in _PDOWN_WORD.items():
-        row = ppo_by_p.get(round(p, 2))
-        if row is None:
+    lines: list[str] = ["% --- F10 environment-difficulty sweep (PPO/A2C/DQN) ---"]
+    # New multi-algo source (algo_rows dict keyed by ppo/a2c/dqn); fall back to
+    # the legacy top-level ppo_rows list so older summaries still render PPO.
+    algo_rows = f10.get("algo_rows") or {"ppo": f10.get("ppo_rows", [])}
+    for algo, macro_algo in _MACRO_ALGO.items():
+        rows = algo_rows.get(algo)
+        if not rows:
             continue
-        lines.append(_newcmd(f"Ften{word}PPO", f"{row['mean_reward']:+0.1f}"))
-        lines.append(_newcmd(f"Ften{word}PPOCILow", f"{row['ci_low']:+0.1f}"))
-        lines.append(_newcmd(f"Ften{word}PPOCIHigh", f"{row['ci_high']:+0.1f}"))
+        rows_by_p = {round(float(r["p"]), 2): r for r in rows}
+        for p, word in _PDOWN_WORD.items():
+            row = rows_by_p.get(round(p, 2))
+            if row is None:
+                continue
+            lines.append(_newcmd(f"Ften{word}{macro_algo}", f"{row['mean_reward']:+0.1f}"))
+            lines.append(_newcmd(f"Ften{word}{macro_algo}CILow", f"{row['ci_low']:+0.1f}"))
+            lines.append(_newcmd(f"Ften{word}{macro_algo}CIHigh", f"{row['ci_high']:+0.1f}"))
+    # Per-algo G7.3 finding (Yes/No pass of the monotone-difficulty gate).
+    per_algo = f10.get("gates", {}).get("G7.3", {}).get("per_algo", {})
+    for algo, macro_algo in _MACRO_ALGO.items():
+        cell = per_algo.get(algo)
+        if not cell:
+            continue
+        lines.append(_newcmd(f"FtenGSevenThree{macro_algo}", "Yes" if cell.get("passes") else "No"))
     return lines
 
 
 def _render_evasion_numbers() -> list[str]:
-    """F17 evasion-before-commit sweep: PPO reward + compromise at each evasion.
+    """F17 evasion-before-commit sweep: per-algo reward + compromise at each evasion.
 
-    Emits ``\\Fseventeen<Word>{Reward,Compromise}`` per evasion point plus the
-    headline degradation macros the Section 4.6 prose cites (reward at the
-    reference vs. the most evasive attacker, and the lower-CI degradation).
+    Emits ``\\Fseventeen<Word><Algo>{Reward,Compromise}`` per evasion point for
+    every fixed defender (PPO/A2C/DQN) plus the headline degradation macros the
+    Section 4.6 prose cites (reward at the reference vs. the most evasive attacker,
+    and the per-algo lower-CI degradation / robustness-gate finding). The legacy
+    ``\\Fseventeen<Word>{Reward,Compromise}`` (PPO, un-suffixed) and
+    ``\\FseventeenCILowDegradation`` macros are retained for back-compatibility.
     """
     if not FSEVENTEEN.exists():
         return []
     f17 = _load(FSEVENTEEN)
-    lines: list[str] = ["% --- F17 evasion-before-commit sweep (PPO) ---"]
+    lines: list[str] = ["% --- F17 evasion-before-commit sweep (PPO/A2C/DQN) ---"]
+
+    # Legacy PPO-only, un-suffixed macros (kept so existing prose keeps compiling).
     rows_by_e = {round(float(r["evasion_prob"]), 2): r for r in f17.get("rows", [])}
     for e, word in _EVASION_WORD.items():
         row = rows_by_e.get(round(e, 2))
@@ -143,12 +164,53 @@ def _render_evasion_numbers() -> list[str]:
             continue
         lines.append(_newcmd(f"Fseventeen{word}Reward", f"{row['mean_reward']:+0.1f}"))
         lines.append(_newcmd(f"Fseventeen{word}Compromise", f"{row['compromise_rate']:0.3f}"))
-    # Lower-CI degradation between the reference (evasion=0) and the most evasive
-    # attacker, as reported by the G7.10 robustness gate.
+
+    # Multi-algo, algo-suffixed macros (algo_rows dict keyed by ppo/a2c/dqn).
+    algo_rows = f17.get("algo_rows") or {"ppo": f17.get("rows", [])}
+    for algo, macro_algo in _MACRO_ALGO.items():
+        rows = algo_rows.get(algo)
+        if not rows:
+            continue
+        by_e = {round(float(r["evasion_prob"]), 2): r for r in rows}
+        for e, word in _EVASION_WORD.items():
+            row = by_e.get(round(e, 2))
+            if row is None:
+                continue
+            lines.append(
+                _newcmd(f"Fseventeen{word}{macro_algo}Reward", f"{row['mean_reward']:+0.1f}")
+            )
+            lines.append(
+                _newcmd(
+                    f"Fseventeen{word}{macro_algo}Compromise",
+                    f"{row['compromise_rate']:0.3f}",
+                )
+            )
+
+    # Lower-CI degradation + pass finding between the reference (evasion=0) and the
+    # most evasive attacker, as reported by the G7.10 robustness gate.
     gate = f17.get("gates", {}).get("G7.10", {})
     deg = gate.get("ci_low_degradation")
     if deg is not None:
         lines.append(_newcmd("FseventeenCILowDegradation", f"{abs(float(deg)):0.1f}"))
+    per_algo = gate.get("per_algo", {})
+    for algo, macro_algo in _MACRO_ALGO.items():
+        cell = per_algo.get(algo)
+        if not cell:
+            continue
+        cell_deg = cell.get("ci_low_degradation")
+        if cell_deg is not None:
+            lines.append(
+                _newcmd(
+                    f"Fseventeen{macro_algo}CILowDegradation",
+                    f"{abs(float(cell_deg)):0.1f}",
+                )
+            )
+        lines.append(
+            _newcmd(
+                f"FseventeenGSevenTen{macro_algo}",
+                "Yes" if cell.get("passes") else "No",
+            )
+        )
     return lines
 
 
