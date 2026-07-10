@@ -1,0 +1,14 @@
+# LaTeX build artifacts
+build/
+*.aux
+*.bbl
+*.blg
+*.log
+*.out
+*.toc
+*.lof
+*.lot
+*.brf
+*.spl
+# keep manuscript.pdf tracked? Elsevier wants editable source; PDF is a build product.
+manuscript.pdf
