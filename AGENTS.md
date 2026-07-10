@@ -115,6 +115,50 @@ macro names; keep it that way.
 stage names (Markov Attacker / Adversarial Environment / Stage Detector /
 Blue-Team Training / Held-Out Benchmark / Ablation & Robustness).
 
+## Journal paper (`paper/`, separate deliverable)
+
+A condensed journal version of the thesis targets **Elsevier _Internet of
+Things_ (ISSN 2542-6605)** and lives under `paper/` (added in `v0.8.1`, tag
+`v0.8.1`). It is a **separate artefact from the thesis** — the thesis under
+`tex/` remains the comprehensive record; `paper/` is the submission package.
+
+- **Template:** Elsevier `elsarticle`, double-column
+  (`\documentclass[3p,twocolumn]{elsarticle}`), `\bibliographystyle{elsarticle-num}`.
+  Root file is `paper/manuscript.tex`; ~9 pages.
+- **Build:** `make -C paper build` (runs `numbers` → `pdflatex` → `bibtex` →
+  `pdflatex`×2, copies `manuscript.pdf` → `paper/build/`). Same **Podman**
+  container as the thesis (`localhost/rl-iot-thesis:latest`, which already ships
+  `elsarticle.cls` + `elsarticle-num.bst`); the host has no TeX. Other targets:
+  `draft`, `numbers`, `wordcount`, `clean`, `verify`.
+- **Numbers are macro-driven, same as the thesis.** `paper/numbers.tex` is a
+  copy of `tex/generated/numbers.tex`; regenerate the source with `make
+  render-tables` (or `PYTHONPATH=. .venv/bin/python -m
+  scripts.thesis.render_tables`) then re-copy. The digit-free macro rule applies
+  (`ATwoC`=A2C, `Ften`=F10, `Fseventeen`=F17, `Ffifteen`=F15).
+- **Figures** in `paper/figs/` are vendored vector PDFs copied from `tex/figs/`.
+- **Authors:** Felipe Santos (first, `f233292@dac.unicamp.br`) + Denis
+  Fantinato (corresponding, `denisf@unicamp.br`); no other co-authors.
+- **Guide-mandated side files** (Elsevier IoT guide-for-authors):
+  `paper/highlights.tex` (3–5 bullets ≤85 chars), `paper/cover-letter.md`, and
+  `paper/declarations/` (`credit-statement.md`, `competing-interests.md` +
+  `competing-interests.docx` uploaded separately, `funding.md`,
+  `genai-declaration.md`, `data-availability.md`). GenAI declaration + CRediT +
+  competing-interest + funding + data-availability are also emitted as
+  unnumbered sections at the end of `manuscript.tex`, with Acknowledgements
+  directly before the references.
+- **Data availability = Elsevier Research-Data Option C:** raw CICIoT2023 is
+  **not** redistributed (CIC license) and is cited as a `[dataset]` reference
+  (`CICIoT2023Dataset` in `paper/refs.bib`); code + hash-chain manifests are
+  deposited via a public GitHub release
+  (`github.com/feli-santos/rl-iot-defense-system`, release `v0.8.1`) and a
+  Zenodo DOI. **Open pre-submission blocker:** the Zenodo DOI placeholder
+  `10.5281/zenodo.XXXXXXX` in `paper/manuscript.tex` (Data availability) +
+  `paper/declarations/data-availability.md` + `paper/README.md` must be replaced
+  with the minted DOI before submission, then rebuilt.
+- **Scope decision:** condense-and-submit with **current** results — do NOT add
+  a second dataset or a windowed-supervised baseline before first submission
+  (both are named follow-ups only if a reviewer demands them).
+
 ## Locked experiment decisions
 
 These are fixed contracts; do not silently change them.

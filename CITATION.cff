@@ -4,12 +4,15 @@ title: "RL IoT Defense System: Adversarial Reinforcement Learning for
 message: >-
   If you use this software, please cite it using the metadata below.
 type: software
-version: "0.7.0"
-date-released: "2026-07-06"
+version: "0.8.1"
+date-released: "2026-07-10"
 authors:
   - given-names: Felipe
     family-names: Santos
-    affiliation: "MSc Thesis, UNICAMP/FEEC"
+    affiliation: "UNICAMP/FEEC"
+  - given-names: Denis
+    family-names: Fantinato
+    affiliation: "UNICAMP/FEEC"
 abstract: >-
   An adversarial reinforcement learning framework for IoT network defense over
   the CICIoT2023 dataset. A reactive tug-of-war attacker walks the kill chain
@@ -56,3 +59,14 @@ references:
     authors:
       - name: "Canadian Institute for Cybersecurity"
     year: 2023
+  - type: unpublished
+    title: "Partially Observable Kill-Chain Defense: Deep Reinforcement Learning
+      for Autonomous IoT Security"
+    authors:
+      - given-names: Felipe
+        family-names: Santos
+      - given-names: Denis
+        family-names: Fantinato
+    year: 2026
+    notes: "Manuscript under preparation for Elsevier Internet of Things
+      (ISSN 2542-6605); submission package under paper/."

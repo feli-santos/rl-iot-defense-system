@@ -1,6 +1,6 @@
 # CRediT authorship contribution statement
 
-**Felipe Augusto Oliveira dos Santos**: Conceptualization, Methodology,
+**Felipe Santos**: Conceptualization, Methodology,
 Software, Investigation, Formal analysis, Data curation, Writing – original
 draft, Visualization.
 

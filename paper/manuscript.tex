@@ -32,7 +32,7 @@
 \title{Partially Observable Kill-Chain Defense: Deep Reinforcement
 Learning for Autonomous IoT Security}
 
-\author[unicamp]{Felipe Augusto Oliveira dos Santos}
+\author[unicamp]{Felipe Santos}
 \ead{f233292@dac.unicamp.br}
 
 \author[unicamp]{Denis Fantinato\corref{cor1}}
@@ -171,8 +171,7 @@ multi-agent successor RESTRAIN~\cite{Alam2025}; HoneyIoT~\cite{Guan2023}, an RL
 honeypot; and RL-IoTIDS~\cite{Odeh2026}, a DQN+CNN-LSTM per-flow classifier
 evaluated on CICIoT2023 --- the closest contrast to our work, but framed as
 static classification rather than sequential response under partial
-observability. Optimal-stopping and hierarchical formulations of intrusion
-response~\cite{Hammar2022} and adversarial-RL security
+observability. Adversarial-RL security
 simulations~\cite{Elderman2017,Caminero2019} are related but do not isolate the
 partial-observability driver against a matched memoryless baseline.
 
@@ -206,7 +205,6 @@ IoTWarden~\cite{Alam2024}   & Sequential (DQN)       & No  & Synthetic  & No    
 RESTRAIN~\cite{Alam2025}    & Sequential (multi-ag.) & No  & Synthetic  & No                 & Trigger-action \\
 HoneyIoT~\cite{Guan2023}    & Deception (RL)         & No  & Emulated   & No                 & Interactive \\
 RL-IoTIDS~\cite{Odeh2026}   & Classification         & No  & CICIoT2023 & Is a classifier    & Static \\
-Hammar \& Stadler~\cite{Hammar2022} & Optimal stopping & Partial & Emulated & No             & Scripted \\
 \textbf{This work}          & \textbf{Seq.\ control} & \textbf{Yes ($\alpha$)} & \textbf{CICIoT2023} & \textbf{Yes (RF-Acting)} & \textbf{Reactive tug-of-war} \\
 \bottomrule
 \end{tabular}
@@ -651,7 +649,7 @@ publication.
 % =====================================================================
 \section*{CRediT authorship contribution statement}
 % =====================================================================
-\textbf{Felipe Augusto Oliveira dos Santos}: Conceptualization, Methodology,
+\textbf{Felipe Santos}: Conceptualization, Methodology,
 Software, Investigation, Formal analysis, Data curation, Writing --- original
 draft, Visualization. \textbf{Denis Fantinato}: Conceptualization,
 Supervision, Methodology, Writing --- review \& editing, Project

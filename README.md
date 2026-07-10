@@ -182,6 +182,26 @@ regenerates `tex/generated/{numbers,tables}.tex` from them.
 
 ---
 
+## Journal paper
+
+A condensed journal version of the thesis, targeting **Elsevier _Internet of
+Things_** (ISSN 2542-6605), lives under [`paper/`](paper/). It reuses the same
+macro-driven numbers and vector figures as the thesis, but is a **separate,
+self-contained submission package** (Elsevier `elsarticle`, double-column,
+~9 pages) rather than a subset of the dissertation.
+
+```bash
+make -C paper build          # build paper/manuscript.pdf (Podman/TeXLive)
+```
+
+`paper/` also carries the guide-mandated side files (highlights, cover letter,
+CRediT / competing-interest / funding / generative-AI / data-availability
+declarations). See [`paper/README.md`](paper/README.md) for the pre-submission
+checklist. The submission snapshot is published as GitHub release
+[`v0.8.1`](https://github.com/feli-santos/rl-iot-defense-system/releases/tag/v0.8.1).
+
+---
+
 ## Repository structure
 
 ```
@@ -207,6 +227,10 @@ rl-iot-defense-system/
 │   ├── main.tex              # Root document
 │   ├── figs/                 # Figures (vector PDF)
 │   └── build.sh              # Podman/TeXLive build script
+├── paper/                    # Elsevier IoT journal submission package
+│   ├── manuscript.tex        # elsarticle double-column paper
+│   ├── declarations/         # CRediT, competing-interest, funding, etc.
+│   └── Makefile              # Paper build recipes
 ├── config.yml                # Single source of hyperparameters
 ├── Makefile                  # Reproduction recipes (source of truth)
 └── LICENSE                   # MIT

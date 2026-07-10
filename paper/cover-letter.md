@@ -48,6 +48,6 @@ Thank you for your consideration.
 
 Sincerely,
 
-Felipe Augusto Oliveira dos Santos (corresponding: Denis Fantinato)
+Felipe Santos (corresponding: Denis Fantinato)
 School of Electrical and Computer Engineering (FEEC), University of Campinas
 (UNICAMP), Campinas, São Paulo, Brazil

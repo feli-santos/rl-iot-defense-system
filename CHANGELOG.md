@@ -7,6 +7,36 @@ research artefact versions recorded in `CITATION.cff`.
 
 ## [Unreleased]
 
+## [0.8.1] — 2026-07-10
+
+Elsevier _Internet of Things_ (ISSN 2542-6605) journal submission package.
+
+### Added
+- `paper/` submission package: a condensed, self-contained journal version of
+  the thesis built on the Elsevier `elsarticle` double-column template
+  (`paper/manuscript.tex`, ~9 pages, `\bibliographystyle{elsarticle-num}`),
+  reusing the thesis' macro-driven numbers (`paper/numbers.tex`) and vector
+  figures (`paper/figs/`). New title: *Partially Observable Kill-Chain Defense:
+  Deep Reinforcement Learning for Autonomous IoT Security*.
+- `paper/Makefile` (targets `build`, `draft`, `numbers`, `wordcount`, `verify`,
+  `clean`), building the paper in the same Podman/TeXLive container as the
+  thesis.
+- Guide-mandated side files: `paper/highlights.tex` (5 bullets ≤85 chars),
+  `paper/cover-letter.md`, `paper/README.md` (pre-submission checklist), and
+  `paper/declarations/` (CRediT, competing-interest `.md` + separately-uploaded
+  `.docx`, funding, generative-AI, and data-availability statements).
+- `[dataset]` reference `CICIoT2023Dataset` in `paper/refs.bib` for the
+  Elsevier Research-Data Option-C data-availability statement (raw CICIoT2023
+  not redistributed under the CIC license; code + hash-chain manifests deposited
+  via the public GitHub release and a Zenodo DOI).
+
+### Notes
+- **Open pre-submission blocker:** the Zenodo DOI placeholder
+  `10.5281/zenodo.XXXXXXX` (Data availability) must be replaced with the minted
+  DOI, then `make -C paper build` re-run, before submission.
+
+## [0.8.0] — 2026-07-06
+
 Post-`v0.7.0` consolidation around the A2C on-policy result and the canonical
 deterministic-5M numbers.
 
@@ -217,7 +247,9 @@ IoT Defense* (MSc Thesis, FEEC/UNICAMP, 2026).
 - `--impact-is-terminal` / `--reward-overrides` passthrough and the R1
   smoke-reproducibility harness.
 
-[Unreleased]: https://github.com/feli-santos/rl-iot-defense-system/compare/v0.7.0...HEAD
+[Unreleased]: https://github.com/feli-santos/rl-iot-defense-system/compare/v0.8.1...HEAD
+[0.8.1]: https://github.com/feli-santos/rl-iot-defense-system/compare/v0.8.0...v0.8.1
+[0.8.0]: https://github.com/feli-santos/rl-iot-defense-system/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/feli-santos/rl-iot-defense-system/compare/v0.6.7...v0.7.0
 [0.6.7]: https://github.com/feli-santos/rl-iot-defense-system/compare/v0.6.6...v0.6.7
 [0.6.6]: https://github.com/feli-santos/rl-iot-defense-system/compare/v0.6.5...v0.6.6
