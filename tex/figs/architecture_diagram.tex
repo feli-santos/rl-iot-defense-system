@@ -177,7 +177,7 @@
 
 % Env ↔ Reward
 \draw[arr] (env.east) -- node[above, font=\small]{$(s_t,a_t)$} (reward.west);
-\draw[arr] (reward.south) |- ([yshift=0.9cm]agent.east) -- (agent.east)
+\draw[arr] (reward.south) |- (agent.east)
     node[near start, right, font=\small]{$r_t$};
 
 % Env → Agent
