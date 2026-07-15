@@ -19,6 +19,18 @@
 
 \graphicspath{{figs/}}
 
+%% Float placement: relax the default fractions so figures share pages with
+%% text instead of backing up into figure-only pages at the end of the paper.
+\setcounter{topnumber}{3}
+\setcounter{bottomnumber}{2}
+\setcounter{totalnumber}{4}
+\renewcommand{\topfraction}{0.9}
+\renewcommand{\bottomfraction}{0.9}
+\renewcommand{\textfraction}{0.08}
+\renewcommand{\floatpagefraction}{0.7}
+\renewcommand{\dbltopfraction}{0.9}
+\renewcommand{\dblfloatpagefraction}{0.7}
+
 %% Macro-driven numbers regenerated from docs/results/ via `make render-tables`.
 %% Copied into paper/ so the manuscript builds standalone in the container.
 \input{numbers}
@@ -48,31 +60,29 @@ Engineering (FEEC), University of Campinas (UNICAMP)},
   country={Brazil}}
 
 \begin{abstract}
-The exponential proliferation of the Internet of Things (IoT) has produced a
-vast attack surface while the computational constraints of many devices render
-traditional security solutions ineffective, motivating adaptive, autonomous
-defense. In this setting reinforcement learning (RL) is a promising approach,
-but it earns its place only when the decision is genuinely sequential. We
-therefore ask when a learned sequential policy beats a memoryless supervised
-classifier, and when any apparent advantage is an artifact of task framing. We
-build a kill-chain-aware defense framework, evaluated on real CICIoT2023 feature
-rows sampled into a simulated five-stage kill-chain trajectory. A reactive
-adversary escalates or retreats in a tug-of-war with the defender's applied
-force, and the defense is cast as a genuine partially observable problem: the
-defender never observes the true stage, which can be inferred only across a
-temporal window. We train windowed RL agents (proximal policy optimization, PPO,
-and advantage actor-critic, A2C, with deep Q-network, DQN, as an off-policy
-baseline) against a detector-coupled Random-Forest (RF) policy (RF-Acting), a
+The proliferation of the Internet of Things (IoT) produces a vast attack
+surface, while many devices' computational constraints render traditional
+security solutions ineffective, motivating autonomous defense. Reinforcement
+learning (RL) is a promising approach, but it earns its place only when the
+decision is sequential. We ask when a learned sequential
+policy beats a memoryless supervised classifier, and when any advantage
+is an artifact of task framing. We build a kill-chain-aware defense framework,
+evaluated on real CICIoT2023 feature rows sampled into a five-stage
+kill-chain trajectory. A reactive adversary escalates or retreats in a tug-of-war
+with the defender's applied force, and the defense is cast as a partially
+observable problem: the defender never observes the true stage, inferable
+only across a temporal window. We train windowed deep RL (DRL) agents (proximal
+policy optimization, PPO, and advantage actor-critic, A2C, with deep Q-network,
+DQN, off-policy) against a detector-coupled Random-Forest (RF) policy, a
 full-observability oracle, and trivial baselines. Three results follow. (i) As
 observation ambiguity rises, the per-flow classifier degrades monotonically
-while windowed PPO stays flat: the policies tie in the unaliased regime and RL
-beats RF with disjoint confidence intervals from the headline operating point
-onward. (ii) A reward ablation shows the best RL agent beats RF under both
-reward regimes, refuting the privileged-reward objection. (iii) Under
-distribution shift (ten held-out attack classes) the best windowed RL agent
-prevents a larger fraction of attacks on every class, with no detectable
-dependence on detector accuracy. All results carry bootstrap confidence
-intervals and a reproducible artifact chain.
+while windowed PPO stays flat: the policies tie in the unaliased regime, and DRL
+then beats RF with disjoint confidence intervals. (ii) A reward ablation shows
+the best DRL agent beats RF under both reward regimes. (iii) Under distribution
+shift (ten held-out attack classes) the best windowed DRL agent prevents a larger
+fraction of attacks on every class, with no detectable dependence on detector
+accuracy. All results carry bootstrap confidence intervals and a reproducible
+artifact chain.
 \end{abstract}
 
 \begin{keyword}
@@ -111,9 +121,9 @@ supervised classifier, and when is the advantage merely an artifact of task
 framing?
 
 To answer it we construct a controlled environment in which partial
-observability is a tunable knob, and we compare a windowed RL defender against
-a strong, deployable, memoryless supervised baseline under identical
-conditions. Our contributions are:
+observability is a tunable knob, and we compare a windowed deep RL (DRL)
+defender against a strong, deployable, memoryless supervised baseline under
+identical conditions. Our contributions are:
 
 \begin{enumerate}
 \item \textbf{A partially observable, kill-chain-aware IoT defense
@@ -126,24 +136,24 @@ aliasing is controlled by a rate $\alpha$; and ten attack classes are held out
 for out-of-distribution (OOD) evaluation (Section~\ref{sec:method}).
 
 \item \textbf{A controlled crossover experiment} that isolates where a windowed
-RL policy overtakes the memoryless classifier. At $\alpha=0$, with no
+DRL policy overtakes the memoryless classifier. At $\alpha=0$, with no
 observation aliasing, the two tie (overlapping confidence intervals),
 demonstrating the environment does not favor RL by construction; as $\alpha$
-grows the classifier degrades monotonically to net-harmful while the RL policy
+grows the classifier degrades monotonically to net-harmful while the DRL policy
 stays flat, with disjoint confidence intervals from the headline operating point
 $\alpha=\HeadlineAlpha$ onward (Section~\ref{sec:results-crossover}).
 
-\item \textbf{A coupled-vs-decoupled reward ablation} showing the best RL agent
+\item \textbf{A coupled-vs-decoupled reward ablation} showing the best DRL agent
 beats RF under both a sparse outcome-only reward and a shaped
-proportionality reward, refuting the objection that the RL advantage comes from
+proportionality reward, indicating that the RL advantage does not depend on
 a privileged reward signal (Section~\ref{sec:results-coupling}).
 
 \item \textbf{A held-out attack-class prevention analysis}: the best windowed
-RL agent prevents a larger fraction of attacks on every one of ten
+DRL agent prevents a larger fraction of attacks on every one of ten
 held-out classes, with no detectable dependence on the underlying
 detector's per-class recall (Section~\ref{sec:results-ood}).
 
-\item \textbf{An honest algorithm-reliability account}: both on-policy
+\item \textbf{A training-reliability and reproducibility account}: both on-policy
 algorithms (PPO, A2C) train stably under the sparse reward with low across-seed
 variance, whereas the off-policy DQN destabilizes when per-step shaping is
 removed; we report the distinct defensive doctrines each algorithm
@@ -227,10 +237,10 @@ $\textsc{benign}\!\to\!\textsc{recon}\!\to\!\cdots\!\to\!\textsc{impact}$,
 never skipping or autonomously retreating, and is not co-trained
 (self-play is deferred; see Section~\ref{sec:discussion}).
 
-\begin{figure}[t]
+\begin{figure}[htbp]
 \centering
 \includegraphics[width=\linewidth]{architecture_diagram.pdf}
-\caption{Three-component pipeline: offline preparation, online RL training,
+\caption{Three-component pipeline: offline preparation, online DRL training,
 and held-out evaluation. The defender observes only aliased feature windows,
 never the true kill-chain stage.}
 \label{fig:architecture}
@@ -406,11 +416,11 @@ $\alpha$ & PPO & A2C & DQN & RF & Gap \\
 \end{tabular}
 \end{table}
 
-\begin{figure}[t]
+\begin{figure}[htbp]
 \centering
 \includegraphics[width=\linewidth]{Falpha_curve.pdf}
 \caption{The crossover. The memoryless classifier (RF-Acting) degrades
-monotonically with aliasing while windowed RL stays flat; the policies tie at
+monotonically with aliasing while windowed DRL stays flat; the policies tie at
 $\alpha=0$ and separate with disjoint CIs from $\alpha=\HeadlineAlpha$ onward.}
 \label{fig:alpha}
 \end{figure}
@@ -418,26 +428,26 @@ $\alpha=0$ and separate with disjoint CIs from $\alpha=\HeadlineAlpha$ onward.}
 Structurally, RF-Acting fails as $\alpha$ grows because a misread row triggers
 a mismatched action; the windowed agents instead integrate evidence over the
 window and defer commitment. Benign false-positive rates stay below $1\%$ for
-all RL agents (PPO $0.89\%$, DQN $0.46\%$, A2C $0.66\%$) versus $100\%$ for
+all DRL agents (PPO $0.89\%$, DQN $0.46\%$, A2C $0.66\%$) versus $100\%$ for
 always-block and $41.3\%$ for random.
 
 \subsection{Reward-coupling ablation}
 \label{sec:results-coupling}
 A natural objection is that the RL advantage stems from a privileged shaped
 reward. We retrain all agents under both reward functions at
-$\alpha=\HeadlineAlpha$ (Fig.~\ref{fig:coupling}). The best RL agent beats
+$\alpha=\HeadlineAlpha$ (Fig.~\ref{fig:coupling}). The best DRL agent beats
 RF under both: under the coupled function the best agent (DQN,
 $\CouplingDQNCoupled$) leads RF ($+163.1$), and under the sparse outcome
 function the best agent (A2C, $\CouplingATwoCOutcome$) leads RF ($+83.1$); in
-both cases the best-RL-minus-RF gap is about $+63$ in the RL agent's favor.
+both cases the best-DRL-minus-RF gap is about $+63$ in the DRL agent's favor.
 Shaping changes which algorithm wins and how reliably it trains, but not
 the qualitative result that learned control beats the memoryless controller.
 
-\begin{figure}[t]
+\begin{figure}[htbp]
 \centering
 \includegraphics[width=\linewidth]{Fcoupling_reward_gap.pdf}
-\caption{Best-RL-minus-RF reward gap under the coupled (shaped) and outcome
-(sparse) reward functions at $\alpha=\HeadlineAlpha$. The best RL agent leads RF
+\caption{Best-DRL-minus-RF reward gap under the coupled (shaped) and outcome
+(sparse) reward functions at $\alpha=\HeadlineAlpha$. The best DRL agent leads RF
 in both regimes.}
 \label{fig:coupling}
 \end{figure}
@@ -446,7 +456,7 @@ in both regimes.}
 \label{sec:results-ood}
 We stress the policies on ten held-out attack classes via single-stage feature
 injection (held-out rows replace only their own stage's realization). The best
-RL agent (A2C) prevents a fraction between $\FfifteenBestRLPreventionLow$ and
+DRL agent (A2C) prevents a fraction between $\FfifteenBestRLPreventionLow$ and
 $\FfifteenBestRLPreventionHigh$ on every class, versus
 $\FfifteenRFPreventionLow$--$\FfifteenRFPreventionHigh$ for RF; the per-class
 advantage ranges $\FfifteenAdvantageLow$ to $\FfifteenAdvantageHigh$
@@ -455,7 +465,7 @@ two-thirds of steps in \textsc{observe}/\textsc{log}, lets the attacker reach
 impact, and only mitigates the final turn --- ``mitigated,'' not
 ``prevented.''
 
-Crucially, the RL advantage shows no detectable dependence on the
+Crucially, the DRL advantage shows no detectable dependence on the
 detector's per-class recall, which spans a graded spectrum from
 $\FfifteenDNSSpoofingRecall$ (DNS\_Spoofing) through $\FfifteenVulnScanRecall$
 (VulnerabilityScan) up to $\FfifteenSynFloodRecall$ (DoS-SYN\_Flood): the
@@ -466,19 +476,19 @@ slope CI $[\FfifteenOLSSlopeCILow, \FfifteenOLSSlopeCIHigh]$ spans zero
 finding at $n=10$ classes, not proven independence; the primary evidence is the
 direct per-class dominance, which holds even for the highest-recall classes.
 
-\begin{figure*}[t]
+\begin{figure*}[tbp]
 \centering
-\includegraphics[width=\textwidth]{F15_ood_robustness.pdf}
-\caption{Per-class prevention on ten held-out classes: best RL prevents
+\includegraphics[width=\textwidth,height=0.92\textheight,keepaspectratio]{F15_ood_robustness.pdf}
+\caption{Per-class prevention on ten held-out classes: best DRL prevents
 $\FfifteenBestRLPreventionLow$--$\FfifteenBestRLPreventionHigh$ everywhere;
 RF prevents $\FfifteenRFPreventionLow$--$\FfifteenRFPreventionHigh$.}
 \label{fig:ood}
 \end{figure*}
 
-\begin{figure}[t]
+\begin{figure}[htbp]
 \centering
 \includegraphics[width=\linewidth]{F15b_recall_vs_advantage.pdf}
-\caption{RL-minus-RF prevention advantage vs.\ detector per-class recall.
+\caption{DRL-minus-RF prevention advantage vs.\ detector per-class recall.
 No detectable trend ($\rho=\FfifteenSpearmanRho$, OLS slope CI spans zero).}
 \label{fig:ood-recall}
 \end{figure}
@@ -500,7 +510,7 @@ isolating; PPO is \emph{contain-at-impact}, isolating at impact ($12.1\%$);
 DQN is flatter and more observation-heavy. These are qualitatively different,
 defensible policies rather than a single ``optimal'' response.
 
-\begin{figure}[t]
+\begin{figure}[htbp]
 \centering
 \includegraphics[width=\linewidth]{F3_learning_curves.pdf}
 \caption{Learning curves ($\NumSeeds$ seeds). On-policy agents converge to
@@ -508,19 +518,19 @@ tight bands above RF; DQN bands stay wide under the sparse reward.}
 \label{fig:learning}
 \end{figure}
 
-\begin{figure}[t]
+\begin{figure*}[tbp]
 \centering
-\includegraphics[width=\linewidth]{F4_action_distribution.pdf}
+\includegraphics[width=\textwidth]{F4_action_distribution.pdf}
 \caption{Per-stage action distributions revealing distinct doctrines:
 A2C prevents at maneuver; PPO contains at impact.}
 \label{fig:actions}
-\end{figure}
+\end{figure*}
 
 \subsection{Robustness sweeps}
 \label{sec:results-sweeps}
 Re-evaluating the fixed headline PPO across an environment-difficulty sweep
 (attacker retreat probability $p_{\text{down}}\in\{0,\dots,1\}$) yields a
-monotone ordering A2C $>$ PPO $>$ DQN, with the widest RL margin at the harshest
+monotone ordering A2C $>$ PPO $>$ DQN, with the widest DRL margin at the harshest
 setting (Fig.~\ref{fig:aggressiveness}). Under an evasive-persistence
 (post-detection hardening) sweep (Fig.~\ref{fig:evasion}), degradation is
 graceful: A2C declines from
@@ -574,8 +584,8 @@ We framed autonomous IoT defense as a partially observable, kill-chain-aware
 control problem and asked when a learned sequential policy beats a
 memoryless classifier. Three findings answer it: (i) the two tie in a fully
 observable world and diverge as observation aliasing grows, with the classifier
-becoming net-harmful while windowed RL stays flat; (ii) the best RL agent beats
-the classifier under both sparse and shaped rewards; and (iii) RL prevents more
+becoming net-harmful while windowed DRL stays flat; (ii) the best DRL agent beats
+the classifier under both sparse and shaped rewards; and (iii) DRL prevents more
 attacks on every held-out class with no detectable dependence on detector
 recall. On-policy methods buy training-time stability rather than higher peak
 return. Future directions include recurrent belief-state policies (a
@@ -612,22 +622,23 @@ classes (Section~\ref{sec:results-ood}) are held out entirely from training.
 \section{Robustness-sweep figures}
 \label{app:sweeps}
 \setcounter{figure}{0}
+\renewcommand{\thefigure}{C.\arabic{figure}}
 \renewcommand{\theHfigure}{C.\arabic{figure}}
 Figure~\ref{fig:aggressiveness} shows the environment-difficulty sweep over the
 attacker retreat probability $p_{\text{down}}$, and Fig.~\ref{fig:evasion}
 shows the evasive-persistence sweep; both are discussed in
 Section~\ref{sec:results-sweeps}.
 
-\begin{figure}[t]
+\begin{figure}[htbp]
 \centering
 \includegraphics[width=\linewidth]{F10_aggressiveness.pdf}
 \caption{Environment-difficulty sweep over the attacker retreat probability
-$p_{\text{down}}$. The RL ordering A2C $>$ PPO $>$ DQN is preserved throughout,
+$p_{\text{down}}$. The DRL ordering A2C $>$ PPO $>$ DQN is preserved throughout,
 with the widest margin at the harshest setting ($p_{\text{down}}=0$).}
 \label{fig:aggressiveness}
 \end{figure}
 
-\begin{figure}[t]
+\begin{figure}[htbp]
 \centering
 \includegraphics[width=\linewidth]{F17_evasion_sweep.pdf}
 \caption{Evasive-persistence (post-detection hardening) sweep. Degradation is
@@ -635,16 +646,6 @@ graceful for all agents; A2C passes and PPO narrowly fails the pre-registered
 $25\%$-degradation gate.}
 \label{fig:evasion}
 \end{figure}
-
-% =====================================================================
-\section*{Declaration of generative AI and AI-assisted technologies in the
-manuscript preparation process}
-% =====================================================================
-During the preparation of this work the authors used a generative
-AI assistant to help condense and copy-edit prose derived from the first
-author's dissertation. After using this tool, the authors reviewed and edited
-the content as needed and take full responsibility for the content of the
-publication.
 
 % =====================================================================
 \section*{CRediT authorship contribution statement}
@@ -678,6 +679,16 @@ pipelines, trained-policy checkpoints, and the hash-chained result manifests
 needed to reproduce every figure and number in this paper are archived at
 \url{https://doi.org/10.5281/zenodo.XXXXXXX} (placeholder; replace before
 submission) and mirrored at \url{https://github.com/feli-santos/rl-iot-defense-system}.
+
+% =====================================================================
+\section*{Declaration of generative AI and AI-assisted technologies in the
+manuscript preparation process}
+% =====================================================================
+During the preparation of this work the authors used a generative
+AI assistant to help condense and copy-edit prose derived from the first
+author's dissertation. After using this tool, the authors reviewed and edited
+the content as needed and take full responsibility for the content of the
+publication.
 
 % =====================================================================
 \section*{Acknowledgements}
