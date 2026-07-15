@@ -17,6 +17,11 @@
 \usepackage{hyperref}
 \hypersetup{colorlinks=true,linkcolor=black,citecolor=black,urlcolor=blue}
 
+%% Allow long URLs/DOIs to break at more characters so reference entries do not
+%% waste half-empty lines in the narrow two-column bibliography (formatting only).
+\Urlmuskip=0mu plus 1mu
+\def\UrlBreaks{\do\/\do\.\do\-\do\_\do\?\do\&\do\=\do\#\do\:\do0\do1\do2\do3\do4\do5\do6\do7\do8\do9\do\a\do\b\do\c\do\d\do\e\do\f\do\g\do\h\do\i\do\j\do\k\do\l\do\m\do\n\do\o\do\p\do\q\do\r\do\s\do\t\do\u\do\v\do\w\do\x\do\y\do\z}
+
 \graphicspath{{figs/}}
 
 %% Float placement: relax the default fractions so figures share pages with
@@ -233,18 +238,18 @@ $33$ CICIoT2023 attack types map onto five kill-chain stages
 --- \textsc{benign}(0), \textsc{recon}(1), \textsc{access}(2),
 \textsc{maneuver}(3), \textsc{impact}(4) --- aligned with MITRE ATT\&CK
 tactics. The attacker is reactive and strictly sequential: it advances
-$\textsc{benign}\!\to\!\textsc{recon}\!\to\!\cdots\!\to\!\textsc{impact}$,
+from \textsc{benign} to \textsc{impact},
 never skipping or autonomously retreating, and is not co-trained
 (self-play is deferred; see Section~\ref{sec:discussion}).
 
-\begin{figure}[htbp]
+\begin{figure*}[tbp]
 \centering
-\includegraphics[width=\linewidth]{architecture_diagram.pdf}
+\includegraphics[width=\textwidth,height=0.48\textheight,keepaspectratio]{architecture_diagram.pdf}
 \caption{Three-component pipeline: offline preparation, online DRL training,
 and held-out evaluation. The defender observes only aliased feature windows,
 never the true kill-chain stage.}
 \label{fig:architecture}
-\end{figure}
+\end{figure*}
 
 \subsection{Data and kill-chain projection}
 We use CICIoT2023~\cite{Neto2023}, collected from $105$ real IoT devices as
@@ -472,13 +477,12 @@ $\FfifteenDNSSpoofingRecall$ (DNS\_Spoofing) through $\FfifteenVulnScanRecall$
 Spearman correlation is $\rho=\FfifteenSpearmanRho$ ($p=\FfifteenSpearmanP$),
 Pearson $r=\FfifteenPearsonR$ ($p=\FfifteenPearsonP$), and a bootstrap OLS
 slope CI $[\FfifteenOLSSlopeCILow, \FfifteenOLSSlopeCIHigh]$ spans zero
-(Fig.~\ref{fig:ood-recall}). We emphasize this is a no-detectable-trend
-finding at $n=10$ classes, not proven independence; the primary evidence is the
-direct per-class dominance, which holds even for the highest-recall classes.
+(Fig.~\ref{fig:ood-recall}). The primary evidence remains the direct per-class
+dominance, which holds even for the highest-recall classes.
 
 \begin{figure*}[tbp]
 \centering
-\includegraphics[width=\textwidth,height=0.92\textheight,keepaspectratio]{F15_ood_robustness.pdf}
+\includegraphics[width=\textwidth,height=0.66\textheight,keepaspectratio]{F15_ood_robustness.pdf}
 \caption{Per-class prevention on ten held-out classes: best DRL prevents
 $\FfifteenBestRLPreventionLow$--$\FfifteenBestRLPreventionHigh$ everywhere;
 RF prevents $\FfifteenRFPreventionLow$--$\FfifteenRFPreventionHigh$.}
@@ -499,16 +503,16 @@ Both on-policy agents lock onto stable plateaus above the RF band within
 $\approx0.2$M steps, with low across-seed standard deviation (PPO $\approx15$,
 A2C $\approx9$), while DQN shows wide bands throughout ($\approx52$ under the
 outcome function, tightening to $\approx17$ under coupled shaping)
-(Fig.~\ref{fig:learning}). The on-policy advantage is thus one of
-training-time stability, not peak return: the same DQN that wins the
-coupled ablation ($\CouplingDQNCoupled$) collapses to $\CouplingDQNOutcome$
-under the sparse outcome reward.
+(Fig.~\ref{fig:learning}). The on-policy advantage is training-time stability,
+not peak return: the same DQN that wins the coupled ablation
+($\CouplingDQNCoupled$) collapses to $\CouplingDQNOutcome$ under the sparse
+outcome reward.
 
 The agents learn distinct doctrines (Fig.~\ref{fig:actions}): A2C is
 \emph{prevent-at-maneuver}, blocking $86.5\%$ of maneuver-stage steps and never
 isolating; PPO is \emph{contain-at-impact}, isolating at impact ($12.1\%$);
-DQN is flatter and more observation-heavy. These are qualitatively different,
-defensible policies rather than a single ``optimal'' response.
+DQN is flatter and more observation-heavy --- qualitatively different but
+defensible policies, not a single ``optimal'' response.
 
 \begin{figure}[htbp]
 \centering
@@ -520,7 +524,7 @@ tight bands above RF; DQN bands stay wide under the sparse reward.}
 
 \begin{figure*}[tbp]
 \centering
-\includegraphics[width=\textwidth]{F4_action_distribution.pdf}
+\includegraphics[width=\textwidth,height=0.42\textheight,keepaspectratio]{F4_action_distribution.pdf}
 \caption{Per-stage action distributions revealing distinct doctrines:
 A2C prevents at maneuver; PPO contains at impact.}
 \label{fig:actions}
@@ -546,34 +550,32 @@ degradation $\FseventeenPPOCILowDegradation$).
 
 We state the limitations that bound our claims.
 
-\textbf{(1) Designed, non-co-adaptive attacker.} The crossover is
-conditional on this attacker class. A qualitatively different or
-co-adaptive adversary could shrink or erase the gap; self-play is deferred to
-future work.
+\textbf{(1) Designed, non-co-adaptive attacker.} The crossover is conditional on
+this attacker class; a co-adaptive adversary could shrink the gap (self-play is
+future work).
 
 \textbf{(2) Aliasing and session coherence are modeling abstractions.}
-CICIoT2023 flows are pre-aggregated with no recoverable session key, so
-$\alpha$ and session coherence are imposed at the environment layer. Our
-contribution is the shape of the response as $\alpha$ varies, anchored
-by the $\alpha=0$ tie rather than by any single absolute number.
+CICIoT2023 flows are pre-aggregated with no recoverable session key, so $\alpha$
+and session coherence are imposed at the environment layer; our contribution is
+the shape of the response as $\alpha$ varies, anchored by the $\alpha=0$ tie
+rather than any absolute number.
 
 \textbf{(3) The supervised baseline is memoryless by construction.} The
-comparison therefore isolates windowed temporal control vs.\ memoryless
-control, not ``RL vs.\ supervised learning'' in general. A windowed supervised
-controller (e.g.\ an HMM or a TCN/LSTM head plus the recommended-action rule,
-over the same window) is the single most direct strengthening and our foremost
-follow-up. The reward-coupling ablation and the $\alpha=0$ tie already rule out
-the two strongest alternative explanations (privileged reward; an
-RL-favoring environment).
+comparison isolates windowed temporal control vs.\ memoryless control, not
+``RL vs.\ supervised learning'' in general; a windowed supervised controller
+(e.g.\ a TCN/LSTM head over the same window) is the most direct follow-up. The
+reward-coupling ablation and the $\alpha=0$ tie already rule out the two
+strongest alternative explanations (privileged reward; an RL-favoring
+environment).
 
 \textbf{(4) Single dataset.} We use CICIoT2023 only; Bot-IoT~\cite{Koroniotis2019}
-is the named replication target. The OOD study is a controlled feature-injection
-stress test, not a claim of deployed zero-day generalization.
+is the named replication target, and the OOD study is a controlled
+feature-injection stress test, not a claim of deployed zero-day generalization.
 
 \textbf{(5) Statistical power of the recall-independence claim.} With $n=10$
 held-out classes, the near-zero recall--advantage correlation is
-``no detectable trend,'' not proven independence; the load-bearing evidence is
-the direct per-class dominance.
+``no detectable trend,'' not proven independence; the direct per-class
+dominance is the load-bearing evidence.
 
 % =====================================================================
 \section{Conclusion}
@@ -588,12 +590,11 @@ becoming net-harmful while windowed DRL stays flat; (ii) the best DRL agent beat
 the classifier under both sparse and shaped rewards; and (iii) DRL prevents more
 attacks on every held-out class with no detectable dependence on detector
 recall. On-policy methods buy training-time stability rather than higher peak
-return. Future directions include recurrent belief-state policies (a
-preliminary recurrent-PPO run did not beat the windowed feed-forward
-policy under our budget), non-monotonic and co-adaptive attackers, train-time
-OOD augmentation, edge-hardware deployment ($\approx20$~KB policy footprint),
-multi-agent self-play, federated multi-site training, and a constrained-MDP
-formulation for a hard false-positive ceiling.
+return. Future directions include recurrent belief-state policies (preliminary
+recurrent-PPO did not beat the windowed feed-forward policy under our budget),
+co-adaptive attackers via self-play, train-time OOD augmentation, edge-hardware
+deployment ($\approx20$~KB policy footprint), and a constrained-MDP formulation
+for a hard false-positive ceiling.
 
 % =====================================================================
 \appendix
@@ -673,10 +674,9 @@ public, commercial, or not-for-profit sectors.
 \section*{Data availability}
 % =====================================================================
 The raw CICIoT2023 dataset~\cite{CICIoT2023Dataset} is distributed under the
-Canadian Institute for Cybersecurity license and is available from the original
-providers; we therefore do not redistribute it. All code, processing
-pipelines, trained-policy checkpoints, and the hash-chained result manifests
-needed to reproduce every figure and number in this paper are archived at
+Canadian Institute for Cybersecurity license by the original providers and is
+not redistributed here. All code, trained-policy checkpoints, and hash-chained
+result manifests needed to reproduce every figure and number are archived at
 \url{https://doi.org/10.5281/zenodo.XXXXXXX} (placeholder; replace before
 submission) and mirrored at \url{https://github.com/feli-santos/rl-iot-defense-system}.
 
