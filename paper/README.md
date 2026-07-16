@@ -71,7 +71,7 @@ run `make -C paper numbers` to refresh, then rebuild.
 - [x] Data-availability statement (Option C) — in manuscript + checklist in `declarations/data-availability.md`.
 - [x] Acknowledgements directly before references — in manuscript.
 - [x] Editable source (.tex) supplied; figures as separate files — `figs/`.
-- [ ] Replace Zenodo DOI placeholder (`10.5281/zenodo.XXXXXXX`) and confirm GitHub repo is public.
+- [x] Tagged GitHub release is public; add a Zenodo DOI only if minted before submission.
 - [x] Author emails filled (`f233292@dac.unicamp.br`, `denisf@unicamp.br`).
 - [ ] Optional: graphical abstract, SSRN preprint, MethodsX/Data-in-Brief co-submission.
 ```

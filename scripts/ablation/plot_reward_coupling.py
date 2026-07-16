@@ -3,9 +3,8 @@
 Reads the per-cell ``eval_test.jsonl`` produced by
 ``scripts.ablation.run_reward_coupling`` and answers one question directly:
 
-    Does the strongest deployable supervised baseline (RF-Acting) beat the
-    best RL agent ONLY because the coupled reward shapes every step by the
-    hidden stage's recommended action?
+    Does the best RL agent remain ahead of the strongest deployable supervised
+    baseline (RF-Acting) when the reward is switched from shaped to sparse?
 
 For each reward mode it computes:
 
@@ -14,12 +13,13 @@ For each reward mode it computes:
 * ``rf_acting_reward``— RF-Acting's mean test reward (single deterministic
   roll; frozen classifier).
 * ``rf_minus_rl_gap`` — ``rf_acting_reward - best_rl_reward``. A large
-  POSITIVE gap means the supervised baseline dominates RL.
+  POSITIVE gap means the supervised baseline dominates RL. The figure annotates
+  the inverse, ``best_rl_reward - rf_acting_reward``, so the visual gap is
+  positive when the best RL agent leads RF-Acting.
 
-The headline read is the change in that gap between ``coupled`` and
-``outcome``: a positive coupled gap that shrinks (or reverses) under the
-outcome contract is the evidence that RF-Acting's dominance is an artefact
-of the privileged-reward design, not of RL being the wrong tool.
+The headline read is the sign and magnitude of that gap under both ``coupled``
+and ``outcome`` contracts: negative RF-minus-RL gaps mean the best RL agent leads
+the memoryless RF-Acting baseline.
 
 Outputs (under ``--out-dir``):
 
@@ -177,7 +177,7 @@ def _render_gap_figure(summary: dict[str, Any], out_path: Path) -> None:
     )
     ax.set_ylabel("Mean test reward")
     ax.axhline(0.0, color=ACCENT["muted"], linewidth=0.8)
-    ax.set_title("Reward design controls RF-Acting's apparent advantage", pad=12)
+    ax.set_title("Best RL leads RF under both reward designs", pad=12)
     ax.legend(loc="upper right", fontsize=9)
 
     # Reserve headroom above the tallest bar so the per-group gap annotations
@@ -197,8 +197,9 @@ def _render_gap_figure(summary: dict[str, Any], out_path: Path) -> None:
         gap = summary["per_mode"][m]["rf_minus_rl_gap"]
         if gap is None:
             continue
+        best_rl_minus_rf = -gap
         ax.annotate(
-            f"RF−RL gap\n{gap:+.1f}",
+            f"Best RL - RF\n{best_rl_minus_rf:+.1f}",
             xy=(xi, top),
             xytext=(0, 26),
             textcoords="offset points",

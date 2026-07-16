@@ -70,7 +70,8 @@
   Strictly sequential;\\
   defender-driven\\
   de-escalation;\\
-  absorbing \textsc{impact}
+  non-terminal \textsc{impact};\\
+  final mitigation turn
 };
 
 % --- Lane 3: Stage Detector ---
@@ -117,11 +118,10 @@
 % --- Reward function ---
 \node[envBox, fill=colOnline,
       right=1.1cm of env] (reward) {
-  \textbf{Reward Function}\\[3pt]
-  Stage-action\\
-  proportionality\\
-  + de-escalation\\
-  + terminal-impact
+  \textbf{Outcome Reward}\\[3pt]
+  Action cost\\
+  + impact accounting\\
+  + prevention bonus
 };
 
 % --- RL Agent ---
@@ -195,7 +195,7 @@
 %% ==============================================================
 \node[font=\small, align=left, text=colBorder,
       below right=2pt and 0pt of stageII.south west, anchor=north west] {
-  obs = \{features, history, action hist, [stage pred]\}
+  obs = \{features, history, action hist\}
 };
 
 \end{tikzpicture}

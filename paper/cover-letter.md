@@ -4,7 +4,7 @@ Dear Editors,
 
 We submit our manuscript, **"Partially Observable Kill-Chain Defense: Deep
 Reinforcement Learning for Autonomous IoT Security,"** for consideration as a
-Full Research paper in *Internet of Things*.
+full research article in *Internet of Things*.
 
 The Internet of Things has produced a vast attack surface on devices too
 resource-constrained for conventional security, motivating adaptive, autonomous
@@ -33,8 +33,8 @@ Our contributions are:
    chain (hash-chained manifests; all figures and numbers regenerable).
 
 This work is derived from the first author's MSc dissertation at UNICAMP; the
-dissertation's prior existence does not constitute prior publication under the
-journal's submission policy. The manuscript is not under consideration
+dissertation version does not constitute prior publication under the journal's
+submission policy. The manuscript is not under consideration
 elsewhere. All authors have approved the submission and declare no competing
 interests. We suggest classification under IoT security and AIoT.
 
@@ -48,6 +48,6 @@ Thank you for your consideration.
 
 Sincerely,
 
-Felipe Santos (corresponding: Denis Fantinato)
+Felipe Santos (corresponding author)
 School of Electrical and Computer Engineering (FEEC), University of Campinas
 (UNICAMP), Campinas, São Paulo, Brazil
