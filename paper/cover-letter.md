@@ -10,23 +10,23 @@ The Internet of Things has produced a vast attack surface on devices too
 resource-constrained for conventional security, motivating adaptive, autonomous
 defense. Rather than asking merely *whether* reinforcement learning (RL) helps,
 we ask the sharper question of *when* a learned sequential policy actually
-beats a memoryless supervised classifier, and when any apparent advantage is an
-artifact of task framing. We believe this fits squarely within the journal's
+outperforms a memoryless supervised classifier, and when any apparent advantage
+is an artifact of task framing. We believe this fits squarely within the journal's
 scope on Artificial Intelligence of Things, explainable machine learning for
 IoT, and IoT security, reliability, and privacy.
 
 Our contributions are:
 
 1. A partially observable, kill-chain-aware IoT defense environment built on
-   real CICIoT2023 traffic, with a reactive tug-of-war attacker and a tunable
-   observation-aliasing knob.
+   real CICIoT2023 traffic, with a reactive, bi-directional escalation attacker
+   and a tunable observation-aliasing knob.
 2. A controlled crossover experiment: at zero aliasing the windowed RL policy
    and the memoryless classifier **tie** (showing the environment is not rigged
    for RL), and RL overtakes the classifier with disjoint confidence intervals
    as aliasing grows.
-3. A reward-coupling ablation showing the best RL agent beats the classifier
-   under both sparse and shaped rewards, refuting the privileged-reward
-   objection.
+3. A reward-coupling ablation showing the best RL agent outperforms the
+   classifier under both sparse and shaped rewards, refuting the
+   privileged-reward objection.
 4. An out-of-distribution study over ten held-out attack classes, with no
    detectable dependence of the RL advantage on detector recall.
 5. An honest algorithm-reliability account and a fully reproducible artifact

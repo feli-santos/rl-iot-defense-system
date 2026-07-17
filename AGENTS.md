@@ -124,12 +124,43 @@ Things_ (ISSN 2542-6605)** and lives under `paper/` (added in `v0.8.1`, tag
 
 - **Template:** Elsevier `elsarticle`, double-column
   (`\documentclass[3p,twocolumn]{elsarticle}`), `\bibliographystyle{elsarticle-num}`.
-  Root file is `paper/manuscript.tex`; ~9 pages.
+  Root file is `paper/manuscript.tex`.
+- **HARD LIMITS (never violate; verify after every build):**
+  - **Compiled `manuscript.pdf` ≤ 10 pages.** This is a hard cap — do not
+    exceed it. When edits push over 10 pages, reclaim space by trimming filler
+    prose, tightening floats, and/or shrinking the full-width architecture
+    figure (`fig:architecture`); as a last resort strip redundant `doi = {...}`
+    fields from `refs.bib` (keep every reference and every reported number).
+    Never drop cited references to fit. If still >10 pages after reasonable
+    trimming, STOP and hand the build command back rather than mangling content.
+  - **Abstract < 250 words** (Elsevier guide ceiling; current abstract ≈234).
+    Never let it reach 250. Recount after any abstract edit:
+    `.venv/bin/python -c "import re,sys; ..."` or a simple word split on the
+    abstract block.
+  - Page-count check (fitz only works in `.venv`, not system python):
+    `.venv/bin/python -c "import fitz; print(fitz.open('paper/manuscript.pdf').page_count)"`
+    (must print `<= 10`). `pdfinfo paper/manuscript.pdf` also works.
 - **Build:** `make -C paper build` (runs `numbers` → `pdflatex` → `bibtex` →
   `pdflatex`×2, copies `manuscript.pdf` → `paper/build/`). Same **Podman**
   container as the thesis (`localhost/rl-iot-thesis:latest`, which already ships
   `elsarticle.cls` + `elsarticle-num.bst`); the host has no TeX. Other targets:
   `draft`, `numbers`, `wordcount`, `clean`, `verify`.
+- **Float placement convention:** single-column in-text figures/tables use
+  `[ht]` (or `[h]` for `tab:hparams`) so they sit near their first mention;
+  full-width floats (`figure*`/`table*`: `fig:architecture`, `fig:ood`,
+  `fig:actions`, `tab:related`) MUST stay `[tbp]`/`[t]` — LaTeX forbids `h` on
+  starred floats.
+- **Validated model-footprint numbers are macro-driven too.**
+  `scripts/benchmark/compute_model_footprint.py` loads the three
+  `runs/redesign_5M_det/alpha_04/{ppo,a2c,dqn}/seed_0/best_model.zip` policies +
+  the tuned RF joblib and emits `docs/results/benchmark/model_footprint.json`
+  (+ sibling `model_footprint_manifest.json` hash chain).
+  `scripts/thesis/render_tables.py::_render_footprint_numbers()` turns that into
+  `\PolicyFootprintKB` (90), `\PolicyParams` (23K), `\RFDetectorMB` (181),
+  `\RFDetectorNodes` (1.7M), `\FootprintRatio` (1956). The paper's edge-footprint
+  claim (deployable policy ≈90 KB fp32 / 23.1K params vs ≈181 MB tuned RF) is
+  these macros — never hand-type it. **Do NOT resurrect the old, wrong "≈20 KB"
+  or "22 MB / 2.6M-param" figures.**
 - **Numbers are macro-driven, same as the thesis.** `paper/numbers.tex` is a
   copy of `tex/generated/numbers.tex`; regenerate the source with `make
   render-tables` (or `PYTHONPATH=. .venv/bin/python -m
@@ -158,6 +189,31 @@ Things_ (ISSN 2542-6605)** and lives under `paper/` (added in `v0.8.1`, tag
 - **Scope decision:** condense-and-submit with **current** results — do NOT add
   a second dataset or a windowed-supervised baseline before first submission
   (both are named follow-ups only if a reviewer demands them).
+- **Pre-submission checklist** (Elsevier _Internet of Things_ guide; keep this
+  in AGENTS.md, NOT in `paper/README.md` which stays readme-only):
+  - Title page with full affiliation + corresponding-author contact — in
+    `manuscript.tex` (UNICAMP/FEEC address, American-journal English style with
+    the "nº" ordinal dropped because elsarticle `\affiliation{addressline=...}`
+    fatally breaks on superscript/fragile macros: `Avenida Albert Einstein 901,
+    Cidade Universitária Zeferino Vaz, Barão Geraldo, Campinas, SP, 13083-852,
+    Brazil`).
+  - Compiled PDF ≤ 10 pages (hard limit above); abstract < 250 words (≈234).
+  - Keywords 1–7 short indexing terms (currently 7).
+  - Highlights file 3–5 bullets ≤85 chars — `highlights.tex`.
+  - CRediT statement — manuscript + `declarations/credit-statement.md`.
+  - GenAI-use declaration (section before references) — in manuscript.
+  - Competing-interest declaration (separate `.docx`) —
+    `declarations/competing-interests.docx`.
+  - Funding statement — manuscript + `declarations/funding.md`.
+  - Data-availability statement (Option C) — manuscript +
+    `declarations/data-availability.md`.
+  - Acknowledgements directly before references — in manuscript.
+  - Editable `.tex` source + figures as separate files — `figs/`.
+  - Public tagged GitHub release; add Zenodo DOI only once minted (see blocker
+    above).
+  - Author emails filled (`f233292@dac.unicamp.br`, `denisf@unicamp.br`).
+  - Optional (not blocking): graphical abstract, SSRN preprint,
+    MethodsX/Data-in-Brief co-submission.
 
 ## Locked experiment decisions
 
