@@ -10,7 +10,7 @@ therefore do not redistribute the raw data. All code, processing pipelines, and
 the hash-chained result manifests required to reproduce every figure and number
 in this paper are archived at:
 
-- Public release: https://github.com/feli-santos/rl-iot-defense-system/releases/tag/v0.8.1
+- Public release: https://github.com/feli-santos/rl-iot-defense-system/releases/tag/v0.8.4
 - Project repository: https://github.com/feli-santos/rl-iot-defense-system
 
 CICIoT2023 is cited as a dedicated `[dataset]` reference in `refs.bib`

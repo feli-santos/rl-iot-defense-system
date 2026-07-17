@@ -198,7 +198,7 @@ make -C paper build          # build paper/manuscript.pdf (Podman/TeXLive)
 CRediT / competing-interest / funding / generative-AI / data-availability
 declarations). See [`paper/README.md`](paper/README.md) for the pre-submission
 checklist. The submission snapshot is published as GitHub release
-[`v0.8.1`](https://github.com/feli-santos/rl-iot-defense-system/releases/tag/v0.8.1).
+[`v0.8.4`](https://github.com/feli-santos/rl-iot-defense-system/releases/tag/v0.8.4).
 
 ---
 

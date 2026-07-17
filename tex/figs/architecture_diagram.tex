@@ -89,7 +89,7 @@
   \node[draw=colBorder, fill=colOffline!40, rounded corners=5pt,
         inner sep=8pt,
         fit=(dataset)(detector),
-        label={[groupLabel]above:Offline Preparation (dashed boxes)}] (stageI) {};
+        label={[groupLabel]above:Offline Preparation}] (stageI) {};
 \end{scope}
 
 %% ==============================================================
@@ -138,10 +138,8 @@
 \begin{scope}[on background layer]
   \node[draw=colBorder, fill=colOnline!40, rounded corners=5pt,
         inner sep=10pt,
-        fit=(realizer)(reward)(agent),
-        label={[groupLabel]above:Online RL Training Loop (solid box)}] (stageII) {};
+        fit=(realizer)(reward)(agent)] (stageII) {};
 \end{scope}
-
 %% ==============================================================
 %% Benchmark & Ablation
 %% ==============================================================
@@ -150,7 +148,7 @@
       minimum width=11.6cm, minimum height=2.2cm,
       align=center,
       below=1.0cm of stageII.south] (bench) {
-  \textbf{Benchmark \& Ablation (held-out \texttt{test\_balanced})}\\[4pt]
+  \textbf{Benchmark \& Ablation}\\[4pt]
   Trained DRL (DQN / PPO / A2C) \quad vs.\quad
   Random \;|\; Always-Observe \;|\; Always-Block \;|\; RF-Acting \;|\; Oracle\\[2pt]
   Reward-coupling ablation \;|\;
@@ -169,8 +167,9 @@
 \draw[arr] (redteam.south) -- (env.north);
 
 % Detector to reward, dashed = eval-time only
-\draw[dasharr] (detector.south) -- ++(0,-0.45) -| (reward.north)
-    node[midway, right, font=\small, text=colBorder] {eval-time};
+\draw[dasharr] (detector.south) -- ++(0,-0.45) -| (reward.north);
+\node[font=\small, text=colBorder, anchor=west]
+    at ([xshift=3pt,yshift=-0.22cm]detector.south) {eval-time};
 
 % Realizer ↔ Env
 \draw[arr] (realizer.east) -- node[above, font=\small]{obs} (env.west);
@@ -184,8 +183,8 @@
 \draw[arr] (env.south) -- node[midway, right, font=\small]{obs} (agent.north);
 
 % Agent → Env (action)
-\draw[arr] (agent.west) -| ([xshift=-0.7cm]realizer.south)
-    node[near end, left, font=\small]{$a_t$} -- (realizer.south);
+\draw[arr] (agent.west) -| (realizer.south)
+    node[pos=0.62, left, font=\small, inner sep=3pt]{$a_t$};
 
 % Online loop to benchmark
 \draw[arr] ([yshift=-2pt]stageII.south) -- (bench.north);
@@ -197,6 +196,8 @@
       below right=2pt and 0pt of stageII.south west, anchor=north west] {
   obs = \{features, history, action hist\}
 };
+\node[groupLabel, below left=2pt and 0pt of stageII.south east,
+      anchor=north east] {Online RL Training Loop};
 
 \end{tikzpicture}
 \end{document}

@@ -167,25 +167,31 @@ Things_ (ISSN 2542-6605)** and lives under `paper/` (added in `v0.8.1`, tag
   scripts.thesis.render_tables`) then re-copy. The digit-free macro rule applies
   (`ATwoC`=A2C, `Ften`=F10, `Fseventeen`=F17, `Ffifteen`=F15).
 - **Figures** in `paper/figs/` are vendored vector PDFs copied from `tex/figs/`.
-- **Authors:** Felipe Santos (first, `f233292@dac.unicamp.br`) + Denis
-  Fantinato (corresponding, `denisf@unicamp.br`); no other co-authors.
+- **Authors:** Felipe Santos (first + corresponding,
+  `f233292@dac.unicamp.br`) + Denis Fantinato (`denisf@unicamp.br`); no other
+  co-authors.
 - **Guide-mandated side files** (Elsevier IoT guide-for-authors):
   `paper/highlights.tex` (3–5 bullets ≤85 chars), `paper/cover-letter.md`, and
   `paper/declarations/` (`credit-statement.md`, `competing-interests.md` +
   `competing-interests.docx` uploaded separately, `funding.md`,
-  `genai-declaration.md`, `data-availability.md`). GenAI declaration + CRediT +
-  competing-interest + funding + data-availability are also emitted as
-  unnumbered sections at the end of `manuscript.tex`, with Acknowledgements
-  directly before the references.
+  `genai-declaration.md`, `data-availability.md`). CRediT + competing-interest +
+  funding + data-availability + GenAI declaration are also emitted as unnumbered
+  sections at the end of `manuscript.tex`, with the GenAI declaration the last
+  section directly before the references. (Acknowledgements were intentionally
+  removed \u2014 the guide only requires that IF present they sit directly before the
+  references; they are not mandatory.)
 - **Data availability = Elsevier Research-Data Option C:** raw CICIoT2023 is
   **not** redistributed (CIC license) and is cited as a `[dataset]` reference
   (`CICIoT2023Dataset` in `paper/refs.bib`); code + hash-chain manifests are
-  deposited via a public GitHub release
-  (`github.com/feli-santos/rl-iot-defense-system`, release `v0.8.1`) and a
-  Zenodo DOI. **Open pre-submission blocker:** the Zenodo DOI placeholder
-  `10.5281/zenodo.XXXXXXX` in `paper/manuscript.tex` (Data availability) +
-  `paper/declarations/data-availability.md` + `paper/README.md` must be replaced
-  with the minted DOI before submission, then rebuilt.
+  deposited via a **public GitHub release**
+  (`github.com/feli-santos/rl-iot-defense-system`). The submission cites release
+  **`v0.8.4`** (cut after the current round of paper edits) in
+  `paper/manuscript.tex` (Data availability) + `paper/declarations/data-availability.md`;
+  that tag MUST be pushed and public before final submission. **A Zenodo DOI is
+  NOT required** for Option C \u2014 the public GitHub release plus the `[dataset]`
+  citation already satisfy it. (Any lingering `zenodo.XXXXXXX` mentions in
+  `CHANGELOG.md`/`README.md` are stale and can be dropped; `paper/` is already
+  Zenodo-free.)
 - **Scope decision:** condense-and-submit with **current** results — do NOT add
   a second dataset or a windowed-supervised baseline before first submission
   (both are named follow-ups only if a reviewer demands them).
@@ -197,7 +203,8 @@ Things_ (ISSN 2542-6605)** and lives under `paper/` (added in `v0.8.1`, tag
     fatally breaks on superscript/fragile macros: `Avenida Albert Einstein 901,
     Cidade Universitária Zeferino Vaz, Barão Geraldo, Campinas, SP, 13083-852,
     Brazil`).
-  - Compiled PDF ≤ 10 pages (hard limit above); abstract < 250 words (≈234).
+  - Compiled PDF ≤ 10 pages (hard limit above); abstract < 250 words (≈243,
+    purely textual — no explicit α/math per the abstract-style decision).
   - Keywords 1–7 short indexing terms (currently 7).
   - Highlights file 3–5 bullets ≤85 chars — `highlights.tex`.
   - CRediT statement — manuscript + `declarations/credit-statement.md`.
@@ -207,10 +214,9 @@ Things_ (ISSN 2542-6605)** and lives under `paper/` (added in `v0.8.1`, tag
   - Funding statement — manuscript + `declarations/funding.md`.
   - Data-availability statement (Option C) — manuscript +
     `declarations/data-availability.md`.
-  - Acknowledgements directly before references — in manuscript.
   - Editable `.tex` source + figures as separate files — `figs/`.
-  - Public tagged GitHub release; add Zenodo DOI only once minted (see blocker
-    above).
+  - Public tagged GitHub release **`v0.8.4`** pushed before submission (cited in
+    Data availability). Zenodo DOI NOT required for Option C.
   - Author emails filled (`f233292@dac.unicamp.br`, `denisf@unicamp.br`).
   - Optional (not blocking): graphical abstract, SSRN preprint,
     MethodsX/Data-in-Brief co-submission.

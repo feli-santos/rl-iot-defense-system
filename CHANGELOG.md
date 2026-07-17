@@ -28,12 +28,13 @@ Elsevier _Internet of Things_ (ISSN 2542-6605) journal submission package.
 - `[dataset]` reference `CICIoT2023Dataset` in `paper/refs.bib` for the
   Elsevier Research-Data Option-C data-availability statement (raw CICIoT2023
   not redistributed under the CIC license; code + hash-chain manifests deposited
-  via the public GitHub release and a Zenodo DOI).
+  via the public GitHub release).
 
 ### Notes
-- **Open pre-submission blocker:** the Zenodo DOI placeholder
-  `10.5281/zenodo.XXXXXXX` (Data availability) must be replaced with the minted
-  DOI, then `make -C paper build` re-run, before submission.
+- **Data availability (Option C)** is satisfied by the public GitHub release
+  plus the `[dataset]` citation of CICIoT2023; a Zenodo DOI is **not** required.
+  The manuscript's Data-availability statement cites release `v0.8.4`, which
+  must be pushed and public before submission.
 
 ## [0.8.0] — 2026-07-06
 

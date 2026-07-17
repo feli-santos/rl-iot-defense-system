@@ -86,14 +86,15 @@ when is this advantage merely an artifact of task framing? We propose a
 partially observable, kill-chain-aware defense framework evaluated on realistic
 session-coherent trajectories derived from the CICIoT2023 dataset. The
 defender--attacker interaction is modeled as a reactive state-transition
-process under partial observability, governed by a tunable observation aliasing
-rate $\alpha$; the defender never observes the true kill-chain stage. We train
+process under partial observability, governed by a tunable aliasing rate that
+sets how often telemetry is confusable across adjacent stages; the defender
+never observes the true kill-chain stage. We train
 windowed deep RL (DRL) agents (PPO, A2C, and DQN) and compare them against a
 tuned Random Forest (RF) baseline, a full-observability oracle, and heuristic
-controllers. Our evaluation yields three findings. (i) At $\alpha=0$ (fully
-observable) the memoryless classifier matches the DRL agents, but as aliasing
-increases its performance degrades monotonically to net-harmful while windowed
-DRL remains stable. (ii) The DRL advantage holds under both sparse
+controllers. Our evaluation yields three findings. (i) When observations are
+fully informative the memoryless classifier matches the DRL agents, but as
+aliasing increases its performance degrades monotonically to net-harmful while
+windowed DRL remains stable. (ii) The DRL advantage holds under both sparse
 outcome-only and shaped reward functions. (iii) Under distribution shift across
 ten held-out attack classes, the best DRL agent improves prevention on every
 class, with no statistical dependence on baseline detector recall. All results
@@ -414,13 +415,13 @@ full hyperparameters are in Section~\ref{sec:hparams}.
 \subsection{Hyperparameters}
 \label{sec:hparams}
 All agents share a $2\times64$ ReLU MLP policy and train for $5\times10^{6}$
-steps per seed; Table~\ref{tab:hparams} lists the per-algorithm settings
-(``---'' marks a setting that does not apply to that algorithm).
+steps per seed; Table~\ref{tab:hparams} lists the per-algorithm settings.
 
 \begin{table}[tbp]
 \centering
 \caption{Training hyperparameters. All agents use a $2\times64$ ReLU MLP policy,
-$\gamma=0.99$, and $5\times10^{6}$ steps per seed.}
+$\gamma=0.99$, and $5\times10^{6}$ steps per seed. A dash (``---'') marks a
+setting that does not apply to that algorithm.}
 \label{tab:hparams}
 \scriptsize
 \setlength{\tabcolsep}{5pt}
@@ -600,7 +601,7 @@ defensible policies, not a single ``optimal'' response.
 
 \begin{figure*}[tbp]
 \centering
-\includegraphics[width=\textwidth,height=0.46\textheight,keepaspectratio]{F4_action_distribution.pdf}
+\includegraphics[width=\textwidth,height=0.50\textheight,keepaspectratio]{F4_action_distribution.pdf}
 \caption{Per-stage action distributions revealing distinct doctrines:
 A2C prevents at maneuver; PPO contains at impact.}
 \label{fig:actions}
@@ -776,7 +777,7 @@ The raw CICIoT2023 dataset~\cite{CICIoT2023Dataset} is distributed under the
 Canadian Institute for Cybersecurity license and is not redistributed here. All
 code, processing pipelines, and hash-chained manifests needed to reproduce every
 figure and number are archived in the tagged public release at
-\url{https://github.com/feli-santos/rl-iot-defense-system/releases/tag/v0.8.1}.
+\url{https://github.com/feli-santos/rl-iot-defense-system/releases/tag/v0.8.4}.
 
 % =====================================================================
 \section*{Declaration of generative AI and AI-assisted technologies in the
@@ -786,12 +787,6 @@ During the preparation of this work the authors used a generative AI assistant
 to help condense and copy-edit prose derived from the first author's
 dissertation. The authors reviewed and edited the output and take full
 responsibility for the content of the publication.
-
-% =====================================================================
-\section*{Acknowledgements}
-% =====================================================================
-The authors thank the members of the examining committee for their feedback on
-the dissertation from which this work is derived.
 
 % =====================================================================
 \bibliographystyle{elsarticle-num}
