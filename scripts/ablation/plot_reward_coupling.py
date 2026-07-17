@@ -199,13 +199,13 @@ def _render_gap_figure(summary: dict[str, Any], out_path: Path) -> None:
             continue
         best_rl_minus_rf = -gap
         ax.annotate(
-            f"Best RL - RF\n{best_rl_minus_rf:+.1f}",
+            rf"$\Delta R_\star = {best_rl_minus_rf:+.1f}$",
             xy=(xi, top),
             xytext=(0, 26),
             textcoords="offset points",
             ha="center",
             va="bottom",
-            fontsize=8,
+            fontsize=9,
         )
 
     ax.bar_label(b1, fmt="%.0f", padding=2, fontsize=7)

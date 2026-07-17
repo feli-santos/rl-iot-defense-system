@@ -81,9 +81,11 @@ _DISPLAY: dict[str, str] = {
 }
 _RL_ALGOS = {"dqn", "ppo", "a2c"}
 # Policies aggregated and kept in the summary JSON but NOT drawn in the F15
-# figure. Always-BLOCK is a degenerate always-isolate heuristic that only
-# clutters the per-class comparison.
-_RENDER_EXCLUDE = {"always_block"}
+# figure. Always-BLOCK is a degenerate always-isolate heuristic (constant
+# prevention 1.0) and Random / Always-OBSERVE are near-zero-information
+# floors (prevention <=0.02 on every class); all three only clutter the
+# per-class comparison. They are retained in the summary JSON and gate checks.
+_RENDER_EXCLUDE = {"always_block", "random", "always_observe"}
 _OOD_CLASSES_DEFAULT: list[str] = [
     # RECON
     "VulnerabilityScan",
@@ -347,7 +349,11 @@ def _render(
     n = len(ood_classes)
     n_cols = 2
     n_rows = (n + n_cols - 1) // n_cols
-    fig, axes = plt.subplots(n_rows, n_cols, figsize=(11.0, 2.6 * n_rows), squeeze=False)
+    # Two-column full-width float. With the low-information heuristic bars
+    # excluded (see _RENDER_EXCLUDE) each panel holds five bars, so we give
+    # panels extra vertical room and larger data-label / tick fonts to keep
+    # the value labels legible when the figure is scaled to \textwidth.
+    fig, axes = plt.subplots(n_rows, n_cols, figsize=(11.0, 2.15 * n_rows), squeeze=False)
 
     def _bar_colour(policy: str) -> str:
         if policy == "ppo":
@@ -390,11 +396,12 @@ def _render(
                 f"{v:.2f}",
                 va="center",
                 ha="left",
-                fontsize=7,
+                fontsize=9,
             )
 
-        ax.set_title(ood_class, fontsize=10)
+        ax.set_title(ood_class, fontsize=11)
         ax.set_xlim(0.0, 1.0)
+        ax.tick_params(axis="both", labelsize=9)
         ax.grid(True, axis="x", linestyle=":", alpha=0.4)
 
     # Shared x-label on the bottom row only.
@@ -409,7 +416,7 @@ def _render(
 
     fig.suptitle(
         "Out-of-distribution prevention rate across ten held-out zero-day classes",
-        fontsize=12,
+        fontsize=13,
         y=1.0,
     )
     fig.tight_layout()
