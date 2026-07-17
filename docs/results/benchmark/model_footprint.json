@@ -1,0 +1,42 @@
+{
+  "schema_version": "1.0",
+  "kind": "model_footprint",
+  "description": "Deployable inference footprint of the headline DRL policy (alpha=0.4, seed 0) vs. the tuned Random-Forest stage detector.",
+  "policy": {
+    "architecture": "64x64 ReLU MLP",
+    "obs_dim": 290,
+    "num_actions": 5,
+    "deployable_params": 23109,
+    "deployable_kb_fp32": 90.3,
+    "forward_macs": 22976,
+    "per_algo": {
+      "ppo": {
+        "deployable_params": 23109,
+        "deployable_kb_fp32": 90.3,
+        "checkpoint_zip_mb": 0.59
+      },
+      "a2c": {
+        "deployable_params": 23109,
+        "deployable_kb_fp32": 90.3,
+        "checkpoint_zip_mb": 0.41
+      },
+      "dqn": {
+        "deployable_params": 23109,
+        "deployable_kb_fp32": 90.3,
+        "checkpoint_zip_mb": 0.41
+      }
+    }
+  },
+  "rf_detector": {
+    "size_mb_on_disk": 180.8,
+    "n_trees": 200,
+    "total_nodes": 1738052,
+    "total_leaves": 869126,
+    "internal_nodes": 868926
+  },
+  "contrast": {
+    "policy_kb_fp32": 90.3,
+    "rf_mb_on_disk": 180.8,
+    "rf_over_policy_size_ratio": 1956
+  }
+}

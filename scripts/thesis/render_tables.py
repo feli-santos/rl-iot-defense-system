@@ -32,6 +32,7 @@ FSEVENTEEN = Path("docs/results/ablation/F17_summary.json")
 FFIFTEEN = Path("docs/results/ablation/F15_summary.json")
 FELEVEN = Path("docs/results/stage-detector/F11_summary.json")
 FTUNEDRF = Path("docs/results/stage-detector/tuned_rf_stage_detection.json")
+FOOTPRINT = Path("docs/results/benchmark/model_footprint.json")
 TEST_COUNT = Path("docs/results/test_count.json")
 
 # Spelled-out alpha keys (LaTeX macro names cannot contain digits or dots).
@@ -305,6 +306,37 @@ def _render_detector_numbers() -> list[str]:
     return lines
 
 
+def _render_footprint_numbers() -> list[str]:
+    """Deployable model-footprint macros (edge-deployment argument).
+
+    Sourced from ``docs/results/benchmark/model_footprint.json`` so the paper's
+    IoT-edge claim (Section 3.5 detector description and the conclusion's
+    deployment footprint) is the *measured* deployable size, not a hand-typed
+    guess. Emits:
+
+      - ``\\PolicyFootprintKB``   deployable policy size in KB (fp32 inference pathway)
+      - ``\\PolicyParams``        deployable policy parameter count (thousands, e.g. 23K)
+      - ``\\PolicyForwardMACs``   forward-pass multiply-accumulates (thousands)
+      - ``\\RFDetectorMB``        tuned RF stage-detector size on disk (MB)
+      - ``\\RFDetectorNodes``     total decision-tree nodes across the forest (millions)
+      - ``\\FootprintRatio``      RF-over-policy on-disk size ratio (integer x)
+    """
+    if not FOOTPRINT.exists():
+        return []
+    fp = _load(FOOTPRINT)
+    policy = fp["policy"]
+    rf = fp["rf_detector"]
+    contrast = fp["contrast"]
+    lines: list[str] = ["% --- deployable model footprint (edge-deployment argument) ---"]
+    lines.append(_newcmd("PolicyFootprintKB", f"{policy['deployable_kb_fp32']:0.0f}"))
+    lines.append(_newcmd("PolicyParams", f"{policy['deployable_params'] / 1000:0.0f}K"))
+    lines.append(_newcmd("PolicyForwardMACs", f"{policy['forward_macs'] / 1000:0.0f}K"))
+    lines.append(_newcmd("RFDetectorMB", f"{rf['size_mb_on_disk']:0.0f}"))
+    lines.append(_newcmd("RFDetectorNodes", f"{rf['total_nodes'] / 1e6:0.1f}M"))
+    lines.append(_newcmd("FootprintRatio", f"{contrast['rf_over_policy_size_ratio']:d}"))
+    return lines
+
+
 def _render_numbers() -> str:
     fa = _load(FALPHA)
     fc = _load(FCOUPLING)
@@ -391,6 +423,7 @@ def _render_numbers() -> str:
     lines.extend(_render_evasion_numbers())
     lines.extend(_render_ood_numbers())
     lines.extend(_render_detector_numbers())
+    lines.extend(_render_footprint_numbers())
 
     # Test count (sidecar JSON; canonical pytest count).
     if TEST_COUNT.exists():

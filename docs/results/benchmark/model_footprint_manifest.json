@@ -1,0 +1,14 @@
+{
+  "schema_version": "1.0",
+  "kind": "model_footprint_manifest",
+  "git_sha": "e298b2bd2635486f431c2c0057780b15bf95ff8b",
+  "inputs": {
+    "checkpoint_ppo": "361292c89a9db0f3578ed6005b1eec1d270eb81aefd9750fdc7ee6e33e25e696",
+    "checkpoint_a2c": "e52387ad0f847f06366f1bd044a63c980434e39b331210797076a10da4c0b40a",
+    "checkpoint_dqn": "adc6444136193d8b7ec81f07d08ab265a26d9ba200509a112d870af9d1a47e90",
+    "rf_detector": "8fc66bca3c87f6c23e9686182052cc436af14c6df18b48eaaac8aaab8a4372e5"
+  },
+  "outputs": {
+    "summary_json": "a612888ae26bddb8c45dccb7e45f8d2cadc3f840645d7e16bcd46a617ec814ba"
+  }
+}

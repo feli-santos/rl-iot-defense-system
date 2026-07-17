@@ -52,6 +52,40 @@ def _count_params(module: torch.nn.Module) -> int:
     return sum(p.numel() for p in module.parameters() if p.requires_grad)
 
 
+def count_deployable_params(model: Any, algo: str) -> int:
+    """Count parameters on the *inference* pathway only (the deployable policy).
+
+    An SB3 actor-critic checkpoint stores more than what runs at inference time:
+    PPO/A2C carry a value head (``mlp_extractor.value_net`` + ``value_net``) used
+    only during training, and DQN carries a duplicate target network
+    (``q_net_target``). For an edge-deployment footprint we count only the tensors
+    that participate in action selection:
+
+    - PPO / A2C: ``mlp_extractor.policy_net.*`` + ``action_net.*``
+    - DQN:       ``q_net.*`` (excluding ``q_net_target.*``)
+
+    Args:
+        model: A loaded SB3 model (DQN, PPO, or A2C).
+        algo: Algorithm name (``"ppo"``, ``"a2c"``, or ``"dqn"``); case-insensitive.
+
+    Returns:
+        Number of parameters on the deployable inference pathway.
+    """
+    algo = algo.lower()
+    state_dict = model.policy.state_dict()
+    total = 0
+    for key, tensor in state_dict.items():
+        if not hasattr(tensor, "numel"):
+            continue
+        if algo == "dqn":
+            if key.startswith("q_net.") and not key.startswith("q_net_target"):
+                total += tensor.numel()
+        else:  # ppo / a2c actor-critic
+            if key.startswith("mlp_extractor.policy_net") or key.startswith("action_net"):
+                total += tensor.numel()
+    return int(total)
+
+
 def _disk_size_mb(model: Any) -> float | None:
     """Save the SB3 model to a temp file and return the zip size in MB."""
     try:
@@ -91,6 +125,8 @@ def get_model_stats(
             - ``params``: number of trainable parameters
             - ``macs``: multiply-accumulate operations (forward pass),
               or ``null`` if thop is unavailable
+            - ``deployable_params``: parameters on the inference pathway only
+              (drops the value head for PPO/A2C and the target net for DQN)
             - ``size_mb``: on-disk model size in megabytes (SB3 zip),
               or ``null`` if save failed
             - ``obs_dim``: observation dimension used for profiling
@@ -99,6 +135,7 @@ def get_model_stats(
     policy_net.eval()
 
     params = _count_params(policy_net)
+    deployable_params = count_deployable_params(model, algo)
 
     # For MACs we only profile the actor/q_net — the part that runs at
     # inference time. For DQN it's q_net; for PPO/A2C it's mlp_extractor
@@ -113,6 +150,7 @@ def get_model_stats(
         "algo": algo,
         "obs_dim": obs_dim,
         "params": params,
+        "deployable_params": deployable_params,
         "macs": macs,
         "size_mb": size_mb,
     }
@@ -133,4 +171,4 @@ def get_file_stats(path: Path) -> dict[str, Any]:
     }
 
 
-__all__ = ["get_model_stats", "get_file_stats"]
+__all__ = ["get_model_stats", "get_file_stats", "count_deployable_params"]
