@@ -62,9 +62,9 @@
   test / ood
 };
 
-% --- Lane 2: Tug-of-War Attacker ---
+% --- Lane 2: Reactive Escalation Attacker ---
 \node[stageBox, fill=colOffline, right=of dataset] (redteam) {
-  \textbf{Tug-of-War Attacker}\\[3pt]
+  \textbf{Reactive Escalation Attacker}\\[3pt]
   Proximity-coupled\\
   kill-chain process\\[3pt]
   Strictly sequential;\\
@@ -101,8 +101,8 @@
       below=1.7cm of redteam] (env) {
   \textbf{AdversarialIoTEnv}\\[3pt]
   Hidden attack stage $s_t$\\
-  Kill-chain MDP\\
-  $(S,A,P,R,\gamma)$
+  Kill-chain POMDP\\
+  $(S,A,O,P,Z,R,\gamma)$
 };
 
 % --- Realization Engine ---
