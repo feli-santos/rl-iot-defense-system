@@ -32,11 +32,8 @@ Our contributions are:
 5. An honest algorithm-reliability account and a fully reproducible artifact
    chain (hash-chained manifests; all figures and numbers regenerable).
 
-This work is derived from the first author's MSc dissertation at UNICAMP; the
-dissertation version does not constitute prior publication under the journal's
-submission policy. The manuscript is not under consideration
-elsewhere. All authors have approved the submission and declare no competing
-interests. We suggest classification under IoT security and AIoT.
+The manuscript is not under consideration elsewhere. All authors have approved
+the submission and declare no competing interests.
 
 We confirm the manuscript follows the journal's author guidelines, including a
 CRediT statement, a declaration of generative-AI use, a competing-interests
