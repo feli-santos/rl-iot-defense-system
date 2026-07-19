@@ -31,7 +31,7 @@
 }
 
 \begin{document}
-\begin{tikzpicture}[node distance=0.55cm and 0.7cm]
+\begin{tikzpicture}[node distance=0.55cm and 1.05cm]
 
 % ---- Nodes (left-to-right pipeline) ---------------------------
 \node[rawBox] (raw) {Raw CICIoT2023 CSVs\\[-2pt]\footnotesize $46$ features, $34$ labels\\[-2pt]\footnotesize $\sim$46.7M rows};
@@ -56,15 +56,15 @@
 \draw[arr] (kernel) -- node[arrL, above]{$o_t$} (stack);
 \draw[arr] (stack) -- (traj);
 
-% ---- Group labels ---------------------------------------------
-\node[groupLabel, above=0.15cm of fsel, xshift=0.6cm] {Offline preparation};
-\node[groupLabel, below=0.15cm of kernel, xshift=-0.8cm] {Online environment};
-
 % ---- Background groups ----------------------------------------
 \begin{scope}[on background layer]
   \node[fit=(fsel)(proj)(dist), draw=colBorder!40, dashed, rounded corners, inner sep=8pt] (gProc) {};
   \node[fit=(kernel)(stack)(traj), draw=colBorder!40, dashed, rounded corners, inner sep=8pt] (gEnv) {};
 \end{scope}
+
+% ---- Group labels (anchored to the dashed boxes to avoid overlap) --
+\node[groupLabel, above=2pt of gProc.north] {Offline preparation};
+\node[groupLabel, below=2pt of gEnv.south] {Online environment};
 
 \end{tikzpicture}
 \end{document}

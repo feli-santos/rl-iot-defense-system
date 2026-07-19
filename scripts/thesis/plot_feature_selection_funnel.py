@@ -74,24 +74,14 @@ def main() -> None:
     n3 = n2 - len(d_high)  # 29
     assert n3 == n_final, f"funnel arithmetic mismatch: {n3} != {n_final}"
 
-    # Funnel bars: (count, colour). Width proportional to count.
+    # Funnel bars: (count, colour). Width proportional to count. Labels are
+    # kept short (the per-stage drop rule is spelled out in the right-hand
+    # annotations) so the text always fits inside the narrowing boxes.
     stages = [
-        (f"Raw numeric columns\n({n0})", n0, ACCENT["muted"]),
-        (
-            f"After zero-variance removal\n({n1})",
-            n1,
-            ACCENT["blue"],
-        ),
-        (
-            f"After low-variance filter\n(var $\\geq$ {var_thr}) ({n2})",
-            n2,
-            ACCENT["amber"],
-        ),
-        (
-            f"Retained observation basis\n($|$Pearson$| \\leq$ {corr_thr}) ({n3})",
-            n3,
-            ACCENT["primary"],
-        ),
+        (f"Raw numeric columns ({n0})", n0, ACCENT["muted"]),
+        (f"After zero-variance ({n1})", n1, ACCENT["blue"]),
+        (f"After low-variance ({n2})", n2, ACCENT["amber"]),
+        (f"Retained basis ({n3})", n3, ACCENT["primary"]),
     ]
     drops = [
         (len(d_zero), "zero variance", d_zero),
@@ -106,10 +96,13 @@ def main() -> None:
     y_step = 1.0
     max_c = float(n0)
     x_center = 0.0
+    # Floor on box width so the narrowest (retained) box is still wide enough
+    # to contain its label without the text spilling over the coloured edge.
+    min_w = 0.86
 
     for i, (label, count, colour) in enumerate(stages):
         y = -(i * y_step)
-        w = count / max_c
+        w = max(count / max_c, min_w)
         ax.add_patch(
             mpatches.FancyBboxPatch(
                 (x_center - w / 2, y - bar_h / 2),
@@ -129,7 +122,7 @@ def main() -> None:
             label,
             ha="center",
             va="center",
-            fontsize=9.0,
+            fontsize=8.5,
             color="white" if colour != ACCENT["muted"] else "#222222",
             fontweight="bold",
         )

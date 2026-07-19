@@ -40,8 +40,8 @@ WINDOW_SIZE = 5  # w
 # Group display order (top-to-bottom in the feature axis) + a colour-blind-safe
 # band colour per group, reusing the house categorical accents.
 GROUP_ORDER = [
-    ("flow_timing", "Flow timing \\& rate", ACCENT["blue"]),
-    ("header_and_size", "Header \\& size", ACCENT["primary"]),
+    ("flow_timing", "Flow timing & rate", ACCENT["blue"]),
+    ("header_and_size", "Header & size", ACCENT["primary"]),
     ("tcp_flags", "TCP flags", ACCENT["amber"]),
     ("protocol_indicators", "Protocol indicators", ACCENT["secondary"]),
     ("distribution_moments", "Distribution moments", ACCENT["neutral"]),
@@ -70,8 +70,8 @@ def main() -> None:
 
     # Geometry: x-axis = window frames t-4..t (5 columns), each split into a
     # value half and a delta half; y-axis = the 29 features, banded by group.
-    frame_w = 1.0
-    gap = 0.18
+    frame_w = 2.0
+    gap = 0.9
     half = frame_w / 2.0
 
     # Build the per-feature -> group colour map, ordered by group.
@@ -130,11 +130,11 @@ def main() -> None:
         lbl = "$t$" if f == WINDOW_SIZE - 1 else f"$t-{WINDOW_SIZE - 1 - f}$"
         ax.text(
             x0 + half,
-            total_rows + 0.7,
+            total_rows + 0.35,
             lbl,
             ha="center",
             va="bottom",
-            fontsize=10,
+            fontsize=8,
         )
 
     # Group brackets + labels on the left of the first frame.
@@ -210,9 +210,10 @@ def main() -> None:
         f"$\\times$ ${n_features}$ features $\\times$ 2 "
         f"(value, $\\Delta$) $= {WINDOW_SIZE * n_features * 2}$",
         fontsize=11.5,
+        pad=14,
     )
     ax.set_xlim(-2.2, total_w + 2.0)
-    ax.set_ylim(-0.4, total_rows + 1.6)
+    ax.set_ylim(-0.4, total_rows + 2.4)
     ax.set_aspect("equal")
     ax.axis("off")
     fig.tight_layout()

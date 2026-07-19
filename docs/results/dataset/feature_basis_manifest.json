@@ -17,16 +17,16 @@
       "thesis_section": "\u00a73.2"
     }
   },
-  "git_sha": "81abdb45247d9eeb52ce1da2ab389a135aeba078",
-  "generated_at": "2026-07-19T15:34:30.089793+00:00",
+  "git_sha": "9c2c3512f714b6714f2f424939c5f306205e157e",
+  "generated_at": "2026-07-19T18:44:37.190196+00:00",
   "inputs": {
     "docs/results/dataset/feature_provenance.json": "fd4e361025f7a99d08c15b5e53f1773755c5c2e16af8493f40c97389f070aea8"
   },
   "outputs": {
-    "obs_tensor_schematic.pdf": "d42ade1accd1cef96520095fa1e63d1b6458bdb6f72f3a5bda3a267e68f04157",
-    "obs_tensor_schematic.png": "2e8f84d4139c4b95993218d2da08a9d37c98519ba848e93cbc735bfa80f6e723",
-    "feature_selection_funnel.pdf": "abe3b4f0d0894888fc03191d5d521a63a9278f19bd8a15c518109fbf243d19e0",
-    "feature_selection_funnel.png": "755be2094a091b2980808dbd9ba1b349c3b0c43fe81bfc01b384a14c75227cee"
+    "obs_tensor_schematic.pdf": "9c400efdf2cda33a0e66f99e75157f9b95e9aee7c73464de979a3c1ae13f0470",
+    "obs_tensor_schematic.png": "111d008ef4440fcc2f079fa7905d20a0874bbc0a3cdf1835b3a3d661a84b5281",
+    "feature_selection_funnel.pdf": "03318ceb4d162b766d5a99a084d19fef2c567123a5baa98abe27ffa25ce93759",
+    "feature_selection_funnel.png": "b3d382f6c2f7e010b4e067d1c873bcbd9d145b1bce754c8bf8cb2aff31e82f95"
   },
   "stage": "dataset",
   "produced_by": [
