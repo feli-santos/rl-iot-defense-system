@@ -1,0 +1,39 @@
+{
+  "figure_ids": [
+    "FobsTensor",
+    "FselectFunnel"
+  ],
+  "figures": {
+    "FobsTensor": {
+      "title": "Windowed observation tensor (5 x 29 x 2 = 290)",
+      "output": "obs_tensor_schematic.pdf",
+      "thesis_chapter": "Ch. 3",
+      "thesis_section": "\u00a73.2"
+    },
+    "FselectFunnel": {
+      "title": "Feature-selection funnel (46 -> 29)",
+      "output": "feature_selection_funnel.pdf",
+      "thesis_chapter": "Ch. 3",
+      "thesis_section": "\u00a73.2"
+    }
+  },
+  "git_sha": "81abdb45247d9eeb52ce1da2ab389a135aeba078",
+  "generated_at": "2026-07-19T15:34:30.089793+00:00",
+  "inputs": {
+    "docs/results/dataset/feature_provenance.json": "fd4e361025f7a99d08c15b5e53f1773755c5c2e16af8493f40c97389f070aea8"
+  },
+  "outputs": {
+    "obs_tensor_schematic.pdf": "d42ade1accd1cef96520095fa1e63d1b6458bdb6f72f3a5bda3a267e68f04157",
+    "obs_tensor_schematic.png": "2e8f84d4139c4b95993218d2da08a9d37c98519ba848e93cbc735bfa80f6e723",
+    "feature_selection_funnel.pdf": "abe3b4f0d0894888fc03191d5d521a63a9278f19bd8a15c518109fbf243d19e0",
+    "feature_selection_funnel.png": "755be2094a091b2980808dbd9ba1b349c3b0c43fe81bfc01b384a14c75227cee"
+  },
+  "stage": "dataset",
+  "produced_by": [
+    "scripts/thesis/plot_obs_tensor_schematic.py",
+    "scripts/thesis/plot_feature_selection_funnel.py"
+  ],
+  "tier": "context",
+  "title": "Feature-basis schematics (observation tensor + selection funnel)",
+  "_note": "Two schematic figures derived purely from the committed feature_provenance.json (the 29-column observation basis); they do NOT read the gitignored raw feature arrays, so they regenerate identically on a fresh clone. This manifest is written/merged by both scripts/thesis/plot_obs_tensor_schematic.py and scripts/thesis/plot_feature_selection_funnel.py."
+}
