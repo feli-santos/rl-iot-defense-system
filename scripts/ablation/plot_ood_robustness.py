@@ -489,106 +489,23 @@ def _compute_per_class_rf_recall(
     return out
 
 
-def _annotate_without_overlap(ax: Any, points: list[dict[str, Any]], *, x_hi: float) -> None:
-    """Place per-point class labels with a simple greedy de-collision pass.
-
-    Labels are placed in display (pixel) space so the de-collision is metric
-    in the rendered figure. Each new label is nudged vertically in small,
-    bounded steps until it clears the data points and every label already
-    placed; right-edge points are labelled to the left (with a short leader
-    line) so text does not run off the plot. This avoids an external
-    ``adjustText`` dependency while removing the overlapping-label clutter in
-    the recall-vs-advantage scatter.
-    """
-    fig = ax.figure
-    fig.canvas.draw()  # realise the transforms before measuring in pixels.
-    trans = ax.transData
-
-    # Approximate label box size in pixels (fontsize 7, ~14 chars).
-    px_per_pt = fig.dpi / 72.0
-    line_h = 13.0 * px_per_pt  # vertical clearance between stacked labels
-    x_span = max(x_hi, 1e-9)
-
-    pts_px = [trans.transform((p["rf_recall"], p["advantage"])) for p in points]
-
-    arrow = {
-        "arrowstyle": "-",
-        "color": "0.6",
-        "lw": 0.5,
-        "shrinkA": 0.0,
-        "shrinkB": 2.0,
-    }
-
-    def _place(i: int, ha: str, off_x: float, off_y: float) -> None:
-        ax.annotate(
-            points[i]["ood_class"],
-            (points[i]["rf_recall"], points[i]["advantage"]),
-            textcoords="offset points",
-            xytext=(off_x, off_y),
-            fontsize=7,
-            ha=ha,
-            va="center",
-            annotation_clip=False,
-            arrowprops=arrow,
-        )
-
-    # Split the dense right cluster (recall near 1.0) from the rest: its labels
-    # are laid out as a single right-anchored vertical column to the left of the
-    # cluster, which removes the horizontal pile-up that a per-point offset
-    # cannot resolve. The remaining points keep simple left-anchored labels with
-    # a small upward de-collision nudge.
-    cluster = [i for i in range(len(points)) if points[i]["rf_recall"] >= 0.90 * x_span]
-    rest = [i for i in range(len(points)) if i not in cluster]
-
-    placed_px: list[tuple[float, float, float]] = []  # (x, y, half-width)
-    for i in sorted(rest, key=lambda j: (pts_px[j][0], pts_px[j][1])):
-        mx, my = pts_px[i]
-        half_w = 0.5 * len(points[i]["ood_class"]) * 4.0 * px_per_pt
-        lab_x = mx + 10.0 * px_per_pt
-        lab_y = my + 5.0 * px_per_pt
-        for _ in range(6):
-            clash = any(
-                abs(lab_y - qy) < line_h and abs(lab_x - qx) < (half_w + qhw)
-                for qx, qy, qhw in placed_px
-            )
-            if not clash:
-                break
-            lab_y += line_h
-        placed_px.append((lab_x, lab_y, half_w))
-        _place(i, "left", (lab_x - mx) / px_per_pt, (lab_y - my) / px_per_pt)
-
-    if cluster:
-        # Anchor the column just left of the leftmost marker in the cluster,
-        # stacked top-down by marker height with fixed spacing.
-        col_x = min(pts_px[i][0] for i in cluster) - 14.0 * px_per_pt
-        top_y = max(pts_px[i][1] for i in cluster) + 18.0 * px_per_pt
-        for rank, i in enumerate(sorted(cluster, key=lambda j: -pts_px[j][1])):
-            mx, my = pts_px[i]
-            lab_y = top_y - rank * line_h
-            _place(i, "right", (col_x - mx) / px_per_pt, (lab_y - my) / px_per_pt)
-
-
-def _render_recall_vs_advantage(
+def _compute_recall_vs_advantage(
     rows: list[dict[str, Any]],
     recall_by_class: dict[str, float | None],
     ood_classes: list[str],
-    out_path: Path,
     *,
     metric: str = "prevention_rate",
 ) -> dict[str, Any]:
-    """Detector-independence figure: RL-minus-RF advantage vs detector recall.
+    """Detector-independence statistics: RL-minus-RF advantage vs detector recall.
 
-    For each held-out class we plot a point at (x = per-class RF stage-recall,
-    y = best-trained-RL minus RF-Acting on ``metric``). The thesis claim — that
-    a detector-free RL policy is *robust to* the supervised detector's blind
-    spots — predicts the advantage rises as detector recall falls (a negative
-    slope / upper-left cluster). Returns the plotted point table for the JSON.
+    For each held-out class we form a point at (x = per-class RF stage-recall,
+    y = best-trained-RL minus RF-Acting on ``metric``) and compute the formal
+    independence statistics (Spearman/Pearson/OLS-slope with bootstrap CI).
+    These back the thesis claim that a detector-free RL policy is *robust to*
+    the supervised detector's blind spots. The standalone scatter figure was
+    retired; this function now only produces the point table + statistics that
+    are recorded in the summary JSON (the provenance for the reported numbers).
     """
-    from scripts._plot_style import ACCENT, apply_house_style, save_figure
-
-    apply_house_style()
-    import matplotlib.pyplot as plt
-
     by_cp = {(r["ood_class"], r["policy"]): r for r in rows}
     points: list[dict[str, Any]] = []
     for cls in ood_classes:
@@ -615,62 +532,6 @@ def _render_recall_vs_advantage(
         )
 
     stats = _recall_independence_stats(points)
-
-    fig, ax = plt.subplots(figsize=(8.0, 5.5))
-    if points:
-        xs = [p["rf_recall"] for p in points]
-        ys = [p["advantage"] for p in points]
-        ax.axhline(0.0, color=ACCENT["muted"], lw=0.8, ls="--")
-        ax.scatter(xs, ys, c=ACCENT["primary"], edgecolor="white", s=60, zorder=3)
-        # Reserve right/top margin so left-anchored cluster labels and the
-        # upward de-collision stacking stay inside the axes.
-        x_min, x_max = min(xs), max(xs)
-        x_pad = 0.16 * (x_max - x_min or 1.0)
-        ax.set_xlim(x_min - 0.5 * x_pad, x_max + x_pad)
-        y_min, y_max = min(ys + [0.0]), max(ys)
-        y_pad = 0.34 * (y_max - y_min or 1.0)
-        ax.set_ylim(y_min - 0.04 * (y_max - y_min or 1.0), y_max + y_pad)
-        _annotate_without_overlap(ax, points, x_hi=max(xs))
-        # OLS fit line + annotation of the formal independence statistics.
-        if stats.get("ols_slope") is not None:
-            x_lo, x_hi = min(xs), max(xs)
-            y_lo = stats["ols_intercept"] + stats["ols_slope"] * x_lo
-            y_hi = stats["ols_intercept"] + stats["ols_slope"] * x_hi
-            ax.plot(
-                [x_lo, x_hi],
-                [y_lo, y_hi],
-                color=ACCENT["muted"],
-                lw=1.0,
-                ls="-",
-                zorder=2,
-            )
-            ax.text(
-                0.03,
-                0.05,
-                (
-                    rf"Spearman $\rho$={stats['spearman_rho']:.2f} "
-                    rf"(p={stats['spearman_p']:.2f}); "
-                    rf"Pearson $r$={stats['pearson_r']:.2f} "
-                    rf"(p={stats['pearson_p']:.2f}); "
-                    rf"OLS slope={stats['ols_slope']:.2f} "
-                    rf"[{stats['ols_slope_ci_low']:.2f}, "
-                    rf"{stats['ols_slope_ci_high']:.2f}]"
-                    "\n"
-                    r"No negative trend: advantage does not rise as detector"
-                    " recall falls (n=10)."
-                ),
-                transform=ax.transAxes,
-                fontsize=7,
-                va="bottom",
-                ha="left",
-            )
-    ax.set_xlabel("Supervised RF detector recall on held-out class")
-    ax.set_ylabel(f"Best-RL − RF-Acting  ({metric})")
-    ax.set_title("Detector-independence dividend: RL advantage vs detector recall")
-    ax.grid(True, linestyle=":", alpha=0.4)
-    fig.tight_layout()
-    save_figure(fig, out_path)
-    plt.close(fig)
     return {"metric": metric, "points": points, "stats": stats}
 
 
@@ -865,16 +726,15 @@ def main(argv: list[str] | None = None) -> int:
     _render(rows, ordered_classes, fig_base)
     png_path = fig_base.with_suffix(".png")
     pdf_path = fig_base.with_suffix(".pdf")
-    recall_base = out_dir / "F15b_recall_vs_advantage"
-    recall_fig = _render_recall_vs_advantage(
+    # Detector-independence statistics (Spearman/Pearson/OLS). The standalone
+    # scatter figure was retired; the statistics are still computed and recorded
+    # in the summary JSON as the provenance for the reported numbers.
+    recall_fig = _compute_recall_vs_advantage(
         rows,
         recall_by_class,
         list(args.ood_classes),
-        recall_base,
         metric=args.advantage_metric,
     )
-    recall_png = recall_base.with_suffix(".png")
-    recall_pdf = recall_base.with_suffix(".pdf")
 
     # Evaluate gates.
     g78 = _evaluate_g78(rows, list(args.ood_classes), list(args.policies))
@@ -914,9 +774,6 @@ def main(argv: list[str] | None = None) -> int:
             "pdf": str(pdf_path),
             "pdf_sha256": _sha256(pdf_path),
             "png": str(png_path),
-            "recall_vs_advantage_pdf": str(recall_pdf),
-            "recall_vs_advantage_pdf_sha256": _sha256(recall_pdf),
-            "recall_vs_advantage_png": str(recall_png),
             "json": str(out_dir / "F15_summary.json"),
         },
         "inputs": {
