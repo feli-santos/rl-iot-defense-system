@@ -87,19 +87,19 @@ The 34 CICIoT2023 labels (33 attack classes plus \texttt{BenignTraffic}) are pro
 \label{tab:kc_mapping}
 \small
 \begin{tabularx}{\textwidth}{lX}
-\hline
+\toprule
 Stage & CICIoT2023 labels \\
-\hline
+\midrule
 \textsc{benign}  & \texttt{BenignTraffic} \\
-\hline
+\addlinespace
 \textsc{recon}   & \texttt{Recon-PortScan}, \texttt{Recon-OSScan}$^\star$, \texttt{Recon-HostDiscovery}, \texttt{Recon-PingSweep}, \texttt{VulnerabilityScan}$^\star$ \\
-\hline
+\addlinespace
 \textsc{access}  & \texttt{BrowserHijacking}, \texttt{CommandInjection}, \texttt{SqlInjection}$^\star$, \texttt{Backdoor\_Malware}, \texttt{Uploading\_Attack}, \texttt{XSS}$^\star$, \texttt{DictionaryBruteForce} \\
-\hline
+\addlinespace
 \textsc{maneuver} & \texttt{MITM-ArpSpoofing}, \texttt{DNS\_Spoofing}$^\star$, \texttt{Mirai-greeth\_flood}, \texttt{Mirai-greip\_flood}, \texttt{Mirai-udpplain}$^\star$ \\
-\hline
+\addlinespace
 \textsc{impact}  & DoS variants (\texttt{DoS-TCP\_Flood}, \texttt{DoS-UDP\_Flood}, \texttt{DoS-SYN\_Flood}$^\star$, \texttt{DoS-HTTP\_Flood}); DDoS variants (\texttt{DDoS-TCP\_Flood}, \texttt{DDoS-UDP\_Flood}, \texttt{DDoS-SYN\_Flood}, \texttt{DDoS-RSTFINFlood}, \texttt{DDoS-PSHACK\_Flood}, \texttt{DDoS-SynonymousIP\_Flood}, \texttt{DDoS-ICMP\_Flood}, \texttt{DDoS-ICMP\_Fragmentation}, \texttt{DDoS-UDP\_Fragmentation}, \texttt{DDoS-ACK\_Fragmentation}$^\star$, \texttt{DDoS-SlowLoris}$^\star$, \texttt{DDoS-HTTP\_Flood}$^\star$) \\
-\hline
+\bottomrule
 \end{tabularx}
 \end{table}
 
@@ -107,27 +107,36 @@ Stage & CICIoT2023 labels \\
 \chapter{Hyperparameters per Algorithm}\label{app:hparams}
 % ====================================================================
 
-The per-algorithm training hyperparameters for DQN, PPO, and A2C are listed in Table~\ref{tab:hparams}. Each configuration was chosen by a small grid search rather than left at library defaults, so that every learned agent is trained under settings appropriate to the sparse outcome-reward regime; the same values are used across all \NumSeeds{} seeds (\texttt{seed} $\in \{0, 1, \ldots, 9\}$). Empty cells indicate hyperparameters that do not apply to the algorithm (e.g.\ off-policy DQN-only fields are blank for the on-policy PPO and A2C rows). PPO retains the standard configuration; A2C uses a substantially longer rollout ($n_{\text{steps}} = 256$ rather than the default $5$) to give the on-policy estimator enough horizon for the long credit-assignment delay, and DQN uses a larger replay buffer and slower target updates to stabilize the off-policy bootstrap.
+The per-algorithm training hyperparameters for PPO, A2C, and DQN are listed in Table~\ref{tab:hparams}, one column per algorithm. Each configuration was chosen by a small grid search rather than left at library defaults, so that every learned agent is trained under settings appropriate to the sparse outcome-reward regime; the same values are used across all \NumSeeds{} seeds (\texttt{seed} $\in \{0, 1, \ldots, 9\}$). A dash marks a hyperparameter that does not apply to a given algorithm family, so the on-policy and off-policy knobs sit side by side in a single table. PPO retains the standard configuration; A2C uses a substantially longer rollout ($n_{\text{steps}} = 256$ rather than the default $5$) to give the on-policy estimator enough horizon for the long credit-assignment delay, and DQN uses a larger replay buffer and slower target updates to stabilize the off-policy bootstrap.
 
 \begin{table}[!htbp]
 \centering
-\caption{Per-algorithm training hyperparameters, used across all \NumSeeds{} seeds. Each agent is trained for a fixed 5{,}000{,}000-step budget with no early stopping, under a fully seeded pipeline. N/A indicates the hyperparameter does not apply to the algorithm.}
+\caption{Per-algorithm training hyperparameters, used across all \NumSeeds{} seeds. Each agent is trained for a fixed 5{,}000{,}000-step budget with no early stopping, under a fully seeded pipeline. A dash (---) indicates the hyperparameter does not apply to the algorithm.}
 \label{tab:hparams}
-\small
-\begin{tabularx}{\textwidth}{lrrrrrrrr}
+\scriptsize
+\begin{tabularx}{\textwidth}{Xrrr}
 \toprule
-algo & lr & $n_{\text{steps}}$ & $\gamma$ & $\lambda_{\text{GAE}}$ & ent\_coef & vf\_coef & batch\_size & $n_{\text{epochs}}$ \\
+Hyperparameter & PPO & A2C & DQN \\
 \midrule
-A2C & $7\!\cdot\!10^{-4}$ & 256  & 0.99 & 0.95 & 0.010 & 0.50 & N/A  & N/A  \\
-DQN & $5\!\cdot\!10^{-4}$ & N/A  & 0.99 & N/A  & N/A   & N/A  & 64   & N/A  \\
-PPO & $3\!\cdot\!10^{-4}$ & 2048 & 0.99 & 0.95 & 0.010 & 0.50 & 64   & 10   \\
+Learning rate            & $3\!\cdot\!10^{-4}$ & $7\!\cdot\!10^{-4}$ & $5\!\cdot\!10^{-4}$ \\
+Discount $\gamma$        & 0.99  & 0.99  & 0.99 \\
+Rollout $n_{\text{steps}}$ & 2048  & 256   & --- \\
+$\lambda_{\text{GAE}}$   & 0.95  & 0.95  & --- \\
+Entropy coef.            & 0.010 & 0.010 & --- \\
+Value coef.              & 0.50  & 0.50  & --- \\
+Epochs per update        & 10    & ---   & --- \\
+Batch size               & 64    & ---   & 64 \\
+Replay buffer            & ---   & ---   & $200{,}000$ \\
+Learning starts          & ---   & ---   & 5000 \\
+Target-update interval   & ---   & ---   & 5000 \\
+Exploration fraction     & ---   & ---   & 0.20 \\
+Exploration $\varepsilon$ (init$\to$final) & --- & --- & $1.0 \to 0.05$ \\
+Max gradient norm        & 0.50  & 0.50  & 0.50 \\
 \bottomrule
 \end{tabularx}
 \end{table}
-\par\smallskip\noindent{\small\textit{Note: N/A = hyperparameter not defined for that algorithm family. $n_{\text{steps}}$ applies only to on-policy methods (PPO/A2C); batch\_size applies to DQN and PPO; $n_{\text{epochs}}$ applies only to PPO; $\lambda_{\text{GAE}}$, ent\_coef, vf\_coef apply only to actor-critic methods. DQN off-policy fields are listed below.}}
+\par\smallskip\noindent{\small\textit{Note: A dash (---) marks a hyperparameter that does not apply to that algorithm family. The rollout length, GAE $\lambda$, entropy and value coefficients, and epoch count are specific to the actor-critic methods (PPO/A2C), while the replay buffer, learning-starts threshold, target-update interval, and exploration schedule are specific to off-policy DQN.}}
 
 \paragraph{Network architecture.} All three algorithms use the Stable Baselines3 \texttt{MlpPolicy}, a multi-layer perceptron with two hidden layers of 64 units each and ReLU activations, shared across policy and value networks for PPO/A2C and used as the Q-network for DQN. The same architecture is used across all seeds and algorithms to isolate the learning-rule comparison from network-capacity effects.
-
-For DQN-specific off-policy hyperparameters, the values used were: replay buffer $200{,}000$, learning starts $5000$, target update interval $5000$, exploration fraction $0.20$, initial/final exploration $1.0/0.05$, and max gradient norm $0.5$.
 
 The reward-coupling and out-of-distribution evaluations re-use these hyperparameters unchanged; only the environment contract (reward mode, observation aliasing, held-out classes) is perturbed.

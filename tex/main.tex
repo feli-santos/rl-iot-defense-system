@@ -159,8 +159,9 @@ como \emph{baseline} \emph{off-policy}) e os comparamos a uma Floresta
 Aleatória (RF, do inglês \textit{Random Forest}) acoplada a detector
 (RF-Acting), a um oráculo de observabilidade total e a políticas triviais. Três resultados sustentam a contribução: (i) à
 medida que a ambiguidade da observação aumenta, o classificador supervisionado
-degrada monotonicamente enquanto o PPO permanece estável, empatando no regime
-sem ambiguidade e superando a RF a partir do ponto de operação principal;
+degrada monotonicamente --- chegando a ser prejudicial (\emph{net-harmful}) ---
+enquanto o PPO permanece estável, empatando no regime sem ambiguidade e
+superando a RF a partir do ponto de operação principal;
 (ii) uma ablação de recompensa mostra
 que o melhor agente de RL supera a RF em ambos os regimes, refutando a objeção
 de informação privilegiada; (iii) sob distribuição deslocada (dez classes de
@@ -205,9 +206,10 @@ a temporal window. We train windowed RL agents (PPO and A2C, with DQN as an
 off-policy baseline) and compare them against a detector-coupled
 Random-Forest policy (RF-Acting), a full-observability oracle, and trivial
 baselines. Three results support the contribution: (i) as observation
-ambiguity rises the per-flow classifier degrades monotonically while windowed
-PPO stays flat, tying in the unaliased regime and beating RF with disjoint
-confidence intervals from the headline operating point onward; (ii) a reward
+ambiguity rises the per-flow classifier degrades monotonically---eventually
+becoming net-harmful---while windowed PPO stays flat, tying in the unaliased
+regime and beating RF with disjoint confidence intervals from the headline
+operating point onward; (ii) a reward
 ablation shows the best RL agent beats RF-Acting under both reward regimes,
 refuting the privileged-reward objection; (iii) under distribution shift
 (ten held-out attack classes), the best windowed RL agent prevents a larger

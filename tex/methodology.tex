@@ -22,7 +22,7 @@ At each step the defender observes a 29-dimensional per-flow feature vector draw
 
 % --- Subsection 3.1 ---
 \section{Framework Architecture Overview}\label{sec:framework_architecture}
-The proposed framework is designed to transition IoT security from a reactive to a proactive paradigm. This is achieved through the architecture illustrated in Figure~\ref{fig:framework_overview}, which can be understood as a closed-loop pipeline (the environment \emph{responds} to each defender action by advancing or retreating the attacker along the kill chain and resampling the observation accordingly, rather than replaying a fixed trace) with offline preparation, online learning, and held-out evaluation components.
+The proposed framework moves IoT security from a reactive to a proactive paradigm through the architecture illustrated in Figure~\ref{fig:framework_overview}: a closed-loop pipeline with offline-preparation, online-learning, and held-out-evaluation components. The loop is genuinely closed---the environment \emph{responds} to each defender action by advancing or retreating the attacker along the kill chain and resampling the observation accordingly, rather than replaying a fixed trace.
 
 \begin{figure}[!htbp]
     \centering
@@ -162,9 +162,9 @@ The supervised stage detector classifies a 29-feature CICIoT2023 vector into one
 \small
 \begin{tabularx}{\textwidth}{lrrrX}
 \toprule
-\textbf{Model} & \textbf{Params} & \textbf{Size (MB)} & \textbf{Macro-F1} & \textbf{Role} \\
+\textbf{Model} & \textbf{Nodes} & \textbf{Size (MB)} & \textbf{Macro-F1} & \textbf{Role} \\
 \midrule
-RandomForest (tuned) & $\sim$2.6\,M & 22 & \DetectorRfFoneBalanced & RF-Acting baseline \\
+RandomForest (tuned) & \RFDetectorNodes & \RFDetectorMB & \DetectorRfFoneBalanced & RF-Acting baseline \\
 \bottomrule
 \end{tabularx}
 \end{table}
@@ -214,12 +214,14 @@ The episode begins at $t = 0$ in the \textsc{benign} stage. At each step the age
 \begin{equation}\label{eq:tug_of_war}
 P(s_{t+1} \mid s_t, a_t) \;=\;
 \begin{cases}
-p_{\mathrm{up}}^{\mathrm{eff}} & \text{if } d_t \leq -1 \;\text{(under-force: advance to } s_t{+}1\text{)}, \\
-p_{\mathrm{down}} \;\text{or}\; p_{\mathrm{down}}^{\textsc{iso}} & \text{if } d_t = 0 \;\text{(proportionate: retreat to } s_t{-}1\text{)}, \\
-0 & \text{if } d_t \geq 1 \;\text{(over-force: hold at } s_t\text{)},
+p_{\mathrm{up}}^{\mathrm{eff}}(s_t)     & s_{t+1} = s_t + 1, \quad d_t \leq -1 \;\text{(under-force: advance)}, \\
+1 - p_{\mathrm{up}}^{\mathrm{eff}}(s_t) & s_{t+1} = s_t,     \quad d_t \leq -1 \;\text{(under-force: hold)}, \\
+p_{\mathrm{down}}(a_t)                  & s_{t+1} = s_t - 1, \quad d_t = 0 \;\text{(proportionate: retreat)}, \\
+1 - p_{\mathrm{down}}(a_t)              & s_{t+1} = s_t,     \quad d_t = 0 \;\text{(proportionate: hold)}, \\
+1                                       & s_{t+1} = s_t,     \quad d_t \geq 1 \;\text{(over-force: hold)},
 \end{cases}
 \end{equation}
-with the complementary probability mass assigned to holding at $s_t$ (i.e., $1 - p_{\mathrm{up}}^{\mathrm{eff}}$ for the under-force branch, $1 - p_{\mathrm{down}}$ for the proportionate branch). The three cases are:
+where $p_{\mathrm{down}}(a_t) = p_{\mathrm{down}}^{\textsc{iso}} = 0.98$ when $a_t = \textsc{isolate}$ and $p_{\mathrm{down}} = 0.90$ otherwise, and $p_{\mathrm{up}}^{\mathrm{eff}}(s_t)$ is the proximity-scaled escalation probability of Section~\ref{ssec:proximity_coupled}. Every branch that does not move the attacker leaves it holding at $s_t$, so the three regimes are:
 \begin{enumerate}
     \item \textbf{Under-force ($d_t \leq -1$): the attacker escalates.} A response weaker than warranted lets the attacker advance one stage with the proximity-scaled probability $p_{\mathrm{up}}^{\mathrm{eff}}$ of Section~\ref{ssec:proximity_coupled} (otherwise it holds), so the deeper the foothold the harder it pushes forward.
     \item \textbf{Proportionate force ($d_t = 0$): the attacker is pushed back.} The exactly-recommended action de-escalates the attacker one stage with probability $p_{\mathrm{down}} = 0.90$ (or $p_{\mathrm{down}}^{\textsc{iso}} = 0.98$ when the action is \textsc{isolate}, making \textsc{isolate} strictly stronger than \textsc{block}); on a failed roll the attacker holds. A successful push-back grants the agent a small de-escalation reward $r_{\mathrm{deesc}} = +15$, capped per episode (Section~\ref{ssec:reward}).
@@ -255,7 +257,7 @@ The environment-design default constants used throughout the dissertation (\text
 
 \paragraph{Disabled knobs.} Two reward or dynamics knobs exist in the environment configuration but are \emph{disabled} (set to zero) in every headline experiment and ablation reported in this dissertation, and are documented here only for completeness. A \textbf{Lagrangian benign-FPR penalty} (\texttt{fpr\_penalty\_beta}, default $0.0$) would subtract $\beta \cdot (\text{benign\_blocks} / \text{benign\_steps})$ at episode end; it is redundant with the explicit benign guardrails (components~5--6) and the reported benign false-positive rates (Section~\ref{sec:benchmark_results}). A \textbf{non-monotonic retreat probability} (\texttt{retreat\_prob}, default $0.0$) would let the attacker randomly retreat to an earlier stage independently of the defender's action; it is disabled because the headline tug-of-war attacker ``never retreats autonomously'' --- retreat is driven \emph{only} by proportionate defender force (Section~\ref{ssec:proximity_coupled}). Neither knob affects any reported number.
 
-The action-cost vector $C_{\mathrm{action}}(a)$ uses scale $\kappa = 1.0$ as the default calibrated environment-design setting (Section~\ref{ssec:action_cost_justification}).
+The action-cost vector, indexed by the action ordering $(\textsc{observe}, \textsc{log}, \textsc{restrict}, \textsc{block}, \textsc{isolate})$, is $C_{\mathrm{action}} = [0,\, 0.1,\, 0.3,\, 0.5,\, 0.8]$ and is applied with scale $\kappa = 1.0$, the default calibrated environment-design setting (Section~\ref{ssec:action_cost_justification}). The cost rises monotonically with disruptiveness, so passive monitoring is free and network isolation is the most expensive control to invoke.
 
 \begin{table}[!htbp]
 \centering
