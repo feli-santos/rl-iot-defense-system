@@ -8,17 +8,17 @@ This chapter presents the empirical results across all stages of the framework. 
 
 % --- Subsection 4.0 ---
 \section{Experimental Setup}\label{sec:exp_setup}
-The experiments were run on a CPU-only commodity workstation (no GPU is required for any development stage; the RandomForest baseline uses scikit-learn's default multi-core fit) using Python, PyTorch for the stage detector, scikit-learn for the RandomForest baseline, Stable~Baselines3 for the reinforcement-learning agents, and Gymnasium for the custom environment. The reactive tug-of-war attacker is specified in closed form and requires no training. Each learned agent is trained for a fixed budget of $5{,}000{,}000$ environment steps with no early stopping (Section~\ref{sec:drl_training}), under a fully seeded pipeline that makes training and checkpoint selection bit-reproducible from the seed. The best checkpoint on the validation split, not the last, is carried to evaluation. Every figure in this chapter is regenerated from a manifest that pins its input artifacts and producing script (Section~\ref{sec:repro_framework}, Appendix~\ref{app:repro}), and the full \texttt{pytest} suite (\NumTests{} tests) passes on a clean checkout.
+The experiments were run on a CPU-only commodity workstation (no GPU is required for any development stage; the RandomForest baseline uses scikit-learn's default multi-core fit) using Python, PyTorch for the stage detector, scikit-learn for the RandomForest baseline, Stable~Baselines3 for the reinforcement-learning agents, and Gymnasium for the custom environment. The reactive tug-of-war attacker is specified in closed form and requires no training. Each learned agent is trained for a fixed budget of $5{,}000{,}000$ environment steps with no early stopping (Section~\ref{sec:drl_training}), under a fully seeded pipeline that makes training and checkpoint selection bit-reproducible from the seed. The best checkpoint on the validation split, not the last, is carried to evaluation. Every figure in this chapter is regenerated from a manifest that pins its input artifacts and producing script (Section~\ref{sec:repro_framework}, Appendix~\ref{app:repro}), and the full test suite (\NumTests{} tests) passes on a clean checkout.
 
 % --- Subsection 4.1 ---
 \section{Dataset Projection and Splits Protocol}\label{sec:dataset_results}
 The CICIoT2023 dataset is projected onto the five kill-chain stages using the per-class mapping documented in Appendix~\ref{app:kc_mapping}. Figure~\ref{fig:f0a} shows the per-class distribution after rebalancing and Figure~\ref{fig:f0b} the per-stage distribution across the splits.
 
-Two features of these distributions are worth drawing out, because both are consequences of the kill-chain projection rather than sampling accidents. First, in Figure~\ref{fig:f0a} the \textsc{benign} class holds the largest row count (capped at $100{,}000$ rows) while each attack class contributes far fewer (most attack classes are held at $12{,}121$ rows). This asymmetry is deliberate: benign traffic is the reference behaviour the defender must not disrupt, so it is retained at high volume rather than downsampled to match any single attack class, which keeps the \textsc{benign} stage well represented (the \texttt{train} partition carries $70{,}000$ benign rows) rather than starved. Second, in Figure~\ref{fig:f0b} the \textsc{impact} stage is by far the most populous stage across every split (for example $127{,}270$ \texttt{train} rows, against $23{,}173$--$33{,}939$ for the middle stages). This concentration follows directly from the projection: the majority of the CICIoT2023 attack classes are high-volume denial-of-service, distributed-denial-of-service, and Mirai flood variants, and the kill-chain mapping collapses all of them onto the single terminal \textsc{impact} stage, so their combined row mass accumulates there.
+Two features of these distributions are worth drawing out, because both are consequences of the kill-chain projection rather than sampling accidents. First, in Figure~\ref{fig:f0a} the \textsc{benign} class holds the largest row count (capped at $100{,}000$ rows) while each attack class contributes far fewer (most attack classes are held at $12{,}121$ rows). This asymmetry is deliberate: benign traffic is the reference behaviour the defender must not disrupt, so it is retained at high volume rather than downsampled to match any single attack class, which keeps the \textsc{benign} stage well represented (the training partition carries $70{,}000$ benign rows) rather than starved. Second, in Figure~\ref{fig:f0b} the \textsc{impact} stage is by far the most populous stage across every split (for example $127{,}270$ training rows, against $23{,}173$--$33{,}939$ for the middle stages). This concentration follows directly from the projection: the majority of the CICIoT2023 attack classes are high-volume denial-of-service, distributed-denial-of-service, and Mirai flood variants, and the kill-chain mapping collapses all of them onto the single terminal \textsc{impact} stage, so their combined row mass accumulates there.
 
 \begin{figure}[!htbp]
     \centering
-    \includegraphics[width=0.95\textwidth]{figs/class_distribution.pdf}
+    \includegraphics[width=\textwidth]{figs/class_distribution.pdf}
     \caption{CICIoT2023 per-class row counts after the kill-chain projection and rebalancing protocol.}
     \label{fig:f0a}
 \end{figure}
@@ -26,16 +26,16 @@ Two features of these distributions are worth drawing out, because both are cons
 \begin{figure}[!htbp]
     \centering
     \includegraphics[width=0.95\textwidth]{figs/stage_distribution.pdf}
-    \caption{CICIoT2023 per-stage row counts across the partitions (\texttt{train}, \texttt{val\_balanced}, \texttt{test\_balanced}, \texttt{ood}) after the kill-chain projection.}
+    \caption{CICIoT2023 per-stage row counts across the training, balanced-validation, balanced-test, and held-out out-of-distribution partitions after the kill-chain projection.}
     \label{fig:f0b}
 \end{figure}
 
-After reserving the ten held-out attack classes (Section~\ref{ssec:splits}), the \texttt{train} partition contains $235{,}324$ rows. The disjointness of the partitions is enforced by explicit assertions in \texttt{tests/test\_build\_split\_indices.py} ($\texttt{train} \cap \texttt{ood} = \texttt{val} \cap \texttt{ood} = \texttt{test} \cap \texttt{ood} = \emptyset$), which are part of the \NumTests{}-test suite.
+After reserving the ten held-out attack classes (Section~\ref{ssec:splits}), the training partition contains $235{,}324$ rows. The training, validation, and test partitions are guaranteed to be index-disjoint from the held-out out-of-distribution set by explicit assertions that form part of the \NumTests{}-test suite.
 
 % --- Subsection 4.2 ---
 \clearpage
 \section{Supervised Stage Detector}\label{sec:detector_results}
-The tuned RandomForest stage detector underlying the RF-Acting policy is evaluated on the held-out \texttt{test\_balanced} split. Figure~\ref{fig:f11} shows its per-class F1 (top), together with its row-normalised confusion matrix (bottom).
+The tuned RandomForest stage detector underlying the RF-Acting policy is evaluated on the held-out balanced-test split. Figure~\ref{fig:f11} shows its per-class F1 (top), together with its row-normalised confusion matrix (bottom).
 
 \begin{figure}[!htbp]
     \centering
@@ -43,11 +43,11 @@ The tuned RandomForest stage detector underlying the RF-Acting policy is evaluat
 
     \vspace{1.2em}
     \includegraphics[width=0.72\textwidth]{figs/tuned_rf_confusion.pdf}
-    \caption{Tuned RandomForest stage detection on the held-out \texttt{test\_balanced} split. \textbf{Top:} per-class F1 across the five kill-chain stages, with the macro-F1 reference line; the detector is strong on every stage (worst-case F1 $0.87$), not merely on the easy \textsc{impact} class. \textbf{Bottom:} the row-normalised confusion matrix; the only material off-diagonal mass is a \textsc{recon}$\rightarrow$\textsc{access} confusion ($13.2\%$), an inherent feature overlap in the hard middle of the chain rather than a tuning artifact.}
+    \caption{Tuned RandomForest stage detection on the held-out balanced-test split. \textbf{Top:} per-class F1 across the five kill-chain stages, with the macro-F1 reference line; the detector is strong on every stage (worst-case F1 $0.87$), not merely on the easy \textsc{impact} class. \textbf{Bottom:} the row-normalised confusion matrix; the only material off-diagonal mass is a \textsc{recon}$\rightarrow$\textsc{access} confusion ($13.2\%$), an inherent feature overlap in the hard middle of the chain rather than a tuning artifact.}
     \label{fig:f11}
 \end{figure}
 
-In-distribution, on the \texttt{test\_balanced} split the tuned RandomForest attains a macro-F1 of $\DetectorRfFoneBalanced$, with per-class F1 ranging from $0.87$ on the ambiguous \textsc{recon}/\textsc{access} stages to $0.998$ on \textsc{impact}. The tuned RandomForest (200 trees, maximum depth 20, minimum two samples per leaf, balanced class weights) is a deliberate fairness measure: the supervised baseline the learned agents must beat is the strongest classifier a careful practitioner would deploy, not a default-configuration straw man; validation macro-F1 is flat across the tree-count axis ($0.927 \pm 0.005$ over the $54$-cell grid), confirming the classifier is not under-tuned. The more informative quantity for the robustness study, however, is the per-class recall on the ten held-out attack classes, summarized in Table~\ref{tab:detector_ood}.
+In-distribution, on the held-out balanced-test split the tuned RandomForest attains a macro-F1 of $\DetectorRfFoneBalanced$, with per-class F1 ranging from $0.87$ on the ambiguous \textsc{recon}/\textsc{access} stages to $0.998$ on \textsc{impact}. The tuned RandomForest (200 trees, maximum depth 20, minimum two samples per leaf, balanced class weights) is a deliberate fairness measure: the supervised baseline the learned agents must beat is the strongest classifier a careful practitioner would deploy, not a default-configuration straw man; validation macro-F1 is flat across the tree-count axis ($0.927 \pm 0.005$ over the $54$-cell grid), confirming the classifier is not under-tuned. The more informative quantity for the robustness study, however, is the per-class recall on the ten held-out attack classes, summarized in Table~\ref{tab:detector_ood}.
 
 \begin{table}[!htbp]
 \centering
@@ -83,14 +83,14 @@ The three feedforward reinforcement-learning algorithms (PPO, DQN, A2C) were tra
 
 \begin{figure}[!htbp]
     \centering
-    \includegraphics[width=0.85\textwidth]{figs/F3_learning_curves.pdf}
+    \includegraphics[width=0.8\textwidth]{figs/F3_learning_curves.pdf}
     \caption{Blue-team learning curves: episodic reward over $5\,000\,000$ training steps (no early stopping) for PPO, DQN, and A2C across \NumSeeds{} seeds each. Curves are binned into 25 timestep windows, so the leftmost point is the mean over the first window of training rather than the value at initialization; the dashed grey band is the RF-Acting reference and the dash-dot black line the full-observability oracle ($n = 300$ each). Shaded bands are 95\,\% bootstrap confidence intervals over seeds.}
     \label{fig:f3}
 \end{figure}
 
 \begin{figure}[!htbp]
     \centering
-    \includegraphics[width=0.95\textwidth]{figs/F4_action_distribution.pdf}
+    \includegraphics[width=\textwidth]{figs/F4_action_distribution.pdf}
     \caption{Per-stage action distributions of the trained policies under the sparse outcome reward, one row per algorithm (A2C, PPO, DQN) and one column per kill-chain stage (\textsc{benign} $\to$ \textsc{impact}); bars show the action share at the converged late checkpoint.}
     \label{fig:f4}
 \end{figure}
@@ -102,18 +102,18 @@ The three feedforward reinforcement-learning algorithms (PPO, DQN, A2C) were tra
 % --- Subsection 4.5 ---
 \clearpage
 \section{Held-Out Benchmark: Windowed RL versus a Per-Flow Classifier under Partial Observability}\label{sec:benchmark_results}
-The central question of this dissertation is \emph{when} a learned sequential policy beats a memoryless per-flow classifier. The held-out benchmark answers it by sweeping the observation-aliasing rate $\alpha$ --- the probability that a step emits a feature row drawn from a stage adjacent to the true one, so that no single row identifies the stage. The same aliased observation stream is fed identically to every policy, so none is privileged. Each trained checkpoint and baseline is evaluated on \texttt{test\_balanced} ($n = 300$ deterministic episodes per policy) at six aliasing rates, $\alpha \in \{0.0, 0.2, 0.4, 0.6, 0.8, 1.0\}$. Figure~\ref{fig:falpha} shows the resulting reward curves and Table~\ref{tab:alpha_curve} the underlying numbers.
+The central question of this dissertation is \emph{when} a learned sequential policy beats a memoryless per-flow classifier. The held-out benchmark answers it by sweeping the observation-aliasing rate $\alpha$ --- the probability that a step emits a feature row drawn from a stage adjacent to the true one, so that no single row identifies the stage. The same aliased observation stream is fed identically to every policy, so none is privileged. Each trained checkpoint and baseline is evaluated on the held-out balanced-test split ($n = 300$ deterministic episodes per policy) at six aliasing rates, $\alpha \in \{0.0, 0.2, 0.4, 0.6, 0.8, 1.0\}$. Figure~\ref{fig:falpha} shows the resulting reward curves and Table~\ref{tab:alpha_curve} the underlying numbers.
 
 \begin{figure}[!htbp]
     \centering
-    \includegraphics[width=0.85\textwidth]{figs/Falpha_curve.pdf}
-    \caption{Mean episodic reward versus observation-aliasing rate $\alpha$ on \texttt{test\_balanced}, with 95\,\% bootstrap confidence bands for the windowed PPO agent and the per-flow RF-Acting baseline. The full-observability oracle (dashed) is flat near $\OracleCeiling$, a reference ceiling.}
+    \includegraphics[width=0.8\textwidth]{figs/Falpha_curve.pdf}
+    \caption{Mean episodic reward versus observation-aliasing rate $\alpha$ on the held-out balanced-test split, with 95\,\% bootstrap confidence bands for the windowed PPO agent and the per-flow RF-Acting baseline. The full-observability oracle (dashed) is flat near $\OracleCeiling$, a reference ceiling.}
     \label{fig:falpha}
 \end{figure}
 
 \begin{table}[!htbp]
 \centering
-\caption{Held-out benchmark mean episodic reward by observation-aliasing rate $\alpha$ on \texttt{test\_balanced} ($n = 300$ episodes per policy; \NumSeeds{} seeds for the learned agents and RF-Acting; one seed for the remaining deterministic baselines and the oracle). PPO and RF rows carry 95\,\% bootstrap confidence intervals. Generated from \texttt{Falpha\_summary.json}.}
+\caption{Held-out benchmark mean episodic reward by observation-aliasing rate $\alpha$ on the held-out balanced-test split ($n = 300$ episodes per policy; \NumSeeds{} seeds for the learned agents and RF-Acting; one seed for the remaining deterministic baselines and the oracle). PPO and RF rows carry 95\,\% bootstrap confidence intervals.}
 \label{tab:alpha_curve}
 \small
 \begin{tabular}{lrrrrr}
@@ -138,14 +138,14 @@ Three ablations probe the robustness of the central result: a reward-coupling ab
 
 \begin{figure}[!htbp]
     \centering
-    \includegraphics[width=0.85\textwidth]{figs/Fcoupling_reward_gap.pdf}
+    \includegraphics[width=0.8\textwidth]{figs/Fcoupling_reward_gap.pdf}
     \caption{Reward-coupling ablation: best learned agent versus the RF-Acting baseline under the coupled (proportionality-shaped) and the sparse outcome reward functions, both at $\alpha = \HeadlineAlpha$. The RF-minus-best-RL difference is \emph{negative} in both regimes, so the best learned agent beats the supervised baseline whether or not the privileged per-step shaping is present.}
     \label{fig:fcoupling}
 \end{figure}
 
 \begin{table}[!htbp]
 \centering
-\caption{Reward-coupling ablation on \texttt{test\_balanced} at $\alpha = \HeadlineAlpha$ ($n = 300$ episodes per policy; \NumSeeds{} seeds for the learned agents). For each reward function the table reports the best learned agent and its reward, the RF-Acting reward with its 95\,\% bootstrap CI, and the RF-minus-best-RL difference. Generated from \texttt{Fcoupling\_summary.json}.}
+\caption{Reward-coupling ablation on the held-out balanced-test split at $\alpha = \HeadlineAlpha$ ($n = 300$ episodes per policy; \NumSeeds{} seeds for the learned agents). For each reward function the table reports the best learned agent and its reward, the RF-Acting reward with its 95\,\% bootstrap CI, and the RF-minus-best-RL difference.}
 \label{tab:coupling}
 \small
 \begin{tabular}{llrrr}
@@ -161,7 +161,7 @@ Reward function & Best RL & Best-RL reward & RF-Acting [95\,\% CI] & RF $-$ best
 
 \begin{figure}[!htbp]
     \centering
-    \includegraphics[width=0.85\textwidth]{figs/F10_aggressiveness.pdf}
+    \includegraphics[width=0.8\textwidth]{figs/F10_aggressiveness.pdf}
     \caption{Environment-difficulty sweep: the three \emph{fixed} headline defenders (PPO, A2C, and DQN, each trained once at $p_{\mathrm{down}} = 0.90$) and the oracle reference, each re-evaluated as a function of the tug-of-war de-escalation success probability $p_{\mathrm{down}} \in \{0.0, 0.2, 0.4, 0.6, 0.8, 1.0\}$ (lower is harsher; the headline operating point $p_{\mathrm{down}} = 0.90$ sits between the two highest swept settings). No policy is retrained per environment. Each learned agent is evaluated over \NumSeeds{} seeds and 300 episodes; the deterministic oracle rule over 300 episodes and one seed, so its confidence bands are narrower by construction.}
     \label{fig:f10}
 \end{figure}
@@ -170,7 +170,7 @@ Reward function & Best RL & Best-RL reward & RF-Acting [95\,\% CI] & RF $-$ best
 
 \begin{figure}[!htbp]
     \centering
-    \includegraphics[width=0.85\textwidth]{figs/F17_evasion_sweep.pdf}
+    \includegraphics[width=0.8\textwidth]{figs/F17_evasion_sweep.pdf}
     \caption{Evasive-persistence robustness sweep: mean episodic reward with 95\,\% bootstrap CIs for the three fixed headline defenders (PPO, A2C, DQN; each trained once at the headline operating point over \NumSeeds{} seeds) as the attacker's evasive-persistence probability rises ($0.0 \to 0.75$), where a higher value lets the attacker, after sensing defensive force at a pre-commit stage, resist the next eviction (post-detection hardening).}
     \label{fig:f17}
 \end{figure}
@@ -184,7 +184,7 @@ The ten held-out attack classes (Section~\ref{ssec:splits}) were evaluated again
 \begin{equation}\label{eq:prevention}
     P_{\mathrm{prev}} = \Pr\!\left(\max_{0 \le t \le T} s_t < \textsc{impact}\right),
 \end{equation}
-where $s_t$ is the true kill-chain stage at step $t$ and $T$ is the episode horizon. It is reported in preference to raw reward, which is dominated by accumulated penalties over long episodes. Prevention rate is a security-only metric and must be read alongside availability cost: the degenerate \texttt{always\_block} policy attains a perfect prevention rate of $1.0$ on every class precisely because it isolates indiscriminately, but it is operationally inadmissible --- it takes an aggressive (block or isolate) action on $100\%$ of benign flows and earns a mean reward of $0.0$, dominated on the availability axis by every learned agent (whose benign aggressive-action rate is below $1\%$, Section~\ref{sec:benchmark_results}). The meaningful comparison is therefore between policies that prevent attacks \emph{while remaining benign-safe}, which excludes \texttt{always\_block} by construction. Figure~\ref{fig:f15} shows the per-class, per-policy grid and Figure~\ref{fig:f15b} relates the learned agent's advantage to the detector's recall.
+where $s_t$ is the true kill-chain stage at step $t$ and $T$ is the episode horizon. It is reported in preference to raw reward, which is dominated by accumulated penalties over long episodes. Prevention rate is a security-only metric and must be read alongside availability cost: the degenerate always-\textsc{block} policy attains a perfect prevention rate of $1.0$ on every class precisely because it isolates indiscriminately, but it is operationally inadmissible --- it takes an aggressive (block or isolate) action on $100\%$ of benign flows and earns a mean reward of $0.0$, dominated on the availability axis by every learned agent (whose benign aggressive-action rate is below $1\%$, Section~\ref{sec:benchmark_results}). The meaningful comparison is therefore between policies that prevent attacks \emph{while remaining benign-safe}, which excludes the always-block policy by construction. Figure~\ref{fig:f15} shows the per-class, per-policy prevention grid.
 
 \begin{figure}[!htbp]
     \centering
@@ -193,14 +193,7 @@ where $s_t$ is the true kill-chain stage at step $t$ and $T$ is the episode hori
     \label{fig:f15}
 \end{figure}
 
-\begin{figure}[!htbp]
-    \centering
-    \includegraphics[width=0.92\textwidth]{figs/F15b_recall_vs_advantage.pdf}
-    \caption{Prevention advantage of the best windowed RL agent over RF-Acting on each held-out class, plotted against the RandomForest's recall on that class, with an ordinary-least-squares fit. The advantage is positive on every class ($\FfifteenAdvantageLow$ to $\FfifteenAdvantageHigh$) and does \emph{not} diminish as detector recall rises: neither the rank correlation (Spearman $\rho = \FfifteenSpearmanRho$, $p = \FfifteenSpearmanP$) nor the linear correlation (Pearson $r = \FfifteenPearsonR$, $p = \FfifteenPearsonP$) is significant, and the bootstrap 95\% CI for the OLS slope spans zero ($[\FfifteenOLSSlopeCILow, \FfifteenOLSSlopeCIHigh]$). ``Best windowed RL agent'' is the maximum prevention rate across \{DQN, PPO, A2C\} per class, which at the headline aliasing rate is A2C on every class. There is thus no detectable dependence of the advantage on detector recall --- in particular no \emph{negative} trend, which is what the ``RL only rescues the detector's blind spots'' hypothesis would predict (the advantage shrinking toward zero on the well-detected classes). Under this feature-injection protocol, the learned policy's robustness is better explained by sequential control under partial observability than by detector accuracy alone.}
-    \label{fig:f15b}
-\end{figure}
-
-\paragraph{A held-out class prevention advantage that does not track detector recall.} On all ten held-out classes, the best windowed RL agent (A2C at the headline aliasing rate) prevents between $\FfifteenBestRLPreventionLow$ and $\FfifteenBestRLPreventionHigh$ of attacks, whereas the detector-coupled RF-Acting baseline prevents between $\FfifteenRFPreventionLow$ and $\FfifteenRFPreventionHigh$. The best-RL-minus-RF prevention advantage is positive on every class, ranging from $\FfifteenAdvantageLow$ to $\FfifteenAdvantageHigh$, and (this is the key observation) it does \emph{not} diminish as the detector's recall improves (Figure~\ref{fig:f15b}). The absolute prevention rate is moderate rather than perfect (the attacker still compromises in a non-trivial share of held-out episodes) and the oracle ceiling ($\sim\OracleCeiling$) sits well above the best learned policy's $\AlphaFourATwoC$--$\AlphaSixATwoC$ range, confirming that the learned policy captures only part of the oracle's value. The contribution is therefore the \emph{relative} advantage over the deployable baseline and the \emph{cost of partial observability} quantified by the oracle gap, not a claim of near-perfect absolute security. A memoryless classifier captures almost none of that value under aliasing ($\leq \FfifteenRFPreventionHigh$ OOD prevention), which is the gap the sequential policy closes. We tested this formally. Neither the rank correlation between per-class RF recall and the prevention advantage (Spearman $\rho = \FfifteenSpearmanRho$, $p = \FfifteenSpearmanP$) nor the linear correlation (Pearson $r = \FfifteenPearsonR$, $p = \FfifteenPearsonP$) is statistically significant, and a nonparametric bootstrap 95\% confidence interval for the ordinary-least-squares slope spans zero ($[\FfifteenOLSSlopeCILow, \FfifteenOLSSlopeCIHigh]$). There is therefore no detectable trend in either direction --- and in particular no \emph{negative} trend, which is the direction the blind-spot hypothesis would require. With $n=10$ classes this test is underpowered to confirm independence; however, the blind-spot hypothesis predicts a \emph{negative} trend (lower detector recall should erode the RL advantage), and no such trend is present in the data. This is the opposite of what the ``RL merely rescues the detector's blind spots'' hypothesis predicts, which would have the advantage shrinking toward zero on the well-detected classes. Concretely, the advantage on \texttt{DoS-SYN\_Flood}, where the RandomForest's recall is $\FfifteenSynFloodRecall$ ($\FfifteenSynFloodAdvantage$), is comparable to that on \texttt{VulnerabilityScan}, where its recall is just $\FfifteenVulnScanRecall$ ($\FfifteenVulnScanAdvantage$). Under this $n=10$ class feature-injection study, the result is evidence against the blind-spot explanation rather than confirmation of detector-independent robustness in all deployment settings.
+\paragraph{A held-out class prevention advantage that does not track detector recall.} On all ten held-out classes, the best windowed RL agent (A2C at the headline aliasing rate) prevents between $\FfifteenBestRLPreventionLow$ and $\FfifteenBestRLPreventionHigh$ of attacks, whereas the detector-coupled RF-Acting baseline prevents between $\FfifteenRFPreventionLow$ and $\FfifteenRFPreventionHigh$. The best-RL-minus-RF prevention advantage is positive on every class, ranging from $\FfifteenAdvantageLow$ to $\FfifteenAdvantageHigh$, and (this is the key observation) it does \emph{not} diminish as the detector's recall improves. The absolute prevention rate is moderate rather than perfect (the attacker still compromises in a non-trivial share of held-out episodes) and the oracle ceiling ($\sim\OracleCeiling$) sits well above the best learned policy's $\AlphaFourATwoC$--$\AlphaSixATwoC$ range, confirming that the learned policy captures only part of the oracle's value. The contribution is therefore the \emph{relative} advantage over the deployable baseline and the \emph{cost of partial observability} quantified by the oracle gap, not a claim of near-perfect absolute security. A memoryless classifier captures almost none of that value under aliasing ($\leq \FfifteenRFPreventionHigh$ OOD prevention), which is the gap the sequential policy closes. We tested this formally. Neither the rank correlation between per-class RF recall and the prevention advantage (Spearman $\rho = \FfifteenSpearmanRho$, $p = \FfifteenSpearmanP$) nor the linear correlation (Pearson $r = \FfifteenPearsonR$, $p = \FfifteenPearsonP$) is statistically significant, and a nonparametric bootstrap 95\% confidence interval for the ordinary-least-squares slope spans zero ($[\FfifteenOLSSlopeCILow, \FfifteenOLSSlopeCIHigh]$). There is therefore no detectable trend in either direction --- and in particular no \emph{negative} trend, which is the direction the blind-spot hypothesis would require. With $n=10$ classes this test is underpowered to confirm independence; however, the blind-spot hypothesis predicts a \emph{negative} trend (lower detector recall should erode the RL advantage), and no such trend is present in the data. This is the opposite of what the ``RL merely rescues the detector's blind spots'' hypothesis predicts, which would have the advantage shrinking toward zero on the well-detected classes. Concretely, the advantage on \texttt{DoS-SYN\_Flood}, where the RandomForest's recall is $\FfifteenSynFloodRecall$ ($\FfifteenSynFloodAdvantage$), is comparable to that on \texttt{VulnerabilityScan}, where its recall is just $\FfifteenVulnScanRecall$ ($\FfifteenVulnScanAdvantage$). Under this $n=10$ class feature-injection study, the result is evidence against the blind-spot explanation rather than confirmation of detector-independent robustness in all deployment settings.
 
 \paragraph{Why RF-Acting fails to prevent, even where it sees well.} The explanation is structural rather than perceptual. Under the proximity-coupled dynamics, \emph{prevention} requires sustained, well-timed proportional force that holds the attacker below the impact stage for the entire horizon. A memoryless per-flow classifier commits to one action per row and, even when its stage prediction is correct, plays a largely passive action mix: across the held-out classes RF-Acting chooses observation or logging on roughly two-thirds of steps, which lets the attacker advance to impact. It then blocks on the impact step itself and so registers ``mitigated'' rather than ``prevented''. The same pattern holds in-distribution, where RF-Acting prevents only a small fraction of episodes while PPO prevents a majority. Prevention is therefore a temporal-control property that a per-flow classifier cannot express under this reactive tug-of-war model, regardless of how accurately it labels any single flow. This is the sharpest form of the central thesis: the deployment value of acting directly on raw feature sequences is not per-flow labeling accuracy alone but the ability to exert sustained, proportionate control that a one-shot classifier structurally cannot.
 
