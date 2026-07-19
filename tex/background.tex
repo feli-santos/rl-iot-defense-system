@@ -71,7 +71,7 @@ For environments with large or continuous state spaces, like an IoT network, tab
 DQN is a value-based, off-policy algorithm that uses an artificial neural network with weights $\theta$ to approximate the action-value function, $Q(s, a; \theta) \approx Q^*(s, a)$ \cite{Mnih2015}. The network is typically a multi-layer perceptron with two hidden layers of 64--256 units each and rectified linear unit (ReLU) activations, taking the state as input and outputting one Q-value per action. To stabilize learning, DQN introduces two critical mechanisms:
 \begin{itemize}
     \item \textbf{Experience Replay:} Experiences $(s_t, a_t, r_t, s_{t+1})$ are stored in a large replay buffer. The network is trained on mini-batches randomly sampled from this buffer, which breaks temporal correlations in the data.
-    \item \textbf{Fixed Target Network:} A separate, periodically updated target network with parameters $\theta^-$ is used to generate stable target values for the Bellman equation, preventing oscillations during training. The target network can be updated either \emph{hard} (copying the online network's parameters every $N$ steps) or \emph{soft} (polyak averaging, $\theta^- \leftarrow \tau\theta + (1-\tau)\theta^-$ at every step); the original DQN uses hard updates, and soft updates are a common later refinement. The loss function is the Mean Squared Bellman Error:
+    \item \textbf{Fixed Target Network:} A separate, periodically updated target network with parameters $\theta^-$ is used to generate stable target values for the Bellman equation, preventing oscillations during training. The target network can be updated either \emph{hard} (copying the online network's parameters every $N$ steps) or \emph{soft} (polyak averaging, $\theta^- \leftarrow \eta_{\mathrm{targ}}\theta + (1-\eta_{\mathrm{targ}})\theta^-$ at every step); the original DQN uses hard updates, and soft updates are a common later refinement. The loss function is the Mean Squared Bellman Error:
     \begin{equation}\label{eq:dqn_loss}
     L(\theta) = \mathbb{E}_{(s,a,r,s') \sim \mathcal{D}} \left[ \left( \underbrace{r + \gamma \max_{a'} Q(s', a'; \theta^-)}_{\text{Target Q-value}} - \underbrace{Q(s, a; \theta)}_{\text{Predicted Q-value}} \right)^2 \right].
     \end{equation}
@@ -95,7 +95,7 @@ Algorithm~\ref{alg:dqn} summarizes the DQN training loop.
         \STATE Sample minibatch $\{(s_j, a_j, r_j, s'_j)\}_{j=1}^{B}$ from $\mathcal{D}$
         \STATE Compute targets $y_j \leftarrow r_j + \gamma \max_{a'} Q(s'_j, a'; \theta^-)$
         \STATE Update $\theta$ by gradient descent on $\frac{1}{B}\sum_j (y_j - Q(s_j, a_j; \theta))^2$
-        \STATE Every $C$ steps (or softly each step) update $\theta^- \leftarrow \theta$ (or $\theta^- \leftarrow \tau\theta + (1-\tau)\theta^-$)
+        \STATE Every $C$ steps (or softly each step) update $\theta^- \leftarrow \theta$ (or $\theta^- \leftarrow \eta_{\mathrm{targ}}\theta + (1-\eta_{\mathrm{targ}})\theta^-$)
     \ENDFOR
 \ENDFOR
 \end{algorithmic}
@@ -106,7 +106,7 @@ A2C is a synchronous variant of the foundational Asynchronous Advantage Actor-Cr
 \begin{equation}\label{eq:a2c_loss}
 L_{\text{A2C}}(\theta, \phi) \;=\; \underbrace{-\log \pi_\theta(a_t \mid s_t)\,\hat{A}_t}_{\text{actor (policy gradient)}} \;+\; \underbrace{c_v\big(V_\phi(s_t) - \hat{R}_t\big)^2}_{\text{critic (value regression)}} \;-\; \underbrace{c_{\mathrm{ent}}\, H\big(\pi_\theta(\cdot \mid s_t)\big)}_{\text{entropy bonus}},
 \end{equation}
-where $c_v$ is the value-loss coefficient, $\hat{R}_t$ a return estimate, and $c_{\mathrm{ent}}$ the entropy coefficient. A2C typically employs multiple parallel workers that collect experience simultaneously; these experiences are then aggregated to compute a single synchronous gradient update for both actor and critic. While often faster to converge than PPO on simpler problems, it can be markedly less stable on standard benchmarks --- a general-literature characterization that is revisited in Chapter~\ref{cap:results}. Algorithm~\ref{alg:a2c} summarizes the A2C training loop.
+where $c_v$ is the value-loss coefficient, $\hat{R}_t$ a return estimate, and $c_{\mathrm{ent}}$ the entropy coefficient. The return estimate $\hat{R}_t$ is algorithm-specific: for A2C it is the one-step bootstrap return $\hat{R}_t = r_t + \gamma V_\phi(s_{t+1})$ (Algorithm~\ref{alg:a2c}), whereas for PPO it is the GAE-based return $\hat{R}_t = \hat{A}_t + V_\phi(s_t)$ (Eq.~\eqref{eq:ppo_vf}, Algorithm~\ref{alg:ppo}). A2C typically employs multiple parallel workers that collect experience simultaneously; these experiences are then aggregated to compute a single synchronous gradient update for both actor and critic. While often faster to converge than PPO on simpler problems, it can be markedly less stable on standard benchmarks --- a general-literature characterization that is revisited in Chapter~\ref{cap:results}. Algorithm~\ref{alg:a2c} summarizes the A2C training loop.
 
 \begin{algorithm}[!htbp]
 \caption{Advantage Actor-Critic (A2C) --- synchronous training loop \cite{Mnih2016}}
@@ -135,9 +135,9 @@ r_t(\theta) = \frac{\pi_\theta(a_t \mid s_t)}{\pi_{\theta_{\text{old}}}(a_t \mid
 \end{equation}
 and $\hat{A}_t$ the estimated advantage, computed with Generalized Advantage Estimation (GAE) \cite{Schulman2016}:
 \begin{equation}\label{eq:gae}
-\hat{A}_t \;=\; \sum_{l=0}^{T-t-1} (\gamma \lambda)^{l}\, \delta_{t+l}, \qquad \delta_t \;=\; r_t + \gamma V_\phi(s_{t+1}) - V_\phi(s_t),
+\hat{A}_t \;=\; \sum_{l=0}^{T-t-1} (\gamma \lambda_{\text{GAE}})^{l}\, \delta_{t+l}, \qquad \delta_t \;=\; r_t + \gamma V_\phi(s_{t+1}) - V_\phi(s_t),
 \end{equation}
-where $\lambda \in [0,1]$ is the GAE bias-variance trade-off parameter. The PPO actor loss is the clipped surrogate
+where $\lambda_{\text{GAE}} \in [0,1]$ is the GAE bias-variance trade-off parameter. The PPO actor loss is the clipped surrogate
 \begin{equation}\label{eq:ppo_clip}
 L^{\mathrm{CLIP}}(\theta) = \hat{\mathbb{E}}_t \left[ \min \left( r_t(\theta)\hat{A}_t,\; \mathrm{clip}\!\left(r_t(\theta), 1-\epsilon, 1+\epsilon\right)\hat{A}_t \right) \right],
 \end{equation}
@@ -155,7 +155,7 @@ This approach prevents destructive policy updates and is known for its reliabili
 \caption{Proximal Policy Optimization (PPO) --- training loop \cite{Schulman2017}}
 \label{alg:ppo}
 \begin{algorithmic}
-\REQUIRE clip range $\epsilon$, value coefficient $c_v$, entropy coefficient $c_{\mathrm{ent}}$, discount $\gamma$, GAE parameter $\lambda$, rollout length $n_{\text{steps}}$, epochs per update $K$, minibatch size $B$
+\REQUIRE clip range $\epsilon$, value coefficient $c_v$, entropy coefficient $c_{\mathrm{ent}}$, discount $\gamma$, GAE parameter $\lambda_{\text{GAE}}$, rollout length $n_{\text{steps}}$, epochs per update $K$, minibatch size $B$
 \STATE Initialize actor $\pi_\theta$ and critic $V_\phi$ with random weights
 \FOR{each iteration}
     \STATE Collect rollout $\{(s_t, a_t, r_t, s_{t+1})\}_{t=0}^{n_{\text{steps}}-1}$ using $\pi_{\theta_{\text{old}}}$

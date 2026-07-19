@@ -135,7 +135,7 @@ Max gradient norm        & 0.50  & 0.50  & 0.50 \\
 \bottomrule
 \end{tabularx}
 \end{table}
-\par\smallskip\noindent{\small\textit{Note: A dash (---) marks a hyperparameter that does not apply to that algorithm family. The rollout length, GAE $\lambda$, entropy and value coefficients, and epoch count are specific to the actor-critic methods (PPO/A2C), while the replay buffer, learning-starts threshold, target-update interval, and exploration schedule are specific to off-policy DQN.}}
+\par\smallskip\noindent{\small\textit{Note: A dash (---) marks a hyperparameter that does not apply to that algorithm family. The rollout length, GAE $\lambda_{\text{GAE}}$, entropy and value coefficients, and epoch count are specific to the actor-critic methods (PPO/A2C), while the replay buffer, learning-starts threshold, target-update interval, and exploration schedule are specific to off-policy DQN.}}
 
 \paragraph{Network architecture.} All three algorithms use the Stable Baselines3 \texttt{MlpPolicy}, a multi-layer perceptron with two hidden layers of 64 units each and ReLU activations, shared across policy and value networks for PPO/A2C and used as the Q-network for DQN. The same architecture is used across all seeds and algorithms to isolate the learning-rule comparison from network-capacity effects.
 
