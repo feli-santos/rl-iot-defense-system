@@ -127,7 +127,7 @@
 % --- RL Agent ---
 \node[envBox, fill=colOnline,
       below=1.6cm of env] (agent) {
-  \textbf{Blue-Team Agent}\\[3pt]
+  \textbf{Blue-Team Agent (Defender)}\\[3pt]
    DQN / PPO / A2C\\
    (Stable Baselines3\\
     MlpPolicy)\\[3pt]
@@ -171,20 +171,23 @@
 \node[font=\small, text=colBorder, anchor=west]
     at ([xshift=3pt,yshift=-0.22cm]detector.south) {eval-time};
 
-% Realizer ↔ Env
-\draw[arr] (realizer.east) -- node[above, font=\small]{obs} (env.west);
+% Realizer → Env (sampled feature rows feed the environment)
+\draw[arr] (realizer.east) -- node[above, font=\small]{features} (env.west);
 
-% Env ↔ Reward
+% Env → Reward (transition consequence)
 \draw[arr] (env.east) -- node[above, font=\small]{$(s_t,a_t)$} (reward.west);
+
+% Reward → Agent (scalar reward)
 \draw[arr] (reward.south) |- (agent.east)
-    node[near start, right, font=\small]{$r_t$};
+    node[near end, above, font=\small]{$r_t$};
 
-% Env → Agent
-\draw[arr] (env.south) -- node[midway, right, font=\small]{obs} (agent.north);
+% Env → Agent (observation, left half of the vertical channel)
+\draw[arr] ([xshift=-0.35cm]env.south) -- node[left, font=\small]{$o_t$}
+    ([xshift=-0.35cm]agent.north);
 
-% Agent → Env (action)
-\draw[arr] (agent.west) -| (realizer.south)
-    node[pos=0.62, left, font=\small, inner sep=3pt]{$a_t$};
+% Agent → Env (action, right half of the vertical channel)
+\draw[arr] ([xshift=0.35cm]agent.north) -- node[right, font=\small]{$a_t$}
+    ([xshift=0.35cm]env.south);
 
 % Online loop to benchmark
 \draw[arr] ([yshift=-2pt]stageII.south) -- (bench.north);
@@ -194,7 +197,7 @@
 %% ==============================================================
 \node[font=\small, align=left, text=colBorder,
       below right=2pt and 0pt of stageII.south west, anchor=north west] {
-  obs = \{features, history, action hist\}
+  $o_t$ = \{features, history, action hist\}
 };
 \node[groupLabel, below left=2pt and 0pt of stageII.south east,
       anchor=north east] {Online RL Training Loop};
