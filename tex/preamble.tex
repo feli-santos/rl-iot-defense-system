@@ -93,6 +93,21 @@
 \graphicspath{{eps/}{figs/}{cap1/}}
 \DeclareGraphicsExtensions{.pdf,.png,.eps,.jpg}
 
+% ---
+% Float-placement tuning: allow more floats per page so LaTeX does not
+% strand a single figure on an otherwise empty page. Placement is still
+% left to LaTeX (floats keep [!htbp]/[!htb]; no forced [H]).
+% ---
+\renewcommand{\topfraction}{0.9}        % up to 90% of a page top may be floats
+\renewcommand{\bottomfraction}{0.9}     % up to 90% of a page bottom may be floats
+\renewcommand{\textfraction}{0.1}       % require only 10% text on a mixed page
+\renewcommand{\floatpagefraction}{0.75} % a float page must be >=75% full
+\renewcommand{\dbltopfraction}{0.9}     % same, for full-width (starred) floats
+\renewcommand{\dblfloatpagefraction}{0.75}
+\setcounter{topnumber}{3}               % up to 3 floats at the top of a page
+\setcounter{bottomnumber}{2}            % up to 2 floats at the bottom
+\setcounter{totalnumber}{4}             % up to 4 floats on a single page
+
 % Line-breaking relief: lets TeX absorb the few minor overfull boxes caused by
 % unbreakable long \texttt{} tokens (file paths, class names) without loosening
 % body text or altering any wording.
