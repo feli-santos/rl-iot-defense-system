@@ -33,6 +33,11 @@
 % The agradecimentos environment is Portuguese front matter; keep its
 % title in Portuguese despite the English main language.
 \renewcommand{\agradecimentosname}{Agradecimentos}
+% The folha de rosto is Portuguese front matter; \selectlanguage{english}
+% resets the advisor label to "Supervisor:". Restore the Portuguese
+% "Orientador"/"Coorientador" labels so they match the folha de aprovacao.
+\renewcommand{\orientadorname}{Orientador:}
+\renewcommand{\coorientadorname}{Coorientador:}
 
 % Retira espa\c{c}o extra obsoleto entre as frases.
 \frenchspacing
@@ -98,8 +103,8 @@
 
             \vspace*{2\onelineskip}
 
-            Prof. Dr. Fernando J. Von Zuben\\
-            UNICAMP
+            Prof. Dr. Alexandre da Silva Sim\~{o}es\\
+            UNESP
 
             \vspace*{2\onelineskip}
 
@@ -143,29 +148,30 @@ tornam ineficazes as soluções tradicionais, motivando mecanismos de defesa
 adaptativos e autônomos. Esta dissertação projeta, implementa e avalia um
 arcabouço de defesa adaptativo ciente da cadeia de eliminação cibernética
 (\emph{kill-chain-aware}) para redes IoT, baseado em Aprendizado por Reforço
-Profundo (DRL) e avaliado a partir de linhas de características reais do
+Profundo (DRL) e avaliado a partir de características reais do
 \emph{dataset} CICIoT2023 amostradas em uma trajetória de \emph{kill chain}
-simulada sobre cinco estágios. O adversário reage à força do defensor num
-\emph{cabo de guerra} sobre a cadeia. De forma central, a defesa é formulada
+simulada sobre cinco estágios. O adversário, que realiza o ataque à rede IoT,
+reage à força do defensor num \emph{cabo de guerra} sobre a cadeia. De forma central, a defesa é formulada
 como um problema genuíno de \emph{observabilidade parcial}: o defensor nunca
 observa o verdadeiro estágio, de modo que este só pode ser inferido ao longo de
-uma janela temporal. Treinamos agentes de RL com janela (PPO e A2C, com DQN
+uma janela temporal. Treinamos agentes de DRL com janela (PPO e A2C, com DQN
 como \emph{baseline} \emph{off-policy}) e os comparamos a uma Floresta
-Aleatória acoplada a detector (RF-Acting), a um oráculo de observabilidade
-total e a políticas triviais. Três resultados sustentam a contribução: (i) à
-medida que a ambiguidade da observação aumenta, o classificador por fluxo
+Aleatória (RF, do inglês \textit{Random Forest}) acoplada a detector
+(RF-Acting), a um oráculo de observabilidade total e a políticas triviais. Três resultados sustentam a contribução: (i) à
+medida que a ambiguidade da observação aumenta, o classificador supervisionado
 degrada monotonicamente enquanto o PPO permanece estável, empatando no regime
-sem ambiguidade e superando a RF com intervalos de confiança disjuntos a
-partir do ponto de operação principal; (ii) uma ablação de recompensa mostra
+sem ambiguidade e superando a RF a partir do ponto de operação principal;
+(ii) uma ablação de recompensa mostra
 que o melhor agente de RL supera a RF em ambos os regimes, refutando a objeção
 de informação privilegiada; (iii) sob distribuição deslocada (dez classes de
-ataque retidas), o melhor agente de RL com janela previne uma fração maior de
+ataque não disponíveis no treinamento), o melhor agente de RL com janela
+previne uma fração maior de
 ataques em todas as classes, sem dependência detectável da acurácia do
 detector. Ambos os algoritmos \emph{on-policy} (PPO e A2C) treinam de forma
 confiável sob a recompensa esparsa, com desvio-padrão entre sementes
 substancialmente menor que o do DQN, e o A2C
 atinge o maior retorno de \emph{best-checkpoint} na taxa de \emph{aliasing}
-principal; o DQN \emph{off-policy}, sem modelagem por etapa, degrada-se a
+principal; o DQN \emph{off-policy}, sem modelagem por etapa, degrada-se para um
 retorno negativo com variância várias vezes maior, de modo que a vantagem
 \emph{on-policy} é de estabilidade de treinamento, não de retorno máximo.
 Todos os resultados são acompanhados de intervalos de confiança por
@@ -301,6 +307,7 @@ bootstrap confidence intervals and a reproducible artifact chain.
   \item[$\mathbb{E}$]             Expectation operator
   \item[$\hat{\mathbb{E}}_t$]     Empirical (per-step) expectation (PPO)
   \item[$H(\pi_{\theta})$]      Policy entropy regularization term (A2C, PPO)
+  \item[$h_t$]                    History of observed stages and actions up to step $t$ (component of the latent state)
   \item[$L(\theta)$]              DQN squared TD-error loss
   \item[$L^{\mathrm{CLIP}}(\theta)$] PPO clipped surrogate loss
   \item[$n$]                      Sample size ($n=300$ episodes per policy; $n=10$ held-out classes)
