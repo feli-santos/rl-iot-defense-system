@@ -281,6 +281,8 @@ bootstrap confidence intervals and a reproducible artifact chain.
   \item[$\alpha$]                 Observation-aliasing rate (probability a step emits a feature row from a stage adjacent to the true one)
   \item[$\beta$]                  Benign false-positive-rate penalty coefficient (disabled by default)
   \item[$\gamma$]                 Discount factor
+  \item[$\delta_t$]               Temporal-difference (TD) error, $\delta_t = r_t + \gamma V_{\phi}(s_{t+1}) - V_{\phi}(s_t)$ (GAE)
+  \item[$\Delta x_t$]             Temporal delta of the feature row, $\Delta x_t = x_t - x_{t-1} \in \mathbb{R}^{29}$
   \item[$\epsilon$]               PPO clipping parameter (also DQN exploration coefficient)
   \item[$\kappa$]                 Action-cost scale
   \item[$\lambda$]                Attacker proximity to the impact stage ($\lambda = s/4$)
@@ -294,9 +296,11 @@ bootstrap confidence intervals and a reproducible artifact chain.
   \item[$\eta_{\mathrm{targ}}$]   Target-network soft-update (Polyak) coefficient (DQN)
   \item[$\tau$]                   Episode trajectory $\tau = (o_1, a_1, r_1, \dots, o_T, a_T, r_T)$
   \item[$\psi_{\text{kc}}$]       Kill-chain projection map ($34$ CICIoT2023 labels $\to$ $5$ stages)
-  \item[$\phi$]                   Feature-extraction map $\phi: x_{t-w+1:t} \mapsto o_t \in \mathbb{R}^{290}$ (window stack of feature rows)
-  \item[$A$]                      Action set $\{\textsc{observe},\textsc{log},\textsc{restrict},\textsc{block},\textsc{isolate}\} = \{0,1,2,3,4\}$
+  \item[$\phi$]                   Feature-extraction map $\phi: x_{t-w+1:t} \mapsto o_t \in \mathbb{R}^{290}$ (window stack of feature rows); also denotes the critic-network parameters in $V_{\phi}$
+  \item[$V_{\phi}$]               Critic (value) network with parameters $\phi$ (A2C, PPO)
+  \item[$A$]                      Action set $\{\textsc{observe}, \textsc{log}, \textsc{restrict}, \textsc{block}, \textsc{isolate}\} = \{0,1,2,3,4\}$
   \item[$A_t$]                    Action random variable at step $t$
+  \item[$A^{\pi}(s,a)$]           Advantage function, $A^{\pi} = Q^{\pi} - V^{\pi}$
   \item[$\hat{A}_t$]              Estimated advantage at step $t$ (A2C, PPO)
   \item[$a'$]                     Next action (Bellman backup)
   \item[$b(s)$]                   Belief state: posterior distribution over latent states given the observation history
@@ -313,14 +317,20 @@ bootstrap confidence intervals and a reproducible artifact chain.
   \item[$\hat{\mathbb{E}}_t$]     Empirical (per-step) expectation (PPO)
   \item[$H(\pi_{\theta})$]      Policy entropy regularization term (A2C, PPO)
   \item[$h_t$]                    History of observed stages and actions up to step $t$ (component of the latent state)
+  \item[$\ell$]                   Original CICIoT2023 label index, $\ell \in \{1, \dots, 34\}$ (input to $\psi_{\text{kc}}$)
   \item[$L(\theta)$]              DQN squared TD-error loss
   \item[$L^{\mathrm{CLIP}}(\theta)$] PPO clipped surrogate loss
+  \item[$L^{\mathrm{VF}}(\phi)$]  PPO critic (squared value-error) loss
+  \item[$L^{\mathrm{PPO}}(\theta,\phi)$] Full PPO objective (clipped actor $+$ value $+$ entropy)
+  \item[$L_{\text{A2C}}(\theta,\phi)$] Combined A2C loss (actor $+$ critic $+$ entropy)
   \item[$n$]                      Sample size ($n=300$ episodes per policy; $n=10$ held-out classes)
   \item[$\mathcal{O}$]            Observation space of the POMDP
   \item[$o_t$]                    Observation at step $t$; $o_t = \phi(x_{t-w+1:t}) \in \mathbb{R}^{290}$ (windowed feature stack)
   \item[$P$]                      State-transition probability function, $P(s' \mid s, a)$
   \item[$P_{\mathrm{prev}}$]      Prevention rate, $\Pr(\max_{t} s_t < \textsc{impact})$
   \item[$p$]                      Statistical significance ($p$-value)
+  \item[$p_{\text{data}}(x \mid s)$] Empirical per-stage feature distribution (own-stage component of $Z$)
+  \item[$\widetilde{p}_{\text{data}}(x \mid s)$] Adjacent-stage feature distribution ($\alpha$-weighted aliasing component of $Z$)
   \item[$p_{\text{up}}$]          Base attacker escalation probability
   \item[$p_{\text{up}}^{\text{eff}}$] Proximity-scaled effective escalation probability
   \item[$p_{\text{down}}$]        Attacker de-escalation probability
@@ -337,6 +347,7 @@ bootstrap confidence intervals and a reproducible artifact chain.
   \item[$Q^{*}(s,a)$]             Optimal action-value function
   \item[$R$]                      Reward function
   \item[$R_t$]                    Per-step reward (sum of the six components)
+  \item[$R^{\mathrm{term}}$]      Terminal-\textsc{impact} reward accounting block
   \item[$R_{t+k+1}$]              Reward at future step $t{+}k{+}1$ (Bellman return)
   \item[$\hat{R}_t$]            Return estimate used in the A2C/PPO critic loss (one-step bootstrap for A2C; GAE-based for PPO)
   \item[$r_t(\theta)$]            PPO probability ratio between new and old policy
@@ -349,8 +360,11 @@ bootstrap confidence intervals and a reproducible artifact chain.
   \item[$s_t$]                    Latent kill-chain stage at decision time $t$ (hidden from the defender; accessed only by the oracle)
   \item[$s^{\text{stage}}_t$]     True (latent) kill-chain stage at step $t$
   \item[$S_t$]                    State random variable at step $t$
+  \item[$T$]                      Episode horizon (trajectory length)
   \item[$V^{\pi}(s)$]             State-value function under policy $\pi$
   \item[$w$]                      History window size ($w=5$)
+  \item[$x_t$]                    Raw per-flow CICIoT2023 feature row at step $t$, $x_t \in \mathbb{R}^{29}$
+  \item[$\mathcal{X}_s$]          Per-stage empirical feature-row set, $\mathcal{X}_s = \{x_i : \psi_{\text{kc}}(\ell_i) = s\}$
   \item[$Z$]                      Observation model of the POMDP, $Z(o \mid s', a)$
   \item[$\mathrm{lr}$]            Learning rate
   \item[$n_{\text{steps}}$]       On-policy rollout length (PPO, A2C)

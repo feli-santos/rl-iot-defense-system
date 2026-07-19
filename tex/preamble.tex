@@ -36,6 +36,10 @@
 \usepackage{lmodern}			      % Usa a fonte Latin Modern			
 \usepackage[T1]{fontenc}		    % Selecao de codigos de fonte.
 \usepackage[utf8]{inputenc}		  % Codificacao do documento (convers\~{a}o autom\'{a}tica dos acentos)
+% Latin Modern ships no bold-extended small-caps face (T1/lmr/bx/sc); declare a
+% silent substitution to the bold-extended upright shape so bold small-caps
+% (e.g. \textbf{\textsc{...}}) renders bold without emitting a font-shape warning.
+\DeclareFontShape{T1}{lmr}{bx}{sc}{<->ssub*lmr/bx/n}{}
 \usepackage{lastpage}			      % Usado pela Ficha catalogr\'{a}fica
 \usepackage{indentfirst}		    % Indenta o primeiro par\'{a}grafo de cada se\c{c}\~{a}o.
 \usepackage{color}				      % Controle das cores
@@ -167,6 +171,8 @@
     filecolor=magenta,      	% color of file links
 		urlcolor=blue,
 %		linkbordercolor={1 1 1},	% set to white
+		plainpages=false,			% distinct PDF page anchors across \pagenumbering resets (roman front matter -> arabic main matter)
+		hypertexnames=false,		% derive page anchors from the physical page counter, eliminating duplicate name{page.N} destinations
 		bookmarksdepth=4
 }
 \makeatother

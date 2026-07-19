@@ -36,7 +36,7 @@ Reinforcement Learning (RL) is a computational paradigm focused on goal-directed
 An MDP provides a formal model for sequential decision-making under uncertainty. The core principle is the \textbf{Markov Property}, which asserts that the current state contains all information from the history necessary for optimal decisions, so previous states need not be consulted \cite{Sutton2018}. An MDP is defined as a five-tuple $(S, A, P, R, \gamma)$:
 \begin{itemize}
     \item $\boldsymbol{S}$: A set of states, representing all possible configurations of the environment.
-    \item $\boldsymbol{A}$: A set of actions available to the agent. For this work, $A$ is the five-action defender menu derived from the kill chain in Section~\ref{sec:kill_chain}: $A = \{\textsc{observe}, \textsc{log}, \textsc{restrict}, \textsc{block}, \textsc{isolate}\}$, ordered by escalating defensive force and operational disruption.
+    \item $\boldsymbol{A}$: A set of actions available to the agent. For this work, $A$ is the five-action defender menu derived from the kill chain in Section~\ref{sec:kill_chain}: $A = \{\textsc{observe},\allowbreak \textsc{log},\allowbreak \textsc{restrict},\allowbreak \textsc{block},\allowbreak \textsc{isolate}\}$, ordered by escalating defensive force and operational disruption.
     \item $\boldsymbol{P}$: The state transition probability function, $P(s' \mid s, a) = \Pr(S_{t+1}=s' \mid S_t=s, A_t=a)$, defining the dynamics of the environment.
     \item $\boldsymbol{R}$: The reward function, $R(s, a, s')$, which provides the immediate numerical feedback for transitioning from $s$ to $s'$ via action $a$. The full as-built reward used in this dissertation is detailed in Section~\ref{sec:rl_environment}.
     \item $\boldsymbol{\gamma}$: The discount factor ($0 \leq \gamma \leq 1$), which prioritizes immediate rewards over future ones.
@@ -200,17 +200,17 @@ Table~\ref{tab:related_work_comparison} positions the most closely related prior
 \newcolumntype{Y}{>{\raggedright\arraybackslash}X}
 \begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{1.6cm} Y Y Y Y Y Y@{}}
 \toprule
-\textbf{System} & \textbf{Environment} & \textbf{Action space} & \textbf{Dataset} & \textbf{Deployable?} & \textbf{Head-to-head?} & \textbf{Partial-obs.\ stress?} \\
+\textbf{System} & \textbf{Environ\-ment} & \textbf{Action space} & \textbf{Dataset} & \textbf{Deployable?} & \textbf{Head-to-head?} & \textbf{Partial-obs.\ stress?} \\
 \midrule
-IoTWarden \cite{Alam2024} & Synthetic trigger-action (IFTTT applets) & Disable/enable applet rules & Synthetic rule logs & Yes & No & No \\
+IoT\-Warden \cite{Alam2024} & Synthetic trigger-action (IFTTT applets) & Disable\slash\allowbreak enable applet rules & Synthetic rule logs & Yes & No & No \\
 \addlinespace
-RESTRAIN \cite{Alam2025} & Synthetic trigger-action (multi-agent) & Multi-agent defense actions & Synthetic rule logs & Yes (response) & No & No \\
+RE\-STRAIN \cite{Alam2025} & Synthetic trigger-action (multi-agent) & Multi-agent defense actions & Synthetic rule logs & Yes (response) & No & No \\
 \addlinespace
-RL-IoTIDS \cite{Odeh2026} & CICIoT2023 flow classification & 33-class attack label & CICIoT2023 + IoT-DIAD 2024 & Yes (classification, not response) & Yes (vs SVM/RF/DL; F1 only) & No \\
+RL-IoTIDS \cite{Odeh2026} & CICIoT2023 flow classification & 33-class attack label & CIC\-IoT\-2023 + IoT-DIAD 2024 & Yes (classification, not response) & Yes (vs SVM\slash\allowbreak RF\slash\allowbreak DL; F1 only) & No \\
 \addlinespace
 HoneyIoT \cite{Guan2023} & Simulated honeypot & Alter service offerings & Synthetic attacker model & Yes (deception, not response) & No & No \\
 \addlinespace
-\textbf{This work} & \textbf{Real CICIoT2023 feature rows (105 IoT devices) in a simulated trajectory} & \textbf{5-action kill-chain defender} & \textbf{CICIoT2023 \cite{Neto2023}} & \textbf{Yes} & \textbf{Yes (oracle, RF-Acting, 3 trivials; \NumSeeds{} seeds; bootstrap CIs)} & \textbf{Yes (aliasing rate $\alpha$)} \\
+\textbf{This work} & \textbf{Real CICIoT2023 feature rows (105 IoT devices) in a simulated trajectory} & \textbf{5-action kill-chain defender} & \textbf{CIC\-IoT\-2023 \cite{Neto2023}} & \textbf{Yes} & \textbf{Yes (oracle, RF-Acting, 3 trivials; \NumSeeds{} seeds; bootstrap CIs)} & \textbf{Yes (aliasing rate $\alpha$)} \\
 \bottomrule
 \end{tabularx}
 \end{table}
