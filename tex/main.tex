@@ -157,13 +157,13 @@ observa o verdadeiro estágio, de modo que este só pode ser inferido ao longo d
 uma janela temporal. Treinamos agentes de DRL com janela (PPO e A2C, com DQN
 como \emph{baseline} \emph{off-policy}) e os comparamos a uma Floresta
 Aleatória (RF, do inglês \textit{Random Forest}) acoplada a detector
-(RF-Acting), a um oráculo de observabilidade total e a políticas triviais. Três resultados sustentam a contribução: (i) à
+(RF-Acting), a um oráculo de observabilidade total e a políticas triviais. Três resultados sustentam a contribuição: (i) à
 medida que a ambiguidade da observação aumenta, o classificador supervisionado
 degrada monotonicamente --- chegando a ser prejudicial (\emph{net-harmful}) ---
 enquanto o PPO permanece estável, empatando no regime sem ambiguidade e
-superando a RF a partir do ponto de operação principal;
-(ii) uma ablação de recompensa mostra
-que o melhor agente de RL supera a RF em ambos os regimes, refutando a objeção
+superando a RF-Acting com intervalos de confiança disjuntos a partir do ponto de
+operação principal; (ii) uma ablação de recompensa mostra
+que o melhor agente de RL supera a RF-Acting em ambos os regimes, refutando a objeção
 de informação privilegiada; (iii) sob distribuição deslocada (dez classes de
 ataque não disponíveis no treinamento), o melhor agente de RL com janela
 previne uma fração maior de
@@ -175,8 +175,7 @@ atinge o maior retorno de \emph{best-checkpoint} na taxa de \emph{aliasing}
 principal; o DQN \emph{off-policy}, sem modelagem por etapa, degrada-se para um
 retorno negativo com variância várias vezes maior, de modo que a vantagem
 \emph{on-policy} é de estabilidade de treinamento, não de retorno máximo.
-Todos os resultados são acompanhados de intervalos de confiança por
-\emph{bootstrap} e de uma cadeia de artefatos reprodutível.
+Todos os resultados são totalmente reproduzíveis.
 
     \vspace{\onelineskip}
 
@@ -208,7 +207,7 @@ Random-Forest policy (RF-Acting), a full-observability oracle, and trivial
 baselines. Three results support the contribution: (i) as observation
 ambiguity rises the per-flow classifier degrades monotonically---eventually
 becoming net-harmful---while windowed PPO stays flat, tying in the unaliased
-regime and beating RF with disjoint confidence intervals from the headline
+regime and beating RF-Acting with disjoint confidence intervals from the headline
 operating point onward; (ii) a reward
 ablation shows the best RL agent beats RF-Acting under both reward regimes,
 refuting the privileged-reward objection; (iii) under distribution shift
