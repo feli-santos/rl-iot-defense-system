@@ -32,6 +32,8 @@ FSEVENTEEN = Path("docs/results/ablation/F17_summary.json")
 FFIFTEEN = Path("docs/results/ablation/F15_summary.json")
 FELEVEN = Path("docs/results/stage-detector/F11_summary.json")
 FTUNEDRF = Path("docs/results/stage-detector/tuned_rf_stage_detection.json")
+FFOUR = Path("docs/results/blue-team-training/F4_summary.json")
+BENIGNFPR = Path("docs/results/benchmark/benign_fpr.json")
 FOOTPRINT = Path("docs/results/benchmark/model_footprint.json")
 TEST_COUNT = Path("docs/results/test_count.json")
 
@@ -306,6 +308,84 @@ def _render_detector_numbers() -> list[str]:
     return lines
 
 
+def _render_detector_perclass_numbers() -> list[str]:
+    """Per-class detector macros sourced from ``F11_summary.json``.
+
+    Promotes the previously hand-typed detector numbers in Section 4.2 to
+    macros so they stay mechanically tied to the tuned RandomForest artifact:
+
+      - The seven out-of-distribution per-class recalls in the detector-OOD
+        table that were not already emitted by ``_render_ood_numbers`` (which
+        only covers DNS_Spoofing, VulnerabilityScan and DoS-SYN_Flood).
+      - The worst-case in-distribution per-class F1 (recon/access), the impact
+        F1, and the recon->access off-diagonal confusion percentage.
+    """
+    if not FELEVEN.exists():
+        return []
+    f11 = _load(FELEVEN)
+    lines: list[str] = ["% --- detector per-class recalls / F1 / confusion (F11) ---"]
+
+    recall = f11["ood_rf_recall"]
+    # Only the seven classes NOT already macro-ised via the F15 OOD helper.
+    _ood_recall_macros = {
+        "SqlInjection": "DetectorRecallSqlInjection",
+        "DDoS-SlowLoris": "DetectorRecallSlowLoris",
+        "Recon-OSScan": "DetectorRecallOSScan",
+        "XSS": "DetectorRecallXSS",
+        "DDoS-HTTP_Flood": "DetectorRecallHTTPFlood",
+        "DDoS-ACK_Fragmentation": "DetectorRecallACKFragmentation",
+        "Mirai-udpplain": "DetectorRecallMiraiUdpplain",
+    }
+    for cls, macro in _ood_recall_macros.items():
+        if cls in recall:
+            lines.append(_newcmd(macro, f"{recall[cls]:0.3f}"))
+
+    rf = f11["models"]["RandomForest"]["test_balanced"]
+    per_class_f1 = rf["per_class_f1"]
+    lines.append(_newcmd("DetectorFoneRecon", f"{per_class_f1['RECON']:0.2f}"))
+    lines.append(_newcmd("DetectorFoneAccess", f"{per_class_f1['ACCESS']:0.2f}"))
+    lines.append(_newcmd("DetectorFoneImpact", f"{per_class_f1['IMPACT']:0.3f}"))
+
+    # recon->access off-diagonal share (confusion rows are row-normalised to 1000).
+    cm = rf["confusion_matrix"]
+    recon_access = cm[1][2] / sum(cm[1]) * 100.0
+    lines.append(_newcmd("DetectorReconAccessConfusion", f"{recon_access:0.1f}"))
+    return lines
+
+
+def _render_action_and_fpr_numbers() -> list[str]:
+    """Action-share and benign false-positive macros for Section 4.4/4.5.
+
+    Sources:
+      - ``F4_summary.json`` late-checkpoint per-stage action shares, for the two
+        named strategy signatures quoted in prose (A2C block-at-maneuver, PPO
+        isolate-at-impact). These *supersede* the previously hand-typed 86.5%
+        and 12.1% figures, which had drifted from the current run.
+      - ``benign_fpr.json`` per-policy benign false-positive rate (aggressive
+        actions on benign traffic), for the benign-safety sentence.
+
+    Each source is guarded independently so a partial checkout still renders.
+    """
+    lines: list[str] = ["% --- action shares (F4) + benign FPR (benchmark) ---"]
+
+    if FFOUR.exists():
+        f4 = _load(FFOUR)
+        by_algo = f4["per_stage_at_checkpoints_by_algo"]
+        a2c_maneuver = by_algo["a2c"]["late"]["MANEUVER"][3] * 100.0
+        ppo_impact = by_algo["ppo"]["late"]["IMPACT"][4] * 100.0
+        lines.append(_newcmd("ActionShareATwoCManeuverBlock", f"{a2c_maneuver:0.1f}"))
+        lines.append(_newcmd("ActionSharePPOImpactIsolate", f"{ppo_impact:0.1f}"))
+
+    if BENIGNFPR.exists():
+        bf = _load(BENIGNFPR)["policies"]
+        lines.append(_newcmd("BenignFprPPO", f"{bf['ppo']['benign_fpr_pct']:0.2f}"))
+        lines.append(_newcmd("BenignFprDQN", f"{bf['dqn']['benign_fpr_pct']:0.2f}"))
+        lines.append(_newcmd("BenignFprATwoC", f"{bf['a2c']['benign_fpr_pct']:0.2f}"))
+        lines.append(_newcmd("BenignFprRandom", f"{bf['random']['benign_fpr_pct']:0.1f}"))
+
+    return lines
+
+
 def _render_footprint_numbers() -> list[str]:
     """Deployable model-footprint macros (edge-deployment argument).
 
@@ -423,6 +503,8 @@ def _render_numbers() -> str:
     lines.extend(_render_evasion_numbers())
     lines.extend(_render_ood_numbers())
     lines.extend(_render_detector_numbers())
+    lines.extend(_render_detector_perclass_numbers())
+    lines.extend(_render_action_and_fpr_numbers())
     lines.extend(_render_footprint_numbers())
 
     # Test count (sidecar JSON; canonical pytest count).

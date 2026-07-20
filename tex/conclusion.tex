@@ -34,7 +34,7 @@ Three findings constitute the empirical backbone of the dissertation: a partial-
 
 % --- Subsection 5.3 ---
 \section{Limitations}\label{sec:limitations}
-The work has five principal limitations, surfaced in Section~\ref{sec:discussion} and recapitulated here.
+The work has six principal limitations, surfaced in Section~\ref{sec:discussion} and recapitulated here.
 
 \paragraph{Session coherence and observation aliasing are modeling abstractions.} CICIoT2023 ships pre-aggregated flow records with no recoverable session identifier, so the session-coherent sampling and the adjacent-stage aliasing that make stage inference hard are imposed at the environment layer rather than recovered from raw traffic. The aliasing rate $\alpha$ is a controlled knob, not a measured property of a deployment. The contribution is therefore the \emph{shape} of the policies' response to partial observability, anchored by the $\alpha=0$ tie that shows no built-in RL advantage, rather than a claim about one specific operating point.
 
