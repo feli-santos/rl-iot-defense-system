@@ -23,7 +23,7 @@ Every component of the framework emits one or more \texttt{manifest.json} files 
 Component & Path & Key artifacts \\
 \midrule
 Dataset prep. & \texttt{dataset/} & \texttt{class\_distribution.png}, \texttt{stage\_distribution.png}, \texttt{dataset\_summary.json}, \texttt{manifest.json} \\
-Tug-of-war attacker & --- & Closed-form $5\times5$ transition matrix; no trained artifacts (requires no training) \\
+Reactive escalation attacker & --- & Closed-form $5\times5$ transition matrix; no trained artifacts (requires no training) \\
 Stage detector & \texttt{stage-detector/} & \texttt{tuned\_rf\_per\_class\_f1.pdf}, \texttt{tuned\_rf\_confusion.pdf}, \texttt{tuned\_rf\_stage\_detection.json}, \texttt{manifest.json} \\
 Blue-team training & \texttt{blue-team-training/} & \texttt{F3/F4\_*.pdf}, per-figure \texttt{summary.json} + \texttt{manifest.json} \\
 Alpha-curve benchmark & \texttt{ablation/} & \texttt{Falpha\_curve.pdf}, \texttt{Falpha\_summary.json}, \texttt{Falpha\_manifest.json} \\
@@ -73,7 +73,7 @@ make ablation                # reward-coupling, OOD, sensitivity
 After a full re-train the \texttt{manifest.json} files are re-emitted with new input hashes corresponding to the freshly trained checkpoints; the harness then verifies the new chain end-to-end.
 
 \section{Hardware and Environment}\label{app:hardware}
-All experiments reported in this dissertation were run on a CPU-only commodity workstation. No GPU is required: the tuned random-forest stage detector and the three DRL agents all train within minutes-to-hours on commodity CPU, and the $5\times5$ tug-of-war attacker is closed-form and requires no training. The DRL agents are trained CPU-only; the random-forest baseline uses scikit-learn's default multi-core fit (\texttt{n\_jobs}=$-1$). Software environment: Python 3.9 (CI-verified), PyTorch (CPU build), scikit-learn, Stable~Baselines3, Gymnasium. Each learned agent is trained for a fixed $5{,}000{,}000$-step budget with no early stopping, under a fully seeded pipeline that makes both training and checkpoint selection bit-reproducible from the seed. The full evaluation chain completes in a few hours on this commodity CPU, dominated by the reward-coupling sweep.
+All experiments reported in this dissertation were run on a CPU-only commodity workstation. No GPU is required: the tuned random-forest stage detector and the three DRL agents all train within minutes-to-hours on commodity CPU, and the $5\times5$ escalation attacker is closed-form and requires no training. The DRL agents are trained CPU-only; the random-forest baseline uses scikit-learn's default multi-core fit (\texttt{n\_jobs}=$-1$). Software environment: Python 3.9 (CI-verified), PyTorch (CPU build), scikit-learn, Stable~Baselines3, Gymnasium. Each learned agent is trained for a fixed $5{,}000{,}000$-step budget with no early stopping, under a fully seeded pipeline that makes both training and checkpoint selection bit-reproducible from the seed. The full evaluation chain completes in a few hours on this commodity CPU, dominated by the reward-coupling sweep.
 
 % ====================================================================
 \chapter{CICIoT2023 Label to Kill Chain Stage Mapping}\label{app:kc_mapping}
@@ -129,9 +129,10 @@ Batch size               & 64    & ---   & 64 \\
 Replay buffer            & ---   & ---   & $200{,}000$ \\
 Learning starts          & ---   & ---   & 5000 \\
 Target-update interval   & ---   & ---   & 5000 \\
+Target update $\tau$     & ---   & ---   & 1.0 \\
 Exploration fraction     & ---   & ---   & 0.20 \\
 Exploration $\varepsilon$ (init$\to$final) & --- & --- & $1.0 \to 0.05$ \\
-Max gradient norm        & 0.50  & 0.50  & 0.50 \\
+Max gradient norm        & 0.50  & 0.50  & 10 \\
 \bottomrule
 \end{tabularx}
 \end{table}

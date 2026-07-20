@@ -34,12 +34,12 @@
 \begin{document}
 \begin{tikzpicture}[node distance=2.0cm]
 
-  \node[attackBox] (attacker) {Tug-of-war\\attacker};
+  \node[attackBox] (attacker) {Reactive escalation\\attacker};
   \node[realBox, below=of attacker] (stage) {Stage $s_t$};
   \node[realBox, right=of stage, node distance=3.2cm] (real) {Realization\\engine + aliasing};
   \node[obsBox, above=of real] (obs) {Observation $o_t$\\(290-dim window)};
   \node[defBox, left=of obs, node distance=3.2cm] (defender) {Defender\\(DRL agent)};
-  \node[box, left=of stage, node distance=3.2cm, minimum width=3.2cm, minimum height=1.6cm, align=center] (kernel) {Tug-of-war\\kernel $P(s_{t+1}|s_t,a_t)$};
+  \node[box, left=of stage, node distance=3.2cm, minimum width=3.2cm, minimum height=1.6cm, align=center] (kernel) {Escalation\\kernel $P(s_{t+1}|s_t,a_t)$};
 
   % attacker emits stage
   \draw[arr] (attacker) -- node[label, right] {stage token} (stage);

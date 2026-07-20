@@ -41,7 +41,7 @@
   \node[stateBox, right=of s2] (s3) {\textsc{maneuver}\\$s{=}3$};
   \node[stateBox, right=of s3] (s4) {\textsc{impact}\\$s{=}4$};
 
-  % tug-of-war transitions (solid, above)
+  % escalation transitions (solid, above)
   \draw[arr] (s0.north east) to[bend left=35] node[label, above] {$p_{\mathrm{onset}}$} (s1.north west);
   \draw[arr] (s1.north east) to[bend left=35] node[label, above] {$p_{\mathrm{up}}^{\mathrm{eff}}$} (s2.north west);
   \draw[arr] (s2.north east) to[bend left=35] node[label, above] {$p_{\mathrm{up}}^{\mathrm{eff}}$} (s3.north west);

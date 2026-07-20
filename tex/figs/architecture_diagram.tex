@@ -63,9 +63,9 @@
   test / ood
 };
 
-% --- Lane 2: Reactive Tug-of-War Attacker ---
+% --- Lane 2: Reactive Escalation Attacker ---
 \node[stageBox, fill=colOffline, right=of dataset] (redteam) {
-  \textbf{Reactive Tug-of-War Attacker}\\[3pt]
+  \textbf{Reactive Escalation Attacker}\\[3pt]
   Proximity-coupled\\
   kill-chain process\\[3pt]
   Strictly sequential;\\
@@ -196,11 +196,12 @@
 %% ==============================================================
 %%  OBSERVATION label
 %% ==============================================================
-\node[font=\small, align=left, text=colBorder,
+\node[font=\footnotesize, align=left, text=colBorder,
       below right=2pt and 0pt of stageII.south west, anchor=north west] {
-  $o_t = \phi(x_{t-w+1:t}) \in \mathbb{R}^{290}$ (29 features $+\,\Delta$, $\times\,5$-row window)
+  $o_t = \phi(x_{t-w+1:t}) \in \mathbb{R}^{290}$\\
+  (29 features $+\,\Delta$, $\times\,5$-row window)
 };
-\node[groupLabel, below left=2pt and 0pt of stageII.south east,
+\node[groupLabel, below left=10pt and 0pt of stageII.south east,
       anchor=north east] {Online RL Training Loop};
 
 \end{tikzpicture}

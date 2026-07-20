@@ -151,7 +151,7 @@ arcabouço de defesa adaptativo ciente da cadeia de eliminação cibernética
 Profundo (DRL) e avaliado a partir de características reais do
 \emph{dataset} CICIoT2023 amostradas em uma trajetória de \emph{kill chain}
 simulada sobre cinco estágios. O adversário, que realiza o ataque à rede IoT,
-reage à força do defensor num \emph{cabo de guerra} sobre a cadeia. De forma central, a defesa é formulada
+reage à força do defensor numa \emph{escalada bidirecional} sobre a cadeia. De forma central, a defesa é formulada
 como um problema genuíno de \emph{observabilidade parcial}: o defensor nunca
 observa o verdadeiro estágio, de modo que este só pode ser inferido ao longo de
 uma janela temporal. Treinamos agentes de DRL com janela (PPO e A2C, com DQN
@@ -198,7 +198,7 @@ defense mechanisms. This dissertation designs, implements, and evaluates a
 kill-chain-aware adaptive defense framework for IoT networks, built on Deep
 Reinforcement Learning (DRL) and evaluated on real CICIoT2023 feature rows
 sampled into a simulated kill-chain trajectory over five stages. The adversary
-reacts to defender force in a \emph{tug-of-war} on the kill chain. Centrally,
+reacts to defender force in a \emph{bi-directional escalation} on the kill chain. Centrally,
 the defense is cast as a genuine \emph{partially observable} problem: the
 defender never observes the true stage, so the stage can be inferred only across
 a temporal window. We train windowed RL agents (PPO and A2C, with DQN as an
@@ -394,6 +394,23 @@ fully reproducible.
 % ELEMENTOS P\'{O}S-TEXTUAIS
 % ============================================================================
 \postextual
+
+% --- Declaration on the use of generative AI (UNICAMP CONSU-A-005/2026) ---
+\chapter*{Declaration on the Use of Generative AI and AI-Assisted Technologies}
+\addcontentsline{toc}{chapter}{Declaration on the Use of Generative AI}
+
+During the preparation of this work the author used a generative AI assistant to
+copy-edit, condense, and improve the clarity of the prose, and to assist with
+\LaTeX{} and figure formatting. The tool was applied only as a writing and
+formatting aid: it did not design the experiments, run the simulations, generate
+the data, or produce any of the reported results. The author reviewed and edited
+all AI-assisted text and takes full responsibility for the content of this
+dissertation. Because such tools do not guarantee factual accuracy, every
+technical claim, number, and figure was independently verified by the author
+against the experimental artifacts and the reproducible code and data described
+in Chapter~\ref{cap:conclusion} and the appendices. This declaration is provided
+in accordance with UNICAMP Deliberation CONSU-A-005/2026 on the use of
+generative artificial intelligence.
 
 % --- Refer\^{e}ncias bibliogr\'{a}ficas ---
 \bibliography{thesis}
