@@ -49,7 +49,7 @@ The proposed framework moves IoT security from a reactive to a proactive paradig
 \begin{figure}[!htbp]
     \centering
     \includegraphics[width=0.98\textwidth]{figs/architecture_diagram.pdf}
-    \caption{High-level architecture of the proactive-adaptive defense framework. Offline preparation projects CICIoT2023 onto kill-chain stages, specifies the reactive escalation attacker, and trains the supervised stage detector. The online learning loop couples the realization engine, AdversarialIoTEnv, reward function, and the blue-team agent (the defender) under partial observability. Held-out evaluation then benchmarks trained checkpoints against deployable baselines and the oracle reference, followed by the reward-coupling and out-of-distribution robustness ablations.}
+    \caption[High-level architecture of the proactive-adaptive defense framework.]{High-level architecture of the proactive-adaptive defense framework. Offline preparation projects CICIoT2023 onto kill-chain stages, specifies the reactive escalation attacker, and trains the supervised stage detector. The online learning loop couples the realization engine, AdversarialIoTEnv, reward function, and the blue-team agent (the defender) under partial observability. Held-out evaluation then benchmarks trained checkpoints against deployable baselines and the oracle reference, followed by the reward-coupling and out-of-distribution robustness ablations.}
     \label{fig:framework_overview}
 \end{figure}
 
@@ -155,7 +155,7 @@ The autonomous onset governs only departures from \textsc{benign}. In the headli
 \begin{figure}[!htbp]
     \centering
     \includegraphics[width=0.95\textwidth]{figs/red_team_env.pdf}
-    \caption{Closed-loop interaction between the reactive escalation attacker, the realization engine, and the defender. The attacker emits a kill-chain stage token (or stays dormant under autonomous onset); the realization engine samples a session-coherent CICIoT2023 feature row for that stage, with adjacent-stage aliasing at rate $\alpha$; the defender observes the resulting windowed observation and chooses an action; the escalation kernel then advances or retreats the attacker according to how proportionate that action was to the current stage. The signed force gap that drives this transition and the recommended-action mapping $\mathit{rec}(\cdot)$ it compares against are defined in the body (Section~\ref{ssec:lifecycle}). The defender never observes the true stage $s_t$.}
+    \caption[Closed-loop interaction between attacker, realization engine, and defender.]{Closed-loop interaction between the reactive escalation attacker, the realization engine, and the defender. The attacker emits a kill-chain stage token (or stays dormant under autonomous onset); the realization engine samples a session-coherent CICIoT2023 feature row for that stage, with adjacent-stage aliasing at rate $\alpha$; the defender observes the resulting windowed observation and chooses an action; the escalation kernel then advances or retreats the attacker according to how proportionate that action was to the current stage. The signed force gap that drives this transition and the recommended-action mapping $\mathit{rec}(\cdot)$ it compares against are defined in the body (Section~\ref{ssec:lifecycle}). The defender never observes the true stage $s_t$.}
     \label{fig:red_team_env}
 \end{figure}
 
@@ -175,7 +175,7 @@ The supervised stage detector classifies a 29-feature CICIoT2023 vector into one
 \begin{figure}[!htbp]
     \centering
     \includegraphics[width=0.95\textwidth]{figs/stage_detector_position.pdf}
-    \caption{Positioning of the supervised stage detector in the defense pipeline. The detector consumes a 29-feature CICIoT2023 row and emits a predicted kill-chain stage; the RF-Acting baseline maps that prediction to an action via the recommended-action rule. The learned DRL agents bypass the detector entirely and infer the stage implicitly from the windowed observation, which is the central architectural contrast this dissertation evaluates.}
+    \caption[Positioning of the supervised stage detector in the defense pipeline.]{Positioning of the supervised stage detector in the defense pipeline. The detector consumes a 29-feature CICIoT2023 row and emits a predicted kill-chain stage; the RF-Acting baseline maps that prediction to an action via the recommended-action rule. The learned DRL agents bypass the detector entirely and infer the stage implicitly from the windowed observation, which is the central architectural contrast this dissertation evaluates.}
     \label{fig:stage_detector_position}
 \end{figure}
 
@@ -227,7 +227,7 @@ where $p_{\text{data}}(x \mid s)$ is the empirical feature distribution of stage
 \begin{figure}[!htbp]
     \centering
     \includegraphics[width=0.98\textwidth]{figs/state_machine_aliasing.pdf}
-    \caption{Kill-chain state machine and adjacent-stage observation aliasing. Solid arrows are the escalation transitions ($p_{\mathrm{up}}^{\mathrm{eff}}$ advance, $p_{\mathrm{down}}$ retreat); the dashed arrows are the observation-aliasing transitions: with probability $\alpha$ the feature row emitted at a step is drawn from an adjacent stage's distribution rather than the true stage's, so the observation the agent receives may be inconsistent with the latent state. \textsc{benign} and \textsc{impact} alias to a single neighbor (clamped endpoints).}
+    \caption[Kill-chain state machine and adjacent-stage observation aliasing.]{Kill-chain state machine and adjacent-stage observation aliasing. Solid arrows are the escalation transitions ($p_{\mathrm{up}}^{\mathrm{eff}}$ advance, $p_{\mathrm{down}}$ retreat); the dashed arrows are the observation-aliasing transitions: with probability $\alpha$ the feature row emitted at a step is drawn from an adjacent stage's distribution rather than the true stage's, so the observation the agent receives may be inconsistent with the latent state. \textsc{benign} and \textsc{impact} alias to a single neighbor (clamped endpoints).}
     \label{fig:state_machine_aliasing}
 \end{figure}
 The agent processes this flat vector through a multi-layer perceptron policy; no action-history or stage-prediction field is concatenated to the observation. A frozen supervised classifier's predicted stage is an optional, evaluation-time-only knob that is not enabled in the canonical training or benchmark pipeline; the deployable RF-Acting baseline runs its own independent RandomForest prediction on the most recent feature row rather than consuming any environment-provided stage field.

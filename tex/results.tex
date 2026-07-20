@@ -68,7 +68,7 @@ The tuned RandomForest stage detector underlying the RF-Acting policy is evaluat
 
     \vspace{1.2em}
     \includegraphics[width=0.72\textwidth]{figs/tuned_rf_confusion.pdf}
-    \caption{Tuned RandomForest stage detection on the held-out balanced-test split. \textbf{Top:} per-class F1 across the five kill-chain stages, with the macro-F1 reference line; the detector is strong on every stage (worst-case F1 $\DetectorFoneAccess$, on the ambiguous \textsc{recon}/\textsc{access} stages), not merely on the easy \textsc{impact} class. \textbf{Bottom:} the row-normalised confusion matrix; the only material off-diagonal mass is a \textsc{recon}$\rightarrow$\textsc{access} confusion ($\DetectorReconAccessConfusion\%$), an inherent feature overlap in the hard middle of the chain rather than a tuning artifact.}
+    \caption[Tuned RandomForest stage detection on the held-out balanced-test split.]{Tuned RandomForest stage detection on the held-out balanced-test split. \textbf{Top:} per-class F1 across the five kill-chain stages, with the macro-F1 reference line; the detector is strong on every stage (worst-case F1 $\DetectorFoneAccess$, on the ambiguous \textsc{recon}/\textsc{access} stages), not merely on the easy \textsc{impact} class. \textbf{Bottom:} the row-normalised confusion matrix; the only material off-diagonal mass is a \textsc{recon}$\rightarrow$\textsc{access} confusion ($\DetectorReconAccessConfusion\%$), an inherent feature overlap in the hard middle of the chain rather than a tuning artifact.}
     \label{fig:f11}
 \end{figure}
 
@@ -109,14 +109,14 @@ The three feedforward reinforcement-learning algorithms (PPO, DQN, A2C) were tra
 \begin{figure}[!htbp]
     \centering
     \includegraphics[width=0.8\textwidth]{figs/F3_learning_curves.pdf}
-    \caption{Blue-team learning curves: episodic reward over $5\,000\,000$ training steps (no early stopping) for PPO, DQN, and A2C across \NumSeeds{} seeds each. Curves are binned into 25 timestep windows, so the leftmost point is the mean over the first window of training rather than the value at initialization; the dashed grey band is the RF-Acting reference and the dash-dot black line the full-observability oracle ($n = 300$ each). Shaded bands are 95\,\% bootstrap confidence intervals over seeds.}
+    \caption[Blue-team learning curves over 5M training steps.]{Blue-team learning curves: episodic reward over $5\,000\,000$ training steps (no early stopping) for PPO, DQN, and A2C across \NumSeeds{} seeds each. Curves are binned into 25 timestep windows, so the leftmost point is the mean over the first window of training rather than the value at initialization; the dashed grey band is the RF-Acting reference and the dash-dot black line the full-observability oracle ($n = 300$ each). Shaded bands are 95\,\% bootstrap confidence intervals over seeds.}
     \label{fig:f3}
 \end{figure}
 
 \begin{figure}[!htbp]
     \centering
     \includegraphics[width=\textwidth]{figs/F4_action_distribution.pdf}
-    \caption{Per-stage action distributions of the trained policies under the sparse outcome reward, one row per algorithm (A2C, PPO, DQN) and one column per kill-chain stage (\textsc{benign} $\to$ \textsc{impact}); bars show the action share at the converged late checkpoint.}
+    \caption[Per-stage action distributions of the trained policies.]{Per-stage action distributions of the trained policies under the sparse outcome reward, one row per algorithm (A2C, PPO, DQN) and one column per kill-chain stage (\textsc{benign} $\to$ \textsc{impact}); bars show the action share at the converged late checkpoint.}
     \label{fig:f4}
 \end{figure}
 
@@ -132,7 +132,7 @@ The central question of this dissertation is \emph{when} a learned sequential po
 \begin{figure}[!htbp]
     \centering
     \includegraphics[width=0.8\textwidth]{figs/Falpha_curve.pdf}
-    \caption{Mean episodic reward versus observation-aliasing rate $\alpha$ on the held-out balanced-test split, with 95\,\% bootstrap confidence bands for the windowed PPO agent and the per-flow RF-Acting baseline. The full-observability oracle (dashed) is flat near $\OracleCeiling$, a reference ceiling.}
+    \caption[Mean episodic reward versus observation-aliasing rate.]{Mean episodic reward versus observation-aliasing rate $\alpha$ on the held-out balanced-test split, with 95\,\% bootstrap confidence bands for the windowed PPO agent and the per-flow RF-Acting baseline. The full-observability oracle (dashed) is flat near $\OracleCeiling$, a reference ceiling.}
     \label{fig:falpha}
 \end{figure}
 
@@ -164,7 +164,7 @@ Three ablations probe the robustness of the central result: a reward-coupling ab
 \begin{figure}[!htbp]
     \centering
     \includegraphics[width=0.8\textwidth]{figs/Fcoupling_reward_gap.pdf}
-    \caption{Reward-coupling ablation: best learned agent versus the RF-Acting baseline under the coupled (proportionality-shaped) and the sparse outcome reward functions, both at $\alpha = \HeadlineAlpha$. The RF-minus-best-RL difference is \emph{negative} in both regimes, so the best learned agent beats the supervised baseline whether or not the privileged per-step shaping is present.}
+    \caption[Reward-coupling ablation: best learned agent versus RF-Acting.]{Reward-coupling ablation: best learned agent versus the RF-Acting baseline under the coupled (proportionality-shaped) and the sparse outcome reward functions, both at $\alpha = \HeadlineAlpha$. The RF-minus-best-RL difference is \emph{negative} in both regimes, so the best learned agent beats the supervised baseline whether or not the privileged per-step shaping is present.}
     \label{fig:fcoupling}
 \end{figure}
 
@@ -173,13 +173,15 @@ Three ablations probe the robustness of the central result: a reward-coupling ab
 \caption{Reward-coupling ablation on the held-out balanced-test split at $\alpha = \HeadlineAlpha$ (\NumSeeds{} seeds pooled at 300 episodes each, $n = 3{,}000$ episodes per policy). For each reward function the table reports the best learned agent and its reward, the RF-Acting reward with its 95\,\% bootstrap CI, and the RF-minus-best-RL difference.}
 \label{tab:coupling}
 \small
+\resizebox{\textwidth}{!}{%
 \begin{tabular}{llrrr}
 \toprule
 Reward function & Best RL & Best-RL reward & RF-Acting [95\,\% CI] & RF $-$ best-RL difference \\
 \midrule
 \CouplingTableBody
 \bottomrule
-\end{tabular}
+\end{tabular}%
+}
 \end{table}
 
 \paragraph{The reward-coupling ablation addresses the privileged-reward objection.} A natural objection to any reinforcement-learning result on this task is that the reward secretly hands the agent the stage label: if the agent is paid per step for choosing the stage-recommended action, then the optimal policy is simply a stage classifier, and a supervised classifier should match or beat it. The coupled reward function reinstates exactly that per-step shaping; the outcome reward function removes it. The ablation retrains every learned agent under both reward functions and compares the best learned agent against RF-Acting scored under the same reward function. It is a separately estimated experiment: each per-policy mean here pools the full \NumSeeds{} seeds at 300 episodes each ($n = 3{,}000$), a denser estimate than the best-checkpoint-per-seed roll-outs of the aliasing benchmark (Table~\ref{tab:alpha_curve}), so the high-variance DQN in particular reads lower here (its pooled outcome mean $\CouplingDQNOutcome$) than the best-checkpoint figure quoted earlier ($\AlphaFourDQN$); the on-policy agents, being stable across seeds, agree closely between the two. The result is clear (Table~\ref{tab:coupling}): \textbf{the best learned agent beats RF-Acting under both reward functions}. We denote the reward gap by $\Delta R^{\star} \equiv R_{\mathrm{RF}} - R_{\text{best-DRL}}$, so a negative value means the best learned agent leads. Under the coupled reward $\Delta R^{\star} = \CouplingGapCoupled$ (best learned agent \CouplingBestCoupled{}, $\CouplingDQNCoupled$, versus RF-Acting; PPO reaches $\CouplingPPOCoupled$ and A2C $\CouplingATwoCCoupled$). Under the sparse outcome reward $\Delta R^{\star} = \CouplingGapOutcome$ with the best learned agent now \CouplingBestOutcome{} ($\CouplingATwoCOutcome$, against $\CouplingPPOOutcome$ for PPO and $\CouplingDQNOutcome$ for DQN). The privileged per-step shaping therefore does not explain the observed advantage; in this partially observable environment, the supervised classifier trails the best learned agent under both scoring rules. What the reward shaping \emph{does} change is which algorithm wins and how reliably it trains. The dense coupled signal lets the off-policy DQN exploit a stage-to-action shortcut and score highest ($\CouplingDQNCoupled$), and it does so \emph{stably} --- its across-seed standard deviation under the coupled reward is only $\approx 17$. Removing that shortcut under the sparse outcome reward costs DQN the top rank (it falls to $\CouplingDQNOutcome$, behind both on-policy agents) and, more tellingly, its stability: the same agent on the same environment sees its across-seed standard deviation triple to $\approx 52$. Both on-policy algorithms remain competitive and reliable across the switch (A2C at $\CouplingATwoCOutcome$ and PPO at $\CouplingPPOOutcome$, both with across-seed sd well below $\approx 20$). The reward function thus does not decide \emph{whether} the learned agents beat the classifier (they do under both) but it does decide which algorithm family is a dependable choice, reinforcing the training-stability finding of Section~\ref{sec:blue_team_results}: the on-policy family's advantage under the sparse reward is reliability against the off-policy DQN, with the additional observation that the highest outcome-reward policy is A2C, not the historically cited PPO.
@@ -187,7 +189,7 @@ Reward function & Best RL & Best-RL reward & RF-Acting [95\,\% CI] & RF $-$ best
 \begin{figure}[!htbp]
     \centering
     \includegraphics[width=0.8\textwidth]{figs/F10_aggressiveness.pdf}
-    \caption{Environment-difficulty sweep: the three \emph{fixed} headline defenders (PPO, A2C, and DQN, each trained once at $p_{\mathrm{down}} = 0.90$) and the oracle reference, each re-evaluated as a function of the de-escalation success probability $p_{\mathrm{down}} \in \{0.0, 0.2, 0.4, 0.6, 0.8, 1.0\}$ (lower is harsher; the headline operating point $p_{\mathrm{down}} = 0.90$ sits between the two highest swept settings). No policy is retrained per environment. Each learned agent is evaluated over \NumSeeds{} seeds and 300 episodes; the deterministic oracle rule over 300 episodes and one seed, so its confidence bands are narrower by construction.}
+    \caption[Environment-difficulty sweep over the de-escalation probability.]{Environment-difficulty sweep: the three \emph{fixed} headline defenders (PPO, A2C, and DQN, each trained once at $p_{\mathrm{down}} = 0.90$) and the oracle reference, each re-evaluated as a function of the de-escalation success probability $p_{\mathrm{down}} \in \{0.0, 0.2, 0.4, 0.6, 0.8, 1.0\}$ (lower is harsher; the headline operating point $p_{\mathrm{down}} = 0.90$ sits between the two highest swept settings). No policy is retrained per environment. Each learned agent is evaluated over \NumSeeds{} seeds and 300 episodes; the deterministic oracle rule over 300 episodes and one seed, so its confidence bands are narrower by construction.}
     \label{fig:f10}
 \end{figure}
 
@@ -195,8 +197,8 @@ Reward function & Best RL & Best-RL reward & RF-Acting [95\,\% CI] & RF $-$ best
 
 \begin{figure}[!htbp]
     \centering
-    \includegraphics[width=0.8\textwidth]{figs/F17_evasion_sweep.pdf}
-    \caption{Evasive-persistence robustness sweep: mean episodic reward with 95\,\% bootstrap CIs for the three fixed headline defenders (PPO, A2C, DQN; each trained once at the headline operating point over \NumSeeds{} seeds) as the attacker's evasive-persistence probability rises ($0.0 \to 0.75$), where a higher value lets the attacker, after sensing defensive force at a pre-commit stage, resist the next eviction (post-detection hardening).}
+    \includegraphics[width=0.72\textwidth]{figs/F17_evasion_sweep.pdf}
+    \caption[Evasive-persistence robustness sweep.]{Evasive-persistence robustness sweep: mean episodic reward with 95\,\% bootstrap CIs for the three fixed headline defenders (PPO, A2C, DQN; each trained once at the headline operating point over \NumSeeds{} seeds) as the attacker's evasive-persistence probability rises ($0.0 \to 0.75$), where a higher value lets the attacker, after sensing defensive force at a pre-commit stage, resist the next eviction (post-detection hardening).}
     \label{fig:f17}
 \end{figure}
 
@@ -213,8 +215,8 @@ where $s_t$ is the true kill-chain stage at step $t$ and $T$ is the episode hori
 
 \begin{figure}[!htbp]
     \centering
-    \includegraphics[width=0.95\textwidth]{figs/F15_ood_robustness.pdf}
-    \caption{Out-of-distribution robustness under held-out class feature injection: per-policy outcome on each of the ten reserved attack classes. Learned agents and the random baseline are evaluated over \NumSeeds{} evaluation seeds with 30 episodes per seed, yielding 300 episodes per class-policy cell; deterministic baselines use one seed with 300 episodes, matching the $n=300$-episodes-per-policy evaluation protocol used throughout.}
+    \includegraphics[width=\textwidth]{figs/F15_ood_robustness.pdf}
+    \caption[Out-of-distribution robustness on held-out attack classes.]{Out-of-distribution robustness under held-out class feature injection: per-policy outcome on each of the ten reserved attack classes. Learned agents and the random baseline are evaluated over \NumSeeds{} evaluation seeds with 30 episodes per seed, yielding 300 episodes per class-policy cell; deterministic baselines use one seed with 300 episodes, matching the $n=300$-episodes-per-policy evaluation protocol used throughout.}
     \label{fig:f15}
 \end{figure}
 

@@ -228,4 +228,21 @@
 %% Master's dissertation — final defense version (Tese de Mestrado - Defesa Final)
 \tipotrabalho{Disserta\c{c}\~{a}o (Mestrado)}
 \preambulo{Disserta\c{c}\~{a}o apresentada \`{a} Faculdade de Engenharia El\'{e}trica e de Computa\c{c}\~{a}o da Universidade Estadual de Campinas como parte dos requisitos exigidos para a obten\c{c}\~{a}o do t\'{\i}tulo de Mestre em Engenharia El\'{e}trica, na \'{A}rea de Engenharia de Computa\c{c}\~{a}o.}
+
+% abnTeX2 typesets the folha-de-rosto preambulo in a right-anchored
+% minipage of width .5\textwidth preceded by \hspace{.45\textwidth}. At this
+% class's 16cm text block the minipage's right edge crosses the margin,
+% producing a 14.01pt Overfull \hbox at the \imprimirfolhaderosto call (the
+% "lines 54--54" warning). No hyphenation/ragged/emergencystretch tweak helps
+% because a minipage takes its full declared width regardless of inner
+% content; only narrowing the box removes the protrusion. Patch the width
+% down to .45\textwidth (symmetric with the .45 lead hspace, verified to
+% eliminate the overfull while leaving the text-block visually unchanged).
+\usepackage{etoolbox}
+\makeatletter
+\patchcmd{\folhaderostocontent}%
+  {\begin{minipage}{.5\textwidth}}%
+  {\begin{minipage}{.45\textwidth}}%
+  {}{\PackageWarning{preamble}{folha-de-rosto minipage patch failed}}
+\makeatother
 % ---
