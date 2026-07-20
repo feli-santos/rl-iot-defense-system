@@ -102,40 +102,40 @@ Algorithm~\ref{alg:dqn} summarizes the DQN training loop.
 \end{algorithm}
 
 \paragraph{Advantage Actor-Critic (A2C).}
-A2C is a synchronous variant of the foundational Asynchronous Advantage Actor-Critic (A3C) algorithm \cite{Mnih2016}, and it is the algorithm that introduces the \textbf{actor-critic} architecture used by the subsequent methods. The agent maintains two networks: an \emph{actor} $\pi_\theta(a \mid s)$ that parameterizes the policy, and a \emph{critic} $V_\phi(s)$ that estimates the state-value function. The actor learns by policy-gradient ascent on the advantage, while the critic learns by temporal-difference regression. The \textbf{advantage function} $A^\pi(s, a) = Q^\pi(s, a) - V^\pi(s)$ measures how much better action $a$ is than the average action under $\pi$; in practice it is estimated with the temporal-difference residual $\hat{A}_t = r_t + \gamma V_\phi(s_{t+1}) - V_\phi(s_t)$. The combined A2C loss, with an entropy regularization term $H(\pi_\theta)$ weighted by $c_{\mathrm{ent}}$ to encourage exploration, is
+A2C is a synchronous variant of the foundational Asynchronous Advantage Actor-Critic (A3C) algorithm \cite{Mnih2016}, and it is the algorithm that introduces the \textbf{actor-critic} architecture used by the subsequent methods. The agent maintains two networks: an \emph{actor} $\pi_\theta(a \mid s)$ that parameterizes the policy, and a \emph{critic} $V_{\theta_v}(s)$ that estimates the state-value function. The actor learns by policy-gradient ascent on the advantage, while the critic learns by temporal-difference regression. The \textbf{advantage function} $A^\pi(s, a) = Q^\pi(s, a) - V^\pi(s)$ measures how much better action $a$ is than the average action under $\pi$; in practice it is estimated with the temporal-difference residual $\hat{A}_t = r_t + \gamma V_{\theta_v}(s_{t+1}) - V_{\theta_v}(s_t)$. The combined A2C loss, with an entropy regularization term $H(\pi_\theta)$ weighted by $c_{\mathrm{ent}}$ to encourage exploration, is
 \begin{equation}\label{eq:a2c_loss}
-L_{\text{A2C}}(\theta, \phi) \;=\; \underbrace{-\log \pi_\theta(a_t \mid s_t)\,\hat{A}_t}_{\text{actor (policy gradient)}} \;+\; \underbrace{c_v\big(V_\phi(s_t) - \hat{R}_t\big)^2}_{\text{critic (value regression)}} \;-\; \underbrace{c_{\mathrm{ent}}\, H\big(\pi_\theta(\cdot \mid s_t)\big)}_{\text{entropy bonus}},
+L_{\text{A2C}}(\theta, \theta_v) \;=\; \underbrace{-\log \pi_\theta(a_t \mid s_t)\,\hat{A}_t}_{\text{actor (policy gradient)}} \;+\; \underbrace{c_v\big(V_{\theta_v}(s_t) - \hat{R}_t\big)^2}_{\text{critic (value regression)}} \;-\; \underbrace{c_{\mathrm{ent}}\, H\big(\pi_\theta(\cdot \mid s_t)\big)}_{\text{entropy bonus}},
 \end{equation}
-where $c_v$ is the value-loss coefficient, $\hat{R}_t$ a return estimate, and $c_{\mathrm{ent}}$ the entropy coefficient. The return estimate $\hat{R}_t$ is algorithm-specific: for A2C it is the one-step bootstrap return $\hat{R}_t = r_t + \gamma V_\phi(s_{t+1})$ (Algorithm~\ref{alg:a2c}), whereas for PPO it is the GAE-based return $\hat{R}_t = \hat{A}_t + V_\phi(s_t)$ (Eq.~\eqref{eq:ppo_vf}, Algorithm~\ref{alg:ppo}). A2C typically employs multiple parallel workers that collect experience simultaneously; these experiences are then aggregated to compute a single synchronous gradient update for both actor and critic. While often faster to converge than PPO on simpler problems, it can be markedly less stable on standard benchmarks --- a general-literature characterization that is revisited in Chapter~\ref{cap:results}. Algorithm~\ref{alg:a2c} summarizes the A2C training loop.
+where $c_v$ is the value-loss coefficient, $\hat{R}_t$ a return estimate, and $c_{\mathrm{ent}}$ the entropy coefficient. The return estimate $\hat{R}_t$ is algorithm-specific: for A2C it is the one-step bootstrap return $\hat{R}_t = r_t + \gamma V_{\theta_v}(s_{t+1})$ (Algorithm~\ref{alg:a2c}), whereas for PPO it is the GAE-based return $\hat{R}_t = \hat{A}_t + V_{\theta_v}(s_t)$ (Eq.~\eqref{eq:ppo_vf}, Algorithm~\ref{alg:ppo}). A2C typically employs multiple parallel workers that collect experience simultaneously; these experiences are then aggregated to compute a single synchronous gradient update for both actor and critic. While often faster to converge than PPO on simpler problems, it can be markedly less stable on standard benchmarks --- a general-literature characterization that is revisited in Chapter~\ref{cap:results}. Algorithm~\ref{alg:a2c} summarizes the A2C training loop.
 
 \begin{algorithm}[!htbp]
 \caption{Advantage Actor-Critic (A2C) --- synchronous training loop \cite{Mnih2016}}
 \label{alg:a2c}
 \begin{algorithmic}
 \REQUIRE learning rate $\mathrm{lr}$, value coefficient $c_v$, entropy coefficient $c_{\mathrm{ent}}$, discount $\gamma$, $n$ parallel workers, rollout length $n_{\text{steps}}$
-\STATE Initialize actor $\pi_\theta$ and critic $V_\phi$ with random weights
+\STATE Initialize actor $\pi_\theta$ and critic $V_{\theta_v}$ with random weights
 \FOR{each iteration}
     \FOR{each worker $k = 1, \ldots, n$ \textbf{in parallel}}
         \STATE Collect rollout $\{(s_t, a_t, r_t, s_{t+1})\}_{t=0}^{n_{\text{steps}}-1}$ using $\pi_\theta$
     \ENDFOR
     \STATE Aggregate transitions from all workers
     \FOR{$t = 0, 1, \ldots, n_{\text{steps}}-1$}
-        \STATE Compute advantage $\hat{A}_t \leftarrow r_t + \gamma V_\phi(s_{t+1}) - V_\phi(s_t)$
-        \STATE Compute return $\hat{R}_t \leftarrow r_t + \gamma V_\phi(s_{t+1})$
+        \STATE Compute advantage $\hat{A}_t \leftarrow r_t + \gamma V_{\theta_v}(s_{t+1}) - V_{\theta_v}(s_t)$
+        \STATE Compute return $\hat{R}_t \leftarrow r_t + \gamma V_{\theta_v}(s_{t+1})$
     \ENDFOR
-    \STATE Update $\theta, \phi$ by gradient descent on $L_{\text{A2C}}$ (Eq.~\eqref{eq:a2c_loss})
+    \STATE Update $\theta, \theta_v$ by gradient descent on $L_{\text{A2C}}$ (Eq.~\eqref{eq:a2c_loss})
 \ENDFOR
 \end{algorithmic}
 \end{algorithm}
 
 \paragraph{Proximal Policy Optimization (PPO).}
-PPO is an on-policy actor-critic algorithm that builds directly on the A2C architecture (actor $\pi_\theta$ plus critic $V_\phi$) but constrains the size of policy updates to ensure greater training stability \cite{Schulman2017}. Its key innovation is a \emph{clipped surrogate objective} that prevents destructive large policy changes. Let $r_t(\theta)$ be the probability ratio between the new and old policies,
+PPO is an on-policy actor-critic algorithm that builds directly on the A2C architecture (actor $\pi_\theta$ plus critic $V_{\theta_v}$) but constrains the size of policy updates to ensure greater training stability \cite{Schulman2017}. Its key innovation is a \emph{clipped surrogate objective} that prevents destructive large policy changes. Let $r_t(\theta)$ be the probability ratio between the new and old policies,
 \begin{equation}\label{eq:ppo_ratio}
 r_t(\theta) = \frac{\pi_\theta(a_t \mid s_t)}{\pi_{\theta_{\text{old}}}(a_t \mid s_t)},
 \end{equation}
 and $\hat{A}_t$ the estimated advantage, computed with Generalized Advantage Estimation (GAE) \cite{Schulman2016}:
 \begin{equation}\label{eq:gae}
-\hat{A}_t \;=\; \sum_{l=0}^{T-t-1} (\gamma \lambda_{\text{GAE}})^{l}\, \delta_{t+l}, \qquad \delta_t \;=\; r_t + \gamma V_\phi(s_{t+1}) - V_\phi(s_t),
+\hat{A}_t \;=\; \sum_{l=0}^{T-t-1} (\gamma \lambda_{\text{GAE}})^{l}\, \delta_{t+l}, \qquad \delta_t \;=\; r_t + \gamma V_{\theta_v}(s_{t+1}) - V_{\theta_v}(s_t),
 \end{equation}
 where $\lambda_{\text{GAE}} \in [0,1]$ is the GAE bias-variance trade-off parameter. The PPO actor loss is the clipped surrogate
 \begin{equation}\label{eq:ppo_clip}
@@ -143,11 +143,11 @@ L^{\mathrm{CLIP}}(\theta) = \hat{\mathbb{E}}_t \left[ \min \left( r_t(\theta)\ha
 \end{equation}
 where $\epsilon$ is a small hyperparameter that constrains the policy ratio to $[1-\epsilon, 1+\epsilon]$. The critic loss is the squared value error
 \begin{equation}\label{eq:ppo_vf}
-L^{\mathrm{VF}}(\phi) = \hat{\mathbb{E}}_t\big[(V_\phi(s_t) - \hat{R}_t)^2\big],
+L^{\mathrm{VF}}(\theta_v) = \hat{\mathbb{E}}_t\big[(V_{\theta_v}(s_t) - \hat{R}_t)^2\big],
 \end{equation}
 and the full PPO objective combines actor, critic, and an entropy bonus:
 \begin{equation}\label{eq:ppo_objective}
-L^{\mathrm{PPO}}(\theta, \phi) \;=\; -L^{\mathrm{CLIP}}(\theta) \;+\; c_v\, L^{\mathrm{VF}}(\phi) \;-\; c_{\mathrm{ent}}\, H\big(\pi_\theta(\cdot \mid s_t)\big).
+L^{\mathrm{PPO}}(\theta, \theta_v) \;=\; -L^{\mathrm{CLIP}}(\theta) \;+\; c_v\, L^{\mathrm{VF}}(\theta_v) \;-\; c_{\mathrm{ent}}\, H\big(\pi_\theta(\cdot \mid s_t)\big).
 \end{equation}
 This approach prevents destructive policy updates and is known for its reliability and performance. Algorithm~\ref{alg:ppo} summarizes the PPO training loop.
 
@@ -156,14 +156,14 @@ This approach prevents destructive policy updates and is known for its reliabili
 \label{alg:ppo}
 \begin{algorithmic}
 \REQUIRE clip range $\epsilon$, value coefficient $c_v$, entropy coefficient $c_{\mathrm{ent}}$, discount $\gamma$, GAE parameter $\lambda_{\text{GAE}}$, rollout length $n_{\text{steps}}$, epochs per update $K$, minibatch size $B$
-\STATE Initialize actor $\pi_\theta$ and critic $V_\phi$ with random weights
+\STATE Initialize actor $\pi_\theta$ and critic $V_{\theta_v}$ with random weights
 \FOR{each iteration}
     \STATE Collect rollout $\{(s_t, a_t, r_t, s_{t+1})\}_{t=0}^{n_{\text{steps}}-1}$ using $\pi_{\theta_{\text{old}}}$
-    \STATE Compute advantages $\hat{A}_t$ via GAE (Eq.~\eqref{eq:gae}) and returns $\hat{R}_t = \hat{A}_t + V_\phi(s_t)$
+    \STATE Compute advantages $\hat{A}_t$ via GAE (Eq.~\eqref{eq:gae}) and returns $\hat{R}_t = \hat{A}_t + V_{\theta_v}(s_t)$
     \STATE Set $\theta_{\text{old}} \leftarrow \theta$
     \FOR{$k = 1, \ldots, K$}
         \STATE Sample minibatches of size $B$ from the rollout
-        \STATE Update $\theta, \phi$ by gradient ascent on $-L^{\mathrm{PPO}}$ (Eq.~\eqref{eq:ppo_objective})
+        \STATE Update $\theta, \theta_v$ by gradient ascent on $-L^{\mathrm{PPO}}$ (Eq.~\eqref{eq:ppo_objective})
     \ENDFOR
 \ENDFOR
 \end{algorithmic}
@@ -185,7 +185,7 @@ Other works have targeted specific layers of the IoT ecosystem. IoTWarden, propo
 
 Hammar and Stadler~\cite{Hammar2022} model intrusion prevention as an optimal-stopping problem and train a hierarchical RL agent to decide when to escalate defensive actions, demonstrating that the decision-frame abstraction can simplify the policy learning problem. Caminero et al.~\cite{Caminero2019} use adversarial RL for zero-day-aware IDS, reporting a setting in which sequential decision-makers outperform passive classifiers for adaptive defense. The adversarial self-play paradigm (training a defender against a simultaneously evolving attacker) is explored by Elderman et al.~\cite{Elderman2017} in a cybersecurity simulation; this dissertation uses a fixed, reactive tug-of-war attacker in place of a jointly trained one, keeping the threat model fixed and reproducible while still making the defender--attacker interaction outcome-coupled: the attacker reacts to the defender's force, and its escalation pressure rises with proximity to the impact stage.
 
-Tharewal et al.\ \cite{Tharewal2022} apply DRL to industrial IoT intrusion detection but treat the agent as a classifier rather than a sequential decision-maker. The most recent and most directly contrasting work in this vein is RL-IoTIDS \cite{Odeh2026}, which couples a DQN agent with a hybrid CNN-LSTM feature extractor to classify malicious traffic across the 33 CICIoT2023 attack categories, reporting higher F1 and lower false-alarm rates than SVM, RandomForest, and standalone deep-learning baselines. Although RL-IoTIDS is also a DRL system trained on CICIoT2023, it uses reinforcement learning to \emph{label} each flow (the reward rewards correct per-flow classification) so the learned policy is fundamentally a one-shot detector rather than a kill-chain controller. This is precisely the formulation this dissertation argues is insufficient under partial observability: where RL-IoTIDS optimizes per-flow detection accuracy, the present work optimizes sustained, well-timed defensive \emph{control} over a temporal window. Chapter~\ref{cap:results} shows that the latter prevents attacks a classifier-style policy cannot, with an advantage that does not track the classifier's per-class labeling accuracy. The comprehensive surveys by Kheddar et al.~\cite{Kheddar2024} and Yang et al.~\cite{Yang2024} confirm that DQN, PPO, and A2C are the most widely evaluated algorithms for network intrusion response, validating the algorithm selection in this dissertation. This dissertation addresses a more fundamental challenge by operating at the network layer: it analyzes features derived from raw traffic to defend against the broad range of network-level attacks (DDoS, DoS, Spoofing) prevalent in CICIoT2023, and it structures the policy as a kill-chain-aware sequential decision-maker under genuine partial observability.
+Tharewal et al.\ \cite{Tharewal2022} apply DRL to industrial IoT intrusion detection but treat the agent as a classifier rather than a sequential decision-maker. The most recent and most directly contrasting work in this vein is RL-IoTIDS \cite{Odeh2026}, which couples a DQN agent with a hybrid CNN-LSTM feature extractor to classify malicious traffic across the 33 CICIoT2023 attack categories, reporting higher F1 and lower false-alarm rates than SVM, RandomForest, and standalone deep-learning baselines. Although RL-IoTIDS is also a DRL system trained on CICIoT2023, it uses reinforcement learning to \emph{label} each flow (the reward rewards correct per-flow classification) so the learned policy is fundamentally a one-shot detector rather than a kill-chain controller. This is precisely the formulation this dissertation argues is insufficient under partial observability: where RL-IoTIDS optimizes per-flow detection accuracy, the present work optimizes sustained, well-timed defensive \emph{control} over a temporal window. Chapter~\ref{cap:results} shows that the latter prevents attacks a classifier-style policy cannot, with an advantage that does not track the classifier's per-class labeling recall. The comprehensive surveys by Kheddar et al.~\cite{Kheddar2024} and Yang et al.~\cite{Yang2024} confirm that DQN, PPO, and A2C are the most widely evaluated algorithms for network intrusion response, validating the algorithm selection in this dissertation. This dissertation addresses a more fundamental challenge by operating at the network layer: it analyzes features derived from raw traffic to defend against the broad range of network-level attacks (DDoS, DoS, Spoofing) prevalent in CICIoT2023, and it structures the policy as a kill-chain-aware sequential decision-maker under genuine partial observability.
 
 \subsection{Comparison of Closely Related DRL-Based IoT Defense Systems}
 Table~\ref{tab:related_work_comparison} positions the most closely related prior works (IoTWarden \cite{Alam2024}, its multi-agent successor RESTRAIN \cite{Alam2025}, HoneyIoT \cite{Guan2023}, and the classification-framed RL-IoTIDS \cite{Odeh2026}) along the key dimensions that determine deployability and empirical rigor: partial-observability stress, head-to-head benchmarking against a deployable non-RL baseline, and out-of-distribution generalization.

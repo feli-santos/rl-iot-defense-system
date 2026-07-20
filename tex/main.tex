@@ -167,7 +167,7 @@ que o melhor agente de RL supera a RF em ambos os regimes, refutando a objeção
 de informação privilegiada; (iii) sob distribuição deslocada (dez classes de
 ataque não disponíveis no treinamento), o melhor agente de RL com janela
 previne uma fração maior de
-ataques em todas as classes, sem dependência detectável da acurácia do
+ataques em todas as classes, sem dependência detectável do \emph{recall} do
 detector. Ambos os algoritmos \emph{on-policy} (PPO e A2C) treinam de forma
 confiável sob a recompensa esparsa, com desvio-padrão entre sementes
 substancialmente menor que o do DQN, e o A2C
@@ -214,7 +214,7 @@ ablation shows the best RL agent beats RF-Acting under both reward regimes,
 refuting the privileged-reward objection; (iii) under distribution shift
 (ten held-out attack classes), the best windowed RL agent prevents a larger
 fraction of attacks on every class, with no detectable dependence on detector
-accuracy. Both on-policy algorithms (PPO and A2C) train reliably under the
+recall. Both on-policy algorithms (PPO and A2C) train reliably under the
 sparse outcome reward, with substantially lower across-seed variability than
 DQN, and A2C reaches the highest
 best-checkpoint outcome reward at the headline aliasing rate; the off-policy
@@ -281,7 +281,7 @@ fully reproducible.
   \item[$\alpha$]                 Observation-aliasing rate (probability a step emits a feature row from a stage adjacent to the true one)
   \item[$\beta$]                  Benign false-positive-rate penalty coefficient (disabled by default)
   \item[$\gamma$]                 Discount factor
-  \item[$\delta_t$]               Temporal-difference (TD) error, $\delta_t = r_t + \gamma V_{\phi}(s_{t+1}) - V_{\phi}(s_t)$ (GAE)
+  \item[$\delta_t$]               Temporal-difference (TD) error, $\delta_t = r_t + \gamma V_{\theta_v}(s_{t+1}) - V_{\theta_v}(s_t)$ (GAE)
   \item[$\Delta x_t$]             Temporal delta of the feature row, $\Delta x_t = x_t - x_{t-1} \in \mathbb{R}^{29}$
   \item[$\epsilon$]               PPO clipping parameter (also DQN exploration coefficient)
   \item[$\kappa$]                 Action-cost scale
@@ -292,12 +292,13 @@ fully reproducible.
   \item[$\rho$]                   Spearman rank-correlation coefficient
   \item[$\sigma_{\min}$]          Residual escalation floor (proximity-coupled escalation)
   \item[$\theta$]                 Policy / Q-network parameters
+  \item[$\theta_v$]               Critic (value) network parameters (A2C, PPO)
   \item[$\theta^{-}$]             Target-network parameters (DQN)
   \item[$\eta_{\mathrm{targ}}$]   Target-network soft-update (Polyak) coefficient (DQN)
   \item[$\tau$]                   Episode trajectory $\tau = (o_1, a_1, r_1, \dots, o_T, a_T, r_T)$
   \item[$\psi_{\text{kc}}$]       Kill-chain projection map ($34$ CICIoT2023 labels $\to$ $5$ stages)
-  \item[$\phi$]                   Feature-extraction map $\phi: x_{t-w+1:t} \mapsto o_t \in \mathbb{R}^{290}$ (window stack of feature rows); also denotes the critic-network parameters in $V_{\phi}$
-  \item[$V_{\phi}$]               Critic (value) network with parameters $\phi$ (A2C, PPO)
+  \item[$\phi$]                   Feature-extraction map $\phi: x_{t-w+1:t} \mapsto o_t \in \mathbb{R}^{290}$ (window stack of feature rows)
+  \item[$V_{\theta_v}$]           Critic (value) network with parameters $\theta_v$ (A2C, PPO)
   \item[$A$]                      Action set $\{\textsc{observe}, \textsc{log}, \textsc{restrict}, \textsc{block}, \textsc{isolate}\} = \{0,1,2,3,4\}$
   \item[$A_t$]                    Action random variable at step $t$
   \item[$A^{\pi}(s,a)$]           Advantage function, $A^{\pi} = Q^{\pi} - V^{\pi}$
@@ -320,9 +321,9 @@ fully reproducible.
   \item[$\ell$]                   Original CICIoT2023 label index, $\ell \in \{1, \dots, 34\}$ (input to $\psi_{\text{kc}}$)
   \item[$L(\theta)$]              DQN squared TD-error loss
   \item[$L^{\mathrm{CLIP}}(\theta)$] PPO clipped surrogate loss
-  \item[$L^{\mathrm{VF}}(\phi)$]  PPO critic (squared value-error) loss
-  \item[$L^{\mathrm{PPO}}(\theta,\phi)$] Full PPO objective (clipped actor $+$ value $+$ entropy)
-  \item[$L_{\text{A2C}}(\theta,\phi)$] Combined A2C loss (actor $+$ critic $+$ entropy)
+  \item[$L^{\mathrm{VF}}(\theta_v)$]  PPO critic (squared value-error) loss
+  \item[$L^{\mathrm{PPO}}(\theta,\theta_v)$] Full PPO objective (clipped actor $+$ value $+$ entropy)
+  \item[$L_{\text{A2C}}(\theta,\theta_v)$] Combined A2C loss (actor $+$ critic $+$ entropy)
   \item[$n$]                      Sample size ($n=300$ episodes per policy; $n=10$ held-out classes)
   \item[$\mathcal{O}$]            Observation space of the POMDP
   \item[$o_t$]                    Observation at step $t$; $o_t = \phi(x_{t-w+1:t}) \in \mathbb{R}^{290}$ (windowed feature stack)
