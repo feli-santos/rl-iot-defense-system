@@ -1,0 +1,49 @@
+%% Title page with author details for the Elsevier "Internet of Things"
+%% submission (uploaded separately from the anonymized manuscript).
+%% Build in the rl-iot-thesis container (ships elsarticle.cls).
+\documentclass[3p]{elsarticle}
+
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage{url}
+\usepackage{hyperref}
+\hypersetup{colorlinks=true,linkcolor=black,citecolor=black,urlcolor=blue}
+
+\journal{Internet of Things}
+
+%% Suppress elsarticle's default preprint footer.
+\makeatletter
+\def\ps@pprintTitle{%
+  \let\@oddhead\@empty
+  \let\@evenhead\@empty
+  \let\@oddfoot\@empty
+  \let\@evenfoot\@oddfoot}
+\makeatother
+
+\begin{document}
+
+\begin{frontmatter}
+
+\title{Partially Observable Kill-Chain Defense: Deep Reinforcement
+Learning for Autonomous IoT Security}
+
+\author[unicamp]{Felipe Santos\corref{cor1}}
+\ead{f233292@dac.unicamp.br}
+\cortext[cor1]{Corresponding author.}
+
+\author[unicamp]{Denis Fantinato}
+\ead{denisf@unicamp.br}
+
+\affiliation[unicamp]{organization={School of Electrical and Computer
+Engineering (FEEC), University of Campinas (UNICAMP)},
+  addressline={Avenida Albert Einstein 901, Cidade Universit\'{a}ria
+  Zeferino Vaz, Bar\~{a}o Geraldo},
+  city={Campinas},
+  postcode={13083-852},
+  state={S\~{a}o Paulo},
+  country={Brazil}}
+
+\end{frontmatter}
+
+\end{document}

@@ -1,0 +1,782 @@
+%% Elsevier "Internet of Things" (ISSN 2542-6605) submission.
+%% Double-column final-submission layout (LaTeX-only per journal guide).
+%% Build in the rl-iot-thesis container (has elsarticle + elsarticle-num.bst).
+\documentclass[3p,twocolumn]{elsarticle}
+
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage{amsmath,amssymb}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{array}
+\usepackage{makecell}
+\usepackage{url}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\hypersetup{colorlinks=true,linkcolor=black,citecolor=black,urlcolor=blue}
+
+%% Allow long URLs/DOIs to break at more characters so reference entries do not
+%% waste half-empty lines in the narrow two-column bibliography (formatting only).
+\Urlmuskip=0mu plus 1mu
+\def\UrlBreaks{\do\/\do\.\do\-\do\_\do\?\do\&\do\=\do\#\do\:\do0\do1\do2\do3\do4\do5\do6\do7\do8\do9\do\a\do\b\do\c\do\d\do\e\do\f\do\g\do\h\do\i\do\j\do\k\do\l\do\m\do\n\do\o\do\p\do\q\do\r\do\s\do\t\do\u\do\v\do\w\do\x\do\y\do\z}
+
+\graphicspath{{figs/}}
+
+%% Float placement: relax the default fractions so figures share pages with
+%% text instead of backing up into figure-only pages at the end of the paper.
+\setcounter{topnumber}{3}
+\setcounter{bottomnumber}{2}
+\setcounter{totalnumber}{4}
+\renewcommand{\topfraction}{0.9}
+\renewcommand{\bottomfraction}{0.9}
+\renewcommand{\textfraction}{0.08}
+\renewcommand{\floatpagefraction}{0.7}
+\renewcommand{\dbltopfraction}{0.9}
+\renewcommand{\dblfloatpagefraction}{0.7}
+
+%% Macro-driven numbers regenerated from docs/results/ via `make render-tables`.
+%% Copied into paper/ so the manuscript builds standalone in the container.
+\input{numbers}
+
+\journal{Internet of Things}
+
+%% Suppress elsarticle's default preprint footer for direct journal upload.
+\makeatletter
+\def\ps@pprintTitle{%
+  \let\@oddhead\@empty
+  \let\@evenhead\@empty
+  \let\@oddfoot\@empty
+  \let\@evenfoot\@oddfoot}
+\makeatother
+
+\begin{document}
+
+\begin{frontmatter}
+
+\title{Partially Observable Kill-Chain Defense: Deep Reinforcement
+Learning for Autonomous IoT Security}
+
+%% Author details removed for single-anonymized peer review.
+%% See the separate title page for authors, affiliation, and contact.
+\author{}
+
+\begin{abstract}
+The rapid proliferation of the Internet of Things (IoT) expands the network
+attack surface, while the resource constraints of edge devices often render
+traditional, signature-based defenses ineffective. Reinforcement learning (RL)
+is a promising paradigm for autonomous defense, but its advantage is realized
+primarily in sequential decision-making rather than per-flow classification.
+This work investigates a fundamental question: under what conditions does a
+learned sequential policy outperform a memoryless supervised classifier, and
+when is this advantage merely an artifact of task framing? We propose a
+partially observable, kill-chain-aware defense framework evaluated on realistic
+session-coherent trajectories derived from the CICIoT2023 dataset. The
+defender--attacker interaction is modeled as a reactive state-transition
+process under partial observability, governed by a tunable aliasing rate that
+sets how often telemetry is confusable across adjacent stages; the defender
+never observes the true kill-chain stage. We train
+windowed deep RL (DRL) agents (PPO, A2C, and DQN) and compare them against a
+tuned Random Forest (RF) baseline, a full-observability oracle, and heuristic
+controllers. Our evaluation yields three findings. (i) When observations are
+fully informative the memoryless classifier matches the DRL agents, but as
+aliasing increases its performance degrades monotonically to net-harmful while
+windowed DRL remains stable. (ii) The DRL advantage holds under both sparse
+outcome-only and shaped reward functions. (iii) Under distribution shift across
+ten held-out attack classes, the best DRL agent improves prevention on every
+class, with no statistical dependence on baseline detector recall. All results
+are fully reproducible.
+\end{abstract}
+
+\begin{keyword}
+IoT \sep Security \sep Reinforcement learning \sep POMDP \sep Kill chain \sep
+Aliasing \sep Reproducibility
+\end{keyword}
+
+\end{frontmatter}
+
+% =====================================================================
+\section{Introduction}
+\label{sec:intro}
+% =====================================================================
+
+The number of connected Internet of Things (IoT) devices is projected to grow
+from roughly $19.8$ billion in 2025 to $40.6$ billion by 2034~\cite{Statista2025},
+while the global cost of cybercrime is forecast to reach USD~$12.2$ trillion per
+year by 2031~\cite{Morgan2025}. Much of this surface remains weakly defended: many IoT
+devices are resource-constrained and heterogeneous, signature-based intrusion
+detection fails against zero-day traffic, and anomaly detectors incur high
+false-positive rates~\cite{Khraisat2019}. These
+pressures motivate adaptive, autonomous defense, and reinforcement learning (RL)
+is an attractive candidate because it learns sequential control policies
+directly from interaction~\cite{Chen2021,Sutton2018,Mnih2015,Schulman2017}.
+
+However, existing literature rarely isolates the precise mechanisms driving a
+learned policy's efficacy. Many RL-for-security studies frame the defensive
+task so that each observed flow already reveals the attacker's intent; the
+problem then collapses to per-flow classification, where a well-tuned
+supervised classifier is preferable and an RL agent has nothing sequential to
+exploit. A learned policy is justified only when the decision is genuinely
+sequential and partially observed, i.e., when the current observation is
+insufficient and the latent situation must be inferred over time. This work
+systematically investigates when a learned sequential policy outperforms a
+memoryless supervised classifier, and when that advantage is merely an artifact
+of task framing.
+
+To resolve this, we construct a controlled environment in which partial
+observability is a tunable knob, and we compare a windowed deep RL (DRL)
+defender against a strong, deployable, memoryless supervised baseline under
+identical conditions. Our contributions are:
+
+\begin{enumerate}
+\item A partially observable, kill-chain-aware IoT defense
+environment (Gymnasium API) driven by a reactive, bi-directional escalation
+process over five kill-chain stages. The defender chooses among five graded
+response actions and never observes the true stage; feature rows are sampled
+session-coherently from real CICIoT2023 data with adjacent-stage aliasing
+controlled by a rate $\alpha$, and ten attack classes are held out for
+out-of-distribution (OOD) evaluation (Section~\ref{sec:method}).
+
+\item A controlled crossover experiment that isolates where a windowed
+DRL policy overtakes the memoryless classifier: the two tie at $\alpha=0$
+(no structural bias toward RL), then the classifier degrades monotonically to
+net-harmful while the DRL policy stays stable, with disjoint confidence
+intervals from $\alpha=\HeadlineAlpha$ onward
+(Section~\ref{sec:results-crossover}).
+
+\item A coupled-vs-decoupled reward ablation showing the best DRL agent
+outperforms RF under both a sparse outcome-only reward and a shaped
+proportionality reward, indicating that the RL advantage does not depend on
+a privileged reward signal (Section~\ref{sec:results-coupling}).
+
+\item A held-out attack-class prevention analysis: the best windowed
+DRL agent prevents a larger fraction of attacks on every one of ten
+held-out classes, with no detectable dependence on the underlying
+detector's per-class recall (Section~\ref{sec:results-ood}).
+
+\item A training-reliability and reproducibility account: the on-policy
+algorithms (PPO, A2C) train stably under the sparse reward with low across-seed
+variance while off-policy DQN destabilizes without per-step shaping, and we
+report the distinct defensive doctrines each algorithm learns
+(Section~\ref{sec:results-reliability} and~\ref{app:repro}).
+\end{enumerate}
+
+% =====================================================================
+\section{Background and related work}
+\label{sec:related}
+% =====================================================================
+
+\noindent\textbf{RL for IoT security.} Surveys document rapid growth in RL and DRL
+applied to intrusion detection and IoT
+security~\cite{Uprety2021,Chen2021}. Most
+systems, however, are framed as detection or per-flow classification,
+where the label is inferable from the current input. Representative
+learning-based IoT defenses include IoTWarden~\cite{Alam2024}, a DQN
+trigger-action defense evaluated on synthetic event streams, and its
+multi-agent successor RESTRAIN~\cite{Alam2025}; HoneyIoT~\cite{Guan2023}, an RL
+honeypot; and RL-IoTIDS~\cite{Odeh2026}, a DQN+CNN-LSTM per-flow classifier
+evaluated on CICIoT2023 --- the closest contrast to our work, but framed as
+static classification rather than sequential response under partial
+observability. Optimal-stopping and hierarchical formulations of intrusion
+response~\cite{Hammar2022} are related but do not isolate the
+partial-observability driver against a matched memoryless baseline.
+
+\smallskip\noindent\textbf{Kill chains and threat models.} We organize the attacker's progress
+using the intrusion kill chain~\cite{Hutchins2011} and map CICIoT2023 attack
+categories to MITRE ATT\&CK tactics~\cite{MITRE2023}. CICIoT2023 itself is a
+large real-traffic IoT benchmark~\cite{Neto2023}; Bot-IoT~\cite{Koroniotis2019}
+is a natural replication target discussed in Section~\ref{sec:discussion}.
+
+\smallskip\noindent\textbf{Positioning.} Table~\ref{tab:related} contrasts representative work
+along the axes that matter for our question: whether the task is framed as
+sequential control (vs classification), whether it is partially observable,
+whether it uses real IoT data, and whether it is benchmarked against a matched
+memoryless controller. To our knowledge, no prior IoT-defense study varies
+partial observability as a controlled knob to locate the crossover point
+between learned sequential control and memoryless classification.
+
+\begin{table*}[tbp]
+\centering
+\caption{Positioning against representative learning-based IoT defenses.
+Abbreviations: obs.\ (observability), multi-ag.\ (multi-agent).}
+\label{tab:related}
+\footnotesize
+\setlength{\tabcolsep}{5pt}
+\renewcommand{\arraystretch}{1.2}
+\begin{tabular}{@{}l l c l c l@{}}
+\toprule
+Work & Framing & \makecell{Partial\\obs.\ knob} & \makecell[l]{Real IoT\\data} & \makecell{Matched memory-\\less baseline} & Adversary \\
+\midrule
+IoTWarden~\cite{Alam2024}   & Sequential (DQN)       & No  & Synthetic  & No                 & Trigger-action \\
+RESTRAIN~\cite{Alam2025}    & Sequential (multi-ag.) & No  & Synthetic  & No                 & Trigger-action \\
+HoneyIoT~\cite{Guan2023}    & Deception (RL)         & No  & Emulated   & No                 & Interactive \\
+RL-IoTIDS~\cite{Odeh2026}   & Classification         & No  & CICIoT2023 & Is a classifier    & Static \\
+This work                   & Seq.\ control          & Yes ($\alpha$) & CICIoT2023 & Yes (RF-Acting) & Reactive escalation \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+% =====================================================================
+\section{Method}
+\label{sec:method}
+% =====================================================================
+
+\subsection{Overview and threat model}
+The system is a three-component pipeline (Fig.~\ref{fig:architecture}):
+(1) an offline preparation stage (kill-chain projection of CICIoT2023, a
+closed-form reactive attacker, and a tuned Random-Forest stage detector);
+(2) an online training stage (a Gymnasium environment, a feature-realization
+engine, and the DQN/PPO/A2C agents); and (3) an evaluation stage (a held-out
+benchmark and ablations). The threat model is a network-layer attacker whose
+$33$ CICIoT2023 attack types map onto five kill-chain stages
+--- \textsc{benign}(0), \textsc{recon}(1), \textsc{access}(2),
+\textsc{maneuver}(3), \textsc{impact}(4) --- aligned with MITRE ATT\&CK
+tactics. The attacker model is reactive and strictly sequential, transitioning
+monotonically from \textsc{benign} to \textsc{impact}, de-escalating only in
+response to defensive actions, and is not co-trained
+(self-play is deferred; see Section~\ref{sec:discussion}).
+
+\begin{figure*}[tbp]
+\centering
+\includegraphics[width=\textwidth,height=0.45\textheight,keepaspectratio]{architecture_diagram.pdf}
+\caption{Three-component pipeline: offline preparation, online DRL training,
+and held-out evaluation. The defender observes only aliased feature windows,
+never the true kill-chain stage.}
+\label{fig:architecture}
+\end{figure*}
+
+\subsection{Data and kill-chain projection}
+We use CICIoT2023~\cite{Neto2023}, collected from $105$ real IoT devices as
+pre-aggregated flow records. We drop $17$ zero-variance/highly-correlated
+columns, retaining $29$ features, and map the $34$ labels ($33$ attacks +
+benign) to the five stages through a deterministic projection $\pi_{kc}$ (full
+table in~\ref{app:mapping}). After reserving OOD classes, the training
+pool contains $235{,}324$ rows. Each stage $s$ induces an empirical
+per-stage feature distribution $p_{\text{data}}(\mathbf{x}\mid s)$. We build
+disjoint training, class-balanced validation, class-balanced test, and
+out-of-distribution splits. Ten attack classes---at least two per non-benign
+stage---are held out entirely for OOD evaluation (Table~\ref{tab:ood-classes}).
+
+\begin{table}[tbp]
+\centering
+\footnotesize
+\caption{Ten held-out attack classes reserved for out-of-distribution
+evaluation, grouped by kill-chain stage. None appear in any training split.}
+\label{tab:ood-classes}
+\begin{tabular}{@{}l p{0.62\linewidth}@{}}
+\toprule
+Stage & Held-out classes \\
+\midrule
+\textsc{recon}    & VulnerabilityScan, Recon-OSScan \\
+\textsc{access}   & XSS, SqlInjection \\
+\textsc{maneuver} & Mirai-udpplain, DNS\_Spoofing \\
+\textsc{impact}   & DDoS-HTTP\_Flood, DoS-SYN\_Flood, DDoS-SlowLoris, DDoS-ACK\_Fragmentation \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Reactive escalation attacker}
+\label{sec:attacker}
+From \textsc{benign} the attacker initiates activity autonomously through a
+single defender-independent uniform draw that transitions to \textsc{recon}
+with probability $0.35$, to \textsc{access} with probability $0.10$, and
+otherwise stays benign. Once active, it
+reacts to the defender's applied force through the signed proportionality gap
+$d_t = a_t - \mathrm{rec}(s_t)$, where the recommended response is
+identity-aligned, $\mathrm{rec}(s)=s$ ($\textsc{observe},\dots,\textsc{isolate}$
+for stages $0,\dots,4$); thus $d_t$ is the signed distance of the defender's
+action from the stage-appropriate one.
+For an active stage $s_t\in\{1,2,3\}$, writing $s'=s_{t+1}$, the one-step kernel
+under under-forcing ($d_t\!\le\!-1$), a proportionate response ($d_t\!=\!0$),
+and over-forcing ($d_t\!\ge\!1$) is
+\begin{equation}
+P(s'\mid s_t,a_t) =
+\begin{cases}
+p_{\text{up}}^{\text{eff}}(s_t), & s'{=}s_t{+}1,\, d_t{\le}{-}1,\\
+1-p_{\text{up}}^{\text{eff}}(s_t), & s'{=}s_t,\, d_t{\le}{-}1,\\
+p_{\text{down}}(a_t), & s'{=}s_t{-}1,\, d_t{=}0,\\
+1-p_{\text{down}}(a_t), & s'{=}s_t,\, d_t{=}0,\\
+1, & s'{=}s_t,\, d_t{\ge}1,
+\end{cases}
+\label{eq:transition}
+\end{equation}
+where the retreat rate rewards decisive containment,
+$p_{\text{down}}(a_t)=0.98$ if $a_t=\textsc{isolate}$ and $0.90$ otherwise, and
+the escalation rate is coupled to proximity to impact through
+$p_{\text{up}}^{\text{eff}}(s) = p_{\text{up}}(\sigma_{\min} + (1-\sigma_{\min})\,s/4)$,
+with $p_{\text{up}}=0.90$ and residual floor $\sigma_{\min}=0.4$, so under-forcing
+grows more dangerous near impact. Holding the attacker below \textsc{impact}
+for the full horizon yields a prevention bonus; a tie at the impact boundary
+resolves in the attacker's favor.
+
+\subsection{Partial observability and the aliasing knob}
+\label{sec:pomdp}
+The defense is a partially observable Markov decision process (POMDP)
+$(\mathcal{S},\mathcal{A},\mathcal{O},P,Z,R,\gamma)$.
+The defender never sees $s_t$; it receives a feature row through an
+observation aliasing kernel that, with probability $\alpha$, emits a row
+drawn from a stage adjacent to the true one:
+\begin{equation}
+Z(\mathbf{x}\mid s) = (1-\alpha)\,p_{\text{data}}(\mathbf{x}\mid s)
+           + \alpha\,p_{\text{data}}(\mathbf{x}\mid s\pm 1).
+\label{eq:aliasing}
+\end{equation}
+The rate $\alpha\in[0,1]$ is the central experimental knob: $\alpha=0$ is an
+unaliased per-flow setting (a classifier's best case), while larger
+$\alpha$ forces temporal inference. Because a single aliased row is
+stage-ambiguous, the exact belief
+$b_t(s)=\Pr(s_t=s\mid \mathbf{x}_{1:t},a_{1:t-1})$ is intractable online, so the
+agent conditions on a finite stacked window $\mathbf{o}_t\in\mathbb{R}^{290}$: a
+fixed-lag ($w=5$) surrogate for $b_t$ stacking $29$ features and their first
+differences over the last five steps. The action set is
+$\mathcal{A}=\{\textsc{observe}, \textsc{log}, \textsc{restrict},
+\textsc{block}, \textsc{isolate}\}=\{0,1,2,3,4\}$, and the agent learns a
+policy $\pi_\theta(a_t\mid\mathbf{o}_t)$ maximizing the expected discounted
+return $\mathbb{E}_{\pi_\theta}[\sum_t \gamma^{t} R(s_t,a_t)]$ ($\gamma=0.99$)
+over episodes of up to $T=100$ steps (lifecycle floor $20$). Impact is
+non-terminal in the primary reward, so the defender still gets one final
+decision turn.
+
+\subsection{Stage detector and the memoryless baseline}
+\label{sec:detector}
+A tuned Random Forest ($200$ trees, max depth $20$, min-samples-leaf $2$,
+balanced class weights; $\RFDetectorNodes$ decision-tree nodes,
+$\RFDetectorMB$~MB on disk) predicts the stage
+from a single feature row, reaching a macro-$F_1$ of $\DetectorRfFoneBalanced$
+on the balanced test split (grid search over $54$ cells,
+validation macro-$F_1$ $0.927\pm0.005$). The deployable, memoryless
+baseline --- RF-Acting --- maps each row to a predicted stage and then
+to the recommended action. It is memoryless by construction: it sees one
+row per decision, so the RL-vs-RF comparison isolates windowed temporal
+control vs.\ memoryless control, not ``RL vs.\ supervised learning'' in the
+abstract sense (a point we return to in Section~\ref{sec:discussion}).
+
+\subsection{Reward functions}
+\label{sec:reward}
+The environment supports two reward functions. The primary \emph{outcome}
+reward is sparse: every step pays the action cost
+$-\kappa\,C_{\text{action}}(a)$ (with $\kappa=1$ and cost vector
+$C_{\text{action}}=[0,0.1,0.3,0.5,0.8]$ over $\mathcal{A}$), and the only
+non-trivial signal arrives when the attacker reaches impact,
+\begin{equation}
+R^{\mathrm{otm}}(a) = -p_{\text{impact}} +
+\begin{cases}
++\,b_{\text{success}}, & a\ge3,\\
+-\,p_{\text{missed}}, & a\le1,\\
+0, & a=2,
+\end{cases}
+\label{eq:outcome}
+\end{equation}
+with $p_{\text{impact}}=200$, $b_{\text{success}}=250$, and
+$p_{\text{missed}}=150$; a one-time bonus $+b_{\text{prevent}}=+50$ is granted
+if impact is averted for the full horizon. The \emph{coupled} reward (used only
+in the reward-coupling ablation) instead pays a dense, stage-conditioned shaping
+signal at every step,
+\begin{equation}
+R^{\mathrm{cpl}}_t = -\kappa\,C_{\text{action}}(a_t)
++ \sum_{k}\phi_k(s_t,a_t),
+\label{eq:coupled}
+\end{equation}
+whose terms reward proportionate force and penalize extremes: $\phi$ gives
+$\pm5$ for proportionate/disproportionate force ($|a-\mathrm{rec}(s)|\!\le\!1$
+vs.\ $\ge\!2$), $+10$ for benign passivity ($a\!\le\!1$ on benign), $-50$ for
+benign over-reaction ($a\!\ge\!2$), stacking block guardrails ($-100$ on benign,
+$-50$ on recon, for $a\!\ge\!3$), and a capped de-escalation bonus ($+15$ per
+pushback, cap $150$). All results use the outcome reward unless stated.
+
+\subsection{Agents, baselines, and protocol}
+\label{sec:protocol}
+We train three independent Stable-Baselines3~\cite{Raffin2021} agents on a
+Gymnasium environment~\cite{Gymnasium2023}, all with a $2\times64$ ReLU MLP
+policy: DQN~\cite{Mnih2015} (off-policy value baseline), PPO~\cite{Schulman2017}
+(on-policy actor-critic), and A2C~\cite{Mnih2016} (faster on-policy). Each is
+trained for a fixed $5{,}000{,}000$ steps with no early stopping over
+$\NumSeeds$ seeds $\{0,\dots,9\}$; the best-on-validation checkpoint is carried
+forward. Evaluation uses $n=300$ episodes per policy. Baselines are: Random,
+Always-observe, Always-block, RF-Acting (deployable memoryless controller;
+Section~\ref{sec:detector}), and a Recommended-Action Oracle that reads
+the true stage --- a non-competitor ceiling. We report bootstrap $95\%$
+confidence intervals and treat non-overlapping intervals as separation. The
+full hyperparameters are in Section~\ref{sec:hparams}.
+
+\subsection{Hyperparameters}
+\label{sec:hparams}
+All agents share a $2\times64$ ReLU MLP policy and train for $5\times10^{6}$
+steps per seed; Table~\ref{tab:hparams} lists the per-algorithm settings.
+
+\begin{table}[tbp]
+\centering
+\caption{Training hyperparameters. All agents use a $2\times64$ ReLU MLP policy,
+$\gamma=0.99$, and $5\times10^{6}$ steps per seed. A dash (``---'') marks a
+setting that does not apply to that algorithm.}
+\label{tab:hparams}
+\scriptsize
+\setlength{\tabcolsep}{5pt}
+\renewcommand{\arraystretch}{0.95}
+\begin{tabular}{@{}lrrr@{}}
+\toprule
+Hyperparameter & PPO & A2C & DQN \\
+\midrule
+Learning rate            & $3\times10^{-4}$ & $7\times10^{-4}$ & $5\times10^{-4}$ \\
+Rollout $n_{\text{steps}}$ & $2048$ & $256$ & --- \\
+$\lambda_{\text{GAE}}$   & $0.95$ & $0.95$ & --- \\
+Entropy coef.            & $0.010$ & $0.010$ & --- \\
+Value coef.              & $0.50$ & $0.50$ & --- \\
+Epochs / update          & $10$ & --- & --- \\
+Batch size               & $64$ & --- & $64$ \\
+Replay buffer            & --- & --- & $200$k \\
+Learning starts          & --- & --- & $5000$ \\
+Target-update interval    & --- & --- & $5000$ \\
+Exploration fraction     & --- & --- & $0.20$ \\
+Exploration $\epsilon$   & --- & --- & $1.0\!\to\!0.05$ \\
+Max grad norm            & $0.50$ & $0.50$ & $0.50$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% =====================================================================
+\section{Results}
+\label{sec:results}
+% =====================================================================
+
+Our tuned RF stage detector attains a macro-$F_1$ of $\DetectorRfFoneBalanced$,
+with per-class $F_1$ from $0.87$ (recon/access) to $0.998$ (impact); its only
+material confusion is recon$\to$access ($13.2\%$).
+
+\subsection{The observation-aliasing crossover}
+\label{sec:results-crossover}
+Table~\ref{tab:alpha} and Fig.~\ref{fig:alpha} report mean episode reward
+across the aliasing sweep. We denote the reward margin between the windowed
+PPO agent and the memoryless classifier by
+$\Delta R \equiv R_{\mathrm{PPO}} - R_{\mathrm{RF}}$. At $\alpha=0$ PPO
+($\AlphaZeroPPO$) and RF ($\AlphaZeroRF$) tie ($\Delta R = \AlphaZeroGap$,
+overlapping CIs): in an unaliased per-flow setting the memoryless classifier
+matches the sequential policy, so the environment does not favor RL.
+As $\alpha$ increases the classifier degrades monotonically
+($\AlphaZeroRF \to \AlphaTwoRF \to \AlphaFourRF \to \AlphaSixRF
+\to \AlphaEightRF \to \AlphaOneRF$, i.e.\ net-harmful at full aliasing), while
+windowed PPO remains stable ($\AlphaFourPPO$ at the reference operating point
+$\alpha=\HeadlineAlpha$). The margin becomes significant (disjoint CIs)
+from $\alpha=\HeadlineAlpha$ ($\Delta R = \AlphaFourGap$) and widens to
+$\AlphaOneGap$ at $\alpha=1.0$. A2C is highest throughout
+(e.g.\ $\AlphaFourATwoC$ at $\alpha=\HeadlineAlpha$), and the oracle ceiling is
+$\OracleCeiling$.
+
+\begin{table}[tbp]
+\centering
+\caption{Mean episode reward vs.\ aliasing rate $\alpha$ ($n=300$,
+$95\%$ CI half-widths omitted for space; see Fig.~\ref{fig:alpha}).
+The reward margin is $\Delta R = R_{\mathrm{PPO}} - R_{\mathrm{RF}}$.}
+\label{tab:alpha}
+\footnotesize
+\begin{tabular}{@{}lrrrrr@{}}
+\toprule
+$\alpha$ & PPO & A2C & DQN & RF & $\Delta R$ \\
+\midrule
+0.0 & \AlphaZeroPPO  & \AlphaZeroATwoC  & \AlphaZeroDQN  & \AlphaZeroRF  & \AlphaZeroGap \\
+0.2 & \AlphaTwoPPO   & \AlphaTwoATwoC   & \AlphaTwoDQN   & \AlphaTwoRF   & \AlphaTwoGap \\
+0.4 & \AlphaFourPPO  & \AlphaFourATwoC  & \AlphaFourDQN  & \AlphaFourRF  & \AlphaFourGap \\
+0.6 & \AlphaSixPPO   & \AlphaSixATwoC   & \AlphaSixDQN   & \AlphaSixRF   & \AlphaSixGap \\
+0.8 & \AlphaEightPPO & \AlphaEightATwoC & \AlphaEightDQN & \AlphaEightRF & \AlphaEightGap \\
+1.0 & \AlphaOnePPO   & \AlphaOneATwoC   & \AlphaOneDQN   & \AlphaOneRF   & \AlphaOneGap \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[tbp]
+\centering
+\includegraphics[width=\linewidth,height=0.26\textheight,keepaspectratio]{Falpha_curve.pdf}
+\caption{The crossover. The memoryless classifier (RF-Acting) degrades
+monotonically with aliasing while windowed DRL is stable; the policies tie at
+$\alpha=0$ and separate with disjoint CIs from $\alpha=\HeadlineAlpha$ onward.}
+\label{fig:alpha}
+\end{figure}
+
+Structurally, RF-Acting fails as $\alpha$ grows because a misread row triggers
+a mismatched action, whereas the windowed agents integrate evidence over the
+window and defer commitment. Benign false-positive rates stay below $1\%$ for
+all DRL agents (PPO $0.89\%$, DQN $0.46\%$, A2C $0.66\%$) versus $100\%$ for
+always-block and $41.3\%$ for random.
+
+\subsection{Reward-coupling ablation}
+\label{sec:results-coupling}
+A natural objection is that the RL advantage stems from a privileged shaped
+reward. We retrain all agents under both reward functions at
+$\alpha=\HeadlineAlpha$ (Fig.~\ref{fig:coupling}). Here we write the reward
+margin as $\Delta R_{\star} \equiv R_{\text{best-DRL}} - R_{\mathrm{RF}}$. The
+best DRL agent outperforms RF under both functions: under the coupled function
+the best agent is DQN ($\CouplingDQNCoupled$), compared with RF at $+163.1$;
+under the sparse outcome function the best agent is A2C ($\CouplingATwoCOutcome$),
+compared with RF at $+83.1$; in both cases $\Delta R_{\star} \approx +63$ in
+DRL's favor. Shaping changes which algorithm wins and how reliably it trains,
+but not the qualitative result that learned control surpasses the memoryless
+controller.
+
+\begin{figure}[tbp]
+\centering
+\includegraphics[width=\linewidth,height=0.26\textheight,keepaspectratio]{Fcoupling_reward_gap.pdf}
+\caption{Reward margin $\Delta R_{\star} = R_{\text{best-DRL}} - R_{\mathrm{RF}}$
+under the coupled (shaped) and outcome (sparse) reward functions at
+$\alpha=\HeadlineAlpha$. The best DRL agent leads RF in both regimes.}
+\label{fig:coupling}
+\end{figure}
+
+\subsection{Out-of-distribution prevention}
+\label{sec:results-ood}
+We stress the policies on ten held-out attack classes via single-stage feature
+injection (held-out rows replace only their own stage's realization). We report
+the \emph{prevention rate}, the fraction of episodes in which the attacker is
+held below impact for the entire horizon,
+\begin{equation}
+\rho_{\text{prev}} = \Pr\!\big(\textstyle\max_{0\le t\le T} s_t < \textsc{impact}\big),
+\label{eq:prevention}
+\end{equation}
+the defender-attributable ``win'' (distinct from mitigating impact only on the
+final turn). The best
+DRL agent (A2C) prevents a fraction between $\FfifteenBestRLPreventionLow$ and
+$\FfifteenBestRLPreventionHigh$ on every class, versus
+$\FfifteenRFPreventionLow$--$\FfifteenRFPreventionHigh$ for RF; the per-class
+advantage ranges $\FfifteenAdvantageLow$ to $\FfifteenAdvantageHigh$
+(Fig.~\ref{fig:ood}). RF's failure mode is structural: it spends roughly
+two-thirds of steps in \textsc{observe}/\textsc{log}, lets the attacker reach
+impact, and only mitigates the final turn --- ``mitigated,'' not
+``prevented.''
+
+\begin{figure*}[tbp]
+\centering
+\includegraphics[width=\textwidth,height=0.62\textheight,keepaspectratio]{F15_ood_robustness.pdf}
+\caption{Per-class prevention on ten held-out classes: best DRL prevents
+$\FfifteenBestRLPreventionLow$--$\FfifteenBestRLPreventionHigh$ everywhere;
+RF prevents $\FfifteenRFPreventionLow$--$\FfifteenRFPreventionHigh$.}
+\label{fig:ood}
+\end{figure*}
+
+Crucially, the DRL advantage shows no detectable dependence on the
+detector's per-class recall, which spans a graded spectrum from
+$\FfifteenDNSSpoofingRecall$ (DNS\_Spoofing) through $\FfifteenVulnScanRecall$
+(VulnerabilityScan) up to $\FfifteenSynFloodRecall$ (DoS-SYN\_Flood): the
+Spearman correlation is $\rho=\FfifteenSpearmanRho$ ($p=\FfifteenSpearmanP$),
+Pearson $r=\FfifteenPearsonR$ ($p=\FfifteenPearsonP$), and a bootstrap OLS
+slope CI $[\FfifteenOLSSlopeCILow, \FfifteenOLSSlopeCIHigh]$ spans zero. The
+primary evidence remains the direct per-class dominance, which holds even for
+the highest-recall classes.
+
+\subsection{Training reliability and learned doctrines}
+\label{sec:results-reliability}
+Both on-policy agents converge to stable plateaus above the RF band within
+$\approx0.2$M steps, with low across-seed standard deviation (PPO $\approx15$,
+A2C $\approx9$), while DQN shows wide bands throughout ($\approx52$ under the
+outcome function, tightening to $\approx17$ under coupled shaping)
+(Fig.~\ref{fig:learning}). The on-policy advantage is training-time stability,
+not peak return: the same DQN that wins the coupled ablation
+($\CouplingDQNCoupled$) collapses to $\CouplingDQNOutcome$ under the sparse
+outcome reward.
+
+\begin{figure}[tbp]
+\centering
+\includegraphics[width=\linewidth,height=0.26\textheight,keepaspectratio]{F3_learning_curves.pdf}
+\caption{Learning curves ($\NumSeeds$ seeds). On-policy agents converge to
+tight bands above RF; DQN bands stay wide under the sparse reward.}
+\label{fig:learning}
+\end{figure}
+
+The agents learn distinct doctrines (Fig.~\ref{fig:actions}): A2C is
+\emph{prevent-at-maneuver}, blocking $86.5\%$ of maneuver-stage steps and never
+isolating; PPO is \emph{contain-at-impact}, isolating at impact ($12.1\%$);
+DQN is flatter and more observation-heavy --- qualitatively different but
+defensible policies, not a single ``optimal'' response.
+
+\begin{figure*}[tbp]
+\centering
+\includegraphics[width=\textwidth,height=0.50\textheight,keepaspectratio]{F4_action_distribution.pdf}
+\caption{Per-stage action distributions revealing distinct doctrines:
+A2C prevents at maneuver; PPO contains at impact.}
+\label{fig:actions}
+\end{figure*}
+
+\subsection{Robustness sweeps}
+\label{sec:results-sweeps}
+Re-evaluating the fixed reference-operating-point policies across an
+environment-difficulty sweep
+(attacker retreat probability $p_{\text{down}}\in\{0,\dots,1\}$) yields a
+monotone ordering A2C $>$ PPO $>$ DQN, with the widest DRL margin at the harshest
+setting (Fig.~\ref{fig:aggressiveness}). Under an evasive-persistence
+(post-detection hardening) sweep (Fig.~\ref{fig:evasion}), degradation is
+graceful: A2C declines from
+$\FseventeenZeroATwoCReward$ to $\FseventeenSeventyFiveATwoCReward$ and PPO from
+$\FseventeenZeroPPOReward$ to $\FseventeenSeventyFivePPOReward$; A2C passes and
+PPO narrowly fails the pre-registered $25\%$-degradation gate (CI-low
+degradation $\FseventeenPPOCILowDegradation$).
+
+% =====================================================================
+\section{Discussion and threats to validity}
+\label{sec:discussion}
+% =====================================================================
+
+We outline the assumptions and limitations that bound our empirical claims.
+
+(1) Designed, non-co-adaptive attacker. The crossover is conditional on
+this attacker class; a co-adaptive adversary could narrow $\Delta R$ (self-play
+is future work).
+
+(2) Aliasing and session coherence are modeling abstractions.
+CICIoT2023 flows are pre-aggregated with no recoverable session key, so $\alpha$
+and session coherence are imposed at the environment layer; our contribution is
+the shape of the response as $\alpha$ varies, anchored by the $\alpha=0$ tie.
+
+(3) The supervised baseline is memoryless by construction. The
+comparison isolates windowed temporal control vs.\ memoryless control, not
+``RL vs.\ supervised learning'' in general; a windowed supervised controller
+(e.g.\ a TCN/LSTM head over the same window) is the most direct follow-up. The
+reward-coupling ablation and the $\alpha=0$ tie already rule out the two
+strongest alternative explanations: privileged reward and an RL-favoring
+environment.
+
+(4) Single dataset. We use CICIoT2023 only; Bot-IoT~\cite{Koroniotis2019}
+is the named replication target, and the OOD study is a controlled
+feature-injection stress test, not a claim of deployed zero-day generalization.
+
+(5) Statistical power of the recall-independence claim. With $n=10$
+held-out classes, the near-zero recall--advantage correlation is
+``no detectable trend,'' not proven independence; the direct per-class
+dominance is the load-bearing evidence.
+
+% =====================================================================
+\section{Conclusion}
+\label{sec:conclusion}
+% =====================================================================
+
+We framed autonomous IoT defense as a partially observable, kill-chain-aware
+control problem and asked when a learned sequential policy outperforms a
+memoryless classifier. Three findings answer it: (i) the two tie in an unaliased
+per-flow setting and diverge as observation aliasing grows, with the classifier
+becoming net-harmful while windowed DRL remains stable; (ii) the best DRL agent
+outperforms the classifier under both sparse and shaped rewards; and (iii) DRL
+prevents more attacks on every held-out class with no detectable dependence on
+detector recall. On-policy methods provide training-time stability rather than higher peak
+return. Future directions include recurrent belief-state policies (preliminary
+recurrent-PPO did not beat the windowed feed-forward policy under our budget),
+co-adaptive attackers via self-play, train-time OOD augmentation, edge-hardware
+deployment (the deployable policy is a $\PolicyFootprintKB$~KB, $\PolicyParams$-parameter
+feed-forward network --- about $\FootprintRatio\times$ smaller on disk than the
+$\RFDetectorMB$~MB tuned RF detector), and a constrained-MDP formulation
+for a hard false-positive ceiling.
+
+% =====================================================================
+\appendix
+\section{Reproducibility protocol}
+\label{app:repro}
+Every figure and reported number is backed by a manifest that records the
+input SHA-256 hashes, the git commit, and the producing script, so each result
+can be traced to the exact inputs that generated it. The released code
+reproduces the full test suite ($\NumTests$ passing), verifies the hash chain,
+and supports complete retraining. All experiments run on CPU only.
+
+\section{Label-to-stage mapping}
+\label{app:mapping}
+The deterministic map $\pi_{kc}$ assigns each of the $34$ CICIoT2023 labels to
+one of the five kill-chain stages (Table~\ref{tab:mapping}). The ten OOD classes
+(Section~\ref{sec:results-ood}) are held out entirely from training.
+
+\begin{table}[tbp]
+\centering
+\footnotesize
+\caption{Deterministic projection $\pi_{kc}$ from the 34 CICIoT2023 labels to
+the five kill-chain stages.}
+\label{tab:mapping}
+\begin{tabular}{@{}l p{0.72\linewidth}@{}}
+\toprule
+Stage & CICIoT2023 labels \\
+\midrule
+\textsc{benign} & BenignTraffic \\
+\textsc{recon} & Recon-PortScan, Recon-OSScan, Recon-HostDiscovery,
+Recon-PingSweep, VulnerabilityScan \\
+\textsc{access} & SqlInjection, CommandInjection, XSS, Backdoor\_Malware,
+BrowserHijacking, Uploading\_Attack, DictionaryBruteForce \\
+\textsc{maneuver} & MITM-ArpSpoofing, DNS\_Spoofing, Mirai-greeth\_flood,
+Mirai-greip\_flood, Mirai-udpplain \\
+\textsc{impact} & DDoS-ICMP\_Flood, DDoS-UDP\_Flood, DDoS-TCP\_Flood,
+DDoS-PSHACK\_Flood, DDoS-SYN\_Flood, DDoS-RSTFINFlood, DDoS-SynonymousIP\_Flood,
+DDoS-ICMP\_Fragmentation, DDoS-UDP\_Fragmentation, DDoS-ACK\_Fragmentation,
+DDoS-HTTP\_Flood, DDoS-SlowLoris, DoS-UDP\_Flood, DoS-TCP\_Flood, DoS-SYN\_Flood,
+DoS-HTTP\_Flood \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Robustness-sweep figures}
+\label{app:sweeps}
+\setcounter{figure}{0}
+\renewcommand{\thefigure}{C.\arabic{figure}}
+\renewcommand{\theHfigure}{C.\arabic{figure}}
+Both sweeps re-evaluate the fixed reference-operating-point policies without
+retraining; they are discussed in Section~\ref{sec:results-sweeps}.
+Figure~\ref{fig:aggressiveness} shows the environment-difficulty sweep over the
+attacker retreat probability $p_{\text{down}}$.
+
+\begin{figure}[tbp]
+\centering
+\includegraphics[width=\linewidth,height=0.26\textheight,keepaspectratio]{F10_aggressiveness.pdf}
+\caption{Environment-difficulty sweep over the attacker retreat probability
+$p_{\text{down}}$. The DRL ordering A2C $>$ PPO $>$ DQN is preserved throughout,
+with the widest margin at the harshest setting ($p_{\text{down}}=0$).}
+\label{fig:aggressiveness}
+\end{figure}
+
+Figure~\ref{fig:evasion} shows the complementary evasive-persistence sweep, in
+which the attacker hardens after detection. Degradation is graceful for every
+agent, but only A2C clears the pre-registered robustness gate.
+
+\begin{figure}[tbp]
+\centering
+\includegraphics[width=\linewidth,height=0.26\textheight,keepaspectratio]{F17_evasion_sweep.pdf}
+\caption{Evasive-persistence (post-detection hardening) sweep. Degradation is
+graceful for all agents; A2C passes and PPO narrowly fails the pre-registered
+$25\%$-degradation gate.}
+\label{fig:evasion}
+\end{figure}
+
+% =====================================================================
+\section*{CRediT authorship contribution statement}
+% =====================================================================
+\textbf{Author~1}: Conceptualization, Methodology,
+Software, Investigation, Formal analysis, Data curation, Writing --- original
+draft, Visualization. \textbf{Author~2}: Conceptualization,
+Supervision, Methodology, Writing --- review \& editing, Project
+administration.
+
+% =====================================================================
+\section*{Declaration of competing interest}
+% =====================================================================
+The authors declare no known competing financial interests or personal
+relationships that could have influenced the work reported in this paper.
+
+% =====================================================================
+\section*{Funding}
+% =====================================================================
+This research did not receive any specific grant from funding agencies in the
+public, commercial, or not-for-profit sectors.
+
+% =====================================================================
+\section*{Data availability}
+% =====================================================================
+The raw CICIoT2023 dataset~\cite{CICIoT2023Dataset} is distributed under the
+Canadian Institute for Cybersecurity license and is not redistributed here. All
+code, processing pipelines, and hash-chained manifests needed to reproduce every
+figure and number are archived in a tagged public release; the repository URL is
+withheld here for anonymized review and provided in the separate title page.
+
+% =====================================================================
+\section*{Declaration of generative AI and AI-assisted technologies in the
+manuscript preparation process}
+% =====================================================================
+During the preparation of this work the authors used a generative AI assistant
+to help condense and copy-edit prose. The authors reviewed and edited the
+output and take full responsibility for the content of the publication.
+
+% =====================================================================
+\bibliographystyle{elsarticle-num}
+\bibliography{refs}
+
+\end{document}
