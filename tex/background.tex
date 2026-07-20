@@ -112,10 +112,10 @@ where $c_v$ is the value-loss coefficient, $\hat{R}_t$ a return estimate, and $c
 \caption{Advantage Actor-Critic (A2C) --- synchronous training loop \cite{Mnih2016}}
 \label{alg:a2c}
 \begin{algorithmic}
-\REQUIRE learning rate $\mathrm{lr}$, value coefficient $c_v$, entropy coefficient $c_{\mathrm{ent}}$, discount $\gamma$, $n$ parallel workers, rollout length $n_{\text{steps}}$
+\REQUIRE learning rate $\mathrm{lr}$, value coefficient $c_v$, entropy coefficient $c_{\mathrm{ent}}$, discount $\gamma$, $N_w$ parallel workers, rollout length $n_{\text{steps}}$
 \STATE Initialize actor $\pi_\theta$ and critic $V_{\theta_v}$ with random weights
 \FOR{each iteration}
-    \FOR{each worker $k = 1, \ldots, n$ \textbf{in parallel}}
+    \FOR{each worker $k = 1, \ldots, N_w$ \textbf{in parallel}}
         \STATE Collect rollout $\{(s_t, a_t, r_t, s_{t+1})\}_{t=0}^{n_{\text{steps}}-1}$ using $\pi_\theta$
     \ENDFOR
     \STATE Aggregate transitions from all workers
@@ -155,13 +155,13 @@ This approach prevents destructive policy updates and is known for its reliabili
 \caption{Proximal Policy Optimization (PPO) --- training loop \cite{Schulman2017}}
 \label{alg:ppo}
 \begin{algorithmic}
-\REQUIRE clip range $\epsilon$, value coefficient $c_v$, entropy coefficient $c_{\mathrm{ent}}$, discount $\gamma$, GAE parameter $\lambda_{\text{GAE}}$, rollout length $n_{\text{steps}}$, epochs per update $K$, minibatch size $B$
+\REQUIRE clip range $\epsilon$, value coefficient $c_v$, entropy coefficient $c_{\mathrm{ent}}$, discount $\gamma$, GAE parameter $\lambda_{\text{GAE}}$, rollout length $n_{\text{steps}}$, epochs per update $n_{\text{epochs}}$, minibatch size $B$
 \STATE Initialize actor $\pi_\theta$ and critic $V_{\theta_v}$ with random weights
 \FOR{each iteration}
     \STATE Collect rollout $\{(s_t, a_t, r_t, s_{t+1})\}_{t=0}^{n_{\text{steps}}-1}$ using $\pi_{\theta_{\text{old}}}$
     \STATE Compute advantages $\hat{A}_t$ via GAE (Eq.~\eqref{eq:gae}) and returns $\hat{R}_t = \hat{A}_t + V_{\theta_v}(s_t)$
     \STATE Set $\theta_{\text{old}} \leftarrow \theta$
-    \FOR{$k = 1, \ldots, K$}
+    \FOR{$k = 1, \ldots, n_{\text{epochs}}$}
         \STATE Sample minibatches of size $B$ from the rollout
         \STATE Update $\theta, \theta_v$ by gradient ascent on $-L^{\mathrm{PPO}}$ (Eq.~\eqref{eq:ppo_objective})
     \ENDFOR

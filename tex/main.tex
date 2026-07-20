@@ -217,9 +217,9 @@ recall. Both on-policy algorithms (PPO and A2C) train reliably under the
 sparse outcome reward, with substantially lower across-seed variability than
 DQN, and A2C reaches the highest
 best-checkpoint outcome reward at the headline aliasing rate; the off-policy
-DQN --- without per-step shaping --- destabilizes, with several times the
-across-seed variance, so the on-policy advantage is one of
-training-time stability rather than achievable peak return. All results are
+DQN --- without per-step shaping --- destabilizes to a slightly negative mean
+return, with several times the across-seed variance, so the on-policy advantage
+is one of training-time stability rather than achievable peak return. All results are
 fully reproducible.
 
     \vspace{\onelineskip}
