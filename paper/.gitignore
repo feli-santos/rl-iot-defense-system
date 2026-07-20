@@ -10,8 +10,11 @@ build/
 *.lot
 *.brf
 *.spl
-# Built PDFs are build products; Elsevier wants editable source (.tex/.docx).
-# The compiled manuscript/title-page PDFs are regenerated from their .tex sources.
-manuscript.pdf
-manuscript-anon.pdf
-title-page.pdf
+# Generated deliverables at the paper/ root are build products; Elsevier wants
+# editable source (.tex). Any compiled PDF or generated DOCX at this level is
+# regenerated from its .tex source, so never track it. The leading slash anchors
+# these rules to paper/ ONLY, so tracked assets in subfolders are unaffected:
+#   - paper/figs/*.pdf          (vendored vector figures, required by the build)
+#   - paper/declarations/*.docx (required submission declaration files)
+/*.pdf
+/*.docx
