@@ -4,6 +4,7 @@
 % Output:        architecture_diagram.pdf
 % ============================================================
 \documentclass[border=4pt]{standalone}
+\usepackage{amssymb}
 \usepackage{tikz}
 \usetikzlibrary{shapes.geometric, arrows.meta, positioning, fit, backgrounds, calc}
 
@@ -197,7 +198,7 @@
 %% ==============================================================
 \node[font=\small, align=left, text=colBorder,
       below right=2pt and 0pt of stageII.south west, anchor=north west] {
-  $o_t$ = \{features, history, action hist\}
+  $o_t = \phi(x_{t-w+1:t}) \in \mathbb{R}^{290}$ (29 features $+\,\Delta$, $\times\,5$-row window)
 };
 \node[groupLabel, below left=2pt and 0pt of stageII.south east,
       anchor=north east] {Online RL Training Loop};
