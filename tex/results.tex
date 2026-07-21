@@ -14,7 +14,7 @@ Each of the five evaluations that follow is designed to rule out one specific al
 
 \begin{table}[!htbp]
 \centering
-\caption{Reading guide to the results chapter. Each row is one evaluation, the figure that reports it, the alternative explanation it is designed to rule out, and the headline outcome. All numbers resolve through the macro layer (Section~\ref{sec:repro_framework}).}
+\caption[Reading guide to the results chapter.]{Reading guide to the results chapter. Each row is one evaluation, the figure that reports it, the alternative explanation it is designed to rule out, and the headline outcome. All numbers resolve through the macro layer (Section~\ref{sec:repro_framework}).}
 \label{tab:results_guide}
 \small
 \setlength{\tabcolsep}{5pt}
@@ -44,14 +44,14 @@ Two features of these distributions are worth drawing out, because both are cons
 \begin{figure}[!htbp]
     \centering
     \includegraphics[width=\textwidth]{figs/class_distribution.pdf}
-    \caption{CICIoT2023 per-class row counts after the kill-chain projection and rebalancing protocol.}
+    \caption[CICIoT2023 per-class row counts.]{CICIoT2023 per-class row counts after the kill-chain projection and rebalancing protocol.}
     \label{fig:f0a}
 \end{figure}
 
 \begin{figure}[!htbp]
     \centering
     \includegraphics[width=0.95\textwidth]{figs/stage_distribution.pdf}
-    \caption{CICIoT2023 per-stage row counts across the training, balanced-validation, balanced-test, and held-out out-of-distribution partitions after the kill-chain projection.}
+    \caption[CICIoT2023 per-stage row counts across partitions.]{CICIoT2023 per-stage row counts across the training, balanced-validation, balanced-test, and held-out out-of-distribution partitions after the kill-chain projection.}
     \label{fig:f0b}
 \end{figure}
 
@@ -76,7 +76,7 @@ In-distribution, on the held-out balanced-test split the tuned RandomForest atta
 
 \begin{table}[!htbp]
 \centering
-\caption{Per-class recall of the tuned RandomForest baseline on the ten held-out attack classes, ordered by recall. The held-out set spans the detector's full recall spectrum, from near-blind to near-perfect, by construction.}
+\caption[Per-class recall of the tuned RandomForest baseline.]{Per-class recall of the tuned RandomForest baseline on the ten held-out attack classes, ordered by recall. The held-out set spans the detector's full recall spectrum, from near-blind to near-perfect, by construction.}
 \label{tab:detector_ood}
 \small
 \begin{tabularx}{\textwidth}{llcX}
@@ -138,7 +138,7 @@ The central question of this dissertation is \emph{when} a learned sequential po
 
 \begin{table}[!htbp]
 \centering
-\caption{Held-out benchmark mean episodic reward by observation-aliasing rate $\alpha$ on the held-out balanced-test split ($n = 300$ episodes per policy; \NumSeeds{} seeds for the learned agents and RF-Acting; one seed for the remaining deterministic baselines and the oracle). PPO and RF rows carry 95\,\% bootstrap confidence intervals.}
+\caption[Held-out benchmark reward by aliasing rate.]{Held-out benchmark mean episodic reward by observation-aliasing rate $\alpha$ on the held-out balanced-test split ($n = 300$ episodes per policy; \NumSeeds{} seeds for the learned agents and RF-Acting; one seed for the remaining deterministic baselines and the oracle). PPO and RF rows carry 95\,\% bootstrap confidence intervals.}
 \label{tab:alpha_curve}
 \small
 \begin{tabular}{lrrrrr}
@@ -170,7 +170,7 @@ Three ablations probe the robustness of the central result: a reward-coupling ab
 
 \begin{table}[!htbp]
 \centering
-\caption{Reward-coupling ablation on the held-out balanced-test split at $\alpha = \HeadlineAlpha$ (\NumSeeds{} seeds pooled at 300 episodes each, $n = 3{,}000$ episodes per policy). For each reward function the table reports the best learned agent and its reward, the RF-Acting reward with its 95\,\% bootstrap CI, and the RF-minus-best-RL difference.}
+\caption[Reward-coupling ablation summary.]{Reward-coupling ablation on the held-out balanced-test split at $\alpha = \HeadlineAlpha$ (\NumSeeds{} seeds pooled at 300 episodes each, $n = 3{,}000$ episodes per policy). For each reward function the table reports the best learned agent and its reward, the RF-Acting reward with its 95\,\% bootstrap CI, and the RF-minus-best-RL difference.}
 \label{tab:coupling}
 \small
 \resizebox{\textwidth}{!}{%

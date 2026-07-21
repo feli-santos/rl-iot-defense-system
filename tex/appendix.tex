@@ -15,7 +15,7 @@ Every component of the framework emits one or more \texttt{manifest.json} files 
 
 \begin{table}[!htbp]
 \centering
-\caption{Reproducibility-artifact inventory under \texttt{docs/results/}. \texttt{F\textit{k}} entries are figures or tables. Run-time roll-out JSONLs (under \texttt{runs/}) are gitignored but their hashes are pinned by the corresponding manifest.}
+\caption[Reproducibility-artifact inventory.]{Reproducibility-artifact inventory under \texttt{docs/results/}. \texttt{F\textit{k}} entries are figures or tables. Run-time roll-out JSONLs (under \texttt{runs/}) are gitignored but their hashes are pinned by the corresponding manifest.}
 \label{tab:manifest_inventory}
 \scriptsize
 \begin{tabularx}{\textwidth}{l l X}
@@ -83,7 +83,7 @@ The 34 CICIoT2023 labels (33 attack classes plus \texttt{BenignTraffic}) are pro
 
 \begin{table}[!htbp]
 \centering
-\caption{Per-class CICIoT2023 to Kill Chain stage mapping. The ten classes marked $^\star$ (at least two per non-benign stage) are reserved as held-out out-of-distribution attack classes (Section~\ref{ssec:splits}) and are never seen during training of either the supervised stage detector or the DRL agents.}
+\caption[Per-class CICIoT2023-to-kill-chain mapping.]{Per-class CICIoT2023 to Kill Chain stage mapping. The ten classes marked $^\star$ (at least two per non-benign stage) are reserved as held-out out-of-distribution attack classes (Section~\ref{ssec:splits}) and are never seen during training of either the supervised stage detector or the DRL agents.}
 \label{tab:kc_mapping}
 \small
 \begin{tabularx}{\textwidth}{lX}
@@ -111,7 +111,7 @@ The per-algorithm training hyperparameters for PPO, A2C, and DQN are listed in T
 
 \begin{table}[!htbp]
 \centering
-\caption{Per-algorithm training hyperparameters, used across all \NumSeeds{} seeds. Each agent is trained for a fixed 5{,}000{,}000-step budget with no early stopping, under a fully seeded pipeline. A dash (---) indicates the hyperparameter does not apply to the algorithm.}
+\caption[Per-algorithm training hyperparameters.]{Per-algorithm training hyperparameters, used across all \NumSeeds{} seeds. Each agent is trained for a fixed 5{,}000{,}000-step budget with no early stopping, under a fully seeded pipeline. A dash (---) indicates the hyperparameter does not apply to the algorithm.}
 \label{tab:hparams}
 \scriptsize
 \begin{tabularx}{\textwidth}{Xrrr}
