@@ -54,7 +54,7 @@
   \draw[arr] (obs) -- node[label, above] {$o_t$} (defender);
 
   % defender -> kernel (action)
-  \draw[arr] (defender) -- node[label, below] {action $a_t$} (kernel);
+  \draw[arr] (defender) -- node[label, pos=0.55, right, xshift=1pt] {action $a_t$} (kernel);
 
   % kernel -> stage (next stage)
   \draw[arr] (kernel) -- node[label, above] {$s_{t+1}$} (stage);
