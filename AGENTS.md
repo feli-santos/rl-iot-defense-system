@@ -118,9 +118,10 @@ Blue-Team Training / Held-Out Benchmark / Ablation & Robustness).
 ## Journal paper (`paper/`, separate deliverable)
 
 A condensed journal version of the thesis targets **Elsevier _Internet of
-Things_ (ISSN 2542-6605)** and lives under `paper/` (added in `v0.8.1`, tag
-`v0.8.1`). It is a **separate artefact from the thesis** — the thesis under
-`tex/` remains the comprehensive record; `paper/` is the submission package.
+Things_ (ISSN 2542-6605)** and lives under `paper/` (added in `v0.8.1`; submitted
+with the snapshot published as release `v0.8.4`). It is a **separate artefact
+from the thesis** — the thesis under `tex/` remains the comprehensive record;
+`paper/` is the submission package.
 
 - **Template:** Elsevier `elsarticle`, double-column
   (`\documentclass[3p,twocolumn]{elsarticle}`), `\bibliographystyle{elsarticle-num}`.
@@ -185,13 +186,13 @@ Things_ (ISSN 2542-6605)** and lives under `paper/` (added in `v0.8.1`, tag
   (`CICIoT2023Dataset` in `paper/refs.bib`); code + hash-chain manifests are
   deposited via a **public GitHub release**
   (`github.com/feli-santos/rl-iot-defense-system`). The submission cites release
-  **`v0.8.4`** (cut after the current round of paper edits) in
+  **`v0.8.4`** (the paper submission snapshot) in
   `paper/manuscript.tex` (Data availability) + `paper/declarations/data-availability.md`;
-  that tag MUST be pushed and public before final submission. **A Zenodo DOI is
-  NOT required** for Option C \u2014 the public GitHub release plus the `[dataset]`
-  citation already satisfy it. (Any lingering `zenodo.XXXXXXX` mentions in
-  `CHANGELOG.md`/`README.md` are stale and can be dropped; `paper/` is already
-  Zenodo-free.)
+  that tag is **published** and is the stable, reproducible reference for the
+  manuscript — do NOT bump it when later thesis-only releases are cut (the thesis
+  is now at `v0.8.5`). **A Zenodo DOI is NOT required** for Option C \u2014 the
+  public GitHub release plus the `[dataset]` citation already satisfy it. (`paper/`
+  is Zenodo-free; do not reintroduce any `zenodo.XXXXXXX` placeholders.)
 - **Scope decision:** condense-and-submit with **current** results — do NOT add
   a second dataset or a windowed-supervised baseline before first submission
   (both are named follow-ups only if a reviewer demands them).
@@ -215,8 +216,8 @@ Things_ (ISSN 2542-6605)** and lives under `paper/` (added in `v0.8.1`, tag
   - Data-availability statement (Option C) — manuscript +
     `declarations/data-availability.md`.
   - Editable `.tex` source + figures as separate files — `figs/`.
-  - Public tagged GitHub release **`v0.8.4`** pushed before submission (cited in
-    Data availability). Zenodo DOI NOT required for Option C.
+  - Public tagged GitHub release **`v0.8.4`** published and cited in Data
+    availability (done). Zenodo DOI NOT required for Option C.
   - Author emails filled (`f233292@dac.unicamp.br`, `denisf@unicamp.br`).
   - Optional (not blocking): graphical abstract, SSRN preprint,
     MethodsX/Data-in-Brief co-submission.

@@ -3,13 +3,29 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
 [![Tests: 462 passed](https://img.shields.io/badge/tests-462%20passed-brightgreen.svg)](#)
-[![Thesis: 102 pages](https://img.shields.io/badge/thesis-102%20pages-blue.svg)](#thesis)
+[![Thesis: 103 pages](https://img.shields.io/badge/thesis-103%20pages-blue.svg)](#thesis)
 
 > A reproducible MSc-thesis codebase: an adversarial reinforcement-learning
 > framework for kill-chain-aware defense on real IoT traffic (CICIoT2023).
 > A windowed PPO defender is trained against a reactive tug-of-war attacker
 > under genuine partial observability, and shown to beat a tuned supervised
 > classifier exactly where per-flow classification becomes ambiguous.
+
+---
+
+## Status
+
+Open-source (MIT). The research artefacts are complete and released:
+
+- **Dissertation** (MSc, FEEC/UNICAMP) — finalized, release
+  [`v0.8.5`](https://github.com/feli-santos/rl-iot-defense-system/releases/tag/v0.8.5)
+  (`tex/main.pdf`, ~103 pages).
+- **Journal paper** — condensed manuscript submitted to Elsevier _Internet of
+  Things_ (ISSN 2542-6605); submission snapshot published as release
+  [`v0.8.4`](https://github.com/feli-santos/rl-iot-defense-system/releases/tag/v0.8.4)
+  (`paper/manuscript.pdf`, 10 pages).
+
+See [`CHANGELOG.md`](CHANGELOG.md) for the full release history.
 
 ---
 
@@ -173,7 +189,7 @@ with Podman/TeXLive via `make thesis` (wraps `bash tex/build.sh`). The root
 file is `tex/main.tex` (abnTeX2/FEEC template).
 
 ```bash
-make thesis                  # build tex/main.pdf (~102 pages)
+make thesis                  # build tex/main.pdf (~103 pages)
 ```
 
 Numbers in the thesis are **macro-driven, never hand-typed**. Canonical
@@ -196,8 +212,8 @@ make -C paper build          # build paper/manuscript.pdf (Podman/TeXLive)
 
 `paper/` also carries the guide-mandated side files (highlights, cover letter,
 CRediT / competing-interest / funding / generative-AI / data-availability
-declarations). See [`paper/README.md`](paper/README.md) for the pre-submission
-checklist. The submission snapshot is published as GitHub release
+declarations); see [`paper/README.md`](paper/README.md) for the build recipes
+and submission checklist. The submission snapshot is published as GitHub release
 [`v0.8.4`](https://github.com/feli-santos/rl-iot-defense-system/releases/tag/v0.8.4).
 
 ---

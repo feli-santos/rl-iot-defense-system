@@ -4,8 +4,8 @@ title: "RL IoT Defense System: Adversarial Reinforcement Learning for
 message: >-
   If you use this software, please cite it using the metadata below.
 type: software
-version: "0.8.1"
-date-released: "2026-07-10"
+version: "0.8.5"
+date-released: "2026-07-20"
 authors:
   - given-names: Felipe
     family-names: Santos
@@ -68,5 +68,5 @@ references:
       - given-names: Denis
         family-names: Fantinato
     year: 2026
-    notes: "Manuscript under preparation for Elsevier Internet of Things
-      (ISSN 2542-6605); submission package under paper/."
+    notes: "Manuscript submitted to Elsevier Internet of Things (ISSN 2542-6605);
+      submission package under paper/, snapshot published as release v0.8.4."

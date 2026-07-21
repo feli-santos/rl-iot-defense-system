@@ -4,6 +4,10 @@ Condensed manuscript derived from the MSc dissertation (`tex/main.pdf`).
 Target venue: **Elsevier *Internet of Things*** (ISSN 2542-6605).
 Template: **elsarticle**, double-column (`\documentclass[3p,twocolumn]`).
 
+> **Status:** submitted; the submission snapshot is published as GitHub release
+> [`v0.8.4`](https://github.com/feli-santos/rl-iot-defense-system/releases/tag/v0.8.4)
+> (cited in the manuscript's Data-availability statement).
+
 ## Build
 
 No host TeX install is needed; the build reuses the thesis container image

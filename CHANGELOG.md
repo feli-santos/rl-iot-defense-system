@@ -7,6 +7,100 @@ research artefact versions recorded in `CITATION.cff`.
 
 ## [Unreleased]
 
+## [0.8.5] — 2026-07-20
+
+Thesis (`tex/`) finalization for the public open-source release. The journal
+paper is unchanged from its `v0.8.4` submission snapshot; this release is
+thesis-only.
+
+### Added
+- Front matter: dedication and acknowledgements pages, and a completed list of
+  symbols.
+- Feature-basis figures: an observation-tensor schematic
+  (`plot_obs_tensor_schematic.py`) and a feature-selection funnel
+  (`plot_feature_selection_funnel.py`); the dataset raw-traffic figure was split
+  into two panels (`dataset_raw_traffic_a/b`).
+- GenAI-use declaration in the dissertation end matter.
+
+### Changed
+- Committee-facing reframe of the central POMDP claim with a consistency and
+  readability pass across introduction, background, methodology, results, and
+  conclusion; propagated the journal-paper prose and table polish back into the
+  dissertation.
+- Renamed the red team to the **reactive-escalation attacker** throughout the
+  thesis prose; standardised result-figure widths and enlarged the architecture,
+  RL-loop, feature-basis, and projection-pipeline diagrams.
+- Full `tex/thesis.bib` references review (validated DOIs, fixed metadata,
+  dropped/replaced bad entries); fixed math-notation consistency (symbol
+  collisions, GAE λ, proximity-coupling numbering, DQN target-update symbol
+  `eta_targ`).
+- Made the LaTeX build warning-free and fixed two overfull hboxes (reward-
+  coupling table + folha-de-rosto preâmbulo); shortened List-of-Figures captions.
+- Promoted additional detector/action/FPR numbers to macros in
+  `scripts/thesis/render_tables.py` (digit-free macro names preserved).
+
+### Fixed
+- Multi-round thesis audit (rounds 3–7): F10 DQN sign, abstract/resumo parity,
+  standalone-recall provenance, architecture observation label, train counts,
+  anchor direction, limitation/component counts, coupling-table reconciliation,
+  and state-machine arrow direction.
+
+### Removed
+- Orphan root-level `tex/architecture_diagram.pdf` and the redundant
+  recall-vs-advantage figure generation from the OOD plotter.
+
+## [0.8.4] — 2026-07-19
+
+Elsevier _Internet of Things_ submission snapshot. This is the public release
+cited by the manuscript's Data-availability statement.
+
+### Added
+- Anonymized manuscript (`paper/manuscript-anon.tex`) and title-page sources
+  (`paper/title-page.tex`) for double-blind submission.
+
+### Changed
+- Finalized manuscript edits: a purely textual 243-word abstract (α/math
+  removed), the hyperparameter note moved into the table caption, architecture-
+  diagram label fixes (`a_t` arrow, eval-time lane labels, online-RL-training-loop
+  placement, benchmark subtitle), and the action-distribution figure enlarged to
+  maximum height within the 10-page limit.
+- Bumped the Data-availability release URL to `v0.8.4`; streamlined the cover
+  letter; synced `AGENTS.md`/`README.md` (corresponding author, dropped stale
+  Zenodo/Acknowledgements notes).
+
+### Removed
+- Stopped tracking generated PDFs/DOCX at the `paper/` root.
+
+## [0.8.3] — 2026-07-17
+
+### Added
+- **Deployable model-footprint validation:**
+  `scripts/benchmark/compute_model_footprint.py` loads the three α=0.4
+  PPO/A2C/DQN policies + the tuned RF and emits
+  `docs/results/benchmark/model_footprint.json` (+ hash-chain manifest); new
+  footprint macros in `render_tables.py` (`\PolicyFootprintKB`, `\PolicyParams`,
+  `\RFDetectorMB`, `\RFDetectorNodes`, `\FootprintRatio`).
+- Equations added to the manuscript.
+
+### Changed
+- Resized figures to hold the 10-page limit; fixed the architecture-diagram
+  labels (reactive escalation, POMDP); redesigned the OOD robustness figure
+  (F15) and labelled the coupling-reward delta; vendored regenerated result
+  figures into `paper/figs/`.
+- Updated submission meta and docs.
+
+### Fixed
+- Validated and fixed manuscript references and DOIs.
+
+## [0.8.2] — 2026-07-15
+
+Elsevier _Internet of Things_ mentor-review pass on the manuscript.
+
+### Changed
+- Addressed mentor-review annotations; polished prose with RL/DRL
+  disambiguation, added reference DOIs, enforced the 10-page limit, enlarged key
+  figures, and improved figure layout for Elsevier IoT compliance.
+
 ## [0.8.1] — 2026-07-10
 
 Elsevier _Internet of Things_ (ISSN 2542-6605) journal submission package.
@@ -33,8 +127,8 @@ Elsevier _Internet of Things_ (ISSN 2542-6605) journal submission package.
 ### Notes
 - **Data availability (Option C)** is satisfied by the public GitHub release
   plus the `[dataset]` citation of CICIoT2023; a Zenodo DOI is **not** required.
-  The manuscript's Data-availability statement cites release `v0.8.4`, which
-  must be pushed and public before submission.
+  The manuscript's Data-availability statement cites release `v0.8.4` (published;
+  see that entry above).
 
 ## [0.8.0] — 2026-07-06
 
@@ -248,7 +342,11 @@ IoT Defense* (MSc Thesis, FEEC/UNICAMP, 2026).
 - `--impact-is-terminal` / `--reward-overrides` passthrough and the R1
   smoke-reproducibility harness.
 
-[Unreleased]: https://github.com/feli-santos/rl-iot-defense-system/compare/v0.8.1...HEAD
+[Unreleased]: https://github.com/feli-santos/rl-iot-defense-system/compare/v0.8.5...HEAD
+[0.8.5]: https://github.com/feli-santos/rl-iot-defense-system/compare/v0.8.4...v0.8.5
+[0.8.4]: https://github.com/feli-santos/rl-iot-defense-system/compare/v0.8.3...v0.8.4
+[0.8.3]: https://github.com/feli-santos/rl-iot-defense-system/compare/v0.8.2...v0.8.3
+[0.8.2]: https://github.com/feli-santos/rl-iot-defense-system/compare/v0.8.1...v0.8.2
 [0.8.1]: https://github.com/feli-santos/rl-iot-defense-system/compare/v0.8.0...v0.8.1
 [0.8.0]: https://github.com/feli-santos/rl-iot-defense-system/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/feli-santos/rl-iot-defense-system/compare/v0.6.7...v0.7.0
