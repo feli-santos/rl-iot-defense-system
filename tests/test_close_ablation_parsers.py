@@ -114,8 +114,8 @@ def test_ood_eval_argparser_defaults_match_locked_contract():
 # ------------------------------------------- detector-independence figure
 
 
-def test_recall_vs_advantage_points_track_detector_blind_spot(tmp_path):
-    """The detector-independence figure must report a LARGER RL-minus-RF
+def test_recall_vs_advantage_points_track_detector_blind_spot():
+    """The detector-independence statistics must report a LARGER RL-minus-RF
     advantage where the supervised detector's recall is LOWER.
 
     This pins the headline claim's mechanics: on a blind-spot class
@@ -123,8 +123,13 @@ def test_recall_vs_advantage_points_track_detector_blind_spot(tmp_path):
     detector-coupled RF-Acting baseline degrades, so the advantage is
     positive; on a class the detector handles well (recall ≈ 1) the RL
     policy has no such edge.
+
+    The standalone scatter figure was retired (commit 15ba5a3); the point
+    table + independence statistics are now produced by
+    ``_compute_recall_vs_advantage`` (no figure is written), so this test
+    exercises the returned ``points`` only.
     """
-    from scripts.ablation.plot_ood_robustness import _render_recall_vs_advantage
+    from scripts.ablation.plot_ood_robustness import _compute_recall_vs_advantage
 
     def _row(cls, policy, prevention):
         return {
@@ -145,16 +150,14 @@ def test_recall_vs_advantage_points_track_detector_blind_spot(tmp_path):
         _row("DDoS-HTTP_Flood", "ppo", 0.55),
         _row("DDoS-HTTP_Flood", "a2c", 0.55),
     ]
-    recall = {"VulnerabilityScan": 0.001, "DDoS-HTTP_Flood": 0.95}
+    recall: dict[str, float | None] = {"VulnerabilityScan": 0.001, "DDoS-HTTP_Flood": 0.95}
 
-    out = _render_recall_vs_advantage(
+    out = _compute_recall_vs_advantage(
         rows,
         recall,
         ["VulnerabilityScan", "DDoS-HTTP_Flood"],
-        tmp_path / "f15b.png",
         metric="prevention_rate",
     )
-    assert (tmp_path / "f15b.png").exists()
     pts = {p["ood_class"]: p for p in out["points"]}
     # Blind-spot class: best RL (0.60) beats RF (0.0) → positive advantage.
     assert pts["VulnerabilityScan"]["advantage"] > 0
@@ -164,10 +167,10 @@ def test_recall_vs_advantage_points_track_detector_blind_spot(tmp_path):
     assert pts["VulnerabilityScan"]["advantage"] > pts["DDoS-HTTP_Flood"]["advantage"]
 
 
-def test_recall_vs_advantage_skips_cells_without_recall(tmp_path):
+def test_recall_vs_advantage_skips_cells_without_recall():
     """Classes with missing recall (None) or missing RF row are skipped
-    gracefully so the plotter degrades on a partial checkout."""
-    from scripts.ablation.plot_ood_robustness import _render_recall_vs_advantage
+    gracefully so the statistics degrade on a partial checkout."""
+    from scripts.ablation.plot_ood_robustness import _compute_recall_vs_advantage
 
     rows = [
         {"ood_class": "XSS", "policy": "ppo", "prevention_rate": 0.5},
@@ -176,8 +179,8 @@ def test_recall_vs_advantage_skips_cells_without_recall(tmp_path):
         {"ood_class": "Recon-OSScan", "policy": "ppo", "prevention_rate": 0.6},
     ]
     recall = {"XSS": 0.9, "Recon-OSScan": None}
-    out = _render_recall_vs_advantage(
-        rows, recall, ["XSS", "Recon-OSScan"], tmp_path / "f.png", metric="prevention_rate"
+    out = _compute_recall_vs_advantage(
+        rows, recall, ["XSS", "Recon-OSScan"], metric="prevention_rate"
     )
     # XSS skipped (no rf row); Recon-OSScan skipped (recall None).
     assert out["points"] == []
@@ -274,10 +277,9 @@ def test_coupling_mean_lies_within_ci(tmp_path):
 
     s = summarise_mode(root, "outcome", seeds=[0])
     for algo, cell in s["per_algo"].items():
-        assert cell["ci_low"] <= cell["mean_reward"] <= cell["ci_high"], (
-            f"{algo}: mean {cell['mean_reward']} outside CI "
-            f"[{cell['ci_low']}, {cell['ci_high']}]"
-        )
+        assert (
+            cell["ci_low"] <= cell["mean_reward"] <= cell["ci_high"]
+        ), f"{algo}: mean {cell['mean_reward']} outside CI [{cell['ci_low']}, {cell['ci_high']}]"
     assert s["rf_acting_ci_low"] <= s["rf_acting_reward"] <= s["rf_acting_ci_high"]
 
 
