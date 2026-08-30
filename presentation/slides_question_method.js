@@ -1,54 +1,133 @@
 "use strict";
 const { C, F, N } = require("./theme");
+const { NOTES } = require("./notes");
 const H = require("./helpers");
 
-// Slide 8 — the central question
+// Slide 9 — the central question
 function addQuestion(pres) {
-  const s = H.newDark(pres, {
-    notes:
-      "Slow down; this is the thesis in one slide. The naive pitch \u2014 'RL beats a classifier' \u2014 is not a scientific claim until you ask " +
-      "WHEN and WHY. If every flow reveals the attacker's intent, defense collapses to per-flow classification, and a well-tuned " +
-      "classifier is the right tool. RL earns its keep only when the problem is genuinely sequential AND partially observed. So the " +
-      "dissertation poses the skeptic's objection to itself: 'your agent is solving a disguised classification problem' \u2014 and designs " +
-      "experiments to answer it. Everything that follows is that answer.",
-  });
+  const s = H.newDark(pres, { notes: NOTES.question });
   s.addText("2 \u00b7 RESEARCH QUESTION", {
     x: 0.75, y: 0.6, w: 5, h: 0.3, fontFace: F.body, fontSize: 11, bold: true, charSpacing: 3, color: C.gold, margin: 0,
   });
-  s.addText("When does a learned sequential policy\ngenuinely beat a memoryless\nper-flow classifier?", {
-    x: 0.75, y: 1.18, w: 8.5, h: 1.7, fontFace: F.head, fontSize: 29, bold: true, color: C.textOnDark, margin: 0, lineSpacingMultiple: 1.08,
+  s.addText("When does a learned sequential policy\nbeat a memoryless per-flow classifier?", {
+    x: 0.75, y: 1.02, w: 8.5, h: 1.0, fontFace: F.head, fontSize: 25, bold: true, color: C.textOnDark, margin: 0, lineSpacingMultiple: 1.06,
   });
+
+  // How a supervised classifier is actually wired into a defense loop.
+  // Feedback [9]: "explicar como um classificador supervisionado pode ser usado".
+  s.addText("How a classifier defends \u2014 the baseline we must beat (RF-Acting):", {
+    x: 0.75, y: 2.24, w: 8.5, h: 0.24, fontFace: F.body, fontSize: 11, bold: true,
+    color: C.mutedOnDark, margin: 0,
+  });
+  const chain = [
+    ["one flow", "a single 29-feature row", C.mutedOnDark],
+    ["RandomForest", "predicts the stage", C.blueSoft],
+    ["lookup table", "stage \u2192 recommended action", C.blueSoft],
+    ["act", "no memory of the past", C.redOnDark],
+  ];
+  let cx = 0.75;
+  const cw = 1.95, cgap = 0.24;
+  chain.forEach(([t, d, col], i) => {
+    s.addShape("rect", { x: cx, y: 2.54, w: cw, h: 0.66, fill: { color: "2E2E33" }, line: { color: C.borderDark, width: 1 } });
+    s.addText(t, {
+      x: cx, y: 2.60, w: cw, h: 0.26, fontFace: F.body, fontSize: 11, bold: true,
+      color: col, align: "center", margin: 0,
+    });
+    s.addText(d, {
+      x: cx + 0.06, y: 2.86, w: cw - 0.12, h: 0.3, fontFace: F.body, fontSize: 8.5,
+      color: C.mutedOnDark, align: "center", margin: 0,
+    });
+    if (i < chain.length - 1) {
+      s.addText("\u25B8", {
+        x: cx + cw, y: 2.74, w: cgap, h: 0.26, fontFace: F.body, fontSize: 13,
+        color: C.mutedOnDark, align: "center", valign: "middle", margin: 0,
+      });
+    }
+    cx += cw + cgap;
+  });
+
   // the objection card
-  s.addShape("rect", { x: 0.75, y: 3.0, w: 8.5, h: 1.05, fill: { color: "2E2E33" }, line: { color: C.borderDark, width: 1 } });
-  s.addShape("rect", { x: 0.75, y: 3.0, w: 0.07, h: 1.05, fill: { color: C.redOnDark }, line: { type: "none" } });
+  s.addShape("rect", { x: 0.75, y: 3.52, w: 8.5, h: 0.86, fill: { color: "2E2E33" }, line: { color: C.borderDark, width: 1 } });
+  s.addShape("rect", { x: 0.75, y: 3.52, w: 0.07, h: 0.86, fill: { color: C.redOnDark }, line: { type: "none" } });
   s.addText([
-    { text: "The skeptic's objection this thesis answers:  ", options: { bold: true, color: C.redOnDark, fontSize: 12.5 } },
-    { text: "\u201cIf each flow reveals the attack stage, your RL agent is just an expensive classifier \u2014 a supervised model should match it.\u201d", options: { italic: true, color: C.textOnDark, fontSize: 12.5 } },
-  ], { x: 1.02, y: 3.12, w: 8.0, h: 0.8, fontFace: F.body, margin: 0 });
+    { text: "The skeptic's objection this thesis answers:  ", options: { bold: true, color: C.redOnDark, fontSize: 12 } },
+    { text: "\u201cIf each flow reveals the attack stage, your RL agent is just an expensive classifier \u2014 a supervised model should match it.\u201d", options: { italic: true, color: C.textOnDark, fontSize: 12 } },
+  ], { x: 1.02, y: 3.62, w: 8.0, h: 0.68, fontFace: F.body, margin: 0 });
 
   s.addText([
     { text: "Answer strategy: ", options: { bold: true, color: C.textOnDark } },
     { text: "make stage ambiguity a controlled dial (aliasing rate \u03b1), keep everything else fixed, and measure where classification stops being enough.", options: { color: C.mutedOnDark } },
-  ], { x: 0.75, y: 4.45, w: 8.5, h: 0.65, fontFace: F.body, fontSize: 13, margin: 0 });
+  ], { x: 0.75, y: 4.6, w: 8.5, h: 0.6, fontFace: F.body, fontSize: 12, margin: 0 });
 }
 
-// Slide 9 — contributions map
+// Slide 10 — objectives (general + specific). Added after the first dry run:
+// the committee asked for an explicit objectives slide, and the dissertation
+// states its aims as a general goal + five enumerated contributions
+// (tex/introduction.tex:18-30) rather than an ABNT-style objectives section.
+function addObjectives(pres) {
+  const s = H.newContent(pres, {
+    kicker: "2 \u00b7 Question & Objectives",
+    title: "Objectives",
+    kickerColor: C.gold,
+    notes: NOTES.objectives,
+  });
+
+  // --- general objective ----------------------------------------------------
+  H.accentCard(s, 0.55, 1.32, 8.9, 1.06, C.gold);
+  s.addText("General objective", {
+    x: 0.78, y: 1.42, w: 8.4, h: 0.24, fontFace: F.body, fontSize: 10.5, bold: true,
+    charSpacing: 1, color: C.gold, margin: 0,
+  });
+  s.addText("Design, implement, and evaluate a closed-loop adaptive defense framework for IoT networks in which a kill-chain-aware RL defender faces a reactive adversary over real CICIoT2023 traffic \u2014 posed as a genuine partial-observability problem, not a disguised classification problem.", {
+    x: 0.78, y: 1.68, w: 8.45, h: 0.64, fontFace: F.body, fontSize: 11.5,
+    color: C.ink, margin: 0, valign: "top",
+  });
+
+  // --- specific objectives --------------------------------------------------
+  s.addText("Specific objectives", {
+    x: 0.55, y: 2.55, w: 8.9, h: 0.24, fontFace: F.body, fontSize: 10.5, bold: true,
+    charSpacing: 1, color: C.inkSoft, margin: 0,
+  });
+
+  const objs = [
+    ["1", "Build a partially observable kill-chain environment", "real traffic \u00b7 reactive attacker \u00b7 tunable ambiguity \u03b1", C.blue],
+    ["2", "Locate where windowed control overtakes per-flow control", "sweep \u03b1, hold everything else fixed", C.red],
+    ["3", "Test whether the advantage depends on a privileged reward", "retrain under shaped and sparse reward alike", C.gold],
+    ["4", "Measure generalization to attack classes never trained on", "ten held-out classes, prevention rate", C.green],
+    ["5", "Report algorithm reliability and make it all reproducible", "10 seeds \u00b7 hash-pinned artifacts \u00b7 " + N.tests + " tests", C.ink],
+  ];
+  let y = 2.84;
+  for (const [n, t, d, color] of objs) {
+    s.addShape("ellipse", { x: 0.6, y: y + 0.04, w: 0.28, h: 0.28, fill: { color }, line: { type: "none" } });
+    s.addText(n, {
+      x: 0.6, y: y + 0.04, w: 0.28, h: 0.28, fontFace: F.body, fontSize: 11, bold: true,
+      color: "FFFFFF", align: "center", valign: "middle", margin: 0,
+    });
+    s.addText([
+      { text: t + "   ", options: { bold: true, fontSize: 12, color: C.ink } },
+      { text: "\u2014  " + d, options: { fontSize: 10, color: C.inkSoft } },
+    ], { x: 1.02, y: y, w: 8.4, h: 0.36, fontFace: F.body, valign: "middle", margin: 0 });
+    y += 0.42;
+  }
+
+  s.addText("Each specific objective maps one-to-one onto a contribution \u2014 and onto a results slide later in this talk.", {
+    x: 0.55, y: 4.98, w: 8.9, h: 0.28, fontFace: F.body, fontSize: 10.5, italic: true,
+    color: C.muted, margin: 0,
+  });
+}
+
+// Slide 11 — contributions map
 function addContributions(pres) {
   const s = H.newContent(pres, {
-    kicker: "2 \u00b7 Research Question",
+    kicker: "2 \u00b7 Question & Objectives",
     title: "Five Contributions \u2014 the Map of This Talk",
     kickerColor: C.gold,
-    notes:
-      "One breath per card; each returns later with evidence. 1: a genuinely partially observable kill-chain environment on real " +
-      "CICIoT2023 traffic with a reactive attacker \u2014 the instrument. 2: the controlled crossover \u2014 tie at alpha=0, separation as " +
-      "ambiguity grows. 3: reward ablation \u2014 the advantage survives removing the shaped reward (kills the privileged-reward objection). " +
-      "4: on ten held-out attack classes the RL defender prevents more on every class, independent of detector recall. 5: honest " +
-      "algorithm-reliability reporting + a fully hash-pinned reproducible artifact chain (462 tests).",
+    notes: NOTES.contributions,
   });
   const cards = [
     ["1", "A genuinely partially observable kill-chain environment", "Reactive escalation attacker + real CICIoT2023 features + controllable aliasing \u03b1", C.blue],
     ["2", "A controlled crossover: windowed RL vs per-flow control", "Tie at \u03b1 = 0 by design; disjoint CIs from \u03b1 = " + N.headlineAlpha + " onward", C.red],
-    ["3", "A reward ablation that answers the privileged-reward objection", "Best learned agent beats RF-Acting under both reward contracts", C.gold],
+    ["3", "A reward ablation that answers the privileged-reward objection", "Best learned agent beats RF-Acting under both reward functions", C.gold],
     ["4", "A held-out attack-class prevention advantage", "Higher prevention on all 10 unseen classes \u2014 no dependence on detector recall", C.green],
     ["5", "Algorithm reliability + reproducibility by construction", "On-policy stability finding \u00b7 hash-pinned manifests \u00b7 " + N.tests + " tests", C.ink],
   ];
@@ -69,13 +148,7 @@ function addArchitecture(pres) {
   const s = H.newContent(pres, {
     kicker: "3 \u00b7 Framework",
     title: "Framework at a Glance",
-    notes:
-      "Orient with the figure (thesis Fig. 3.1): three blocks. Offline preparation \u2014 project CICIoT2023 onto the 5-stage kill chain, " +
-      "specify the closed-form attacker, train the supervised stage detector (it powers the baseline, not our agent). Online loop \u2014 " +
-      "attacker emits a stage; realization engine samples a real feature row for that stage (session-coherent, aliased); Gymnasium env " +
-      "builds the windowed observation; blue-team agent acts; escalation kernel moves the attacker. Held-out evaluation \u2014 benchmark vs " +
-      "baselines + oracle, then ablations. Key sentence: the loop is genuinely CLOSED \u2014 the environment responds to the defender's " +
-      "action; it does not replay a fixed trace.",
+    notes: NOTES.architecture,
   });
   H.img(s, "architecture_diagram", { x: 0.4, y: 1.3, maxW: 5.7, maxH: 3.72, frame: true, vAlign: "top" });
   const pts = [
@@ -96,19 +169,19 @@ function addDataset(pres) {
   const s = H.newContent(pres, {
     kicker: "3 \u00b7 Framework",
     title: "Real Traffic: the CICIoT2023 Dataset",
-    notes:
-      "Why this dataset: contemporary, large, real. 105 physical IoT devices at the Canadian Institute for Cybersecurity; 33 attack " +
-      "types in 7 categories, attacks launched BY compromised IoT devices against others \u2014 realistic botnet behavior. Each row is a " +
-      "pre-aggregated flow record: 46 statistical features. We apply a leakage-safe funnel \u2014 fit on the training partition only \u2014 " +
-      "removing zero-variance, low-variance, and highly correlated columns: 29 features survive (timing/rate, header/size, TCP flags, " +
-      "protocol indicators, distribution moments). Training pool after reserving OOD classes: 235,324 rows. Point to the funnel figure.",
+    notes: NOTES.dataset,
   });
   H.img(s, "feature_selection_funnel", { x: 0.4, y: 1.35, maxW: 5.35, maxH: 3.85, frame: true });
-  H.stat(s, { x: 6.15, y: 1.42, w: 3.3, value: N.devices + " devices", label: "physical IoT testbed \u2014 cameras, sensors, speakers, hubs", color: C.blue, valueSize: 23 });
-  H.stat(s, { x: 6.15, y: 2.42, w: 3.3, value: "33 attack types", label: "7 categories: DDoS, DoS, Recon, Web, Brute force, Spoofing, Mirai", color: C.red, valueSize: 23 });
-  H.stat(s, { x: 6.15, y: 3.42, w: 3.3, value: "46 \u2192 29 features", label: "leakage-safe selection, fit on the training partition only", color: C.ink, valueSize: 23 });
+  H.stat(s, { x: 6.15, y: 1.36, w: 3.3, value: N.devices + " devices", label: "physical IoT testbed \u2014 cameras, sensors, speakers, hubs", color: C.blue, valueSize: 23 });
+  // Feedback [13]: the deck said "33 attack types" here and "34 labels" two
+  // slides later without ever reconciling them. State the arithmetic on-slide.
+  H.stat(s, { x: 6.15, y: 2.30, w: 3.3, value: "33 attack types", label: "7 categories: DDoS, DoS, Recon, Web, Brute force, Spoofing, Mirai", color: C.red, valueSize: 23 });
+  s.addText("+ benign  =  34 labels in total", {
+    x: 6.15, y: 3.16, w: 3.3, h: 0.24, fontFace: F.body, fontSize: 10.5, bold: true, color: C.red, margin: 0,
+  });
+  H.stat(s, { x: 6.15, y: 3.52, w: 3.3, value: "46 \u2192 29 features", label: "leakage-safe selection, fit on the training partition only", color: C.ink, valueSize: 23 });
   s.addText(N.trainRows + " training rows after reserving held-out classes", {
-    x: 6.15, y: 4.5, w: 3.3, h: 0.5, fontFace: F.body, fontSize: 10.5, italic: true, color: C.muted, margin: 0,
+    x: 6.15, y: 4.6, w: 3.3, h: 0.5, fontFace: F.body, fontSize: 10.5, italic: true, color: C.muted, margin: 0,
   });
 }
 
@@ -116,21 +189,16 @@ function addDataset(pres) {
 function addProjection(pres) {
   const s = H.newContent(pres, {
     kicker: "3 \u00b7 Framework",
-    title: "From 34 Labels to 5 Stages, 10 Held Out",
-    titleSize: 24,
-    notes:
-      "Two moves. First, a deterministic map psi projects each of the 34 CICIoT2023 labels onto exactly one kill-chain stage: scanners " +
-      "to RECON, brute-force/injection to ACCESS, spoofing + Mirai staging to MANEUVER, DoS/DDoS floods to IMPACT. Each stage now has " +
-      "an empirical feature distribution \u2014 the environment samples real rows per stage. Second, the splits protocol: TEN attack " +
-      "classes (at least two per non-benign stage) are RESERVED \u2014 never seen in training by either the detector or the agents. They " +
-      "become our zero-day-like stress test later. Disjointness is asserted by automated tests.",
+    title: "34 Labels = 33 Attacks + Benign \u2192 5 Stages, 10 Held Out",
+    titleSize: 22,
+    notes: NOTES.projection,
   });
   H.img(s, "projection_pipeline", { x: 0.4, y: 1.32, maxW: 9.2, maxH: 2.35, frame: true });
   // bottom row: two cards
   H.accentCard(s, 0.55, 3.95, 4.3, 1.2, C.blue);
   s.addText([
     { text: "Deterministic projection \u03c8", options: { bold: true, fontSize: 12, color: C.ink, breakLine: true } },
-    { text: "34 labels \u2192 5 stages; each stage becomes an empirical feature distribution p(x\u2009|\u2009s) of real rows.", options: { fontSize: 10.5, color: C.inkSoft } },
+    { text: "33 attack labels + benign = 34 \u2192 5 stages. Each stage becomes an empirical feature distribution p(x\u2009|\u2009s) of real rows.", options: { fontSize: 10.5, color: C.inkSoft } },
   ], { x: 0.75, y: 4.08, w: 3.95, h: 0.95, fontFace: F.body, margin: 0 });
   H.accentCard(s, 5.15, 3.95, 4.3, 1.2, C.red);
   s.addText([
@@ -144,20 +212,21 @@ function addOverlap(pres) {
   const s = H.newContent(pres, {
     kicker: "3 \u00b7 Framework",
     title: "Adjacent Stages Genuinely Overlap in Feature Space",
-    notes:
-      "Anticipates the objection 'you fabricated the ambiguity'. PCA projection of the 29-dim feature space, colored by stage: " +
-      "IMPACT floods separate sharply (flag counts, rates), but BENIGN/RECON \u2014 and the middle of the chain \u2014 overlap substantially. " +
-      "Even with full feature information, neighboring stages are not linearly separable. So the aliasing dial alpha AMPLIFIES a real " +
-      "property of the data; it does not invent one. Mention session coherence honestly: CICIoT2023 has no session key, so within-stage " +
-      "draws are made contiguous at the environment layer \u2014 a modeling abstraction, declared as such (limitations).",
+    notes: NOTES.overlap,
   });
   H.img(s, "dataset_raw_traffic_a", { x: 0.4, y: 1.35, maxW: 5.15, maxH: 3.7, frame: true, vAlign: "top" });
+  // Feedback [14]: "O que e PC? Nao ficou muito claro." Say it on the slide.
+  H.card(s, 5.95, 1.5, 3.5, 0.78, { fill: C.cardAlt });
+  s.addText([
+    { text: "PC1 / PC2 = principal components.  ", options: { bold: true, color: C.ink } },
+    { text: "The two directions that carry the most variance \u2014 29 features squeezed onto a readable plane.", options: { color: C.inkSoft } },
+  ], { x: 6.1, y: 1.58, w: 3.2, h: 0.62, fontFace: F.body, fontSize: 9.5, margin: 0, valign: "top" });
+
   H.bullets(s, [
-    { text: "2-D PCA of the 29 features, colored by kill-chain stage", bold: true },
+    { text: "Each dot is one real flow, colored by its kill-chain stage", bold: true },
     { text: "IMPACT floods separate; BENIGN \u00b7 RECON \u00b7 ACCESS interleave heavily" },
-    { text: "No single flow row reveals the stage \u2014 ambiguity is a property of the data" },
-    { text: "The aliasing rate \u03b1 turns this real overlap into a controlled experimental dial" },
-  ], { x: 5.95, y: 1.75, w: 3.5, h: 2.6, size: 11.5, gap: 12 });
+    { text: "No single flow row reveals the stage \u2014 ambiguity is a property of the data, not an assumption we added" },
+  ], { x: 5.95, y: 2.45, w: 3.5, h: 1.9, size: 11, gap: 11 });
   s.addText("Session coherence is imposed at the environment layer (no session key in the dataset) \u2014 declared as a modeling abstraction.", {
     x: 5.95, y: 4.45, w: 3.5, h: 0.7, fontFace: F.body, fontSize: 9.5, italic: true, color: C.muted, margin: 0,
   });
@@ -168,13 +237,7 @@ function addAttacker(pres) {
   const s = H.newContent(pres, {
     kicker: "3 \u00b7 Framework",
     title: "A Reactive Attacker: the Escalation Tug-of-War",
-    notes:
-      "The attacker is not a script \u2014 it reacts to the defender's force. Signed force gap d = action minus recommended action for the " +
-      "true stage. Three regimes: proportionate (d=0) pushes the attacker DOWN one stage with p=0.90 (0.98 for ISOLATE); under-force " +
-      "(d\u2264\u22121) lets it ADVANCE with p_up scaled by proximity \u2014 momentum compounds as it nears IMPACT (sigma_min=0.4); over-force " +
-      "(d\u2265+1) merely HOLDS \u2014 and the reward still charges the availability cost. Onset is autonomous from BENIGN (p=0.35 to RECON, " +
-      "0.10 straight to ACCESS \u2014 stolen credential). PREVENTION = holding the attacker below IMPACT for the whole 100-step horizon. " +
-      "Closed form, no learned attacker: fully specified, reproducible threat model \u2014 a declared scope boundary.",
+    notes: NOTES.attacker,
   });
   // three regime cards
   const regimes = [
@@ -216,40 +279,35 @@ function addAliasing(pres) {
     kicker: "3 \u00b7 Framework",
     title: "The \u03b1 Dial: Aliasing and the Windowed Observer",
     titleSize: 25,
-    notes:
-      "How partial observability is instrumented. Top figure: the state machine \u2014 solid arrows are attacker transitions; dashed arrows " +
-      "are ALIASING: with probability alpha, the emitted feature row comes from an ADJACENT stage, not the true one. Z is a two-component " +
-      "mixture: (1\u2212\u03b1) own-stage + \u03b1 adjacent-stage. At \u03b1=0, single rows are informative; at \u03b1=1 every row misleads. Same aliased " +
-      "stream feeds every policy \u2014 nobody is privileged. Bottom: what the agent actually sees \u2014 the last 5 rows + their temporal deltas, " +
-      "stacked into 290 dims. The window is the agent's only belief machinery; the RF baseline reads one row.",
+    notes: NOTES.aliasing,
   });
   H.img(s, "state_machine_aliasing", { x: 0.4, y: 1.38, maxW: 9.2, maxH: 1.75, frame: true, vAlign: "top" });
   const im2 = H.img(s, "obs_tensor_schematic", { x: 0.4, y: 3.55, maxW: 4.5, maxH: 1.52, frame: true, vAlign: "top" });
   H.bullets(s, [
     { text: "Z = (1\u2212\u03b1)\u00b7own-stage  +  \u03b1\u00b7adjacent-stage rows", bold: true },
-    { text: "\u03b1 = 0: rows informative \u00b7 \u03b1 = 1: every row misleads" },
     { text: "Observation = last w = 5 rows + temporal deltas \u2192 290-dim" },
     { text: "Identical aliased stream for every policy \u2014 no one is privileged" },
-  ], { x: 5.25, y: 3.62, w: 4.2, h: 1.6, size: 10.5, gap: 8 });
+  ], { x: 5.25, y: 3.58, w: 4.2, h: 1.1, size: 10.5, gap: 8 });
+
+  // Feedback [13]: "ilustrar o alfa com um exemplo?" — make the dial concrete.
+  H.card(s, 5.25, 4.5, 4.2, 0.72, { fill: C.cardAlt });
+  s.addText([
+    { text: "Concretely, at \u03b1 = " + N.headlineAlpha + ": ", options: { bold: true, color: C.ink } },
+    { text: "out of every 10 rows the defender sees, about 4 were emitted by a neighbouring stage. It is watching a scan and being shown a break-in \u2014 and vice versa.", options: { color: C.inkSoft } },
+  ], { x: 5.4, y: 4.57, w: 3.9, h: 0.6, fontFace: F.body, fontSize: 9, margin: 0, valign: "top" });
 }
 
-// Slide 16 — reward contracts
+// Slide 18 — the two reward functions
 function addReward(pres) {
   const s = H.newContent(pres, {
     kicker: "3 \u00b7 Framework",
-    title: "Two Reward Contracts: Sparse Is Primary",
+    title: "Two Reward Functions: the Sparse One Is Primary",
     titleSize: 24,
-    notes:
-      "Critical design decision. The COUPLED reward pays per step for choosing the stage-recommended action \u2014 but that rewards exactly " +
-      "what a supervised classifier predicts: training under it alone would conflate 'learned to defend' with 'imitated a lookup table'. " +
-      "So the PRIMARY contract is the sparse OUTCOME reward: action costs + terminal accounting + prevention bonus \u2014 no per-step stage " +
-      "hints. Much harder credit assignment (reward arrives ~100 steps late), but it measures defense, not imitation. The coupled variant " +
-      "is retained ONLY as the ablation that answers the privileged-reward objection. Benign guardrails and caps prevent degenerate " +
-      "block-everything policies; availability cost rises with action severity.",
+    notes: NOTES.reward,
   });
   // outcome card (primary)
   H.accentCard(s, 0.55, 1.45, 4.35, 2.6, C.blue);
-  s.addText("OUTCOME  \u00b7  primary", { x: 0.78, y: 1.6, w: 3.9, h: 0.28, fontFace: F.body, fontSize: 12.5, bold: true, color: C.blue, margin: 0 });
+  s.addText("OUTCOME  \u00b7  sparse  \u00b7  PRIMARY", { x: 0.78, y: 1.6, w: 3.9, h: 0.28, fontFace: F.body, fontSize: 12.5, bold: true, color: C.blue, margin: 0 });
   H.bullets(s, [
     { text: "Sparse: action cost + terminal accounting only", bold: true },
     { text: "Prevented episode \u2192 +50 \u00b7 terminal defense \u2192 +250" },
@@ -258,7 +316,7 @@ function addReward(pres) {
   ], { x: 0.78, y: 1.98, w: 3.9, h: 1.9, size: 10.5, gap: 8, bulletColor: C.blue });
   // coupled card (ablation)
   H.accentCard(s, 5.15, 1.45, 4.35, 2.6, C.gold);
-  s.addText("COUPLED  \u00b7  ablation only", { x: 5.38, y: 1.6, w: 3.9, h: 0.28, fontFace: F.body, fontSize: 12.5, bold: true, color: C.gold, margin: 0 });
+  s.addText("COUPLED  \u00b7  shaped  \u00b7  ABLATION ONLY", { x: 5.38, y: 1.6, w: 3.9, h: 0.28, fontFace: F.body, fontSize: 12.5, bold: true, color: C.gold, margin: 0 });
   H.bullets(s, [
     { text: "Adds per-step shaping keyed to the true stage", bold: true },
     { text: "+5 proportionality bonus \u00b7 \u22125 disproportion penalty" },
@@ -269,7 +327,7 @@ function addReward(pres) {
   H.card(s, 0.55, 4.3, 8.95, 0.85, { fill: C.cardAlt });
   s.addText([
     { text: "Design principle:  ", options: { bold: true, color: C.ink } },
-    { text: "if the reward hands the agent the stage label, a classifier wins by construction. Train under the sparse contract; keep the shaped one only to test that objection.", options: { color: C.inkSoft } },
+    { text: "if the reward hands the agent the stage label, a classifier wins by construction. Train under the sparse OUTCOME reward; keep the shaped COUPLED one only to test that objection.", options: { color: C.inkSoft } },
   ], { x: 0.8, y: 4.42, w: 8.5, h: 0.62, fontFace: F.body, fontSize: 11.5, margin: 0 });
 }
 
@@ -278,13 +336,7 @@ function addContenders(pres) {
   const s = H.newContent(pres, {
     kicker: "3 \u00b7 Framework",
     title: "The Contenders",
-    notes:
-      "Who competes. Learned agents: PPO, A2C, DQN \u2014 windowed observation, never see the true stage, never consume the detector. " +
-      "Deployable baseline: RF-Acting \u2014 a hyperparameter-TUNED RandomForest stage detector (macro-F1 0.924; the strongest classifier a " +
-      "practitioner would ship, not a straw man) + the recommended-action rule; memoryless: one row, one action. Trivial baselines: " +
-      "always-observe, always-block, random \u2014 they bracket the reward scale. And the ORACLE: same action rule but reading the TRUE " +
-      "stage \u2014 not a competitor, a measuring instrument: it prices perfect perception (+194.8 ceiling). Figure: detector position \u2014 " +
-      "RF-Acting consumes the detector; our agents bypass it. That architectural contrast is the experiment.",
+    notes: NOTES.contenders,
   });
   H.img(s, "stage_detector_position", { x: 0.4, y: 1.32, maxW: 9.2, maxH: 1.85, frame: true, vAlign: "top" });
   const rows = [
@@ -309,13 +361,7 @@ function addProtocol(pres) {
   const s = H.newContent(pres, {
     kicker: "3 \u00b7 Framework",
     title: "Evaluation Protocol: Built to Be Believed",
-    notes:
-      "Rigor slide \u2014 deliver with quiet confidence. 10 seeds per algorithm; FIXED 5M-step budget, NO early stopping (an early-stop rule " +
-      "tuned to one algorithm truncates another \u2014 and full budgets are what exposed DQN's instability). Best-on-validation checkpoint " +
-      "carried forward. Evaluation: n=300 episodes per policy on the held-out balanced-test split; 95% bootstrap CIs; separation = " +
-      "disjoint intervals \u2014 a conservative criterion. Everything CPU-only. Reproducibility: every figure ships a manifest pinning input " +
-      "hashes + git commit; 462 automated tests; the whole chain re-verifies on a fresh checkout. All numbers ahead carry these " +
-      "guarantees.",
+    notes: NOTES.protocol,
   });
   const cards = [
     ["10 \u00d7 5M", "seeds \u00d7 training steps per algorithm \u2014 no early stopping, best-on-validation checkpoint", C.blue],
@@ -341,7 +387,7 @@ function addProtocol(pres) {
 }
 
 module.exports = {
-  addQuestion, addContributions, addArchitecture, addDataset,
+  addQuestion, addObjectives, addContributions, addArchitecture, addDataset,
   addProjection, addOverlap, addAttacker, addAliasing, addReward,
   addContenders, addProtocol,
 };

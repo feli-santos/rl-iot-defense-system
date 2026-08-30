@@ -11,6 +11,63 @@ Campinas — 31 de agosto de 2026
 
 ---
 
+# PARTE 0 — CONTROLE DE TEMPO (leia antes de ensaiar)
+
+O ensaio de 09:13→10:03 levou **50 minutos**, com o Ato I sozinho consumindo
+14. O deck foi reescrito para **37 minutos**, deixando ~3 min de folga.
+
+**O relógio é o instrumento.** Anote o horário de início e cheque nestes
+quatro pontos. Se você estiver atrasado num checkpoint, corte no ato
+**seguinte** — nunca acelere o slide do cruzamento (23).
+
+| Checkpoint | Ao terminar o slide | Relógio alvo | Se passar disso |
+|---|---|---|---|
+| Fim da abertura | 3 · Agenda | **02:00** | você falou demais sobre si — corte a bio |
+| Fim do Ato I | 8 · POMDP | **09:40** | pule o slide 25 (sweeps) mais tarde |
+| Fim do Ato III | 20 · Protocolo | **23:30** | pule o slide 27 (recall) mais tarde |
+| Fim dos resultados | 27 · Recall | **32:40** | vá direto ao 29; pule limitações em detalhe |
+| Fim | 31 · Obrigado | **37:00** | — |
+
+**Slides marcados como cortáveis, em ordem de corte:**
+
+1. **27 — No Dependence on Detector Recall** → `[OPCIONAL]`. Responde uma
+   objeção sofisticada que talvez ninguém faça. Cortar não enfraquece o
+   slide 26.
+2. **25 — Robustness sweeps** → apresente **só o painel da esquerda**
+   (dificuldade) e siga.
+
+**Nunca corte:** 10 (objetivos), 23 (cruzamento), 28 (limitações), 29
+(conclusões).
+
+---
+
+## O que mudou depois do primeiro ensaio
+
+| Feedback | Onde foi resolvido |
+|---|---|
+| [2] "não detalhar aluno especial; passar mais rápido" | Slide 2, nota com teto de 35 s e regra explícita |
+| [3] "contract?" | Jargão eliminado do deck inteiro → "reward function" |
+| [4] "não dá pra perceber onde está o que é falado" | Slide 4 com selos ①–⑥; notas citam o número antes de descrever |
+| [4] "como a defesa deve acontecer?" | Nova linha de fecho no slide 4: a defesa vive no **gateway** |
+| [4] "por que usar RL?" | Novo cartão "Why RL here?" no slide 7 |
+| [5] "muita informação verbal, sem descritivo" | Regra nº 2 do `notes.js`: nunca narrar o que não está no slide |
+| [6] "incluir um slide de objetivos" | **Novo slide 10** — objetivo geral + 5 específicos |
+| [7] "por que os modelos foram escolhidos?" | Novo cartão "Why these three?" (inclui exclusão de SAC/TD3) |
+| [7] "DQN usa replay, não chegam os mesmos dados" | Linha "Controlled:" corrigida → orçamento de **interação**, e o reuso é a regra sob teste |
+| [9] "explicar como um classificador é usado" | Nova esteira `fluxo → RF → tabela → age` no slide 9 |
+| [13] "34 classes não ficou claro" | Slide 13: "+ benigno = 34 rótulos"; slide 14 idem |
+| [13] "ilustrar o alfa com um exemplo" | Slide 17: "em α=0,4, ~4 de cada 10 linhas vêm do estágio vizinho" |
+| [14] "o que é PC?" | Slide 15: cartão definindo componentes principais |
+| [17] "falou SPARSE, slide diz OUTCOME" | Rótulos duplos: `OUTCOME · sparse` e `COUPLED · shaped` |
+| [24] "é possível selecionar alguns resultados" | Slide 25 marcado como cortável pela metade |
+| [25] "10 classes? aumentou?" | Slide 26: "as mesmas 10 reservadas antes" |
+| [25] "Prevention Rate não ficou claro" | Slide 26: definição formal de `P_prev` |
+| [26] "daria para pular" | Slide 27 marcado `[OPCIONAL]` na nota |
+| [28] "footprint poderia pular" | Reduzido a uma cláusula; números vão para o **backup B7** |
+| Arthur: "adiantou metodologia nos slides 7 e 13" | Notas dos slides 7, 8 e 14 proíbem citar α/hiperparâmetros |
+
+---
+
 # PARTE I — RESUMO PARA ESTUDO
 
 ## 0. O "elevator pitch" em três durações

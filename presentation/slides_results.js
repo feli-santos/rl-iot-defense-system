@@ -1,5 +1,6 @@
 "use strict";
 const { C, F, N } = require("./theme");
+const { NOTES } = require("./notes");
 const H = require("./helpers");
 
 // Slide 19 — learning curves + reliability
@@ -8,13 +9,7 @@ function addLearning(pres) {
     kicker: "4 \u00b7 Results",
     title: "Sparse-Reward Training: a Reliability Story",
     titleSize: 25,
-    notes:
-      "First result. Learning curves over 5M steps, 10 seeds, sparse outcome reward, headline alpha 0.4. Dashed grey band = RF-Acting " +
-      "reference; dash-dot black = oracle ceiling. Read: both ON-POLICY algorithms climb out of the negative regime and plateau \u2014 " +
-      "best-checkpoint PPO +121.3 (sd ~15), A2C +138.7 (sd ~9, the tightest). OFF-POLICY DQN destabilizes without per-step shaping: " +
-      "best-checkpoint +72.5, across-seed sd ~52, seeds ranging roughly \u221215 to +132 \u2014 replay does not bootstrap credit across a " +
-      "100-step sparse episode. Finding: the on-policy advantage is TRAINING RELIABILITY, not peak return. We report all three \u2014 " +
-      "including the unstable one.",
+    notes: NOTES.learning,
   });
   H.img(s, "F3_learning_curves", { x: 0.4, y: 1.42, maxW: 5.75, maxH: 3.7, frame: true, vAlign: "top" });
   const rows = [
@@ -46,13 +41,7 @@ function addDoctrines(pres) {
   const s = H.newContent(pres, {
     kicker: "4 \u00b7 Results",
     title: "Same Reward, Two Learned Doctrines",
-    notes:
-      "My favorite teaching slide: the algorithms did not just score differently \u2014 they learned different DEFENSIVE PHILOSOPHIES. " +
-      "Per-stage action distributions (rows: A2C, PPO, DQN; columns: BENIGN\u2192IMPACT). A2C: prevent-at-maneuver \u2014 blocks 84.4% of " +
-      "MANEUVER steps, suppresses the mid-chain advance, never isolates. PPO: contain-at-impact \u2014 tolerates deeper penetration, then " +
-      "acts at the final stage. Both benign-safe on the left column (aggressive action on <1% of benign flows). Neither doctrine was " +
-      "programmed \u2014 both emerged from the same sparse reward. This interpretability matters for a security operator: strategy, not " +
-      "black-box scores.",
+    notes: NOTES.doctrines,
   });
   H.img(s, "F4_action_distribution", { x: 0.4, y: 1.38, maxW: 5.5, maxH: 3.62, frame: true, vAlign: "top" });
   H.accentCard(s, 6.15, 1.55, 3.35, 1.5, C.blue);
@@ -76,14 +65,7 @@ function addCrossover(pres) {
     kicker: "4 \u00b7 Results \u2014 headline",
     title: "The Aliasing Crossover",
     kickerColor: C.red,
-    notes:
-      "THE slide of the defense \u2014 take your time. X-axis: aliasing rate alpha (ambiguity dial). Y: mean episodic reward on the held-out " +
-      "split, 95% bootstrap CIs. Walk it in order. (1) At \u03b1=0, honesty anchor: PPO +138.6 vs RF +136.5 \u2014 STATISTICAL TIE, overlapping " +
-      "CIs: the environment does NOT favor RL by construction; where the task is per-flow classification, the classifier ties. " +
-      "(2) As \u03b1 rises, RF-Acting degrades MONOTONICALLY: +113.2, +94.4, +64.0, +20.5 \u2026 \u221229.3 at \u03b1=1 \u2014 NET-HARMFUL, worse than doing " +
-      "nothing's baseline of always-block at ~0. (3) Windowed PPO stays FLAT \u2014 no monotonic trend; the window absorbs the ambiguity. " +
-      "(4) From \u03b1=0.4 (headline): DISJOINT CIs \u2014 gap +26.9, widening to +161.2 at \u03b1=1. Oracle flat at +194.8 prices perfect " +
-      "perception. One sentence: when observation gets ambiguous, memoryless classification collapses; windowed control does not.",
+    notes: NOTES.crossover,
   });
   H.img(s, "Falpha_curve", { x: 0.4, y: 1.42, maxW: 5.85, maxH: 3.6, frame: true, vAlign: "top" });
   // right rail: the three reads
@@ -112,13 +94,7 @@ function addCoupling(pres) {
     kicker: "4 \u00b7 Results",
     title: "The Advantage Survives Removing the Shaping",
     titleSize: 24,
-    notes:
-      "Answering the privileged-reward objection head-on. Retrain EVERYTHING under both contracts; score RF under the same contract " +
-      "each time. Coupled: best learned agent is DQN +226.2 \u2014 thrives on dense shaping \u2014 RF-minus-best-RL = \u221263.1 (RL leads). " +
-      "Outcome: best learned agent is A2C +146.1 \u2014 gap \u221263.0, virtually identical. Two lessons: (1) the RL-vs-RF separation does NOT " +
-      "depend on the privileged shaping \u2014 objection closed; (2) the reward contract changes WHICH algorithm wins: DQN's coupled win " +
-      "evaporates under sparsity (\u22128.6 pooled mean, variance triples) \u2014 the same replay machinery that exploits dense signals fails " +
-      "sparse credit assignment. Off-policy value bootstrapping needs shaping; on-policy tolerates its absence.",
+    notes: NOTES.coupling,
   });
   H.img(s, "Fcoupling_reward_gap", { x: 0.4, y: 1.42, maxW: 5.35, maxH: 3.2, frame: true, vAlign: "top" });
   H.accentCard(s, 6.35, 1.55, 3.15, 1.32, C.gold);
@@ -146,14 +122,7 @@ function addSweeps(pres) {
     kicker: "4 \u00b7 Results",
     title: "Robustness: Harsher Environments, Evasive Attackers",
     titleSize: 25,
-    notes:
-      "Two off-distribution stress tests on FIXED policies \u2014 trained once, never retrained per condition. Left (difficulty sweep): " +
-      "lower p_down = proportionate actions less likely to push the attacker back; monotone response, no rank inversions; A2C leads at " +
-      "EVERY difficulty (\u22127.2 at the harshest \u2192 +147.3 at the easiest); the prevent-at-maneuver doctrine loses the least ground " +
-      "exactly where it is harshest. DQN's fragility reappears as the widest bands. Right (evasion sweep): attacker hardens against " +
-      "eviction after sensing force (post-detection hardening, up to 0.75). Pre-registered criterion: lower CI bound must not fall " +
-      "more than 25% of evasion-free mean. A2C +142.6 \u2192 +112.7, compromise 0.23 \u2192 0.41 \u2014 CLEARS it; PPO narrowly misses; DQN " +
-      "within band but from a low base. Graceful degradation, not collapse \u2014 and a real A2C-over-PPO separation.",
+    notes: NOTES.sweeps,
   });
   s.addText("Environment difficulty (de-escalation prob.)", {
     x: 0.4, y: 1.26, w: 4.55, h: 0.24, fontFace: F.body, fontSize: 10.5, bold: true, color: C.inkSoft, align: "center", margin: 0,
@@ -177,21 +146,30 @@ function addOOD(pres) {
   const s = H.newContent(pres, {
     kicker: "4 \u00b7 Results",
     title: "Ten Attack Classes the System Never Saw",
-    notes:
-      "The zero-day-like probe. The 10 reserved classes are injected at their true stage into an otherwise in-distribution episode " +
-      "(single-stage feature injection) at headline alpha. Metric: PREVENTION RATE \u2014 attacker held below IMPACT for the whole episode. " +
-      "Grid: rows = policies, columns = classes. Best windowed RL (A2C) prevents 0.71\u20130.85 on EVERY class; RF-Acting 0.00\u20130.15. " +
-      "Advantage +0.70 to +0.78 per class. Note honestly: always-block 'prevents' 1.0 everywhere \u2014 by quarantining 100% of benign " +
-      "traffic; reward 0.0; operationally inadmissible. The meaningful frontier is prevention WHILE benign-safe (<1% FPR) \u2014 only the " +
-      "learned agents live there. Also honest: moderate absolute rates \u2014 the oracle ceiling is far above; the claim is the relative " +
-      "advantage, not near-perfect security.",
+    notes: NOTES.ood,
   });
   H.img(s, "F15_ood_robustness", { x: 0.35, y: 1.32, maxW: 4.9, maxH: 3.72, frame: true, vAlign: "top" });
-  H.stat(s, { x: 5.75, y: 1.45, w: 3.7, value: N.oodRLlo + " \u2013 " + N.oodRLhi, label: "best windowed RL (A2C): prevention on every held-out class", color: C.blue, valueSize: 27 });
-  H.stat(s, { x: 5.75, y: 2.55, w: 3.7, value: N.oodRFlo + " \u2013 " + N.oodRFhi, label: "RF-Acting: prevention on the same classes", color: C.red, valueSize: 27 });
-  H.stat(s, { x: 5.75, y: 3.65, w: 3.7, value: N.oodAdvLo + " to " + N.oodAdvHi, label: "advantage on every single class \u2014 none negative", color: C.green, valueSize: 27 });
+
+  // Feedback [25]: "10 classes? Aumentou?" — no: these are the SAME ten
+  // reserved back on the projection slide. Say so explicitly.
+  s.addText("The same 10 classes reserved earlier \u2014 never trained on, by detector or agent.", {
+    x: 5.6, y: 1.24, w: 3.85, h: 0.24, fontFace: F.body, fontSize: 9.5, italic: true, color: C.muted, margin: 0,
+  });
+
+  // Feedback [25]: "Metrica Prevention Rate nao ficou muito claro." Define it.
+  H.card(s, 5.6, 1.54, 3.85, 0.74, { fill: C.cardAlt });
+  s.addText([
+    { text: "Prevention rate  P", options: { bold: true, color: C.ink } },
+    { text: "prev", options: { bold: true, color: C.ink, fontSize: 7 } },
+    { text: "  =  Pr( attacker never reaches IMPACT )\n", options: { bold: true, color: C.ink } },
+    { text: "fraction of episodes held below IMPACT for all 100 steps \u2014 not accuracy, not detection.", options: { color: C.inkSoft } },
+  ], { x: 5.74, y: 1.61, w: 3.6, h: 0.6, fontFace: F.body, fontSize: 9, margin: 0, valign: "top" });
+
+  H.stat(s, { x: 5.6, y: 2.42, w: 3.85, value: N.oodRLlo + " \u2013 " + N.oodRLhi, label: "best windowed RL (A2C): prevention on every held-out class", color: C.blue, valueSize: 25 });
+  H.stat(s, { x: 5.6, y: 3.32, w: 3.85, value: N.oodRFlo + " \u2013 " + N.oodRFhi, label: "RF-Acting: prevention on the same classes", color: C.red, valueSize: 25 });
+  H.stat(s, { x: 5.6, y: 4.16, w: 3.85, value: N.oodAdvLo + " to " + N.oodAdvHi, label: "advantage on every single class \u2014 none negative", color: C.green, valueSize: 25 });
   s.addText("(always-BLOCK reaches 1.0 only by disrupting 100% of benign traffic \u2014 inadmissible; learned agents stay under 1%.)", {
-    x: 5.75, y: 4.72, w: 3.7, h: 0.5, fontFace: F.body, fontSize: 9.5, italic: true, color: C.muted, margin: 0,
+    x: 5.6, y: 5.0, w: 3.85, h: 0.4, fontFace: F.body, fontSize: 8.5, italic: true, color: C.muted, margin: 0,
   });
 }
 
@@ -200,15 +178,7 @@ function addRecallIndependence(pres) {
   const s = H.newContent(pres, {
     kicker: "4 \u00b7 Results",
     title: "No Dependence on Detector Recall",
-    notes:
-      "Why the OOD result matters scientifically \u2014 the last version of the skeptic's objection: 'RL only wins where the detector is " +
-      "blind.' If true, advantage should SHRINK as detector recall rises. Scatter: per-class RF recall (x) vs RL prevention advantage " +
-      "(y). The held-out classes span recall 0.20\u20130.998 by construction \u2014 near-blind to near-perfect. Result: NO detectable trend. " +
-      "Spearman rho 0.22 (p=0.54), Pearson r \u22120.02 (p=0.95), bootstrap OLS slope CI [\u22120.08, +0.04] spans zero. Honest caveat: n=10 \u2014 " +
-      "absence of a detectable trend, not proof of independence; but the trend the objection REQUIRES (negative) is absent. Mechanism " +
-      "(structural, not perceptual): prevention needs SUSTAINED proportionate pressure; RF \u2014 even when it classifies correctly \u2014 acts " +
-      "passively ~2/3 of steps, lets the attacker reach IMPACT, then blocks late: 'mitigated', never 'prevented'. A one-shot classifier " +
-      "structurally cannot express temporal control.",
+    notes: NOTES.recall,
   });
   H.img(s, "F15b_recall_vs_advantage", { x: 0.4, y: 1.38, maxW: 5.35, maxH: 3.7, frame: true, vAlign: "top" });
   H.bullets(s, [
@@ -228,15 +198,7 @@ function addLimitations(pres) {
     kicker: "5 \u00b7 Closing",
     title: "Limitations \u2014 Stated, Not Hidden",
     kickerColor: C.ink,
-    notes:
-      "Owning the boundaries pre-empts half the committee's questions. (1) Session coherence + aliasing are modeling abstractions \u2014 " +
-      "the dataset has no session key; alpha is a controlled knob, and the contribution is the SHAPE of the response, anchored by the " +
-      "alpha=0 tie. (2) The advantage is conditional on partial observability \u2014 at alpha=0 we claim a tie, nothing more. (3) The " +
-      "attacker is designed, reactive, NOT co-trained; the crossover is conditional on this attacker class; evasive-persistence is the " +
-      "closest tested relaxation; self-play is future work. (4) RF-Acting is memoryless by construction \u2014 the benchmark isolates " +
-      "windowed vs memoryless CONTROL; a windowed supervised baseline is the most direct strengthening and is named follow-up work. " +
-      "(5) Single dataset \u2014 replication on Bot-IoT is the natural next step. (6) OOD study is a controlled feature-injection stress " +
-      "test at n=10 \u2014 not deployed zero-day evidence.",
+    notes: NOTES.limitations,
   });
   const rows = [
     ["Modeling abstractions", "Session coherence + aliasing are environment-layer constructs; \u03b1 is a knob, not a measured deployment property"],
@@ -264,17 +226,11 @@ function addConclusions(pres) {
     kicker: "5 \u00b7 Closing",
     title: "What This Dissertation Establishes",
     kickerColor: C.ink,
-    notes:
-      "The three findings, one breath each. F1: windowed temporal control beats memoryless per-flow control PRECISELY under partial " +
-      "observability \u2014 tie at alpha=0, RF monotone collapse to net-harmful, PPO flat, disjoint CIs from alpha=0.4. F2: the advantage " +
-      "is not a reward artifact \u2014 best RL leads under both contracts (\u221263.1 / \u221263.0); shaping changes which algorithm wins. F3: on ten " +
-      "held-out classes, prevention advantage on every class, no detectable recall dependence \u2014 temporal control, not detector blind " +
-      "spots. Plus the operational bonus: benign-safe (<1% FPR) and a 90 KB / 23K-param policy vs 181 MB tuned RF \u2014 edge-deployable. " +
-      "Closing line: the contribution is not 'RL wins' \u2014 it is a controlled account of WHEN and WHY it wins, reproducible end-to-end.",
+    notes: NOTES.conclusions,
   });
   const rows = [
     ["1", "The crossover is real and controlled", "Tie at \u03b1 = 0 \u2192 disjoint CIs from \u03b1 = " + N.headlineAlpha + " \u2192 RF net-harmful at \u03b1 = 1 while windowed PPO holds flat", C.red],
-    ["2", "It is not a reward artifact", "Best learned agent leads under both reward contracts (" + N.cplGap + " coupled, " + N.outGap + " sparse)", C.gold],
+    ["2", "It is not a reward artifact", "Best learned agent leads under both reward functions (" + N.cplGap + " coupled, " + N.outGap + " sparse)", C.gold],
     ["3", "It extends to unseen attack classes", "Prevention advantage " + N.oodAdvLo + "\u2013" + N.oodAdvHi + " on all 10 held-out classes \u2014 independent of detector recall", C.green],
   ];
   let y = 1.45;
@@ -287,10 +243,12 @@ function addConclusions(pres) {
     ], { x: 1.35, y: y + 0.1, w: 7.95, h: 0.68, fontFace: F.body, valign: "middle", margin: 0 });
     y += 0.98;
   }
+  // Feedback [28]: the footprint detail was a whole talking point at the end
+  // of a long talk. Compress to a clause; the numbers live in backup B7.
   H.card(s, 0.55, 4.5, 8.9, 0.72, { fill: C.cardAlt });
   s.addText([
-    { text: "Operationally deployable: ", options: { bold: true, color: C.ink } },
-    { text: "benign disruption < 1% \u00b7 policy footprint " + N.policyKB + " KB / " + N.policyParams + " params (vs " + N.rfMB + " MB tuned RF) \u00b7 fully reproducible (" + N.tests + " tests, hash-pinned figures)", options: { color: C.inkSoft } },
+    { text: "And it is operationally deployable: ", options: { bold: true, color: C.ink } },
+    { text: "under 1% benign disruption, a policy small enough for an edge gateway, and reproducible end-to-end (" + N.tests + " tests, hash-pinned figures).", options: { color: C.inkSoft } },
   ], { x: 0.8, y: 4.58, w: 8.5, h: 0.56, fontFace: F.body, fontSize: 11.5, valign: "middle", margin: 0 });
 }
 
@@ -300,13 +258,7 @@ function addFuture(pres) {
     kicker: "5 \u00b7 Closing",
     title: "Where This Goes Next",
     kickerColor: C.ink,
-    notes:
-      "Grouped future work. Nearest to the thesis: windowed supervised baseline (the most direct strengthening); recurrent belief-state " +
-      "policies \u2014 a preliminary recurrent trial did NOT beat the window under this budget, worth characterizing; second dataset " +
-      "(Bot-IoT). Threat model: co-adaptive self-play attacker; multi-agent defense (RESTRAIN-style coordination). Deployment: edge " +
-      "hardware quantification (the 90 KB policy invites it); federated multi-site training; constrained-MDP false-positive guarantees. " +
-      "Dissemination: a condensed journal article of this work is submitted to Elsevier Internet of Things (2026). Code, manifests, and " +
-      "the full artifact chain are public on GitHub.",
+    notes: NOTES.future,
   });
   const cols = [
     ["Strengthen the claim", ["Windowed supervised baseline (named follow-up)", "Recurrent belief-state policies", "Second dataset: Bot-IoT replication"], C.blue],
@@ -331,9 +283,7 @@ function addFuture(pres) {
 // Slide 29 — thanks
 function addThanks(pres) {
   const s = H.newDark(pres, {
-    notes:
-      "Thank the committee by name; thank the audience. Then: 'I am at your disposal for questions.' Backup slides follow the thank-you " +
-      "slide: reward constants, hyperparameters, kill-chain mapping, detector performance, benign safety, reproducibility chain.",
+    notes: NOTES.thanks,
   });
   const bandW = H.PAGE.w / 5;
   for (let i = 0; i < 5; i++) {

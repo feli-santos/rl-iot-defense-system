@@ -33,6 +33,16 @@ const IMG_DIMS = {
   "unicamp_logo": [692, 730],
   "unicamp_logo_white": [692, 730],
   "unicamp_logo_dark": [692, 730],
+  // Speaker slide: portrait + client logos (extracted from the Google Slides
+  // edit of the deck so the build can reproduce them without manual re-import).
+  "speaker_photo": [400, 400],
+  "logo_latam": [2048, 626],
+  "logo_universal": [1200, 680],
+  "logo_disney": [320, 320],
+  "logo_compass": [250, 250],
+  "logo_compass_text": [300, 130],
+  "logo_hme": [600, 300],
+  "logo_bbva": [2048, 1152],
 };
 
 const KC_STAGES = ["BENIGN", "RECON", "ACCESS", "MANEUVER", "IMPACT"];
@@ -90,7 +100,7 @@ function newDark(pres, { notes, count = true } = {}) {
 
 // Aspect-ratio-correct image placement inside a bounding box (contain).
 // Optional white card frame behind the image.
-function img(slide, name, { x, y, maxW, maxH, frame = false, align = "center", vAlign = "center" }) {
+function img(slide, name, { x, y, maxW, maxH, frame = false, align = "center", vAlign = "center", ext = "png" }) {
   const [pw, ph] = IMG_DIMS[name];
   const ar = pw / ph;
   let w = maxW, h = maxW / ar;
@@ -107,7 +117,7 @@ function img(slide, name, { x, y, maxW, maxH, frame = false, align = "center", v
       fill: { color: C.card }, line: { color: C.border, width: 0.75 },
     });
   }
-  slide.addImage({ path: `assets/${name}.png`, x: ix, y: iy, w, h });
+  slide.addImage({ path: `assets/${name}.${ext}`, x: ix, y: iy, w, h });
   return { x: ix, y: iy, w, h };
 }
 

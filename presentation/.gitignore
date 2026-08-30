@@ -1,3 +1,6 @@
 node_modules/
 qa/
 package-lock.json
+
+# Built deck — rebuild with `node build.js`
+*.pptx

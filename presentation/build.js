@@ -27,53 +27,57 @@ opening.addSpeaker(pres); //         2
 opening.addAgenda(pres); //          3
 
 // --- Act I: Context ---------------------------------------------------------
-context.addWhyIoT(pres); //          4
-context.addKillChain(pres); //       5
-context.addRLPrimer(pres); //        6
-context.addPOMDP(pres); //           7
+context.addIoTNetwork(pres); //      4
+context.addWhyIoT(pres); //          5
+context.addKillChain(pres); //       6
+context.addRLPrimer(pres); //        7
+context.addPOMDP(pres); //           8
 
-// --- Act II: Research question ----------------------------------------------
-qm.addQuestion(pres); //             8
-qm.addContributions(pres); //        9
+// --- Act II: Research question + objectives ---------------------------------
+qm.addQuestion(pres); //             9
+qm.addObjectives(pres); //          10
+qm.addContributions(pres); //       11
 
 // --- Act III: Framework -------------------------------------------------------
-qm.addArchitecture(pres); //        10
-qm.addDataset(pres); //             11
-qm.addProjection(pres); //          12
-qm.addOverlap(pres); //             13
-qm.addAttacker(pres); //            14
-qm.addAliasing(pres); //            15
-qm.addReward(pres); //              16
-qm.addContenders(pres); //          17
-qm.addProtocol(pres); //            18
+qm.addArchitecture(pres); //        12
+qm.addDataset(pres); //             13
+qm.addProjection(pres); //          14
+qm.addOverlap(pres); //             15
+qm.addAttacker(pres); //            16
+qm.addAliasing(pres); //            17
+qm.addReward(pres); //              18
+qm.addContenders(pres); //          19
+qm.addProtocol(pres); //            20
 
 // --- Act IV: Results ----------------------------------------------------------
-results.addLearning(pres); //       19
-results.addDoctrines(pres); //      20
-results.addCrossover(pres); //      21
-results.addCoupling(pres); //       22
-results.addSweeps(pres); //         23
-results.addOOD(pres); //            24
-results.addRecallIndependence(pres); // 25
+results.addLearning(pres); //       21
+results.addDoctrines(pres); //      22
+results.addCrossover(pres); //      23
+results.addCoupling(pres); //       24
+results.addSweeps(pres); //         25
+results.addOOD(pres); //            26
+results.addRecallIndependence(pres); // 27
 
 // --- Act V: Closing -----------------------------------------------------------
-results.addLimitations(pres); //    26
-results.addConclusions(pres); //    27
-results.addFuture(pres); //         28
-results.addThanks(pres); //         29
+results.addLimitations(pres); //    28
+results.addConclusions(pres); //    29
+results.addFuture(pres); //         30
+results.addThanks(pres); //         31
 
 // --- Backup -------------------------------------------------------------------
-backup.addBackupDivider(pres); //   30
-backup.addRewardTable(pres); //     31
-backup.addHparams(pres); //         32
-backup.addMapping(pres); //         33
-backup.addDetector(pres); //        34
-backup.addBenignSafety(pres); //    35
-backup.addRepro(pres); //           36
+backup.addBackupDivider(pres); //   32
+backup.addRewardTable(pres); //     33
+backup.addHparams(pres); //         34
+backup.addMapping(pres); //         35
+backup.addDetector(pres); //        36
+backup.addBenignSafety(pres); //    37
+backup.addRepro(pres); //           38
+backup.addFootprint(pres); //       39
 
+const OUT = "MASTER'S DEFENSE.pptx";
 pres
-  .writeFile({ fileName: "defense.pptx" })
-  .then(() => console.log("OK defense.pptx written"))
+  .writeFile({ fileName: OUT })
+  .then(() => console.log(`OK ${OUT} written`))
   .catch((e) => {
     console.error("BUILD FAILED:", e);
     process.exit(1);

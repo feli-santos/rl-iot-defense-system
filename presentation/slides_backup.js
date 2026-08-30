@@ -1,14 +1,13 @@
 "use strict";
 const { C, F, N } = require("./theme");
+const { NOTES } = require("./notes");
 const H = require("./helpers");
 
 // Darker stage-color variants for table chips (white text stays >=4.5:1)
 const STAGE_DARK = ["4A6350", "84662B", "94512A", "833B2A", "6E211B"];
 
 function addBackupDivider(pres) {
-  const s = H.newDark(pres, { notes: "Divider \u2014 backup material for Q&A. Not part of the timed talk." });
-  s.addText("BACKUP", {
-    x: 0.75, y: 2.3, w: 8.5, h: 0.7, fontFace: F.head, fontSize: 40, bold: true, color: C.textOnDark, margin: 0,
+  const s = H.newDark(pres, { notes: NOTES.backupDivider,
   });
   s.addText("Supporting detail for questions \u2014 reward constants \u00b7 hyperparameters \u00b7 kill-chain mapping \u00b7 detector performance \u00b7 benign safety \u00b7 reproducibility", {
     x: 0.75, y: 3.15, w: 8.0, h: 0.6, fontFace: F.body, fontSize: 13, color: C.mutedOnDark, margin: 0,
@@ -22,7 +21,7 @@ function addRewardTable(pres) {
     title: "Reward Constants (Environment Design Defaults)",
     kickerColor: C.muted,
     titleSize: 24,
-    notes: "Full constant table from methodology Table 3.5. Calibration: terminal outcomes set the scale; per-step shaping an order of magnitude smaller; caps kill reward farming; guardrails make over-blocking on benign never profitable.",
+    notes: NOTES.backupReward,
   });
   const rows = [
     [["Constant", true], ["Value", true], ["Constant", true], ["Value", true]],
@@ -52,7 +51,7 @@ function addRewardTable(pres) {
     x: 0.55, y: 1.5, w: 8.9, colW: [3.0, 1.45, 3.0, 1.45],
     border: { pt: 0.5, color: C.border }, rowH: 0.38, margin: 0.06,
   });
-  s.addText("Sparse outcome contract strips the five stage-conditioned shaping components; action cost + terminal accounting + prevention remain.", {
+  s.addText("Sparse OUTCOME reward strips the five stage-conditioned shaping components; action cost + terminal accounting + prevention remain.", {
     x: 0.55, y: 4.85, w: 8.9, h: 0.3, fontFace: F.body, fontSize: 10, italic: true, color: C.muted, margin: 0,
   });
 }
@@ -64,7 +63,7 @@ function addHparams(pres) {
     title: "Training Hyperparameters (Grid-Searched per Algorithm)",
     kickerColor: C.muted,
     titleSize: 24,
-    notes: "Appendix C. Notables: A2C n_steps=256 (vs default 5) \u2014 long rollouts for the sparse credit delay; DQN 200k replay buffer + slow target updates; same 2\u00d764 MLP everywhere isolates the learning rule.",
+    notes: NOTES.backupHparams,
   });
   const rows = [
     ["Hyperparameter", "PPO", "A2C", "DQN"],
@@ -104,7 +103,7 @@ function addMapping(pres) {
     title: "CICIoT2023 \u2192 Kill-Chain Mapping (34 Labels, 10 Held Out)",
     kickerColor: C.muted,
     titleSize: 23,
-    notes: "Appendix B. Stars = the 10 reserved OOD classes, at least two per non-benign stage. Unknown labels raise a hard error \u2014 no silent leakage.",
+    notes: NOTES.backupMapping,
   });
   const rows = [
     ["Stage", "CICIoT2023 labels (\u2605 = held out)"],
@@ -141,7 +140,7 @@ function addDetector(pres) {
     title: "The Tuned RandomForest Detector Is Not a Straw Man",
     kickerColor: C.muted,
     titleSize: 24,
-    notes: "Fairness evidence: 54-cell grid search on validation macro-F1; interior optimum (200 trees, depth 20, balanced weights); validation F1 flat at 0.927\u00b10.005 across tree count \u2014 not under-tuned. Balanced-test macro-F1 0.924; worst class 0.87 (recon/access ambiguity); impact 0.999. Only material confusion: RECON\u2192ACCESS 13.2% \u2014 inherent overlap in the middle of the chain.",
+    notes: NOTES.backupDetector,
   });
   // left figure AR 1.736 (w=maxW 4.55 -> h 2.62); right AR 1.219 (h 3.3 -> w 4.02)
   H.img(s, "tuned_rf_per_class_f1", { x: 0.45, y: 1.42, maxW: 4.55, maxH: 3.3, frame: true, align: "left", vAlign: "top" });
@@ -159,7 +158,7 @@ function addBenignSafety(pres) {
     title: "Benign Safety: Prevention Without Collateral Damage",
     kickerColor: C.muted,
     titleSize: 24,
-    notes: "The availability axis. Benign FPR = fraction of true-benign flows hit with block/isolate. Learned agents: PPO 0.89%, A2C 0.66%, DQN 0.46% \u2014 all under the 1% operational threshold. Random 41.3%; always-block 100% (that is why its perfect prevention is inadmissible); always-observe 0% but loses every episode (~\u2212350). Trivials bracket the trade-off; learned agents are the only policies strong AND safe.",
+    notes: NOTES.backupBenign,
   });
   const bars = [
     ["always-OBSERVE", 0, "0%", C.muted, "never acts \u2014 every attack lands"],
@@ -196,7 +195,7 @@ function addRepro(pres) {
     title: "Reproducibility: Every Number Has a Chain of Custody",
     kickerColor: C.muted,
     titleSize: 24,
-    notes: "Every figure ships a manifest.json: SHA-256 of every input artifact + the producing git commit + the exact command. A harness re-walks the chain on a fresh checkout. Thesis numbers are macro-generated from canonical JSONs \u2014 never hand-typed. 462 tests. Clone \u2192 pytest \u2192 reproducibility_smoke \u2192 PASS, no retraining needed.",
+    notes: NOTES.backupRepro,
   });
   const steps = [
     ["experiment run", "canonical summary JSON + manifest (input hashes + git SHA)"],
@@ -228,7 +227,44 @@ function addRepro(pres) {
   H.stat(s, { x: 6.9, y: 3.85, w: 2.6, value: "0 retrain", label: "verification without retraining", color: C.green, valueSize: 26 });
 }
 
+// B7 — model footprint. Demoted from the conclusions slide after the first
+// dry run (feedback [28]: "footprint -> poderia pular"). Kept here because it
+// is a fair Q&A question about edge deployability.
+function addFootprint(pres) {
+  const s = H.newContent(pres, {
+    kicker: "Backup B7",
+    title: "Model Footprint: Why This Fits on a Gateway",
+    kickerColor: C.muted,
+    titleSize: 24,
+    notes: NOTES.backupFootprint,
+  });
+
+  H.accentCard(s, 0.55, 1.5, 4.35, 2.15, C.blue);
+  s.addText("Learned policy (PPO / A2C / DQN)", {
+    x: 0.78, y: 1.64, w: 3.9, h: 0.26, fontFace: F.body, fontSize: 11.5, bold: true, color: C.blue, margin: 0,
+  });
+  H.stat(s, { x: 0.78, y: 1.94, w: 3.9, value: N.policyKB + " KB", label: "fp32 on disk", color: C.ink, valueSize: 26 });
+  H.stat(s, { x: 0.78, y: 2.72, w: 3.9, value: N.policyParams + " params", label: "2\u00d764 MLP \u2014 fits in an MCU-class budget", color: C.ink, valueSize: 20 });
+
+  H.accentCard(s, 5.15, 1.5, 4.35, 2.15, C.red);
+  s.addText("Tuned RandomForest detector", {
+    x: 5.38, y: 1.64, w: 3.9, h: 0.26, fontFace: F.body, fontSize: 11.5, bold: true, color: C.red, margin: 0,
+  });
+  H.stat(s, { x: 5.38, y: 1.94, w: 3.9, value: N.rfMB + " MB", label: "serialized joblib", color: C.ink, valueSize: 26 });
+  H.stat(s, { x: 5.38, y: 2.72, w: 3.9, value: N.rfNodes + " nodes", label: "200 trees, depth 20", color: C.ink, valueSize: 20 });
+
+  H.card(s, 0.55, 3.85, 8.9, 0.9, { fill: C.cardAlt });
+  s.addText([
+    { text: "\u2248 " + N.ratio + "\u00d7 smaller.  ", options: { bold: true, fontSize: 15, color: C.green } },
+    { text: "The deployable artifact is the policy, not the detector \u2014 the RF is only needed by the baseline. A defender that never consults a classifier has nothing large to ship.", options: { fontSize: 11, color: C.inkSoft } },
+  ], { x: 0.8, y: 3.98, w: 8.4, h: 0.66, fontFace: F.body, margin: 0, valign: "middle" });
+
+  s.addText("Source: scripts/benchmark/compute_model_footprint.py \u2014 loads the actual checkpoints; numbers are macro-generated, never hand-typed.", {
+    x: 0.55, y: 4.92, w: 8.9, h: 0.3, fontFace: F.body, fontSize: 9, italic: true, color: C.muted, margin: 0,
+  });
+}
+
 module.exports = {
   addBackupDivider, addRewardTable, addHparams, addMapping,
-  addDetector, addBenignSafety, addRepro,
+  addDetector, addBenignSafety, addRepro, addFootprint,
 };

@@ -1,19 +1,144 @@
 "use strict";
 const { C, F, N } = require("./theme");
+const { NOTES } = require("./notes");
 const H = require("./helpers");
 
-// Slide 4 — why IoT security is hard
+// Small numbered badge used to anchor the audience to a region of the slide.
+// Feedback [4]: "nao foi possivel perceber onde esta o que esta sendo falado".
+// The speaker notes reference these numbers verbally ("bloco um, a esquerda").
+function badge(s, x, y, n, color) {
+  s.addShape("ellipse", {
+    x, y, w: 0.26, h: 0.26, fill: { color }, line: { type: "none" },
+  });
+  s.addText(String(n), {
+    x, y, w: 0.26, h: 0.26, fontFace: F.body, fontSize: 10.5, bold: true,
+    color: "FFFFFF", align: "center", valign: "middle", margin: 0,
+  });
+}
+
+// Slide 4 — what an IoT network actually is (bridge slide, native shapes only)
+function addIoTNetwork(pres) {
+  const s = H.newContent(pres, {
+    kicker: "1 \u00b7 Context",
+    title: "What Is an IoT Network?",
+    kickerColor: C.green,
+    notes: NOTES.iotNetwork,
+  });
+
+  s.addText("Everyday objects that sense, decide, and act \u2014 connected through a gateway to cloud services.", {
+    x: 0.55, y: 1.24, w: 8.9, h: 0.3, fontFace: F.body, fontSize: 13, italic: true,
+    color: C.inkSoft, margin: 0,
+  });
+
+  // ---- Zone 1: the "things" ------------------------------------------------
+  H.card(s, 0.55, 1.7, 2.95, 2.1, { fill: C.cardAlt });
+  s.addShape("rect", { x: 0.55, y: 1.7, w: 2.95, h: 0.06, fill: { color: C.green }, line: { type: "none" } });
+  badge(s, 0.63, 1.84, 1, C.green);
+  s.addText("Things \u2014 sensors & actuators", {
+    x: 0.95, y: 1.82, w: 2.45, h: 0.24, fontFace: F.body, fontSize: 11, bold: true, color: C.ink, margin: 0,
+  });
+  s.addText("constrained \u00b7 cheap \u00b7 wireless", {
+    x: 0.95, y: 2.06, w: 2.45, h: 0.2, fontFace: F.body, fontSize: 8.5, italic: true, color: C.muted, margin: 0,
+  });
+  const devices = ["Camera", "Motion sensor", "Smart lock", "Thermostat", "Speaker", "Wearable"];
+  const chipW = 1.3, chipH = 0.38, gx = 0.14, gy = 0.1;
+  devices.forEach((name, i) => {
+    const col = i % 2, row = Math.floor(i / 2);
+    const cx = 0.67 + col * (chipW + gx);
+    const cy = 2.34 + row * (chipH + gy);
+    s.addShape("roundRect", {
+      x: cx, y: cy, w: chipW, h: chipH, rectRadius: 0.05,
+      fill: { color: C.card }, line: { color: C.border, width: 0.75 },
+    });
+    s.addText(name, {
+      x: cx, y: cy, w: chipW, h: chipH, fontFace: F.body, fontSize: 9,
+      color: C.ink, align: "center", valign: "middle", margin: 0,
+    });
+  });
+
+  s.addText("Zigbee \u00b7 BLE\nWi-Fi", {
+    x: 3.5, y: 2.28, w: 0.8, h: 0.36, fontFace: F.body, fontSize: 7.5,
+    color: C.muted, align: "center", margin: 0,
+  });
+  s.addShape("line", {
+    x: 3.5, y: 2.75, w: 0.8, h: 0,
+    line: { color: C.inkSoft, width: 1.5, beginArrowType: "triangle", endArrowType: "triangle" },
+  });
+
+  // ---- Zone 2: gateway / hub ----------------------------------------------
+  s.addShape("roundRect", {
+    x: 4.3, y: 2.3, w: 1.85, h: 0.9, rectRadius: 0.07,
+    fill: { color: C.card }, line: { color: C.blue, width: 1.25 },
+  });
+  badge(s, 4.38, 2.36, 2, C.blue);
+  s.addText("Gateway / Hub", {
+    x: 4.64, y: 2.42, w: 1.45, h: 0.28, fontFace: F.body, fontSize: 11.5, bold: true,
+    color: C.blue, align: "center", margin: 0,
+  });
+  s.addText("aggregates traffic \u00b7 bridges protocols", {
+    x: 4.38, y: 2.72, w: 1.69, h: 0.4, fontFace: F.body, fontSize: 8.5,
+    color: C.inkSoft, align: "center", margin: 0,
+  });
+
+  s.addText("MQTT \u00b7 HTTP", {
+    x: 6.11, y: 2.46, w: 0.84, h: 0.2, fontFace: F.body, fontSize: 7.5,
+    color: C.muted, align: "center", margin: 0,
+  });
+  s.addShape("line", {
+    x: 6.15, y: 2.75, w: 0.8, h: 0,
+    line: { color: C.inkSoft, width: 1.5, beginArrowType: "triangle", endArrowType: "triangle" },
+  });
+
+  // ---- Zone 3: cloud -------------------------------------------------------
+  s.addShape("cloud", {
+    x: 6.95, y: 1.9, w: 2.5, h: 1.65,
+    fill: { color: C.card }, line: { color: C.blueSoft, width: 1 },
+  });
+  badge(s, 7.05, 2.14, 3, C.blueSoft);
+  s.addText("Cloud services", {
+    x: 7.05, y: 2.44, w: 2.3, h: 0.28, fontFace: F.body, fontSize: 12, bold: true,
+    color: C.ink, align: "center", margin: 0,
+  });
+  s.addText("analytics \u00b7 dashboards \u00b7 remote control", {
+    x: 7.1, y: 2.72, w: 2.2, h: 0.36, fontFace: F.body, fontSize: 8.5,
+    color: C.inkSoft, align: "center", margin: 0,
+  });
+
+  s.addText("telemetry flows up \u00b7 commands flow down \u2014 every hop is network traffic", {
+    x: 3.6, y: 3.6, w: 5.85, h: 0.24, fontFace: F.body, fontSize: 9.5, italic: true,
+    color: C.muted, align: "center", margin: 0,
+  });
+
+  // ---- three defining characteristics --------------------------------------
+  const traits = [
+    ["Sense \u2192 decide \u2192 act", "The physical world sits inside the control loop \u2014 a hijacked device has physical consequences.", C.green],
+    ["MCU-class hardware", "Kilobytes of RAM, battery budgets \u2014 no room for antivirus or endpoint agents.", C.gold],
+    ["Heterogeneous, always on", "Dozens of vendors and protocols \u2014 and every one of them has a path to the Internet.", C.blue],
+  ];
+  let tx = 0.55;
+  traits.forEach(([t, d, color], i) => {
+    H.card(s, tx, 3.95, 2.86, 0.94);
+    s.addShape("rect", { x: tx, y: 3.95, w: 2.86, h: 0.055, fill: { color }, line: { type: "none" } });
+    badge(s, tx + 0.13, 4.08, i + 4, color);
+    s.addText(t, { x: tx + 0.45, y: 4.06, w: 2.28, h: 0.26, fontFace: F.body, fontSize: 11.5, bold: true, color: C.ink, margin: 0, valign: "top" });
+    s.addText(d, { x: tx + 0.15, y: 4.36, w: 2.58, h: 0.52, fontFace: F.body, fontSize: 9, color: C.inkSoft, margin: 0, valign: "top" });
+    tx += 3.02;
+  });
+
+  // Feedback [4c]: answer "como a defesa deve acontecer?" before leaving.
+  s.addText([
+    { text: "\u21d2  Defense must therefore live at the gateway \u2014 ", options: { bold: true, color: C.ink } },
+    { text: "the one place that sees every flow. That is where this work acts.", options: { color: C.inkSoft } },
+  ], { x: 0.55, y: 4.99, w: 8.9, h: 0.28, fontFace: F.body, fontSize: 11.5, margin: 0 });
+}
+
+// Slide 5 — why IoT security is hard
 function addWhyIoT(pres) {
   const s = H.newContent(pres, {
     kicker: "1 \u00b7 Context",
     title: "IoT Turned Every Network Into an Attack Surface",
     kickerColor: C.green,
-    notes:
-      "Teach: scale first. 19.8 billion devices in 2025, forecast to more than double to 40.6 billion by 2034 (Statista). Cybercrime damages " +
-      "projected at USD 12.2 trillion annually by 2031 (Cybersecurity Ventures / Morgan). Then the three structural reasons traditional " +
-      "IT security fails on IoT: (1) devices are resource-constrained \u2014 no room for antivirus/firewall agents; (2) extreme heterogeneity " +
-      "\u2014 no uniform policy enforcement; (3) signature IDS is reactive \u2014 zero-days have no signature, and anomaly IDS drowns in false " +
-      "positives on heterogeneous traffic. Land the conclusion: we need defense that is adaptive, data-driven, autonomous.",
+    notes: NOTES.whyIoT,
   });
   // stat callouts row
   H.stat(s, { x: 0.55, y: 1.42, w: 2.8, value: "19.8B \u2192 40.6B", label: "IoT devices worldwide, 2025 \u2192 2034 (forecast)", color: C.blue, valueSize: 26 });
@@ -50,13 +175,7 @@ function addKillChain(pres) {
     kicker: "1 \u00b7 Context",
     title: "The Cyber Kill Chain: a Decision Frame for Defense",
     kickerColor: C.green,
-    notes:
-      "This is the vocabulary slide \u2014 teach it well, everything later hangs on it. An intrusion is not one event; it is a campaign in " +
-      "stages. Walk the five stages with the story: attacker scans (RECON), gets a foothold (ACCESS), moves laterally / positions " +
-      "(MANEUVER), and detonates \u2014 DDoS, exfiltration (IMPACT). Two teaching points: (1) stopping an attack EARLY is cheap, stopping it " +
-      "LATE is expensive; (2) each stage has a proportionate response \u2014 the recommended-action mapping (IoTWarden). Over-reacting has a " +
-      "real availability cost: you cannot isolate the network on every port scan. This stage-to-action alignment is what our reward and " +
-      "our attacker dynamics are built on.",
+    notes: NOTES.killChain,
   });
   s.addText("An intrusion is a campaign in stages \u2014 and each stage has a proportionate response.", {
     x: 0.55, y: 1.28, w: 8.9, h: 0.3, fontFace: F.body, fontSize: 13, italic: true, color: C.inkSoft, margin: 0,
@@ -108,42 +227,66 @@ function addKillChain(pres) {
   });
 }
 
-// Slide 6 — RL in one slide
+// Slide 7 — RL primer: what it is, WHY it fits this problem, and which three.
+// Feedback [4d] "E caracteristicas do RL? Por que usar?" and [7a] "por que os
+// modelos de RL foram escolhidos?" — both were only ever answered verbally.
 function addRLPrimer(pres) {
   const s = H.newContent(pres, {
     kicker: "1 \u00b7 Context",
-    title: "Reinforcement Learning in One Slide",
+    title: "Reinforcement Learning \u2014 and Why It Fits This Problem",
     kickerColor: C.green,
-    notes:
-      "Keep this brisk \u2014 the committee knows RL; this is calibration, not a lecture. Agent observes state, picks action, environment " +
-      "returns reward and next state; the agent learns a policy maximizing cumulative discounted reward. No labels \u2014 learning from " +
-      "interaction; credit assignment over time is the hard part. Three algorithms, spanning the two model-free families: DQN " +
-      "(off-policy, value-based, replay buffer), PPO and A2C (on-policy actor-critic; PPO adds clipped updates). Foreshadow: the " +
-      "on-policy/off-policy distinction becomes an empirical finding later \u2014 remember it.",
-  });
-  const im = H.img(s, "rl_agent_loop", { x: 0.55, y: 1.52, maxW: 4.6, maxH: 2.6, frame: true, vAlign: "top" });
-  s.addText("Learn a policy \u03c0(a\u2009|\u2009s) that maximizes expected cumulative reward \u2014 by trial and error, not labels.", {
-    x: 0.55, y: 4.35, w: 4.6, h: 0.6, fontFace: F.body, fontSize: 11, italic: true, color: C.inkSoft, align: "center", margin: 0,
+    notes: NOTES.rlPrimer,
   });
 
+  H.img(s, "rl_agent_loop", { x: 0.55, y: 1.34, maxW: 4.3, maxH: 1.72, frame: true, vAlign: "top" });
+  s.addText("Learn a policy \u03c0(a\u2009|\u2009s) that maximizes expected cumulative reward \u2014 by trial and error, not labels.", {
+    x: 0.55, y: 3.18, w: 4.3, h: 0.44, fontFace: F.body, fontSize: 10.5, italic: true,
+    color: C.inkSoft, align: "center", margin: 0,
+  });
+
+  // --- WHY reinforcement learning, and not supervised learning --------------
+  H.accentCard(s, 0.55, 3.62, 4.3, 1.32, C.green);
+  s.addText("Why RL here?", {
+    x: 0.75, y: 3.70, w: 3.9, h: 0.24, fontFace: F.body, fontSize: 11, bold: true, color: C.green, margin: 0,
+  });
+  H.bullets(s, [
+    { text: "The response changes the threat \u2014 it is control, not labelling" },
+    { text: "Success is an episode outcome, not a per-flow verdict" },
+    { text: "No ground-truth \u201ccorrect action\u201d exists to supervise on" },
+  ], { x: 0.75, y: 3.95, w: 3.95, h: 0.94, size: 9, gap: 3, bulletColor: C.green });
+
+  // --- WHICH algorithms, and why exactly these three -----------------------
   const algos = [
-    ["DQN", "off-policy \u00b7 value-based", "Learns Q-values; replays past experience from a buffer. Sample-efficient \u2014 but bootstrap can wobble.", C.red],
-    ["PPO", "on-policy \u00b7 actor-critic", "Learns from fresh rollouts with clipped, conservative policy updates. The de-facto stability standard.", C.blue],
-    ["A2C", "on-policy \u00b7 actor-critic", "Synchronous advantage actor-critic \u2014 simpler, faster updates from parallel workers.", C.blue],
+    ["DQN", "off-policy \u00b7 value-based", "Reuses past experience from a replay buffer \u2014 sample-efficient, but the bootstrap can wobble.", C.red],
+    ["PPO", "on-policy \u00b7 actor-critic", "Fresh rollouts with clipped, conservative updates. The de-facto stability standard.", C.blue],
+    ["A2C", "on-policy \u00b7 actor-critic", "Synchronous advantage actor-critic \u2014 simpler and faster per update.", C.blue],
   ];
-  let y = 1.43;
+  let y = 1.34;
   for (const [name, fam, d, color] of algos) {
-    H.accentCard(s, 5.5, y, 3.95, 0.92, color);
+    H.accentCard(s, 5.15, y, 4.3, 0.86, color);
     s.addText([
-      { text: name + "  ", options: { bold: true, fontSize: 14, color: C.ink } },
-      { text: fam, options: { fontSize: 9.5, italic: true, color } },
-    ], { x: 5.68, y: y + 0.08, w: 3.6, h: 0.28, fontFace: F.body, margin: 0 });
-    s.addText(d, { x: 5.68, y: y + 0.38, w: 3.62, h: 0.5, fontFace: F.body, fontSize: 10, color: C.inkSoft, margin: 0 });
-    y += 1.04;
+      { text: name + "  ", options: { bold: true, fontSize: 13.5, color: C.ink } },
+      { text: fam, options: { fontSize: 9, italic: true, color } },
+    ], { x: 5.33, y: y + 0.07, w: 4.0, h: 0.26, fontFace: F.body, margin: 0 });
+    s.addText(d, { x: 5.33, y: y + 0.34, w: 4.0, h: 0.46, fontFace: F.body, fontSize: 9.5, color: C.inkSoft, margin: 0 });
+    y += 0.96;
   }
-  s.addText("Same MLP policy network (2\u00d764 units), same budget, same seeds \u2014 the comparison isolates the learning rule.", {
-    x: 5.5, y: 4.72, w: 3.95, h: 0.55, fontFace: F.body, fontSize: 10, color: C.muted, margin: 0 },
-  );
+
+  H.card(s, 5.15, 4.22, 4.3, 0.9, { fill: C.cardAlt });
+  s.addText("Why these three?", {
+    x: 5.33, y: 4.29, w: 4.0, h: 0.22, fontFace: F.body, fontSize: 10.5, bold: true, color: C.ink, margin: 0,
+  });
+  s.addText("They span both model-free families for discrete actions, and are the SB3-recommended set for DRL-for-IDS. SAC / TD3 / Dreamer excluded: a 5-action discrete menu does not need them.", {
+    x: 5.33, y: 4.52, w: 4.0, h: 0.56, fontFace: F.body, fontSize: 8.5, color: C.inkSoft, margin: 0, valign: "top",
+  });
+
+  // Feedback [7b]: "nem sempre chegam os mesmos dados; DQN usa replay buffer".
+  // The honest control is the interaction budget, not the number of gradient
+  // samples — replay reuse IS part of the learning rule under test.
+  s.addText([
+    { text: "Controlled: ", options: { bold: true, color: C.ink } },
+    { text: "same 2\u00d764 MLP, same 5M environment-step budget, same 10 seeds. How each reuses that experience (DQN replays it, PPO/A2C do not) is precisely the learning rule under test.", options: { color: C.inkSoft } },
+  ], { x: 0.55, y: 5.02, w: 8.3, h: 0.26, fontFace: F.body, fontSize: 8.5, margin: 0 });
 }
 
 // Slide 7 — POMDP: the perception gap
@@ -152,14 +295,7 @@ function addPOMDP(pres) {
     kicker: "1 \u00b7 Context",
     title: "The Perception Gap: From MDP to POMDP",
     kickerColor: C.green,
-    notes:
-      "THE central concept of the thesis \u2014 spend time here. In an MDP the agent sees the true state. Our defender never does: the true " +
-      "kill-chain stage is latent. It sees only traffic features \u2014 and adjacent stages EMIT OVERLAPPING FEATURES. That is partial " +
-      "observability (POMDP): observations are drawn from an observation kernel Z, and the optimal policy must act on a BELIEF built " +
-      "from history, not on a single observation. Teaching metaphor: a doctor who never sees the disease, only symptoms \u2014 and adjacent " +
-      "diseases share symptoms; one snapshot cannot diagnose, a case history can. Our agent approximates belief with a sliding window " +
-      "of the last 5 observations. Foreshadow: we make ambiguity a CONTROLLED DIAL (aliasing rate alpha) and study defense as a " +
-      "function of it.",
+    notes: NOTES.pomdp,
   });
 
   // left: MDP box
@@ -219,4 +355,4 @@ function addPOMDP(pres) {
   });
 }
 
-module.exports = { addWhyIoT, addKillChain, addRLPrimer, addPOMDP };
+module.exports = { addIoTNetwork, addWhyIoT, addKillChain, addRLPrimer, addPOMDP };
