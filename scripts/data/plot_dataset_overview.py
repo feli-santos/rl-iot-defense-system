@@ -186,10 +186,10 @@ def main(argv: Optional[list[str]] = None) -> int:
     splits = {name: np.load(splits_dir / f"{name}.idx.npy") for name in ("train", "val", "test")}
 
     class_counts = _plot_class_distribution(
-        string_labels, stage_ids, args.out_dir / "F0_class_distribution.png"
+        string_labels, stage_ids, args.out_dir / "class_distribution.png"
     )
     stage_per_split = _plot_stage_distribution(
-        stage_ids, splits, args.out_dir / "F0_stage_distribution.png"
+        stage_ids, splits, args.out_dir / "stage_distribution.png"
     )
 
     summary = {
@@ -202,7 +202,7 @@ def main(argv: Optional[list[str]] = None) -> int:
             split: [int(x) for x in vals] for split, vals in stage_per_split.items()
         },
     }
-    summary_path = args.out_dir / "F0_summary.json"
+    summary_path = args.out_dir / "dataset_summary.json"
     summary_path.write_text(json.dumps(summary, indent=2, sort_keys=True))
     LOG.info("Wrote %s", summary_path)
 

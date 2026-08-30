@@ -2,9 +2,14 @@
 
 Validates the audit-first hash-chain end-to-end **without retraining
 any heavy model**. The check is: for every committed
-``manifest.json`` / ``F<k>_manifest.json``, every input SHA-256 it
-records must match the on-disk SHA-256 of that input file *right
+``manifest.json`` / ``F<k>_manifest.json``, every input *and output*
+SHA-256 it records must match the on-disk SHA-256 of that file *right
 now*. If any hash drifts, the harness fails with a precise diff.
+
+Verifying outputs (not just inputs) is what catches a stale committed
+artefact — a figure or summary whose upstream data was regenerated but
+which was itself never re-exported, so the committed bytes silently
+disagree with the prose that cites them.
 
 This is the audit-chain self-test. It is also the artefact the
 defense committee can run on a fresh checkout to verify
@@ -18,7 +23,8 @@ Usage::
 What it checks (per step, in order):
 
 - Dataset prep: ``docs/results/dataset/manifest.json`` ↔ on-disk
-  ``F0_*.png`` / ``F0_summary.json`` outputs.
+  ``class_distribution.png`` / ``stage_distribution.png`` /
+  ``dataset_summary.json`` outputs.
 - Detector: ``docs/results/stage-detector/manifest.json`` ↔ on-disk
   outputs. Inputs (features.npy etc.) are gitignored; if missing,
   the harness skips them with a warning rather than failing.
@@ -199,8 +205,48 @@ _KNOWN_DIVERGENCES: dict[tuple[str, str, str], dict[str, str]] = {
 }
 
 
+def _resolve_pin_path(path_str: str, manifest_path: Path, section: str) -> Path:
+    """Resolve a manifest pin's path string to an on-disk path.
+
+    ``inputs`` pins are usually repo-relative; ``outputs`` pins are usually
+    bare filenames sitting next to the manifest itself. The candidate order
+    is flipped accordingly so each section tries its most likely root first.
+    """
+    p = Path(path_str)
+    if p.is_absolute():
+        return p
+    if section == "outputs":
+        # Outputs are emitted next to their manifest, so try that first.
+        candidates = (
+            manifest_path.parent / path_str,
+            _ROOT / path_str,
+        )
+    else:
+        # Candidate roots, in priority order:
+        #   1. repo-relative (dataset/benchmark/ablation pins use full
+        #      repo-relative paths);
+        #   2. manifest-dir-relative;
+        #   3. the processed-dataset root — the detector manifest stores
+        #      bare relpaths (``features.npy``, ``splits/train.idx.npy``)
+        #      that are conventionally relative to the processed snapshot.
+        candidates = (
+            _ROOT / path_str,
+            manifest_path.parent / path_str,
+            _ROOT / "data/processed/ciciot2023" / path_str,
+        )
+    for candidate in candidates:
+        if candidate.exists():
+            return candidate
+    return candidates[0]  # default to the primary root for the missing-msg
+
+
 def _check_manifest(label: str, manifest_path: Path) -> tuple[int, int, int, int, list[str]]:
     """Return (n_ok, n_fail, n_skip, n_known, msgs) for one manifest.
+
+    Both the ``inputs`` and the ``outputs`` sections are verified. Checking
+    outputs is what catches a *stale committed artefact*: a figure or summary
+    regenerated upstream but never re-exported, whose on-disk bytes no longer
+    match the SHA its own manifest recorded.
 
     `n_known` counts pins whose SHA mismatch is a pre-registered,
     documented divergence (Step-1/Step-2 F1) — these do NOT contribute
@@ -213,41 +259,27 @@ def _check_manifest(label: str, manifest_path: Path) -> tuple[int, int, int, int
     except json.JSONDecodeError as exc:
         return 0, 1, 0, 0, [f"{label}: manifest JSON parse error: {exc}"]
 
-    pins = _walk_pin_entries(manifest.get("inputs", {}), prefix="inputs")
+    pins: list[tuple[str, dict[str, Any], str]] = []
+    for section in ("inputs", "outputs"):
+        pins.extend(
+            (lbl, pin, section)
+            for lbl, pin in _walk_pin_entries(manifest.get(section, {}), prefix=section)
+        )
     if not pins:
-        return 0, 0, 1, 0, [f"{label}: no SHA pins to check (inputs empty)"]
+        return 0, 0, 1, 0, [f"{label}: no SHA pins to check (inputs/outputs empty)"]
 
     n_ok = n_fail = n_skip = n_known = 0
     msgs: list[str] = []
-    for label_full, pin in pins:
+    for label_full, pin, section in pins:
         path_str = pin["path"]
         recorded_sha = pin["sha256"]
-        # Try absolute first; fall back to repo-relative.
-        p = Path(path_str)
-        if not p.is_absolute():
-            # Candidate roots, in priority order:
-            #   1. repo-relative (dataset/benchmark/ablation pins use full
-            #      repo-relative paths);
-            #   2. manifest-dir-relative;
-            #   3. the processed-dataset root — the detector manifest stores
-            #      bare relpaths (``features.npy``, ``splits/train.idx.npy``)
-            #      that are conventionally relative to the processed snapshot.
-            candidates = (
-                _ROOT / path_str,
-                manifest_path.parent / path_str,
-                _ROOT / "data/processed/ciciot2023" / path_str,
-            )
-            for candidate in candidates:
-                if candidate.exists():
-                    p = candidate
-                    break
-            else:
-                p = _ROOT / path_str  # default to repo-rel for missing-msg
+        p = _resolve_pin_path(path_str, manifest_path, section)
         actual_sha = _sha256(p)
         if actual_sha is None:
             n_skip += 1
+            noun = "output" if section == "outputs" else "input"
             msgs.append(
-                f"  SKIP  {label} {label_full}: input not on disk ({path_str}; gitignored?)"
+                f"  SKIP  {label} {label_full}: {noun} not on disk ({path_str}; gitignored?)"
             )
         elif actual_sha == recorded_sha:
             n_ok += 1
@@ -265,10 +297,16 @@ def _check_manifest(label: str, manifest_path: Path) -> tuple[int, int, int, int
                 )
             else:
                 n_fail += 1
+                hint = (
+                    "\n           hint:     committed artefact is stale — "
+                    "regenerate it and re-pin this manifest"
+                    if section == "outputs"
+                    else ""
+                )
                 msgs.append(
                     f"  FAIL  {label} {label_full}: SHA mismatch on {path_str}\n"
                     f"           recorded: {recorded_sha}\n"
-                    f"           actual:   {actual_sha}"
+                    f"           actual:   {actual_sha}{hint}"
                 )
     return n_ok, n_fail, n_skip, n_known, msgs
 

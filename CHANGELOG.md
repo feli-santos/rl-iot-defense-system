@@ -7,6 +7,31 @@ research artefact versions recorded in `CITATION.cff`.
 
 ## [Unreleased]
 
+### Fixed
+- **Stale per-stage split figure (Fig. 4.2).** The committed
+  `stage_distribution.png` predated the out-of-distribution reservation fix
+  and reported the pre-fix splits (309,566 training rows), contradicting the
+  Chapter 4 prose that correctly cites 235,324. The semantic rename in
+  `8bd629b` changed the plotter's `--out-dir` but left its `F0_`-prefixed
+  output filenames untouched, so regenerating wrote new files alongside the
+  committed ones instead of overwriting them. Dropped the `F0_` prefix in
+  `scripts/data/plot_dataset_overview.py`, regenerated the figure and
+  `dataset_summary.json`, re-exported `tex/figs/stage_distribution.pdf`, and
+  re-pinned the affected manifests. `class_distribution.png` regenerated
+  byte-identical, confirming the drift was confined to the split-dependent
+  figure and that no reported result changes.
+- **Figure 4.2 caption** claimed four partitions (training,
+  balanced-validation, balanced-test, held-out OOD) while the figure plots
+  three (train/val/test); the caption now describes what is actually shown.
+  The stale row counts in the sibling `stage_distribution.caption.md` were
+  corrected alongside it.
+
+### Changed
+- `scripts/reproducibility_smoke.py` now verifies manifest **`outputs`** in
+  addition to `inputs`. Output pins were previously never checked, which is
+  why the stale figure above went unnoticed; the harness now fails on any
+  committed artefact whose bytes have drifted from its recorded SHA-256.
+
 ## [0.8.5] — 2026-07-20
 
 Thesis (`tex/`) finalization for the public open-source release. The journal
