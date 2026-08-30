@@ -124,7 +124,7 @@ where $x_i \in \mathbb{R}^{29}$ is the $i$-th feature row and $\mathcal{X}_s$ is
 \begin{figure}[!htbp]
     \centering
     \includegraphics[width=0.68\textwidth]{figs/dataset_raw_traffic_a.pdf}
-    \caption[Feature-space overlap across kill-chain stages]{Two-dimensional PCA projection of the 29-dimensional CICIoT2023 feature space, coloured by kill-chain stage (12\,000 rows subsampled per stage). Adjacent stages overlap substantially, which is the empirical reason the aliasing rate $\alpha$ in Eq.~\eqref{eq:aliasing_kernel} is a genuine partial-observability stressor rather than a synthetic perturbation: even with full feature information, neighbouring stages are not linearly separable.}
+    \caption[Feature-space overlap across kill-chain stages]{Two-dimensional PCA projection of the 29-dimensional CICIoT2023 feature space, coloured by kill-chain stage ($2\,400$ rows subsampled per stage, $12\,000$ points in total, so every stage contributes equally and the visual density does not track class prevalence). Adjacent stages overlap substantially, which is the empirical reason the aliasing rate $\alpha$ in Eq.~\eqref{eq:aliasing_kernel} is a genuine partial-observability stressor rather than a synthetic perturbation: even with full feature information, neighbouring stages are not linearly separable.}
     \label{fig:dataset_raw_traffic_a}
 \end{figure}
 

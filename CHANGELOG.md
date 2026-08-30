@@ -25,6 +25,18 @@ research artefact versions recorded in `CITATION.cff`.
   three (train/val/test); the caption now describes what is actually shown.
   The stale row counts in the sibling `stage_distribution.caption.md` were
   corrected alongside it.
+- **PCA feature-overlap figure (Fig. 3.4) mislabelled its sample.** The
+  caption claimed 12,000 rows *per stage*; the plotter subsamples
+  `12000 // 5 = 2,400` per stage (12,000 points in total). The in-figure
+  legend compounded this by reporting each stage's *population* count
+  (`n=193,936` for IMPACT against `n=36,950` for ACCESS), which implied the
+  visual density tracked class prevalence when the scatter is in fact
+  deliberately equalised at 2,400 points per stage. Both the caption and the
+  legend now report the plotted count, so the figure supports rather than
+  undercuts the argument that adjacent-stage overlap is intrinsic to the
+  feature space and not an artefact of class imbalance. The companion
+  mean-signature heatmap (Fig. 3.5) is unaffected; it regenerated with
+  identical content.
 
 ### Changed
 - `scripts/reproducibility_smoke.py` now verifies manifest **`outputs`** in

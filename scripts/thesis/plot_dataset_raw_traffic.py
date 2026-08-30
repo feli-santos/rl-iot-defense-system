@@ -130,7 +130,11 @@ def main() -> None:
             s=12,
             alpha=0.45,
             edgecolors="none",
-            label=f"{STAGE_NAMES[s]} (n={int((stages == s).sum()):,})",
+            # Report the *plotted* count, not the population count: the
+            # scatter is deliberately equalised across stages (see the
+            # per-stage subsample above), so a population-sized label would
+            # wrongly imply the visual density tracks class prevalence.
+            label=f"{STAGE_NAMES[s]} (n={int(mask.sum()):,})",
             rasterized=True,
         )
     ax_pca.set_xlabel(f"PC1 ({pca.explained_variance_ratio_[0]:.1%} of variance)")
